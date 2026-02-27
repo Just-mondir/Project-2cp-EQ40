@@ -1,0 +1,68 @@
+<h1>Add Post</h1>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <p>{{ form.title.label_tag }}<br />{{ form.title }}</p>
+
+  <p>{{ form.content.label_tag }}<br />{{ form.content }}</p>
+
+  <p>{{ form.post_type.label_tag }}<br />{{ form.post_type }}</p>
+
+  <!-- EVENT TIME FIELDS (hidden unless post_type == events) -->
+  <div id="event-fields" style="display: none">
+    <h3>Event time</h3>
+    <p>{{ form.starts_at.label_tag }}<br />{{ form.starts_at }}</p>
+    <p>{{ form.ends_at.label_tag }}<br />{{ form.ends_at }}</p>
+  </div>
+  <div id="alert-fields" style="display: none">
+    <h3>Alert Details</h3>
+
+    <p>
+      {{ form.urgence_level.label_tag }}<br />
+      {{ form.urgence_level }}
+    </p>
+  </div>
+
+  <p>{{ form.visibility.label_tag }}<br />{{ form.visibility }}</p>
+
+  <p>
+    {{ form.historical_period.label_tag }}<br />{{ form.historical_period }}
+  </p>
+
+  <p>{{ form.monument_type.label_tag }}<br />{{ form.monument_type }}</p>
+
+  <p>{{ form.region.label_tag }}<br />{{ form.region }}</p>
+
+  <p>{{ form.location.label_tag }}<br />{{ form.location }}</p>
+
+  <p>
+    <label for="id_images">Images (max 5)</label><br />
+    <input id="id_images" type="file" name="images" multiple accept="image/*" />
+  </p>
+
+  <button type="submit">Create Post</button>
+</form>
+<script>
+  function toggleSections() {
+    const postType = document.getElementById("id_post_type").value;
+
+    const eventBox = document.getElementById("event-fields");
+    const alertBox = document.getElementById("alert-fields");
+
+    if (eventBox) {
+      eventBox.style.display = postType === "events" ? "block" : "none";
+    }
+
+    if (alertBox) {
+      alertBox.style.display = postType === "alert" ? "block" : "none";
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    toggleSections(); // check on load
+    document
+      .getElementById("id_post_type")
+      .addEventListener("change", toggleSections);
+  });
+</script>

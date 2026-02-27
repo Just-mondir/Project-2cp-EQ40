@@ -1,1 +1,62 @@
 <h1>HOME</h1>
+
+<div style="margin-bottom: 20px">
+  <a
+    href="{% url 'add-post' %}"
+    style="
+      padding: 10px 15px;
+      background: #474a4d;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    "
+  >
+    ➕ Add Post
+  </a>
+</div>
+
+<h2>Posts</h2>
+
+{% for post in object_list %}
+<div style="border: 1px solid #ddd; padding: 12px; margin: 12px 0">
+  <h3>{{ post.user.username }} • {{ post.created_at|timesince }} ago</h3>
+  <p>📍 {{ post.location }}</p>
+  <h3>{{ post.title }}</h3>
+  <p>{{ post.content }}</p>
+  {% if post.post_type == "events" and post.event_details %}
+  <div>
+    <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
+
+    {% if post.event_details.ends_at %}
+    <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
+
+    {% endif %}
+  </div>
+  {% endif %} {% if post.post_type == "alert" and post.alert_details %}
+  <p>
+    🚨 {{ post.alert_details.get_urgence_level_display }} •
+    {{post.alert_details.get_current_status_display }}
+  </p>
+  {% endif %} {% for img in post.images.all %}
+  <img src="{{ img.image.url }}" style="max-width: 200px" />
+  {% endfor %}
+  <p>
+    {{ post.gems.count }} Likes&nbsp;&nbsp;&nbsp;&nbsp; {{post.comments.count }}
+    Comments
+  </p>
+
+  <div>
+    {% if post.region %}
+    <span>#{{ post.get_region_display }}</span>
+    {% endif %} {% if post.historical_period %}
+    <span>#{{ post.get_historical_period_display }}</span>
+    {% endif %} {% if post.monument_type %}
+    <span>#{{ post.get_monument_type_display }}</span>
+    {% endif %}
+  </div>
+  <p>{{ post.created_at }}</p>
+</div>
+
+{% empty %}
+<p>No posts yet.</p>
+{% endfor %}
