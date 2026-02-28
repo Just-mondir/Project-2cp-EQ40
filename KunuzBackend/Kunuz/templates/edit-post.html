@@ -1,8 +1,91 @@
 <h1>Edit Post</h1>
 
-<form method="POST">
-  {% csrf_token %} {{ form.as_p }}
-  <button type="submit">Save Post</button>
+<form id="edit-form" method="POST" action="{% url 'edit-post' object.id %}">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+    <div style="color:red; margin-bottom:10px;">
+      {{ form.non_field_errors }}
+    </div>
+  {% endif %}
+
+  <p>
+    {{ form.title.label_tag }}<br />
+    {{ form.title }}
+  </p>
+
+  <p>
+    {{ form.content.label_tag }}<br />
+    {{ form.content }}
+  </p>
+
+  <p>
+    {{ form.post_type.label_tag }}<br />
+    {{ form.post_type }}
+  </p>
+
+  <div id="event-fields" style="display: none">
+    <h3>Event time</h3>
+
+    <p>
+      {{ form.starts_at.label_tag }}<br />
+      {{ form.starts_at }}
+      {% for error in form.starts_at.errors %}
+        <div style="color:red;">{{ error }}</div>
+      {% endfor %}
+    </p>
+
+    <p>
+      {{ form.ends_at.label_tag }}<br />
+      {{ form.ends_at }}
+      {% for error in form.ends_at.errors %}
+        <div style="color:red;">{{ error }}</div>
+      {% endfor %}
+    </p>
+  </div>
+
+  <div id="alert-fields" style="display: none">
+    <h3>Alert Details</h3>
+
+    <p>
+      {{ form.urgence_level.label_tag }}<br />
+      {{ form.urgence_level }}
+      {% for error in form.urgence_level.errors %}
+        <div style="color:red;">{{ error }}</div>
+      {% endfor %}
+    </p>
+        <p>
+      {{ form.current_status.label_tag }}<br />
+      {{ form.current_status }}
+      {% for error in form.current_status.errors %}
+        <div style="color:red;">{{ error }}</div>
+      {% endfor %}
+    </p>
+  </div>
+
+  <p>
+    {{ form.visibility.label_tag }}<br />
+    {{ form.visibility }}
+  </p>
+
+  <p>
+    {{ form.historical_period.label_tag }}<br />
+    {{ form.historical_period }}
+  </p>
+
+  <p>
+    {{ form.monument_type.label_tag }}<br />
+    {{ form.monument_type }}
+  </p>
+
+  <p>
+    {{ form.region.label_tag }}<br />
+    {{ form.region }}
+  </p>
+
+  <p>
+    {{ form.location.label_tag }}<br />
+    {{ form.location }}
+  </p>
 </form>
 
 <hr />
@@ -11,27 +94,46 @@
 
 <div style="display: flex; gap: 12px; flex-wrap: wrap">
   {% for img in object.images.all %}
-  <div style="border: 1px solid #ddd; padding: 8px">
-    <img src="{{ img.image.url }}" style="max-width: 150px; display: block" />
-    <form method="POST" action="{% url 'delete-image' img.id %}">
-      {% csrf_token %}
-      <button type="submit" style="margin-top: 6px">🗑 Remove</button>
-    </form>
-  </div>
+    <div style="border: 1px solid #ddd; padding: 8px">
+      <img src="{{ img.image.url }}" style="max-width: 150px; display: block" />
+
+      <form method="POST" action="{% url 'delete-image' img.id %}">
+        {% csrf_token %}
+        <button type="submit" style="margin-top: 6px">🗑 Remove</button>
+      </form>
+    </div>
   {% empty %}
-  <p>No images yet.</p>
+    <p>No images yet.</p>
   {% endfor %}
 </div>
 
 <hr />
 
 <h3>Add new images</h3>
-<form
-  method="POST"
-  action="{% url 'add-images' object.id %}"
-  enctype="multipart/form-data"
->
+
+<form method="POST" action="{% url 'add-images' object.id %}" enctype="multipart/form-data">
   {% csrf_token %}
-  <input type="file" name="images" multiple />
+  <input type="file" name="images" multiple accept="image/*" />
   <button type="submit">Upload</button>
 </form>
+
+<hr />
+
+<button type="submit" form="edit-form">Save Post</button>
+
+<script>
+  function toggleSections() {
+    const postType = document.getElementById("id_post_type").value;
+
+    const eventBox = document.getElementById("event-fields");
+    const alertBox = document.getElementById("alert-fields");
+
+    if (eventBox) eventBox.style.display = postType === "events" ? "block" : "none";
+    if (alertBox) alertBox.style.display = postType === "alert" ? "block" : "none";
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    toggleSections();
+    document.getElementById("id_post_type").addEventListener("change", toggleSections);
+  });
+</script>

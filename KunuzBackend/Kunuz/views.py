@@ -10,7 +10,6 @@ from .forms import PostCreateForm, PostEditForm
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 
-# fix the saved button
 
 class HomeView(ListView):
     model = Post
@@ -102,10 +101,32 @@ class EditPostView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy("profile")
     def get_queryset(self):
         return Post.objects.filter(user=self.request.user)
-    
+    def form_valid(self, form):
+        with transaction.atomic():
+            response = super().form_valid(form)
+            post = self.object
+            if post.post_type == Post.PostType.EVENTS:
+                ed, _ = EventDetails.objects.get_or_create(post=post)
+                ed.starts_at = form.cleaned_data["starts_at"]
+                ed.ends_at = form.cleaned_data.get("ends_at")
+                ed.full_clean()
+                ed.save()
+                AlertDetails.objects.filter(post=post).delete()
+            elif post.post_type == Post.PostType.ALERT:
+                ad, _ = AlertDetails.objects.get_or_create(post=post)
+                ad.urgence_level = form.cleaned_data["urgence_level"]
+                ad.current_status = form.cleaned_data["current_status"]
+                ad.full_clean()
+                ad.save()
+                EventDetails.objects.filter(post=post).delete()
+            else:
+                EventDetails.objects.filter(post=post).delete()
+                AlertDetails.objects.filter(post=post).delete()
+            return response
+        
 class DeletePostView(LoginRequiredMixin, DeleteView):
     model = Post
-    template_name = "delete-post.html"
+    # template_name = "delete-post.html"
     success_url = reverse_lazy("profile")
     def get_queryset(self):
         return Post.objects.filter(user=self.request.user)
@@ -115,11 +136,9 @@ class DeletePostView(LoginRequiredMixin, DeleteView):
 @require_POST
 def add_images(request, pk):
     post = get_object_or_404(Post, pk=pk, user=request.user)
-
     images = request.FILES.getlist("images")
     for f in images:
         PostImage.objects.create(post=post, image=f)
-
     return redirect("edit-post", pk=post.pk)
 
 

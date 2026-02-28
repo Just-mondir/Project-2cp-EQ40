@@ -10,7 +10,7 @@
       border-radius: 5px;
     "
   >
-    ➕ Add Post
+    Add Post
   </a>
 </div>
 <div style="margin-bottom: 20px">
@@ -33,18 +33,21 @@
 <h2>My Posts</h2>
 
 {% for post in my_posts %}
-<div style="border: 1px solid #ddd; padding: 12px; margin: 12px 0">
+<div
+  class="post-card"
+  data-post-id="{{ post.id }}"
+  style="border: 1px solid #ddd; padding: 12px; margin: 12px 0"
+>
   <h3>{{ post.user.username }} • {{ post.created_at|timesince }} ago</h3>
   <p>📍 {{ post.location }}</p>
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
+
   {% if post.post_type == "events" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
-
     {% if post.event_details.ends_at %}
     <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
-
     {% endif %}
   </div>
   {% endif %} {% if post.post_type == "alert" and post.alert_details %}
@@ -55,6 +58,7 @@
   {% endif %} {% for img in post.images.all %}
   <img src="{{ img.image.url }}" style="max-width: 200px" />
   {% endfor %}
+
   <div style="display: flex; align-items: center; gap: 15px">
     <button class="gem-btn" data-id="{{ post.id }}">
       ❤️ <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span>
@@ -67,60 +71,63 @@
     {% if post.user == request.user %}
     <div class="menu" style="position: relative">
       <button class="menu-btn">⋮</button>
-
       <div class="menu-dropdown">
         <a href="{% url 'edit-post' post.id %}">✏️ Edit</a>
-
-        <a href="{% url 'delete-post' post.id %}" class="delete-btn"
-          >🗑 Delete</a
-        >
+        <button type="button" onclick="openDeleteModal('{{ post.id }}')">
+          🗑 Delete
+        </button>
       </div>
     </div>
     {% endif %}
   </div>
 
   <div>
-    {% if post.region %}
-    <span>#{{ post.get_region_display }}</span>
-    {% endif %} {% if post.historical_period %}
-    <span>#{{ post.get_historical_period_display }}</span>
-    {% endif %} {% if post.monument_type %}
-    <span>#{{ post.get_monument_type_display }}</span>
-    {% endif %}
+    {% if post.region %}<span>#{{ post.get_region_display }}</span>{% endif %}
+    {% if post.historical_period %}<span
+      >#{{ post.get_historical_period_display }}</span
+    >{% endif %} {% if post.monument_type %}<span
+      >#{{ post.get_monument_type_display }}</span
+    >{% endif %}
   </div>
+
   <p>{{ post.created_at }}</p>
 </div>
 
 {% empty %}
 <p>No posts yet.</p>
 {% endfor %}
-<br />
-<br />
+
+<br /><br />
+
 <h2>My Treasure</h2>
 
 {% for post in gemed_posts %}
-<div style="border: 1px solid #ddd; padding: 12px; margin: 12px 0">
+<div
+  class="post-card"
+  data-post-id="{{ post.id }}"
+  style="border: 1px solid #ddd; padding: 12px; margin: 12px 0"
+>
   <h3>{{ post.user.username }} • {{ post.created_at|timesince }} ago</h3>
   <p>📍 {{ post.location }}</p>
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
+
   {% if post.post_type == "events" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
-
     {% if post.event_details.ends_at %}
     <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
-
     {% endif %}
   </div>
   {% endif %} {% if post.post_type == "alert" and post.alert_details %}
   <p>
-    🚨 {{ post.alert_details.get_urgence_level_display }} •
-    {{post.alert_details.get_current_status_display }}
+    🚨 {{ post.alert_details.get_urgence_level_display }} • {{
+    post.alert_details.get_current_status_display }}
   </p>
   {% endif %} {% for img in post.images.all %}
   <img src="{{ img.image.url }}" style="max-width: 200px" />
   {% endfor %}
+
   <div style="display: flex; align-items: center; gap: 15px">
     <button class="gem-btn" data-id="{{ post.id }}">
       ❤️ <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span>
@@ -133,32 +140,25 @@
     {% if post.user == request.user %}
     <div class="menu" style="position: relative">
       <button class="menu-btn">⋮</button>
-
       <div class="menu-dropdown">
         <a href="{% url 'edit-post' post.id %}">✏️ Edit</a>
-
-        <form
-          action="{% url 'delete-post' post.id %}"
-          method="POST"
-          style="margin: 0"
-        >
-          {% csrf_token %}
-          <button type="submit" class="delete-btn">🗑 Delete</button>
-        </form>
+        <button type="button" onclick="openDeleteModal('{{ post.id }}')">
+          🗑 Delete
+        </button>
       </div>
     </div>
     {% endif %}
   </div>
 
   <div>
-    {% if post.region %}
-    <span>#{{ post.get_region_display }}</span>
-    {% endif %} {% if post.historical_period %}
-    <span>#{{ post.get_historical_period_display }}</span>
-    {% endif %} {% if post.monument_type %}
-    <span>#{{ post.get_monument_type_display }}</span>
-    {% endif %}
+    {% if post.region %}<span>#{{ post.get_region_display }}</span>{% endif %}
+    {% if post.historical_period %}<span
+      >#{{ post.get_historical_period_display }}</span
+    >{% endif %} {% if post.monument_type %}<span
+      >#{{ post.get_monument_type_display }}</span
+    >{% endif %}
   </div>
+
   <p>{{ post.created_at }}</p>
 </div>
 
@@ -166,33 +166,37 @@
 <p>No posts yet.</p>
 {% endfor %}
 
-<br />
-<br />
+<br /><br />
+
 <h2>My Saved Posts</h2>
 
 {% for post in saved_posts %}
-<div style="border: 1px solid #ddd; padding: 12px; margin: 12px 0">
+<div
+  class="post-card"
+  data-post-id="{{ post.id }}"
+  style="border: 1px solid #ddd; padding: 12px; margin: 12px 0"
+>
   <h3>{{ post.user.username }} • {{ post.created_at|timesince }} ago</h3>
   <p>📍 {{ post.location }}</p>
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
+
   {% if post.post_type == "events" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
-
     {% if post.event_details.ends_at %}
     <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
-
     {% endif %}
   </div>
   {% endif %} {% if post.post_type == "alert" and post.alert_details %}
   <p>
-    🚨 {{ post.alert_details.get_urgence_level_display }} •
-    {{post.alert_details.get_current_status_display }}
+    🚨 {{ post.alert_details.get_urgence_level_display }} • {{
+    post.alert_details.get_current_status_display }}
   </p>
   {% endif %} {% for img in post.images.all %}
   <img src="{{ img.image.url }}" style="max-width: 200px" />
   {% endfor %}
+
   <div style="display: flex; align-items: center; gap: 15px">
     <button class="gem-btn" data-id="{{ post.id }}">
       ❤️ <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span>
@@ -205,38 +209,91 @@
     {% if post.user == request.user %}
     <div class="menu" style="position: relative">
       <button class="menu-btn">⋮</button>
-
       <div class="menu-dropdown">
         <a href="{% url 'edit-post' post.id %}">✏️ Edit</a>
-
-        <form
-          action="{% url 'delete-post' post.id %}"
-          method="POST"
-          style="margin: 0"
-        >
-          {% csrf_token %}
-          <button type="submit" class="delete-btn">🗑 Delete</button>
-        </form>
+        <button type="button" onclick="openDeleteModal('{{ post.id }}')">
+          🗑 Delete
+        </button>
       </div>
     </div>
     {% endif %}
   </div>
 
   <div>
-    {% if post.region %}
-    <span>#{{ post.get_region_display }}</span>
-    {% endif %} {% if post.historical_period %}
-    <span>#{{ post.get_historical_period_display }}</span>
-    {% endif %} {% if post.monument_type %}
-    <span>#{{ post.get_monument_type_display }}</span>
-    {% endif %}
+    {% if post.region %}<span>#{{ post.get_region_display }}</span>{% endif %}
+    {% if post.historical_period %}<span
+      >#{{ post.get_historical_period_display }}</span
+    >{% endif %} {% if post.monument_type %}<span
+      >#{{ post.get_monument_type_display }}</span
+    >{% endif %}
   </div>
+
   <p>{{ post.created_at }}</p>
 </div>
 
 {% empty %}
 <p>No posts yet.</p>
 {% endfor %}
+
+<!-- ✅ DELETE MODAL (one time only) -->
+<div
+  id="delete-modal"
+  style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  "
+>
+  <div
+    style="
+      background: white;
+      padding: 20px;
+      width: 320px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    "
+  >
+    <p style="margin: 0 0 14px 0">Are you sure you want to delete this post?</p>
+
+    <form id="delete-form" method="POST">
+      {% csrf_token %}
+      <button
+        type="submit"
+        style="
+          background: #c0392b;
+          color: white;
+          padding: 8px 12px;
+          border: none;
+          border-radius: 6px;
+        "
+      >
+        Yes, delete
+      </button>
+      <button
+        type="button"
+        onclick="closeDeleteModal()"
+        style="
+          margin-left: 8px;
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          background: white;
+        "
+      >
+        Cancel
+      </button>
+    </form>
+  </div>
+</div>
+
 <script>
   function getCookie(name) {
     let cookieValue = null;
@@ -254,40 +311,54 @@
   }
   const csrftoken = getCookie("csrftoken");
 
-  // GEM
-  document.querySelectorAll(".gem-btn").forEach((button) => {
-    button.addEventListener("click", function () {
-      const postId = this.dataset.id;
+  // ✅ Modal delete
+  function openDeleteModal(postId) {
+    const modal = document.getElementById("delete-modal");
+    const form = document.getElementById("delete-form");
+    form.action = `/post/${postId}/delete/`;
+    modal.style.display = "flex";
+  }
+  function closeDeleteModal() {
+    document.getElementById("delete-modal").style.display = "none";
+  }
+
+  // ✅ Use event delegation so it works in all sections
+  document.addEventListener("click", function (e) {
+    // GEM
+    const gemBtn = e.target.closest(".gem-btn");
+    if (gemBtn) {
+      const postId = gemBtn.dataset.id;
       fetch(`/gem/${postId}/`, {
         method: "POST",
         headers: { "X-CSRFToken": csrftoken },
       })
         .then((r) => r.json())
         .then((data) => {
-          document.getElementById(`gem-count-${postId}`).innerText = data.count;
+          const el = document.getElementById(`gem-count-${postId}`);
+          if (el) el.innerText = data.count;
         })
         .catch(console.error);
-    });
-  });
+      return;
+    }
 
-  // SAVE
-  document.querySelectorAll(".save-btn").forEach((button) => {
-    button.addEventListener("click", function () {
-      const postId = this.dataset.id;
+    // SAVE
+    const saveBtn = e.target.closest(".save-btn");
+    if (saveBtn) {
+      const postId = saveBtn.dataset.id;
       fetch(`/save/${postId}/`, {
         method: "POST",
         headers: { "X-CSRFToken": csrftoken },
       })
         .then((r) => r.json())
         .then((data) => {
-          // you can toggle icon based on data.saved if you want
-          // example:
-          this.textContent = data.saved ? "✅ Saved" : "📌";
+          saveBtn.innerHTML = data.saved ? "✅ Saved" : "📌";
         })
         .catch(console.error);
-    });
+      return;
+    }
   });
 </script>
+
 <style>
   .menu {
     position: relative;
@@ -300,7 +371,6 @@
     cursor: pointer;
     padding: 4px 10px;
   }
-
   .menu-dropdown {
     display: none;
     position: absolute;
@@ -314,11 +384,9 @@
     z-index: 999;
     padding: 6px;
   }
-
   .menu:hover .menu-dropdown {
     display: block;
   }
-
   .menu-dropdown a,
   .menu-dropdown button {
     display: block;
@@ -332,13 +400,8 @@
     cursor: pointer;
     border-radius: 6px;
   }
-
   .menu-dropdown a:hover,
   .menu-dropdown button:hover {
     background: #f2f2f2;
-  }
-
-  .delete-btn {
-    color: #c0392b;
   }
 </style>

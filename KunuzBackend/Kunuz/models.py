@@ -162,7 +162,6 @@ class Gem(models.Model):
 
 
 class Save(models.Model):
-    # ✅ renamed related_name for sanity
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="saves")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
