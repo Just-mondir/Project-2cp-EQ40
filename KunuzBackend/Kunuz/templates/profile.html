@@ -1,0 +1,344 @@
+<h1>Profile</h1>
+<div style="margin-bottom: 20px">
+  <a
+    href="{% url 'add-post' %}"
+    style="
+      padding: 10px 15px;
+      background: #474a4d;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    "
+  >
+    ➕ Add Post
+  </a>
+</div>
+<div style="margin-bottom: 20px">
+  <a
+    href="{% url 'home' %}"
+    style="
+      padding: 10px 15px;
+      background: #474a4d;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    "
+  >
+    Go to Home
+  </a>
+</div>
+
+<br /><br />
+
+<h2>My Posts</h2>
+
+{% for post in my_posts %}
+<div style="border: 1px solid #ddd; padding: 12px; margin: 12px 0">
+  <h3>{{ post.user.username }} • {{ post.created_at|timesince }} ago</h3>
+  <p>📍 {{ post.location }}</p>
+  <h3>{{ post.title }}</h3>
+  <p>{{ post.content }}</p>
+  {% if post.post_type == "events" and post.event_details %}
+  <div>
+    <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
+
+    {% if post.event_details.ends_at %}
+    <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
+
+    {% endif %}
+  </div>
+  {% endif %} {% if post.post_type == "alert" and post.alert_details %}
+  <p>
+    🚨 {{ post.alert_details.get_urgence_level_display }} •
+    {{post.alert_details.get_current_status_display }}
+  </p>
+  {% endif %} {% for img in post.images.all %}
+  <img src="{{ img.image.url }}" style="max-width: 200px" />
+  {% endfor %}
+  <div style="display: flex; align-items: center; gap: 15px">
+    <button class="gem-btn" data-id="{{ post.id }}">
+      ❤️ <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span>
+    </button>
+
+    <span>{{ post.comments.count }} Comments</span>
+
+    <button class="save-btn" data-id="{{ post.id }}">📌</button>
+
+    {% if post.user == request.user %}
+    <div class="menu" style="position: relative">
+      <button class="menu-btn">⋮</button>
+
+      <div class="menu-dropdown">
+        <a href="{% url 'edit-post' post.id %}">✏️ Edit</a>
+
+        <a href="{% url 'delete-post' post.id %}" class="delete-btn"
+          >🗑 Delete</a
+        >
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    {% if post.region %}
+    <span>#{{ post.get_region_display }}</span>
+    {% endif %} {% if post.historical_period %}
+    <span>#{{ post.get_historical_period_display }}</span>
+    {% endif %} {% if post.monument_type %}
+    <span>#{{ post.get_monument_type_display }}</span>
+    {% endif %}
+  </div>
+  <p>{{ post.created_at }}</p>
+</div>
+
+{% empty %}
+<p>No posts yet.</p>
+{% endfor %}
+<br />
+<br />
+<h2>My Treasure</h2>
+
+{% for post in gemed_posts %}
+<div style="border: 1px solid #ddd; padding: 12px; margin: 12px 0">
+  <h3>{{ post.user.username }} • {{ post.created_at|timesince }} ago</h3>
+  <p>📍 {{ post.location }}</p>
+  <h3>{{ post.title }}</h3>
+  <p>{{ post.content }}</p>
+  {% if post.post_type == "events" and post.event_details %}
+  <div>
+    <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
+
+    {% if post.event_details.ends_at %}
+    <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
+
+    {% endif %}
+  </div>
+  {% endif %} {% if post.post_type == "alert" and post.alert_details %}
+  <p>
+    🚨 {{ post.alert_details.get_urgence_level_display }} •
+    {{post.alert_details.get_current_status_display }}
+  </p>
+  {% endif %} {% for img in post.images.all %}
+  <img src="{{ img.image.url }}" style="max-width: 200px" />
+  {% endfor %}
+  <div style="display: flex; align-items: center; gap: 15px">
+    <button class="gem-btn" data-id="{{ post.id }}">
+      ❤️ <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span>
+    </button>
+
+    <span>{{ post.comments.count }} Comments</span>
+
+    <button class="save-btn" data-id="{{ post.id }}">📌</button>
+
+    {% if post.user == request.user %}
+    <div class="menu" style="position: relative">
+      <button class="menu-btn">⋮</button>
+
+      <div class="menu-dropdown">
+        <a href="{% url 'edit-post' post.id %}">✏️ Edit</a>
+
+        <form
+          action="{% url 'delete-post' post.id %}"
+          method="POST"
+          style="margin: 0"
+        >
+          {% csrf_token %}
+          <button type="submit" class="delete-btn">🗑 Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    {% if post.region %}
+    <span>#{{ post.get_region_display }}</span>
+    {% endif %} {% if post.historical_period %}
+    <span>#{{ post.get_historical_period_display }}</span>
+    {% endif %} {% if post.monument_type %}
+    <span>#{{ post.get_monument_type_display }}</span>
+    {% endif %}
+  </div>
+  <p>{{ post.created_at }}</p>
+</div>
+
+{% empty %}
+<p>No posts yet.</p>
+{% endfor %}
+
+<br />
+<br />
+<h2>My Saved Posts</h2>
+
+{% for post in saved_posts %}
+<div style="border: 1px solid #ddd; padding: 12px; margin: 12px 0">
+  <h3>{{ post.user.username }} • {{ post.created_at|timesince }} ago</h3>
+  <p>📍 {{ post.location }}</p>
+  <h3>{{ post.title }}</h3>
+  <p>{{ post.content }}</p>
+  {% if post.post_type == "events" and post.event_details %}
+  <div>
+    <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
+
+    {% if post.event_details.ends_at %}
+    <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
+
+    {% endif %}
+  </div>
+  {% endif %} {% if post.post_type == "alert" and post.alert_details %}
+  <p>
+    🚨 {{ post.alert_details.get_urgence_level_display }} •
+    {{post.alert_details.get_current_status_display }}
+  </p>
+  {% endif %} {% for img in post.images.all %}
+  <img src="{{ img.image.url }}" style="max-width: 200px" />
+  {% endfor %}
+  <div style="display: flex; align-items: center; gap: 15px">
+    <button class="gem-btn" data-id="{{ post.id }}">
+      ❤️ <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span>
+    </button>
+
+    <span>{{ post.comments.count }} Comments</span>
+
+    <button class="save-btn" data-id="{{ post.id }}">📌</button>
+
+    {% if post.user == request.user %}
+    <div class="menu" style="position: relative">
+      <button class="menu-btn">⋮</button>
+
+      <div class="menu-dropdown">
+        <a href="{% url 'edit-post' post.id %}">✏️ Edit</a>
+
+        <form
+          action="{% url 'delete-post' post.id %}"
+          method="POST"
+          style="margin: 0"
+        >
+          {% csrf_token %}
+          <button type="submit" class="delete-btn">🗑 Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    {% if post.region %}
+    <span>#{{ post.get_region_display }}</span>
+    {% endif %} {% if post.historical_period %}
+    <span>#{{ post.get_historical_period_display }}</span>
+    {% endif %} {% if post.monument_type %}
+    <span>#{{ post.get_monument_type_display }}</span>
+    {% endif %}
+  </div>
+  <p>{{ post.created_at }}</p>
+</div>
+
+{% empty %}
+<p>No posts yet.</p>
+{% endfor %}
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie("csrftoken");
+
+  // GEM
+  document.querySelectorAll(".gem-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      const postId = this.dataset.id;
+      fetch(`/gem/${postId}/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          document.getElementById(`gem-count-${postId}`).innerText = data.count;
+        })
+        .catch(console.error);
+    });
+  });
+
+  // SAVE
+  document.querySelectorAll(".save-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      const postId = this.dataset.id;
+      fetch(`/save/${postId}/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          // you can toggle icon based on data.saved if you want
+          // example:
+          this.textContent = data.saved ? "✅ Saved" : "📌";
+        })
+        .catch(console.error);
+    });
+  });
+</script>
+<style>
+  .menu {
+    position: relative;
+    display: inline-block;
+  }
+  .menu-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 10px;
+  }
+
+  .menu-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 28px;
+    min-width: 140px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+    z-index: 999;
+    padding: 6px;
+  }
+
+  .menu:hover .menu-dropdown {
+    display: block;
+  }
+
+  .menu-dropdown a,
+  .menu-dropdown button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: none;
+    background: none;
+    text-decoration: none;
+    color: #222;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+
+  .menu-dropdown a:hover,
+  .menu-dropdown button:hover {
+    background: #f2f2f2;
+  }
+
+  .delete-btn {
+    color: #c0392b;
+  }
+</style>

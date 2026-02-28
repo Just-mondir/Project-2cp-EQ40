@@ -14,7 +14,20 @@
     ➕ Add Post
   </a>
 </div>
-
+<div style="margin-bottom: 20px">
+  <a
+    href="{% url 'profile' %}"
+    style="
+      padding: 10px 15px;
+      background: #474a4d;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    "
+  >
+    Go to Profile
+  </a>
+</div>
 <h2>Posts</h2>
 
 {% for post in object_list %}
@@ -41,8 +54,13 @@
   <img src="{{ img.image.url }}" style="max-width: 200px" />
   {% endfor %}
   <p>
-    {{ post.gems.count }} Likes&nbsp;&nbsp;&nbsp;&nbsp; {{post.comments.count }}
-    Comments
+    <button class="gem-btn" data-id="{{ post.id }}">
+      ❤️
+      <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span></button
+    >&nbsp;&nbsp;&nbsp;&nbsp; {{post.comments.count }}
+    Comments&nbsp;&nbsp;&nbsp;&nbsp;
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <button class="save-btn" data-id="{{ post.id }}">📌</button>
   </p>
 
   <div>
@@ -60,3 +78,54 @@
 {% empty %}
 <p>No posts yet.</p>
 {% endfor %}
+<script>
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  const csrftoken = getCookie("csrftoken");
+
+  // GEM
+  document.querySelectorAll(".gem-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      const postId = this.dataset.id;
+      fetch(`/gem/${postId}/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          document.getElementById(`gem-count-${postId}`).innerText = data.count;
+        })
+        .catch(console.error);
+    });
+  });
+
+  // SAVE
+  document.querySelectorAll(".save-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      const postId = this.dataset.id;
+      fetch(`/save/${postId}/`, {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken },
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          // you can toggle icon based on data.saved if you want
+          // example:
+          this.textContent = data.saved ? "✅ Saved" : "📌";
+        })
+        .catch(console.error);
+    });
+  });
+</script>

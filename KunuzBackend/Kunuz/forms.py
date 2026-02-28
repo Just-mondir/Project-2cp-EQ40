@@ -39,3 +39,15 @@ class PostCreateForm(forms.ModelForm):
                 self.add_error("urgence_level", "Urgence level is required for alerts.")
 
         return cleaned
+    
+class PostEditForm(forms.ModelForm):
+    class Meta:
+        model = Post
+        fields = [
+            "title",
+            "content",
+            "location",
+            "region",
+            "historical_period",
+            "monument_type",
+        ]
