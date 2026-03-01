@@ -1,0 +1,45 @@
+{% extends "index.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">Create Account</h4>
+      </div>
+
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          {% for field in form %}
+            <div class="form-group">
+              <label>{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}
+                <small class="text-danger">{{ field.errors|striptags }}</small>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          <button type="submit" class="btn btn-primary btn-block">Register</button>
+        </form>
+
+        <hr>
+        <p class="mb-0 text-center">
+          Already have an account?
+          <a href="{% url 'login' %}">Login</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
