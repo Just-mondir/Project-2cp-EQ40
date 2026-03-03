@@ -6,12 +6,11 @@ from django.utils import timezone
 
 class Post(models.Model):
     class PostType(models.TextChoices):
-        DISCOVERIES = "discoveries", "Discoveries"
-        VISITS      = "visits", "Visits"
-        QUESTIONS   = "questions", "Questions"
+        DISCOVERIES = "discovery", "Discovery"
+        VISITS      = "visit", "Visit"
+        QUESTIONS   = "question", "Question"
         ALERT       = "alert", "Alert"
-        EVENTS      = "events", "Events"
-
+        EVENTS      = "event", "Event"
     class Visibility(models.TextChoices):
         PUBLIC = "public", "Public"
         GROUPS = "groups", "Specific Groups"

@@ -28,6 +28,8 @@ class ProfileView(ListView):
         context["gemed_posts"] = Post.objects.filter(id__in=gemed_post_ids).order_by("-created_at")
         saved_post_ids = Save.objects.filter(user=self.request.user).values_list("post_id", flat=True)
         context["saved_posts"] = Post.objects.filter(id__in=saved_post_ids).order_by("-created_at")
+        context["my_events"] = Post.objects.filter(user=self.request.user, post_type=Post.PostType.EVENTS).order_by("-created_at")
+        context["my_alerts"] = Post.objects.filter(user=self.request.user, post_type=Post.PostType.ALERT).order_by("-created_at")
         return context
 @login_required
 @require_POST

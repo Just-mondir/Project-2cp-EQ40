@@ -1,5 +1,8 @@
 <h1>Edit Post</h1>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <form id="edit-form" method="POST" action="{% url 'edit-post' object.id %}">
   {% csrf_token %}
   {% if form.non_field_errors %}
@@ -25,7 +28,6 @@
 
   <div id="event-fields" style="display: none">
     <h3>Event time</h3>
-
     <p>
       {{ form.starts_at.label_tag }}<br />
       {{ form.starts_at }}
@@ -33,7 +35,6 @@
         <div style="color:red;">{{ error }}</div>
       {% endfor %}
     </p>
-
     <p>
       {{ form.ends_at.label_tag }}<br />
       {{ form.ends_at }}
@@ -45,7 +46,6 @@
 
   <div id="alert-fields" style="display: none">
     <h3>Alert Details</h3>
-
     <p>
       {{ form.urgence_level.label_tag }}<br />
       {{ form.urgence_level }}
@@ -53,7 +53,7 @@
         <div style="color:red;">{{ error }}</div>
       {% endfor %}
     </p>
-        <p>
+    <p>
       {{ form.current_status.label_tag }}<br />
       {{ form.current_status }}
       {% for error in form.current_status.errors %}
@@ -82,10 +82,25 @@
     {{ form.region }}
   </p>
 
+  <!-- Location field with map toggle -->
   <p>
-    {{ form.location.label_tag }}<br />
+    {{ form.location.label_tag }}
+    <span id="map-toggle-icon" title="Pick location from map" style="cursor: pointer; margin-left: 8px; font-size: 1.2rem;">
+      📍
+    </span>
+    <br />
     {{ form.location }}
   </p>
+
+  <!-- Hidden map container -->
+  <div id="map-container" style="display: none; margin-bottom: 16px;">
+    <div id="map" style="height: 400px; width: 100%; border-radius: 8px;"></div>
+    <small style="color: gray;">Click anywhere on the map to set the location.</small>
+  </div>
+
+  <input type="hidden" name="latitude" id="latitude" value="{{ object.latitude }}" />
+  <input type="hidden" name="longitude" id="longitude" value="{{ object.longitude }}" />
+
 </form>
 
 <hr />
@@ -96,7 +111,6 @@
   {% for img in object.images.all %}
     <div style="border: 1px solid #ddd; padding: 8px">
       <img src="{{ img.image.url }}" style="max-width: 150px; display: block" />
-
       <form method="POST" action="{% url 'delete-image' img.id %}">
         {% csrf_token %}
         <button type="submit" style="margin-top: 6px">🗑 Remove</button>
@@ -124,7 +138,6 @@
 <script>
   function toggleSections() {
     const postType = document.getElementById("id_post_type").value;
-
     const eventBox = document.getElementById("event-fields");
     const alertBox = document.getElementById("alert-fields");
 
@@ -135,5 +148,69 @@
   document.addEventListener("DOMContentLoaded", function () {
     toggleSections();
     document.getElementById("id_post_type").addEventListener("change", toggleSections);
+
+    let mapInitialized = false;
+    let marker = null;
+
+    const toggleIcon = document.getElementById("map-toggle-icon");
+    const mapContainer = document.getElementById("map-container");
+
+    const existingLat = "{{ object.latitude }}" !== "None" ? parseFloat("{{ object.latitude }}") : null;
+    const existingLng = "{{ object.longitude }}" !== "None" ? parseFloat("{{ object.longitude }}") : null;
+
+    toggleIcon.addEventListener("click", function () {
+      const isVisible = mapContainer.style.display === "block";
+
+      if (isVisible) {
+        mapContainer.style.display = "none";
+        toggleIcon.textContent = "📍";
+      } else {
+        mapContainer.style.display = "block";
+        toggleIcon.textContent = "✖️";
+
+        if (!mapInitialized) {
+          // Center on existing location if available, otherwise Algeria
+          const initialCenter = (existingLat && existingLng)
+            ? [existingLat, existingLng]
+            : [28, 2];
+          const initialZoom = (existingLat && existingLng) ? 10 : 5;
+
+          const map = L.map("map").setView(initialCenter, initialZoom);
+
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap contributors",
+          }).addTo(map);
+
+          // Show existing marker if coordinates already saved
+          if (existingLat && existingLng) {
+            marker = L.marker([existingLat, existingLng]).addTo(map);
+          }
+
+          map.on("click", function (e) {
+            const { lat, lng } = e.latlng;
+
+            if (marker) {
+              marker.setLatLng(e.latlng);
+            } else {
+              marker = L.marker(e.latlng).addTo(map);
+            }
+
+            document.getElementById("latitude").value = lat;
+            document.getElementById("longitude").value = lng;
+
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+              .then((res) => res.json())
+              .then((data) => {
+                document.getElementById("id_location").value = data.display_name;
+                mapContainer.style.display = "none";
+                toggleIcon.textContent = "📍";
+              });
+          });
+
+          mapInitialized = true;
+          setTimeout(() => map.invalidateSize(), 100);
+        }
+      }
+    });
   });
 </script>

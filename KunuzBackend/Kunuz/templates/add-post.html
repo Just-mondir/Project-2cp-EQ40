@@ -1,5 +1,11 @@
 <h1>Add Post</h1>
 
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <form method="post" enctype="multipart/form-data">
   {% csrf_token %}
 
@@ -15,26 +21,43 @@
     <p>{{ form.starts_at.label_tag }}<br />{{ form.starts_at }}</p>
     <p>{{ form.ends_at.label_tag }}<br />{{ form.ends_at }}</p>
   </div>
+
   <div id="alert-fields" style="display: none">
     <h3>Alert Details</h3>
-
-    <p>
-      {{ form.urgence_level.label_tag }}<br />
-      {{ form.urgence_level }}
-    </p>
+    <p>{{ form.urgence_level.label_tag }}<br />{{ form.urgence_level }}</p>
   </div>
 
   <p>{{ form.visibility.label_tag }}<br />{{ form.visibility }}</p>
-
   <p>
     {{ form.historical_period.label_tag }}<br />{{ form.historical_period }}
   </p>
-
   <p>{{ form.monument_type.label_tag }}<br />{{ form.monument_type }}</p>
-
   <p>{{ form.region.label_tag }}<br />{{ form.region }}</p>
 
-  <p>{{ form.location.label_tag }}<br />{{ form.location }}</p>
+  <!-- Location field with map toggle -->
+  <p>
+    {{ form.location.label_tag }}
+    <span
+      id="map-toggle-icon"
+      title="Pick location from map"
+      style="cursor: pointer; margin-left: 8px; font-size: 1.2rem"
+    >
+      📍
+    </span>
+    <br />
+    {{ form.location }}
+  </p>
+
+  <!-- Hidden map container -->
+  <div id="map-container" style="display: none; margin-bottom: 16px">
+    <div id="map" style="height: 400px; width: 100%; border-radius: 8px"></div>
+    <small style="color: gray"
+      >Click anywhere on the map to set the location.</small
+    >
+  </div>
+
+  <input type="hidden" name="latitude" id="latitude" />
+  <input type="hidden" name="longitude" id="longitude" />
 
   <p>
     <label for="id_images">Images (max 5)</label><br />
@@ -43,26 +66,82 @@
 
   <button type="submit">Create Post</button>
 </form>
+
 <script>
+  // Toggle event/alert sections
   function toggleSections() {
     const postType = document.getElementById("id_post_type").value;
-
     const eventBox = document.getElementById("event-fields");
     const alertBox = document.getElementById("alert-fields");
 
-    if (eventBox) {
+    if (eventBox)
       eventBox.style.display = postType === "events" ? "block" : "none";
-    }
-
-    if (alertBox) {
+    if (alertBox)
       alertBox.style.display = postType === "alert" ? "block" : "none";
-    }
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    toggleSections(); // check on load
+    toggleSections();
     document
       .getElementById("id_post_type")
       .addEventListener("change", toggleSections);
+
+    // Map toggle logic
+    let mapInitialized = false;
+    let marker;
+
+    const toggleIcon = document.getElementById("map-toggle-icon");
+    const mapContainer = document.getElementById("map-container");
+
+    toggleIcon.addEventListener("click", function () {
+      const isVisible = mapContainer.style.display === "block";
+
+      if (isVisible) {
+        mapContainer.style.display = "none";
+        toggleIcon.textContent = "📍";
+      } else {
+        mapContainer.style.display = "block";
+        toggleIcon.textContent = "✖️";
+
+        // Initialize map only once
+        if (!mapInitialized) {
+          const map = L.map("map").setView([28, 2], 5);
+
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap contributors",
+          }).addTo(map);
+
+          map.on("click", function (e) {
+            const { lat, lng } = e.latlng;
+
+            if (marker) {
+              marker.setLatLng(e.latlng);
+            } else {
+              marker = L.marker(e.latlng).addTo(map);
+            }
+
+            document.getElementById("latitude").value = lat;
+            document.getElementById("longitude").value = lng;
+
+            fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+            )
+              .then((res) => res.json())
+              .then((data) => {
+                document.getElementById("id_location").value =
+                  data.display_name;
+                // Auto close map after selection
+                mapContainer.style.display = "none";
+                toggleIcon.textContent = "📍";
+              });
+          });
+
+          mapInitialized = true;
+
+          // Fix Leaflet tile rendering when shown from hidden state
+          setTimeout(() => map.invalidateSize(), 100);
+        }
+      }
+    });
   });
 </script>
