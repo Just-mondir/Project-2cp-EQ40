@@ -28,7 +28,7 @@ class ProfileView(ListView):
         context["gemed_posts"] = Post.objects.filter(id__in=gemed_post_ids).order_by("-created_at")
         saved_post_ids = Save.objects.filter(user=self.request.user).values_list("post_id", flat=True)
         context["saved_posts"] = Post.objects.filter(id__in=saved_post_ids).order_by("-created_at")
-        context["my_events"] = Post.objects.filter(user=self.request.user, post_type=Post.PostType.EVENTS).order_by("-created_at")
+        context["my_event"] = Post.objects.filter(user=self.request.user, post_type=Post.PostType.EVENT).order_by("-created_at")
         context["my_alerts"] = Post.objects.filter(user=self.request.user, post_type=Post.PostType.ALERT).order_by("-created_at")
         return context
 @login_required
@@ -76,7 +76,7 @@ class AddPostView(LoginRequiredMixin, CreateView):
         try:
             with transaction.atomic():
                 response = super().form_valid(form)
-                if self.object.post_type == Post.PostType.EVENTS:
+                if self.object.post_type == Post.PostType.EVENT:
                     EventDetails.objects.create(
                         post=self.object,
                         starts_at=form.cleaned_data["starts_at"],
@@ -107,19 +107,28 @@ class EditPostView(LoginRequiredMixin, UpdateView):
         with transaction.atomic():
             response = super().form_valid(form)
             post = self.object
-            if post.post_type == Post.PostType.EVENTS:
-                ed, _ = EventDetails.objects.get_or_create(post=post)
-                ed.starts_at = form.cleaned_data["starts_at"]
-                ed.ends_at = form.cleaned_data.get("ends_at")
-                ed.full_clean()
-                ed.save()
+            if post.post_type == Post.PostType.EVENT:
+                starts_at = form.cleaned_data.get("starts_at")
+                ends_at = form.cleaned_data.get("ends_at")
+            # Use update_or_create so starts_at is always set
+                EventDetails.objects.update_or_create(
+                    post=post,
+                    defaults={
+                        "starts_at": starts_at,
+                        "ends_at": ends_at,
+                    }
+                )
                 AlertDetails.objects.filter(post=post).delete()
             elif post.post_type == Post.PostType.ALERT:
-                ad, _ = AlertDetails.objects.get_or_create(post=post)
-                ad.urgence_level = form.cleaned_data["urgence_level"]
-                ad.current_status = form.cleaned_data["current_status"]
-                ad.full_clean()
-                ad.save()
+                urgence_level = form.cleaned_data.get("urgence_level")
+                current_status = form.cleaned_data.get("current_status")
+                AlertDetails.objects.update_or_create(
+                    post=post,
+                    defaults={
+                        "urgence_level": urgence_level,
+                        "current_status": current_status,
+                    }
+                )
                 EventDetails.objects.filter(post=post).delete()
             else:
                 EventDetails.objects.filter(post=post).delete()

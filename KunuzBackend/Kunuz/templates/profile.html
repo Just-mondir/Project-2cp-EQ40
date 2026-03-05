@@ -43,7 +43,7 @@
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
 
-  {% if post.post_type == "events" and post.event_details %}
+  {% if post.post_type == "event" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
     {% if post.event_details.ends_at %}
@@ -112,7 +112,7 @@
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
 
-  {% if post.post_type == "events" and post.event_details %}
+  {% if post.post_type == "event" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
     {% if post.event_details.ends_at %}
@@ -181,7 +181,7 @@
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
 
-  {% if post.post_type == "events" and post.event_details %}
+  {% if post.post_type == "event" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
     {% if post.event_details.ends_at %}
@@ -248,7 +248,7 @@
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
 
-  {% if post.post_type == "events" and post.event_details %}
+  {% if post.post_type == "event" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
     {% if post.event_details.ends_at %}
@@ -315,7 +315,7 @@
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
 
-  {% if post.post_type == "events" and post.event_details %}
+  {% if post.post_type == "event" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
     {% if post.event_details.ends_at %}

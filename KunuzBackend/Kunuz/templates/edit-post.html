@@ -1,5 +1,9 @@
 <h1>Edit Post</h1>
-
+{% if form.errors %}
+  <div style="color:red;">
+    {{ form.errors }}
+  </div>
+{% endif %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -141,7 +145,7 @@
     const eventBox = document.getElementById("event-fields");
     const alertBox = document.getElementById("alert-fields");
 
-    if (eventBox) eventBox.style.display = postType === "events" ? "block" : "none";
+    if (eventBox) eventBox.style.display = postType === "event" ? "block" : "none";
     if (alertBox) alertBox.style.display = postType === "alert" ? "block" : "none";
   }
 

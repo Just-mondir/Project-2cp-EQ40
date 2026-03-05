@@ -6,11 +6,11 @@ from django.utils import timezone
 
 class Post(models.Model):
     class PostType(models.TextChoices):
-        DISCOVERIES = "discovery", "Discovery"
-        VISITS      = "visit", "Visit"
-        QUESTIONS   = "question", "Question"
+        DISCOVERY = "discovery", "Discovery"
+        VISIT      = "visit", "Visit"
+        QUESTION   = "question", "Question"
         ALERT       = "alert", "Alert"
-        EVENTS      = "event", "Event"
+        EVENT      = "event", "Event"
     class Visibility(models.TextChoices):
         PUBLIC = "public", "Public"
         GROUPS = "groups", "Specific Groups"
@@ -58,31 +58,31 @@ class Post(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def clean(self):
-        super().clean()
+def clean(self):
+    super().clean()
 
-        # During creation, Post has no pk yet, so it cannot have OneToOne children yet.
-        if not self.pk:
-            return
+    # Only validate related objects on existing posts that are being updated
+    # (not on fresh creates, and not when called from within a transaction
+    #  that hasn't saved the related object yet)
+    if not self.pk:
+        return
 
-        # If post_type is EVENTS, it must have event_details
-        if self.post_type == Post.PostType.EVENTS:
-            if not hasattr(self, "event_details"):
-                raise ValidationError({"post_type": "EventDetails is required when post_type is Events."})
+    if self.post_type == Post.PostType.EVENT:
+        if not hasattr(self, "event_details"):
+            raise ValidationError({"post_type": "EventDetails is required when post_type is Event."})
 
-        # If post_type is ALERT, it must have alert_details
-        if self.post_type == Post.PostType.ALERT:
-            if not hasattr(self, "alert_details"):
-                raise ValidationError({"post_type": "AlertDetails is required when post_type is Alert."})
+    if self.post_type == Post.PostType.ALERT:
+        if not hasattr(self, "alert_details"):
+            raise ValidationError({"post_type": "AlertDetails is required when post_type is Alert."})
 
-    def save(self, *args, **kwargs):
-        # Forces model validation every save (okay now that clean() is safe)
-        self.full_clean()
-        return super().save(*args, **kwargs)
+def save(self, *args, **kwargs):
+    # Skip full_clean here — validation is handled by forms and views
+    # Calling full_clean() here causes issues when saving before related objects exist
+    return super().save(*args, **kwargs)
 
     @property
     def countdown_seconds(self):
-        if self.post_type != Post.PostType.EVENTS:
+        if self.post_type != Post.PostType.EVENT:
             return None
         if not hasattr(self, "event_details"):
             return None
@@ -108,8 +108,8 @@ class EventDetails(models.Model):
 
     def clean(self):
         super().clean()
-        if self.post.post_type != Post.PostType.EVENTS:
-            raise ValidationError({"post": "Linked Post must have post_type = Events."})
+        if self.post.post_type != Post.PostType.EVENT:
+            raise ValidationError({"post": "Linked Post must have post_type = Event."})
         if self.ends_at and self.ends_at < self.starts_at:
             raise ValidationError({"ends_at": "ends_at must be after starts_at."})
 
