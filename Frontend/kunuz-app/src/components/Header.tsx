@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
-const NAV_LINKS = ["Explore", "About", "At Risk", "Help", "Contact"];
+const NAV_LINKS = ["Explore", "About", "Guilds", "At Risk", "Events", "Help", "Contact"] as const;
+
+const NAV_HREFS: Record<(typeof NAV_LINKS)[number], string> = {
+  Explore: "#explore",
+  About: "#about",
+  Guilds: "#guilds",
+  "At Risk": "#at-risk",
+  Events: "#events",
+  Help: "#help",
+  Contact: "#contact",
+};
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -11,15 +22,15 @@ export default function Header() {
   return (
     <header
       className="fixed inset-x-0 top-0 z-50"
-      style={{ backgroundColor: "#F5F0E8" }}
+      style={{ backgroundColor: "#FFF8E2" }}
     >
       {/* ── Main bar ── */}
       <div
         className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
         style={{ height: "64px", overflow: "hidden" }}
       >
-        {/* Logo flush left, nudged down, clipped by overflow:hidden on this row */}
-        <div className="flex flex-shrink-0 items-end" style={{ marginBottom: "-14px",marginLeft: "10px" }}>
+        {/* Logo flush left */}
+        <div className="flex flex-shrink-0 items-end" style={{ marginBottom: "-14px", marginLeft: "10px" }}>
           <Image
             src="/kunuz-logo.svg"
             alt="Kunuz logo"
@@ -33,9 +44,9 @@ export default function Header() {
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-4 lg:gap-6">
           {NAV_LINKS.map((label) => (
-            <a
+            <Link
               key={label}
-              href="#"
+              href={NAV_HREFS[label]}
               className="group relative whitespace-nowrap text-[14px] lg:text-[16px] font-medium transition-colors duration-200"
               style={{ color: "#3B2A1A", fontFamily: "var(--font-lato)" }}
             >
@@ -44,12 +55,12 @@ export default function Header() {
                 className="absolute -bottom-0.5 left-0 h-[2px] w-0 rounded-full transition-all duration-300 group-hover:w-full"
                 style={{ backgroundColor: "#8B6343" }}
               />
-            </a>
+            </Link>
           ))}
 
           <button
             type="button"
-            className="signin-btn ml-1 rounded-full border-2 px-4 lg:px-6 py-1.5 text-[13px] lg:text-[15px] font-bold transition-all duration-300"
+            className="signin-btn ml-4 rounded-full border-2 px-4 lg:px-6 py-1.5 text-[13px] lg:text-[15px] font-bold transition-all duration-300"
             style={{
               borderColor: "#3B2A1A",
               color: "#3B2A1A",
@@ -102,9 +113,9 @@ export default function Header() {
       >
         <nav className="flex flex-col gap-1 px-6 pb-5 pt-2">
           {NAV_LINKS.map((label) => (
-            <a
+            <Link
               key={label}
-              href="#"
+              href={NAV_HREFS[label]}
               className="border-b py-3 text-[16px] font-medium transition-colors duration-200"
               style={{
                 color: "#3B2A1A",
@@ -114,7 +125,7 @@ export default function Header() {
               onClick={() => setMobileOpen(false)}
             >
               {label}
-            </a>
+            </Link>
           ))}
           <button
             type="button"
@@ -133,8 +144,11 @@ export default function Header() {
 
       <style jsx>{`
         .signin-btn:hover {
-          background-color: rgba(59, 42, 26, 0.10);
-          color: #3B2A1A;
+          background-color: #3B2A1A;
+          border-color: #3B2A1A;
+          color: #FFF8E2;
+          box-shadow: 0 6px 18px rgba(59, 42, 26, 0.25);
+          transform: translateY(-1px);
         }
       `}</style>
     </header>
