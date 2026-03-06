@@ -12,17 +12,16 @@
 
 <p><strong>Username:</strong> {{ profile_user.username }}</p>
 <p><strong>Email:</strong> {{ profile_user.email }}</p>
-
-{% if user_profile_data.bio %}
+<p><strong>Expertise:</strong> {{ user_profile_data.expertise }}</p>
+<p><strong>Speciality:</strong> {{ user_profile_data.speciality }}</p>
 <p><strong>Bio:</strong> {{ user_profile_data.bio }}</p>
-{% endif %}
 
 <br>
 
-<a href="{% url 'edit_user_profile' %}">Edit User Info</a>
+<a href="{% url 'edit_public_details' %}">Edit Public Info</a>
 <br><br>
 
-<a href="{% url 'edit_public_details' %}">Edit Profile Details</a>
+<a href="{% url 'edit_user_profile' %}">Change Email</a>
 <br><br>
 
 <a href="{% url 'change_password' %}">Change Password</a>

@@ -3,26 +3,10 @@
 {% block content %}
 <h2>Register</h2>
 
-<form method="POST">
+<form method="POST" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Register</button>
 </form>
+
 {% endblock %}
-
-
-
-<input type="password" id="password">
-
-<button type="button" onclick="togglePassword()">👁</button>
-
-<script>
-function togglePassword() {
-  var x = document.getElementById("password");
-  if (x.type === "password") {
-    x.type = "text";
-  } else {
-    x.type = "password";
-  }
-}
-</script>

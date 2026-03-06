@@ -8,7 +8,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.contrib.messages.views import SuccessMessageMixin
 
-
 from .forms import (
     SignupForm,
     LoginUserForm,
@@ -82,7 +81,7 @@ class UpdateUserView(LoginRequiredMixin, SuccessMessageMixin, generic.UpdateView
     form_class = EditUserProfileForm
     template_name = "kunuz/edit_user_profile.html"
     success_url = reverse_lazy("home")
-    success_message = "User updated successfully"
+    success_message = "Email updated successfully"
 
     def get_object(self):
         return self.request.user
@@ -93,10 +92,15 @@ class UpdatePublicDetails(LoginRequiredMixin, SuccessMessageMixin, generic.Updat
     form_class = UserPublicDetailsForm
     template_name = "kunuz/edit_public_details.html"
     success_url = reverse_lazy("home")
-    success_message = "Profile updated successfully"
+    success_message = "Public information updated successfully"
 
     def get_object(self):
         return self.request.user.userprofile
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
 
 
 class UserPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
@@ -122,5 +126,5 @@ class Dashboard(LoginRequiredMixin, generic.View):
     template_name = "kunuz/dashboard.html"
 
     def get(self, request):
-        return render(request, self.template_name)
-    
+        users = User.objects.all().select_related("userprofile")
+        return render(request, self.template_name, {"users": users})
