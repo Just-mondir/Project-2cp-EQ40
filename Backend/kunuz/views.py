@@ -92,7 +92,7 @@ class UpdatePublicDetails(LoginRequiredMixin, SuccessMessageMixin, generic.Updat
     form_class = UserPublicDetailsForm
     template_name = "kunuz/edit_public_details.html"
     success_url = reverse_lazy("home")
-    success_message = "Public information updated successfully"
+    success_message = "Profile updated successfully"
 
     def get_object(self):
         return self.request.user.userprofile

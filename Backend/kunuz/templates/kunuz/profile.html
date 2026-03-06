@@ -11,10 +11,13 @@
 {% endif %}
 
 <p><strong>Username:</strong> {{ profile_user.username }}</p>
-<p><strong>Email:</strong> {{ profile_user.email }}</p>
 <p><strong>Expertise:</strong> {{ user_profile_data.expertise }}</p>
 <p><strong>Speciality:</strong> {{ user_profile_data.speciality }}</p>
 <p><strong>Bio:</strong> {{ user_profile_data.bio }}</p>
+
+{% if request.user == profile_user %}
+
+<p><strong>Email:</strong> {{ profile_user.email }}</p>
 
 <br>
 
@@ -31,5 +34,7 @@
 <br><br>
 
 <a href="{% url 'delete_user' %}">Delete Account</a>
+
+{% endif %}
 
 {% endblock %}
