@@ -30,16 +30,16 @@ export default function Hero() {
         />
       </div>
 
-      {/* Content — slightly above vertical center, left-aligned */}
+      {/* Content — centered on desktop, left-aligned */}
       <div
-        className="absolute z-10 flex flex-col"
+        className="absolute z-10 flex flex-col items-start lg:items-start"
         style={{
-          top: "55%",
+          top: "50%",
           transform: "translateY(-50%)",
-          left: "4%",
-          right: "4%",
-          gap: "clamp(12px, 2vh, 22px)",
-          maxWidth: "min(720px, 92vw)",
+          left: "8%",
+          right: "8%",
+          gap: "clamp(16px, 2.5vh, 28px)",
+          maxWidth: "min(860px, 88vw)",
         }}
       >
         <h1
@@ -47,7 +47,7 @@ export default function Hero() {
           style={{
             color: "#FFFFFF",
             fontFamily: "var(--font-lato)",
-            fontSize: "clamp(32px, 5.5vw, 68px)",
+            fontSize: "clamp(36px, 6vw, 80px)",
             letterSpacing: "0.02em",
             whiteSpace: "nowrap",
           }}
@@ -62,8 +62,8 @@ export default function Hero() {
           style={{
             color: "#F0EAD6",
             fontFamily: "var(--font-lato)",
-            fontSize: "clamp(17px, 2.2vw, 30px)",
-            maxWidth: "min(600px, 90vw)",
+            fontSize: "clamp(18px, 2.4vw, 34px)",
+            maxWidth: "min(700px, 88vw)",
           }}
         >
           <span className="font-bold" style={{ fontFamily: "var(--font-brand)" }}>
@@ -75,15 +75,15 @@ export default function Hero() {
         {/* Get Started — hover via Tailwind only, no styled-jsx */}
         <button
           type="button"
-          className="w-fit rounded-full border-2 font-bold transition-all duration-300 hover:bg-white/15"
+        className="w-fit rounded-full border-2 font-bold transition-all duration-300 hover:bg-white/15 hover:-translate-y-1 hover:shadow-[0_6px_18px_rgba(0,0,0,0.25)]"
           style={{
             borderColor: "#FFFFFF",
             color: "#FFFFFF",
             fontFamily: "var(--font-lato)",
             backgroundColor: "transparent",
-            fontSize: "clamp(15px, 1.4vw, 22px)",
-            padding: "clamp(12px, 1.6vh, 18px) clamp(36px, 4vw, 58px)",
-            marginTop: "clamp(4px, 1vh, 10px)",
+            fontSize: "clamp(16px, 1.5vw, 24px)",
+            padding: "clamp(14px, 1.8vh, 22px) clamp(40px, 4.5vw, 64px)",
+            marginTop: "clamp(6px, 1.2vh, 14px)",
           }}
         >
           Get Started

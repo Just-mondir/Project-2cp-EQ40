@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { Lato } from "next/font/google";
-import { Playfair_Display } from "next/font/google";
+import { Lato, Aclonica, Playfair_Display } from "next/font/google";
 import "./globals.css";
 
 const lato = Lato({
   weight: ["400", "700"],
   subsets: ["latin"],
   variable: "--font-lato",
+});
+
+const aclonica = Aclonica({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-aclonica",
 });
 
 const playfair = Playfair_Display({
@@ -28,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${lato.variable} ${playfair.variable} font-sans antialiased`}
+        className={`${lato.variable} ${aclonica.variable} ${playfair.variable} font-sans antialiased`}
       >
         {children}
       </body>
