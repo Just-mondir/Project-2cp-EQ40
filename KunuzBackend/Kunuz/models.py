@@ -4,6 +4,25 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 
+class UserProfile(models.Model):
+    EXPERTISE_CHOICES = [
+        ("amateur", "Amateur"),
+        ("student", "Student"),
+        ("researcher", "Researcher"),
+        ("architect", "Architect"),
+        ("historian", "Historian"),
+        ("guide", "Guide"),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    expertise = models.CharField(max_length=30, choices=EXPERTISE_CHOICES, blank=True)
+    speciality = models.CharField(max_length=100, blank=True)
+    bio = models.TextField(blank=True)
+    profile_picture = models.ImageField(upload_to="profiles/", blank=True, null=True)
+
+    def __str__(self):
+        return self.user.username
+
 class Post(models.Model):
     class PostType(models.TextChoices):
         DISCOVERY = "discovery", "Discovery"

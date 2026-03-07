@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Users List</h2>
+
+{% for user in users %}
+    <div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px;">
+        <p><strong>Username:</strong> {{ user.username }}</p>
+        <p><strong>Email:</strong> {{ user.email }}</p>
+
+        {% if user.userprofile.profile_picture %}
+            <img src="{{ user.userprofile.profile_picture.url }}" width="100">
+        {% endif %}
+
+        <p><strong>Expertise:</strong> {{ user.userprofile.expertise }}</p>
+        <p><strong>Speciality:</strong> {{ user.userprofile.speciality }}</p>
+        <p><strong>Bio:</strong> {{ user.userprofile.bio }}</p>
+
+        <a href="{% url 'profile' user.username %}">View Profile</a>
+    </div>
+{% empty %}
+    <p>No users found.</p>
+{% endfor %}
+
+{% endblock %}
