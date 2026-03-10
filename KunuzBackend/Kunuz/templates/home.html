@@ -1,22 +1,7 @@
 {% extends 'base.html' %} {% block content %}
 <h2>Welcome to Kunuz</h2>
 <p>A platform dedicated to Algerian Heritage and Culture.</p>
-{% endblock %}
 
-<div style="margin-bottom: 20px">
-  <a
-    href="{% url 'profile' %}"
-    style="
-      padding: 10px 15px;
-      background: #474a4d;
-      color: white;
-      text-decoration: none;
-      border-radius: 5px;
-    "
-  >
-    Go to Profile
-  </a>
-</div>
 <h2>Posts</h2>
 
 {% for post in object_list %}
@@ -25,30 +10,29 @@
   <p>📍 {{ post.location }}</p>
   <h3>{{ post.title }}</h3>
   <p>{{ post.content }}</p>
+
   {% if post.post_type == "events" and post.event_details %}
   <div>
     <p>🗓 Starts: {{ post.event_details.starts_at|date:"M d, Y H:i" }}</p>
-
     {% if post.event_details.ends_at %}
     <p>⏳ Ends: {{ post.event_details.ends_at|date:"M d, Y H:i" }}</p>
-
     {% endif %}
   </div>
   {% endif %} {% if post.post_type == "alert" and post.alert_details %}
   <p>
     🚨 {{ post.alert_details.get_urgence_level_display }} •
-    {{post.alert_details.get_current_status_display }}
+    <span>{{ post.alert_details.get_current_status_display }}</span>
   </p>
   {% endif %} {% for img in post.images.all %}
   <img src="{{ img.image.url }}" style="max-width: 200px" />
   {% endfor %}
+
   <p>
     <button class="gem-btn" data-id="{{ post.id }}">
-      ❤️
-      <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span></button
-    >&nbsp;&nbsp;&nbsp;&nbsp; {{post.comments.count }}
-    Comments&nbsp;&nbsp;&nbsp;&nbsp;
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      ❤️ <span id="gem-count-{{ post.id }}">{{ post.gems.count }}</span>
+    </button>
+    &nbsp;&nbsp;&nbsp;&nbsp; {{ post.comments.count }} Comments
+    &nbsp;&nbsp;&nbsp;&nbsp;
     <button class="save-btn" data-id="{{ post.id }}">📌</button>
   </p>
 
@@ -67,6 +51,7 @@
 {% empty %}
 <p>No posts yet.</p>
 {% endfor %}
+
 <script>
   function getCookie(name) {
     let cookieValue = null;
@@ -84,7 +69,6 @@
   }
   const csrftoken = getCookie("csrftoken");
 
-  // GEM
   document.querySelectorAll(".gem-btn").forEach((button) => {
     button.addEventListener("click", function () {
       const postId = this.dataset.id;
@@ -100,7 +84,6 @@
     });
   });
 
-  // SAVE
   document.querySelectorAll(".save-btn").forEach((button) => {
     button.addEventListener("click", function () {
       const postId = this.dataset.id;
@@ -110,11 +93,10 @@
       })
         .then((r) => r.json())
         .then((data) => {
-          // you can toggle icon based on data.saved if you want
-          // example:
           this.textContent = data.saved ? "✅ Saved" : "📌";
         })
         .catch(console.error);
     });
   });
 </script>
+{% endblock %}

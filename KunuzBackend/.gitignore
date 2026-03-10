@@ -1,18 +1,30 @@
-# Virtual environment
-venv/
-virt/
-
 # Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
 
 # Django
+*.log
 db.sqlite3
 media/
+
+# Environment variables
+.env
 
 # VS Code
 .vscode/
 
-# Environment variables
-.env
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python build
+build/
+dist/
+*.egg-info/

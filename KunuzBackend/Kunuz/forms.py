@@ -34,15 +34,12 @@ class SignupForm(UserCreationForm):
         if commit:
             user.save()
 
-            UserProfile.objects.update_or_create(
-                user=user,
-                defaults={
-                    "expertise": self.cleaned_data["expertise"],
-                    "speciality": self.cleaned_data["speciality"],
-                    "bio": self.cleaned_data["bio"],
-                    "profile_picture": self.cleaned_data["profile_picture"],
-                },
-            )
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            profile.expertise = self.cleaned_data["expertise"]
+            profile.speciality = self.cleaned_data["speciality"]
+            profile.bio = self.cleaned_data["bio"]
+            profile.profile_picture = self.cleaned_data["profile_picture"]
+            profile.save()
 
         return user
 

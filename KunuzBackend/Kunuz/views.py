@@ -30,19 +30,20 @@ from .models import UserProfile
 
 
 def home(request):
-    return render(request, "kunuz/home.html")
+    posts = Post.objects.all().order_by("-created_at")
+    return render(request, "home.html", {"object_list": posts})
 
 
 class SignUp(SuccessMessageMixin, generic.CreateView):
     form_class = SignupForm
-    template_name = "kunuz/register.html"
+    template_name = "register.html"
     success_url = reverse_lazy("login")
     success_message = "Account created successfully"
 
 
 class LogIn(generic.View):
     form_class = LoginUserForm
-    template_name = "kunuz/login.html"
+    template_name = "login.html"
 
     def get(self, request):
         form = self.form_class()
@@ -72,27 +73,29 @@ class LogOut(LoginRequiredMixin, generic.View):
 
 
 class Profile(LoginRequiredMixin, generic.View):
-    template_name = "kunuz/profile.html"
-
+    template_name = "profile.html"
     def get(self, request, user_name):
         user_obj = get_object_or_404(User, username=user_name)
-        profile = get_object_or_404(UserProfile, user=user_obj)
-
+        profile = UserProfile.objects.filter(user=user_obj).first()
+        gemed_post_ids = Gem.objects.filter(user=user_obj).values_list("post_id", flat=True)
+        saved_post_ids = Save.objects.filter(user=user_obj).values_list("post_id", flat=True)
         context = {
             "profile_user": user_obj,
             "user_profile_data": profile,
+            "my_posts": Post.objects.filter(user=user_obj).order_by("-created_at"),
+            "gemed_posts": Post.objects.filter(id__in=gemed_post_ids).order_by("-created_at"),
+            "saved_posts": Post.objects.filter(id__in=saved_post_ids).order_by("-created_at"),
+            "my_event": Post.objects.filter(user=user_obj, post_type=Post.PostType.EVENT).order_by("-created_at"),
+            "my_alerts": Post.objects.filter(user=user_obj, post_type=Post.PostType.ALERT).order_by("-created_at"),
         }
-
         return render(request, self.template_name, context)
-
 
 class UpdateUserView(LoginRequiredMixin, SuccessMessageMixin, generic.UpdateView):
     model = User
     form_class = EditUserProfileForm
-    template_name = "kunuz/edit_user_profile.html"
+    template_name = "edit_user_profile.html"
     success_url = reverse_lazy("home")
     success_message = "Email updated successfully"
-
     def get_object(self):
         return self.request.user
 
@@ -100,7 +103,7 @@ class UpdateUserView(LoginRequiredMixin, SuccessMessageMixin, generic.UpdateView
 class UpdatePublicDetails(LoginRequiredMixin, SuccessMessageMixin, generic.UpdateView):
     model = UserProfile
     form_class = UserPublicDetailsForm
-    template_name = "kunuz/edit_public_details.html"
+    template_name = "edit_public_details.html"
     success_url = reverse_lazy("home")
     success_message = "Profile updated successfully"
 
@@ -115,17 +118,17 @@ class UpdatePublicDetails(LoginRequiredMixin, SuccessMessageMixin, generic.Updat
 
 class UserPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
     form_class = PasswordChangingForm
-    template_name = "kunuz/change_password.html"
+    template_name = "change_password.html"
     success_url = reverse_lazy("password_success")
 
 
 def password_success(request):
-    return render(request, "kunuz/password_change_success.html")
+    return render(request, "password_change_success.html")
 
 
 class DeleteUser(LoginRequiredMixin, generic.DeleteView):
     model = User
-    template_name = "kunuz/delete_user_confirm.html"
+    template_name = "delete_user_confirm.html"
     success_url = reverse_lazy("home")
 
     def get_object(self):
@@ -133,32 +136,12 @@ class DeleteUser(LoginRequiredMixin, generic.DeleteView):
 
 
 class Dashboard(LoginRequiredMixin, generic.View):
-    template_name = "kunuz/dashboard.html"
+    template_name = "dashboard.html"
 
     def get(self, request):
         users = User.objects.all().select_related("userprofile")
         return render(request, self.template_name, {"users": users})
 
-class HomeView(ListView):
-    model = Post
-    template_name = "home.html"
-    ordering = ["-created_at"]
-
-class ProfileView(ListView):
-    model = Post
-    template_name = "profile.html"
-    context_object_name = "my_posts"
-    def get_queryset(self):
-        return Post.objects.filter(user=self.request.user).order_by("-created_at")
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        gemed_post_ids = Gem.objects.filter(user=self.request.user).values_list("post_id", flat=True)
-        context["gemed_posts"] = Post.objects.filter(id__in=gemed_post_ids).order_by("-created_at")
-        saved_post_ids = Save.objects.filter(user=self.request.user).values_list("post_id", flat=True)
-        context["saved_posts"] = Post.objects.filter(id__in=saved_post_ids).order_by("-created_at")
-        context["my_event"] = Post.objects.filter(user=self.request.user, post_type=Post.PostType.EVENT).order_by("-created_at")
-        context["my_alerts"] = Post.objects.filter(user=self.request.user, post_type=Post.PostType.ALERT).order_by("-created_at")
-        return context
 @login_required
 @require_POST
 def gem_post(request, pk):
@@ -228,7 +211,8 @@ class EditPostView(LoginRequiredMixin, UpdateView):
     model = Post
     form_class = PostEditForm
     template_name = "edit-post.html"
-    success_url = reverse_lazy("profile")
+    def get_success_url(self):
+        return reverse_lazy("profile", kwargs={"user_name": self.request.user.username})
     def get_queryset(self):
         return Post.objects.filter(user=self.request.user)
     def form_valid(self, form):
@@ -265,8 +249,8 @@ class EditPostView(LoginRequiredMixin, UpdateView):
         
 class DeletePostView(LoginRequiredMixin, DeleteView):
     model = Post
-    # template_name = "delete-post.html"
-    success_url = reverse_lazy("profile")
+    def get_success_url(self):
+        return reverse_lazy("profile", kwargs={"user_name": self.request.user.username})
     def get_queryset(self):
         return Post.objects.filter(user=self.request.user)
     
