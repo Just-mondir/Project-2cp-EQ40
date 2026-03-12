@@ -75,12 +75,6 @@ class Post(models.Model):
         default=Visibility.PUBLIC,
     )
     location = models.CharField(max_length=255, blank=True, default="")
-    latitude = models.DecimalField(
-        max_digits=10, decimal_places=7, null=True, blank=True
-    )
-    longitude = models.DecimalField(
-        max_digits=10, decimal_places=7, null=True, blank=True
-    )
 
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
