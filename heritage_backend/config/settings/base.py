@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
-    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     # Local apps
     "apps.users",
@@ -84,7 +83,21 @@ DATABASES = {
     }
 }
 
-AUTH_USER_MODEL = "users.User"
+# ---------------------------------------------------------------------------
+# MongoDB (MongoEngine) — Users and OTP documents
+# ---------------------------------------------------------------------------
+import mongoengine  # noqa: E402
+
+MONGODB_NAME = env("MONGODB_NAME", default="heritage_db")
+MONGODB_HOST = env("MONGODB_HOST", default="mongodb://localhost:27017")
+mongoengine.connect(db=MONGODB_NAME, host=MONGODB_HOST)
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+AUTHENTICATION_BACKENDS = [
+    "apps.users.auth_backend.MongoEngineBackend",
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -115,7 +128,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.users.auth_backend.MongoEngineJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.AllowAny",
@@ -140,10 +153,11 @@ REFRESH_TOKEN_LIFETIME_DAYS = env.int("REFRESH_TOKEN_LIFETIME_DAYS", default=7)
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=ACCESS_TOKEN_LIFETIME_MINUTES),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=REFRESH_TOKEN_LIFETIME_DAYS),
-    "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "BLACKLIST_ENABLED": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "USER_ID_FIELD": "id",
+    "USER_ID_FIELD": "pk",
     "USER_ID_CLAIM": "user_id",
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }

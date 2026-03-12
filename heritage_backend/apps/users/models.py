@@ -1,102 +1,198 @@
-"""Models for authentication and user management."""
+"""Models for authentication and user management (MongoDB via MongoEngine)."""
 
 from __future__ import annotations
 
 from datetime import timedelta
 
-from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
-from django.db import models
+import mongoengine as me
+from django.contrib.auth.hashers import check_password, make_password
 from django.utils import timezone
 
-from .managers import UserManager
+from .managers import UserQuerySet
+
+# ---------------------------------------------------------------------------
+# Choice constants (kept as plain classes so serializers can use .choices)
+# ---------------------------------------------------------------------------
+
+EXPERTISE_CHOICES = (
+    ("amateur", "Amateur"),
+    ("student", "Student"),
+    ("researcher", "Researcher"),
+    ("architect", "Architect"),
+    ("historian", "Historian"),
+    ("guide", "Guide"),
+)
+
+ROLE_CHOICES = (
+    ("user", "User"),
+    ("moderator", "Moderator"),
+    ("admin", "Admin"),
+)
+
+OTP_PURPOSE_CHOICES = (
+    ("email_verification", "Email Verification"),
+    ("login", "Login"),
+)
 
 
-class ExpertiseChoices(models.TextChoices):
-    """Allowed expertise levels for a user."""
-
-    AMATEUR = "amateur", "Amateur"
-    STUDENT = "student", "Student"
-    RESEARCHER = "researcher", "Researcher"
-    ARCHITECT = "architect", "Architect"
-    HISTORIAN = "historian", "Historian"
-    GUIDE = "guide", "Guide"
-
-
-class RoleChoices(models.TextChoices):
-    """Allowed roles for a user."""
-
-    USER = "user", "User"
-    MODERATOR = "moderator", "Moderator"
-    ADMIN = "admin", "Admin"
+class ExpertiseChoices:
+    AMATEUR = "amateur"
+    STUDENT = "student"
+    RESEARCHER = "researcher"
+    ARCHITECT = "architect"
+    HISTORIAN = "historian"
+    GUIDE = "guide"
+    choices = EXPERTISE_CHOICES
 
 
-class OTPPurposeChoices(models.TextChoices):
-    """Allowed purposes for OTP codes."""
+class RoleChoices:
+    USER = "user"
+    MODERATOR = "moderator"
+    ADMIN = "admin"
+    choices = ROLE_CHOICES
 
-    EMAIL_VERIFICATION = "email_verification", "Email Verification"
-    LOGIN = "login", "Login"
+
+class OTPPurposeChoices:
+    EMAIL_VERIFICATION = "email_verification"
+    LOGIN = "login"
+    choices = OTP_PURPOSE_CHOICES
 
 
-class User(AbstractBaseUser, PermissionsMixin):
-    """Custom user model for Heritage Community Algeria."""
+# ---------------------------------------------------------------------------
+# MongoEngine Documents
+# ---------------------------------------------------------------------------
 
-    id = models.BigAutoField(primary_key=True)
-    email = models.EmailField(unique=True)
-    oauth_provider = models.CharField(max_length=50, null=True, blank=True)
-    oauth_id = models.CharField(max_length=255, null=True, blank=True)
-    display_name = models.CharField(max_length=100)
-    username = models.CharField(max_length=100, unique=True)
-    bio = models.TextField(blank=True)
-    expertise = models.CharField(max_length=50, choices=ExpertiseChoices.choices)
-    speciality = models.CharField(max_length=100, blank=True)
-    profile_picture = models.URLField(max_length=500, blank=True)
-    badge = models.CharField(max_length=100, blank=True)
-    is_verified = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    role = models.CharField(
-        max_length=20,
-        choices=RoleChoices.choices,
-        default=RoleChoices.USER,
+
+class User(me.Document):
+    """Custom user document stored in MongoDB."""
+
+    email = me.EmailField(unique=True, required=True)
+    password = me.StringField(required=True)
+    oauth_provider = me.StringField(null=True)
+    oauth_id = me.StringField(null=True)
+    display_name = me.StringField(max_length=100, required=True)
+    username = me.StringField(max_length=100, unique=True, required=True)
+    bio = me.StringField(default="")
+    expertise = me.StringField(
+        choices=[c[0] for c in EXPERTISE_CHOICES], required=True
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    speciality = me.StringField(max_length=100, default="")
+    profile_picture = me.StringField(max_length=500, default="")
+    badge = me.StringField(max_length=100, default="")
+    is_verified = me.BooleanField(default=False)
+    is_active = me.BooleanField(default=True)
+    is_staff = me.BooleanField(default=False)
+    role = me.StringField(
+        choices=[c[0] for c in ROLE_CHOICES], default=RoleChoices.USER
+    )
+    created_at = me.DateTimeField(default=timezone.now)
+    updated_at = me.DateTimeField(default=timezone.now)
 
-    USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username", "display_name", "expertise"]
+    meta = {
+        "collection": "users",
+        "queryset_class": UserQuerySet,
+        "indexes": ["email", "username"],
+    }
 
-    objects = UserManager()
+    # ------------------------------------------------------------------ #
+    # Django authentication interface (required by DRF + simplejwt)       #
+    # ------------------------------------------------------------------ #
 
-    def __str__(self) -> str:
-        """Return string representation."""
+    @property
+    def pk(self) -> str:
+        return str(self.id) if self.id else None
+
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def is_anonymous(self) -> bool:
+        return False
+
+    def get_username(self) -> str:
         return self.email
 
+    def __str__(self) -> str:
+        return self.email
 
-class OTPCode(models.Model):
-    """One-time password for email verification and login."""
+    def set_password(self, raw_password: str) -> None:
+        self.password = make_password(raw_password)
 
-    id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="otp_codes")
-    # Stores the hashed OTP value using Django's password hasher.
-    code = models.CharField(max_length=128)
-    purpose = models.CharField(max_length=32, choices=OTPPurposeChoices.choices)
-    is_used = models.BooleanField(default=False)
-    expires_at = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    def check_password(self, raw_password: str) -> bool:
+        return check_password(raw_password, self.password)
 
-    class Meta:
-        """Metadata for OTPCode."""
+    def has_perm(self, perm, obj=None) -> bool:
+        return self.is_active and (self.role == RoleChoices.ADMIN or self.is_staff)
 
-        indexes = [
-            models.Index(fields=["user", "purpose", "is_used"]),
-        ]
+    def has_module_perms(self, app_label) -> bool:
+        return self.is_active
+
+    def save(self, *args, **kwargs):
+        self.updated_at = timezone.now()
+        return super().save(*args, **kwargs)
+
+    # ------------------------------------------------------------------ #
+    # Factory helpers (replaces UserManager.create_user)                  #
+    # ------------------------------------------------------------------ #
+
+    @classmethod
+    def create_user(cls, email: str, password: str | None = None, **extra_fields):
+        """Create and return a regular user."""
+        if not email:
+            raise ValueError("Users must have an email address.")
+        extra_fields.setdefault("is_active", True)
+        user = cls(email=email.strip().lower(), **extra_fields)
+        user.set_password(password)
+        user.save()
+        return user
+
+    @classmethod
+    def create_superuser(cls, email: str, password: str | None = None, **extra_fields):
+        """Create and return a superuser."""
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("role", RoleChoices.ADMIN)
+        extra_fields.setdefault("is_verified", True)
+        extra_fields.setdefault("is_active", True)
+        if not extra_fields.get("is_staff"):
+            raise ValueError("Superuser must have is_staff=True.")
+        return cls.create_user(email, password, **extra_fields)
+
+
+class OTPCode(me.Document):
+    """One-time password document for email verification and login."""
+
+    user = me.ReferenceField(User, required=True)
+    code = me.StringField(max_length=128, required=True)
+    purpose = me.StringField(
+        choices=[c[0] for c in OTP_PURPOSE_CHOICES], required=True
+    )
+    is_used = me.BooleanField(default=False)
+    expires_at = me.DateTimeField(required=True)
+    created_at = me.DateTimeField(default=timezone.now)
+
+    meta = {
+        "collection": "otp_codes",
+        "indexes": [("user", "purpose", "is_used")],
+    }
 
     def __str__(self) -> str:
-        """Return readable representation."""
-        return f"OTP for {self.user_id} ({self.purpose})"
+        return f"OTP for {self.user.pk} ({self.purpose})"
 
     @classmethod
     def create_expiry(cls) -> timezone.datetime:
         """Return expiry datetime 10 minutes from now."""
         return timezone.now() + timedelta(minutes=10)
+
+
+class BlacklistedToken(me.Document):
+    """MongoDB-backed JWT blacklist (replaces simplejwt token_blacklist)."""
+
+    jti = me.StringField(unique=True, required=True)
+    blacklisted_at = me.DateTimeField(default=timezone.now)
+
+    meta = {
+        "collection": "blacklisted_tokens",
+        "indexes": ["jti"],
+    }
 

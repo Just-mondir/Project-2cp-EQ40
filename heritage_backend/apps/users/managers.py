@@ -1,40 +1,19 @@
-"""Custom user manager for the User model."""
+"""Custom QuerySet for the User MongoEngine document."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from django.contrib.auth.base_user import BaseUserManager
+from mongoengine import QuerySet
 
 
-class UserManager(BaseUserManager):
-    """Manager for the custom User model using email as the identifier."""
+class UserQuerySet(QuerySet):
+    """Extends MongoEngine QuerySet with create_user / create_superuser helpers."""
 
     def create_user(self, email: str, password: str | None = None, **extra_fields: Any):
-        """Create and return a regular user."""
-        if not email:
-            raise ValueError("Users must have an email address.")
-
-        email = self.normalize_email(email)
-        extra_fields.setdefault("is_active", True)
-        user = self.model(email=email, **extra_fields)
-        if password:
-            user.set_password(password)
-        else:
-            user.set_unusable_password()
-        user.save(using=self._db)
-        return user
+        """Create and return a regular user (delegates to User.create_user)."""
+        return self._document.create_user(email, password, **extra_fields)
 
     def create_superuser(self, email: str, password: str | None = None, **extra_fields: Any):
-        """Create and return a superuser."""
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        extra_fields.setdefault("role", "admin")
-        extra_fields.setdefault("is_verified", True)
-
-        if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser must have is_staff=True.")
-        if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser must have is_superuser=True.")
-
-        return self.create_user(email, password, **extra_fields)
+        """Create and return a superuser (delegates to User.create_superuser)."""
+        return self._document.create_superuser(email, password, **extra_fields)

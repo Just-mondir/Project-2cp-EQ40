@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
@@ -41,11 +40,8 @@ class Post(models.Model):
         CONSTANTINE = "constantine", "Constantine"
         TLEMCEN = "tlemcen", "Tlemcen"
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="posts",
-    )
+    # Stores the MongoDB ObjectId (string) of the author from the users collection
+    author_id = models.CharField(max_length=24, db_index=True, default="")
     title = models.CharField(max_length=300)
     content = models.TextField()
     post_type = models.CharField(max_length=20, choices=PostType.choices)
@@ -193,15 +189,13 @@ class Gem(models.Model):
     """A 'gem' reaction — like a like/upvote on a post."""
 
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="gems")
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="gems"
-    )
+    user_id = models.CharField(max_length=24, db_index=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["post", "user"], name="unique_gem_per_user_post"
+                fields=["post", "user_id"], name="unique_gem_per_user_post"
             )
         ]
 
@@ -213,15 +207,13 @@ class Save(models.Model):
     """A bookmarked / saved post."""
 
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="saves")
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="saves"
-    )
+    user_id = models.CharField(max_length=24, db_index=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["post", "user"], name="unique_save_per_user_post"
+                fields=["post", "user_id"], name="unique_save_per_user_post"
             )
         ]
 
@@ -233,9 +225,7 @@ class Comment(models.Model):
     """A comment on a post."""
 
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comments"
-    )
+    user_id = models.CharField(max_length=24, db_index=True, default="")
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

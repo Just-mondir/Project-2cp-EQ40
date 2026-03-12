@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
+from django.http import Http404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -17,6 +16,7 @@ from apps.core.responses import (
     api_error,
     api_success,
 )
+from .models import User
 from .permissions import IsSelf
 from .serializers import (
     LoginSerializer,
@@ -29,8 +29,6 @@ from .serializers import (
     VerifyEmailSerializer,
     VerifyLoginOTPSerializer,
 )
-
-User = get_user_model()
 
 
 class RegisterView(APIView):
@@ -57,7 +55,7 @@ class RegisterView(APIView):
         user = serializer.save()
         return api_success(
             message="OTP sent to your email",
-            data={"user_id": user.id},
+            data={"user_id": user.pk},
             status_code=201,
         )
 
@@ -101,7 +99,7 @@ class LoginView(APIView):
         user = serializer.save()
         return api_success(
             message="OTP sent to your email",
-            data={"user_id": user.id},
+            data={"user_id": user.pk},
             status_code=200,
         )
 
@@ -230,7 +228,10 @@ class PublicUserProfileView(APIView):
 
     def get(self, request: Request, username: str) -> Response:
         """Return public profile for the given username."""
-        user = get_object_or_404(User, username=username)
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise Http404
         serializer = PublicUserProfileSerializer(user)
         return api_success(
             message="Profile retrieved successfully.",

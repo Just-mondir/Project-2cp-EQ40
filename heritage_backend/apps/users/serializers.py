@@ -1,4 +1,4 @@
-"""Serializers for authentication and user management."""
+"""Serializers for authentication and user management (MongoEngine-compatible)."""
 
 from __future__ import annotations
 
@@ -8,58 +8,43 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.responses import RESPONSE_CONFLICT_MESSAGE
-from .models import ExpertiseChoices, OTPCode, OTPPurposeChoices, User
+from .models import BlacklistedToken, ExpertiseChoices, OTPCode, OTPPurposeChoices, User
 from .utils import create_hashed_otp, send_otp_email, verify_otp_code
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    """Serializer for exposing user profile information."""
+class UserProfileSerializer(serializers.Serializer):
+    """Serializer for full user profile information."""
 
-    class Meta:
-        model = User
-        fields = [
-            "id",
-            "email",
-            "username",
-            "display_name",
-            "bio",
-            "expertise",
-            "speciality",
-            "profile_picture",
-            "badge",
-            "is_verified",
-            "role",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = [
-            "id",
-            "email",
-            "username",
-            "badge",
-            "is_verified",
-            "role",
-            "created_at",
-            "updated_at",
-        ]
+    id = serializers.SerializerMethodField()
+    email = serializers.EmailField(read_only=True)
+    username = serializers.CharField(read_only=True)
+    display_name = serializers.CharField()
+    bio = serializers.CharField()
+    expertise = serializers.CharField()
+    speciality = serializers.CharField()
+    profile_picture = serializers.CharField()
+    badge = serializers.CharField(read_only=True)
+    is_verified = serializers.BooleanField(read_only=True)
+    role = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+
+    def get_id(self, obj) -> str:
+        return str(obj.id)
 
 
-class PublicUserProfileSerializer(serializers.ModelSerializer):
+class PublicUserProfileSerializer(serializers.Serializer):
     """Serializer for public user profile by username."""
 
-    class Meta:
-        model = User
-        fields = [
-            "username",
-            "display_name",
-            "bio",
-            "expertise",
-            "speciality",
-            "profile_picture",
-            "badge",
-            "role",
-            "created_at",
-        ]
+    username = serializers.CharField()
+    display_name = serializers.CharField()
+    bio = serializers.CharField()
+    expertise = serializers.CharField()
+    speciality = serializers.CharField()
+    profile_picture = serializers.CharField()
+    badge = serializers.CharField()
+    role = serializers.CharField()
+    created_at = serializers.DateTimeField()
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -72,28 +57,25 @@ class RegisterSerializer(serializers.Serializer):
     expertise = serializers.ChoiceField(choices=ExpertiseChoices.choices)
 
     def validate(self, attrs):
-        """Validate uniqueness and expertise."""
         email = attrs.get("email")
         username = attrs.get("username")
-        if User.objects.filter(email=email).exists():
+        if User.objects(email=email.strip().lower()).count() > 0:
             raise serializers.ValidationError(
                 {"email": RESPONSE_CONFLICT_MESSAGE["email_exists"]}
             )
-        if User.objects.filter(username=username).exists():
+        if User.objects(username=username).count() > 0:
             raise serializers.ValidationError(
                 {"username": RESPONSE_CONFLICT_MESSAGE["username_exists"]}
             )
         return attrs
 
     def create(self, validated_data):
-        """Create user and associated email verification OTP."""
         password = validated_data.pop("password")
-        user = User.objects.create_user(
+        user = User.create_user(
             password=password,
             is_verified=False,
             **validated_data,
         )
-
         _, plain_otp = create_hashed_otp(user, OTPPurposeChoices.EMAIL_VERIFICATION)
         send_otp_email(user.email, plain_otp)
         return user
@@ -102,12 +84,11 @@ class RegisterSerializer(serializers.Serializer):
 class VerifyEmailSerializer(serializers.Serializer):
     """Verify email using OTP and issue JWT tokens."""
 
-    user_id = serializers.IntegerField(required=False)
+    user_id = serializers.CharField(required=False)
     email = serializers.EmailField(required=False)
     otp_code = serializers.CharField(max_length=6)
 
     def validate(self, attrs):
-        """Validate OTP correctness and expiry."""
         user_id = attrs.get("user_id")
         email = attrs.get("email")
         otp_code = attrs.get("otp_code")
@@ -122,32 +103,23 @@ class VerifyEmailSerializer(serializers.Serializer):
                 user = User.objects.get(id=user_id)
             else:
                 user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        except (User.DoesNotExist, Exception):
             raise serializers.ValidationError({"user": "User not found."})
 
-        try:
-            otp = (
-                OTPCode.objects.filter(
-                    user=user,
-                    purpose=OTPPurposeChoices.EMAIL_VERIFICATION,
-                )
-                .order_by("-created_at")
-                .first()
-            )
-        except OTPCode.DoesNotExist:
-            otp = None
+        otp = (
+            OTPCode.objects(user=user, purpose=OTPPurposeChoices.EMAIL_VERIFICATION)
+            .order_by("-created_at")
+            .first()
+        )
 
         if otp is None:
             raise serializers.ValidationError({"otp_code": "Invalid OTP."})
-
         if otp.is_used:
             raise serializers.ValidationError({"otp_code": "OTP already used."})
-
         if otp.expires_at <= timezone.now():
             raise serializers.ValidationError(
                 {"otp_code": "OTP expired. Please request a new one."}
             )
-
         if not verify_otp_code(otp, otp_code):
             raise serializers.ValidationError({"otp_code": "Invalid OTP."})
 
@@ -156,14 +128,11 @@ class VerifyEmailSerializer(serializers.Serializer):
         return attrs
 
     def save(self, **kwargs):
-        """Mark OTP as used, verify user, and issue JWT tokens."""
         user = self.validated_data["user"]
         otp = self.validated_data["otp"]
-        otp.is_used = True
-        otp.save(update_fields=["is_used"])
-        user.is_verified = True
-        user.save(update_fields=["is_verified"])
-
+        OTPCode.objects(id=otp.id).update_one(set__is_used=True)
+        User.objects(id=user.id).update_one(set__is_verified=True)
+        user.is_verified = True  # reflect locally for serializer
         refresh = RefreshToken.for_user(user)
         return {
             "refresh": str(refresh),
@@ -179,10 +148,9 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        """Validate credentials and verification status."""
         email = attrs.get("email")
         password = attrs.get("password")
-        user = authenticate(username=email, password=password)
+        user = authenticate(request=None, username=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid credentials."})
         if not user.is_verified:
@@ -197,7 +165,6 @@ class LoginSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
-        """Generate login OTP and send via email."""
         user = validated_data["user"]
         _, plain_otp = create_hashed_otp(user, OTPPurposeChoices.LOGIN)
         send_otp_email(user.email, plain_otp)
@@ -207,12 +174,11 @@ class LoginSerializer(serializers.Serializer):
 class VerifyLoginOTPSerializer(serializers.Serializer):
     """Verify login OTP and issue JWT tokens."""
 
-    user_id = serializers.IntegerField(required=False)
+    user_id = serializers.CharField(required=False)
     email = serializers.EmailField(required=False)
     otp_code = serializers.CharField(max_length=6)
 
     def validate(self, attrs):
-        """Validate OTP correctness for login."""
         user_id = attrs.get("user_id")
         email = attrs.get("email")
         otp_code = attrs.get("otp_code")
@@ -227,32 +193,23 @@ class VerifyLoginOTPSerializer(serializers.Serializer):
                 user = User.objects.get(id=user_id)
             else:
                 user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        except (User.DoesNotExist, Exception):
             raise serializers.ValidationError({"user": "User not found."})
 
-        try:
-            otp = (
-                OTPCode.objects.filter(
-                    user=user,
-                    purpose=OTPPurposeChoices.LOGIN,
-                )
-                .order_by("-created_at")
-                .first()
-            )
-        except OTPCode.DoesNotExist:
-            otp = None
+        otp = (
+            OTPCode.objects(user=user, purpose=OTPPurposeChoices.LOGIN)
+            .order_by("-created_at")
+            .first()
+        )
 
         if otp is None:
             raise serializers.ValidationError({"otp_code": "Invalid OTP."})
-
         if otp.is_used:
             raise serializers.ValidationError({"otp_code": "OTP already used."})
-
         if otp.expires_at <= timezone.now():
             raise serializers.ValidationError(
                 {"otp_code": "OTP expired. Please request a new one."}
             )
-
         if not verify_otp_code(otp, otp_code):
             raise serializers.ValidationError({"otp_code": "Invalid OTP."})
 
@@ -261,12 +218,9 @@ class VerifyLoginOTPSerializer(serializers.Serializer):
         return attrs
 
     def save(self, **kwargs):
-        """Mark OTP as used and issue JWT tokens."""
         user = self.validated_data["user"]
         otp = self.validated_data["otp"]
-        otp.is_used = True
-        otp.save(update_fields=["is_used"])
-
+        OTPCode.objects(id=otp.id).update_one(set__is_used=True)
         refresh = RefreshToken.for_user(user)
         return {
             "refresh": str(refresh),
@@ -275,58 +229,55 @@ class VerifyLoginOTPSerializer(serializers.Serializer):
         }
 
 
-class UserUpdateSerializer(serializers.ModelSerializer):
+class UserUpdateSerializer(serializers.Serializer):
     """Update serializer for editable profile fields."""
 
-    class Meta:
-        model = User
-        fields = [
-            "display_name",
-            "bio",
-            "expertise",
-            "speciality",
-            "profile_picture",
-        ]
+    display_name = serializers.CharField(max_length=100, required=False)
+    bio = serializers.CharField(required=False, allow_blank=True)
+    expertise = serializers.ChoiceField(choices=ExpertiseChoices.choices, required=False)
+    speciality = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    profile_picture = serializers.URLField(max_length=500, required=False, allow_blank=True)
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class LogoutSerializer(serializers.Serializer):
-    """Serializer for logout by blacklisting refresh token."""
+    """Serializer for logout by blacklisting the refresh token JTI in MongoDB."""
 
     refresh = serializers.CharField()
 
     def save(self, **kwargs):
-        """Blacklist the provided refresh token."""
-        from rest_framework_simplejwt.tokens import RefreshToken  # local import
-
-        refresh_token = self.validated_data["refresh"]
+        refresh_token_str = self.validated_data["refresh"]
         try:
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-        except Exception as exc:  # pragma: no cover - defensive
+            token = RefreshToken(refresh_token_str)
+            jti = token.get("jti")
+            if jti and BlacklistedToken.objects(jti=jti).count() == 0:
+                BlacklistedToken(jti=jti).save()
+        except Exception as exc:
             raise serializers.ValidationError(
                 {"detail": "Invalid refresh token."}
             ) from exc
 
 
 class DeactivateAccountSerializer(serializers.Serializer):
-    """Serializer to handle account deactivation and token blacklisting."""
+    """Handle account soft-deletion and optional token blacklisting."""
 
     refresh = serializers.CharField(required=False, allow_blank=True)
 
     def save(self, user: User, **kwargs):
-        """Soft delete the user and optionally blacklist the refresh token."""
-        from rest_framework_simplejwt.tokens import RefreshToken  # local import
-
+        User.objects(id=user.id).update_one(set__is_active=False)
         user.is_active = False
-        user.save(update_fields=["is_active"])
 
-        refresh_token = self.validated_data.get("refresh")
-        if refresh_token:
+        refresh_token_str = self.validated_data.get("refresh")
+        if refresh_token_str:
             try:
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-            except Exception:  # pragma: no cover - defensive
-                # We intentionally ignore token errors during deactivation.
+                token = RefreshToken(refresh_token_str)
+                jti = token.get("jti")
+                if jti and BlacklistedToken.objects(jti=jti).count() == 0:
+                    BlacklistedToken(jti=jti).save()
+            except Exception:
                 pass
-
-
