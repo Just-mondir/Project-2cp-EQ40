@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Results</title>
+</head>
+<body>
+    <h1>Global Search</h1>
+
+    <form method="GET" action="{% url 'global_search' %}">
+        <input type="text" name="q" placeholder="Search users or posts..." value="{{ query }}">
+        <button type="submit">Search</button>
+    </form>
+
+    {% if query %}
+        <p>You searched for: <strong>{{ query }}</strong></p>
+    {% endif %}
+
+    <hr>
+
+    <h2>Users</h2>
+    {% for user in users %}
+        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+            <p><strong>{{ user.username }}</strong></p>
+            <p>{{ user.first_name }} {{ user.last_name }}</p>
+        </div>
+    {% empty %}
+        <p>No users found.</p>
+    {% endfor %}
+
+    <hr>
+
+    <h2>Posts</h2>
+    {% for post in posts %}
+        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+            <h3><a href="{% url 'post_detail' post.id %}">{{ post.title }}</a></h3>
+            <p><strong>By:</strong> {{ post.user.username }}</p>
+            <p><strong>Type:</strong> {{ post.post_type }}</p>
+            <p><strong>Location:</strong> {{ post.location }}</p>
+            <p><strong>Region:</strong> {{ post.region }}</p>
+            <p>{{ post.content|truncatewords:25 }}</p>
+        </div>
+    {% empty %}
+        <p>No posts found.</p>
+    {% endfor %}
+</body>
+</html>

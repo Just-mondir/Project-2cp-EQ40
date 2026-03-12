@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ post.title }}</title>
+</head>
+<body>
+    <h1>{{ post.title }}</h1>
+    <p><strong>Author:</strong> {{ post.user.username }}</p>
+    <p><strong>Type:</strong> {{ post.post_type }}</p>
+    <p><strong>Location:</strong> {{ post.location }}</p>
+    <p><strong>Region:</strong> {{ post.region }}</p>
+    <p>{{ post.content }}</p>
+
+    <h2>Images</h2>
+    {% for image in images %}
+        <img src="{{ image.image.url }}" alt="Post image" width="200">
+    {% empty %}
+        <p>No images.</p>
+    {% endfor %}
+
+    <hr>
+
+    <h2>Comments ({{ post.comments_count }})</h2>
+    {% for comment in comments %}
+        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
+            <strong>{{ comment.user.username }}</strong>
+            <small>{{ comment.created_at }}</small>
+            <p>{{ comment.content }}</p>
+        </div>
+    {% empty %}
+        <p>No comments yet.</p>
+    {% endfor %}
+
+    <hr>
+
+    {% if user.is_authenticated %}
+        <h2>Add Comment</h2>
+        <form method="POST">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">Add Comment</button>
+        </form>
+    {% else %}
+        <p>You must be logged in to comment.</p>
+    {% endif %}
+</body>
+</html>
