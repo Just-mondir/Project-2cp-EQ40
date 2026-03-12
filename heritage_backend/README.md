@@ -753,4 +753,85 @@ Use the **6-digit code** (e.g., `"482910"`) in the `otp_code` field in Postman f
 
 This provides a solid, secure base for further modules (posts, communities, monuments, events, moderation) to be added later under `apps/`.
 
+---
+
+### 11. How Login & Password Hashing Work (Technical Summary)
+
+#### Password Hashing
+
+Passwords are **never stored in plain text**.
+
+When a user registers, `UserManager.create_user()` calls `user.set_password(password)` which runs Django's built-in hasher:
+
+```
+PBKDF2 + SHA256 + random salt  →  stored in the DB as a hash string
+```
+
+Example of what is stored in `users_user.password`:
+```
+pbkdf2_sha256$870000$randomsalt$hashedvalue==
+```
+
+When the user logs in, `authenticate(username=email, password=password)` uses `check_password()` which hashes the provided password with the stored salt and compares — the plain password is never stored or logged anywhere.
+
+---
+
+#### OTP Hashing
+
+OTP codes (6-digit numbers) are also **hashed before storage** using the same Django hasher:
+
+```python
+# Generation
+plain_code = secrets.randbelow(1_000_000)  # cryptographically secure
+hashed_code = make_password(plain_code)
+OTPCode.objects.create(code=hashed_code, ...)
+
+# Verification
+check_password(plain_code_from_user, otp.code)
+```
+
+The plain OTP is only ever sent by email and never persisted anywhere.
+
+---
+
+#### Login Flow (Step by Step)
+
+```
+Frontend                          Backend
+   │                                 │
+   │  POST /api/auth/login/          │
+   │  { email, password }   ────────►│  1. authenticate(email, password)
+   │                                 │     → checks PBKDF2 hash ✓
+   │                                 │  2. Generates 6-digit OTP
+   │                                 │     → hashes it → stores in DB
+   │                                 │  3. Sends OTP to user's email
+   │◄──────── { user_id } ──────────│
+   │                                 │
+   │  POST /api/auth/verify-login-otp/
+   │  { user_id, otp_code } ────────►│  4. Fetches latest LOGIN OTP for user
+   │                                 │     → check_password(otp_code, hash) ✓
+   │                                 │  5. Marks OTP as used (single-use)
+   │                                 │  6. Issues JWT access + refresh tokens
+   │◄─── { access, refresh, user } ─│
+```
+
+The frontend only needs to:
+1. Call `POST /api/auth/login/` with email + password → save `user_id`
+2. Read the OTP from the user's inbox
+3. Call `POST /api/auth/verify-login-otp/` → save `access` and `refresh` tokens
+4. Attach `Authorization: Bearer <access>` to all subsequent requests
+
+---
+
+#### Token Lifecycle
+
+| Token | Lifetime (default) | Configurable via `.env` |
+|-------|--------------------|------------------------|
+| Access token | 60 minutes | `ACCESS_TOKEN_LIFETIME_MINUTES` |
+| Refresh token | 7 days | `REFRESH_TOKEN_LIFETIME_DAYS` |
+
+- When the access token **expires**, call `POST /api/auth/refresh/` with the refresh token.
+- On **logout** or **account delete**, send the refresh token to be blacklisted so it cannot be reused.
+- Refresh tokens **rotate**: each use of `/api/auth/refresh/` returns a new refresh token and invalidates the old one.
+
 
