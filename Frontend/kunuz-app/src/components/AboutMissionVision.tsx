@@ -32,13 +32,15 @@ export default function AboutMissionVision() {
 
             <article className="p-8 lg:p-10">
               <h2
-                className={`${playfair.className} text-[22px] lg:text-[28px] font-semibold text-[#432819] mb-4`}
+                className="font-bold text-[32px] lg:text-[36px] text-[#432819] mb-4"
+                style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
               >
                 Our Mission:
               </h2>
 
               <p
-                className={`${lato.className} text-[17px] lg:text-[20px] leading-[1.8] text-[#432819]`}
+                className="text-[17px] lg:text-[20px] leading-[1.8] text-[#432819]"
+                style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
               >
                 To build a collaborative digital space that supports the
                 documentation and preservation of Algeria&apos;s architectural
@@ -64,7 +66,8 @@ export default function AboutMissionVision() {
 
             <article className="p-8 lg:p-10">
               <h2
-                className={`${playfair.className} text-[22px] lg:text-[28px] font-semibold text-[#432819] mb-4`}
+                className="font-bold text-[32px] lg:text-[36px] text-[#432819] mb-4"
+                style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
               >
                 Our Vision:
               </h2>

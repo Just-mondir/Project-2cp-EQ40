@@ -46,7 +46,7 @@ export default function MonumentsInDanger() {
       style={{ backgroundColor: "#FFF8E2" }}
     >
       {/* Background image — clipped separately so cards can overflow */}
-      <div className="absolute inset-0 overflow-hidden">
+      <div className="absolute inset-y-0 left-0 w-full md:w-1/2 overflow-hidden">
         <Image
           src={active.src}
           alt={active.alt}
@@ -54,18 +54,20 @@ export default function MonumentsInDanger() {
           priority
           className="object-cover"
           style={{
-            filter: "blur(8px)",
-            transform: "scale(1.05)",
+            filter: "blur(4px)",
+            transform: "scale(1.03)",
             objectPosition:
               active.name === "El Kantara Bridge" ? "right center" : "left center",
           }}
         />
+        {/* White tint overlay for the blur */}
+        <div className="absolute inset-0 bg-white/40 pointer-events-none" />
         {/* Horizontal fade */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to right, rgba(255,248,226,0) 0%, rgba(255,248,226,0) 20%, rgba(255,248,226,0.5) 38%, rgba(255,248,226,0.85) 50%, rgba(255,248,226,1) 62%, rgba(255,248,226,1) 100%)",
+              "linear-gradient(to right, rgba(255,248,226,0) 0%, rgba(255,248,226,0) 75%, rgba(255,248,226,0.6) 90%, rgba(255,248,226,1) 100%)",
           }}
         />
         {/* Top/bottom fade */}
@@ -84,7 +86,7 @@ export default function MonumentsInDanger() {
 
           {/* Title */}
           <div className="max-w-2xl text-center mx-auto">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-semibold text-[#2C1A0E] mb-5">
+            <h2 className="font-bold text-[32px] md:text-[36px] lg:text-[44px] xl:text-[56px] leading-tight text-[#2C1A0E] mb-5" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>
               Monuments In Danger
             </h2>
             <p className="text-base md:text-lg lg:text-xl text-[#2C1A0E] opacity-80">
@@ -101,8 +103,6 @@ export default function MonumentsInDanger() {
                 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#2C1A0E] mb-4"
                 style={{
                   transition: "opacity 0.4s ease",
-                  color:
-                    active.name === "El Kantara Bridge" ? "#FFF8E2" : "#2C1A0E",
                 }}
               >
                 {active.name}
@@ -111,8 +111,6 @@ export default function MonumentsInDanger() {
                 className="text-base md:text-lg lg:text-xl text-[#2C1A0E] leading-relaxed"
                 style={{
                   transition: "opacity 0.4s ease",
-                  color:
-                    active.name === "El Kantara Bridge" ? "#FFF8E2" : "#2C1A0E",
                 }}
               >
                 Located in{" "}
@@ -126,14 +124,14 @@ export default function MonumentsInDanger() {
 
             {/* Right — three images, overflow visible so scale isn't clipped */}
             <div
-              className="flex flex-row items-end justify-center gap-5 lg:gap-6"
+              className="flex flex-row items-end justify-center gap-3 sm:gap-5 lg:gap-6 flex-wrap sm:flex-nowrap"
               style={{ overflow: "visible" }}
             >
               {monuments.map((monument, idx) => (
                 <div
                   key={idx}
                   onMouseEnter={() => setActiveIndex(idx)}
-                  className="relative w-[180px] md:w-[200px] lg:w-[220px] h-[280px] md:h-[310px] lg:h-[340px] rounded-3xl flex-shrink-0 cursor-pointer"
+                  className="relative w-[140px] sm:w-[160px] md:w-[200px] lg:w-[220px] h-[220px] sm:h-[260px] md:h-[310px] lg:h-[340px] rounded-3xl flex-shrink-0 cursor-pointer"
                   style={{
                     overflow: "hidden",
                     transformOrigin: "center bottom",
@@ -171,15 +169,7 @@ export default function MonumentsInDanger() {
             </div>
           </div>
 
-          {/* View more */}
-          <div className="flex justify-end">
-            <button
-              className="px-6 py-2 rounded-full border border-[#2C1A0E] text-[#2C1A0E] text-sm font-medium bg-transparent hover:bg-[#2C1A0E]/5 transition-colors duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(44,26,14,0.2)]"
-              type="button"
-            >
-              View more
-            </button>
-          </div>
+
 
         </div>
       </div>

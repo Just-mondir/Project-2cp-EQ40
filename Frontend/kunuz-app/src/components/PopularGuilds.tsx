@@ -130,7 +130,8 @@ export default function PopularGuilds() {
       style={{ backgroundColor: "#FFF8E2" }}
     >
       <h2
-        className={`${lato.className} font-bold text-4xl md:text-5xl lg:text-6xl text-[#2C1A0E] text-center mb-12 lg:mb-16`}
+        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-12 lg:mb-16"
+        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
       >
         Popular Guilds
       </h2>

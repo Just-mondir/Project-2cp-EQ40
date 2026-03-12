@@ -145,7 +145,7 @@ function EventCard({ item }: { item: EventItem }) {
           src={item.imageUrl}
           alt={item.title}
           fill
-          className="object-cover rounded-l-2xl"
+          className="object-contain rounded-l-2xl"
           sizes="(max-width: 640px) 140px, (max-width: 768px) 160px, 200px"
         />
       </div>
@@ -198,7 +198,8 @@ export default function UpcomingEvents() {
       style={{ backgroundColor: "#FFF8E2", minHeight: "80vh" }}
     >
       <h2
-        className={`${playfair.className} text-4xl md:text-5xl lg:text-6xl text-[#2C1A0E] text-center mb-14 lg:mb-20 font-bold`}
+        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-14 lg:mb-20"
+        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
       >
         Upcoming Events
       </h2>
