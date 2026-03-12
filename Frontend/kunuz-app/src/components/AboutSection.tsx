@@ -74,40 +74,12 @@ export default function AboutSection() {
         </div>
 
         {/* Colonne droite : images */}
-        <div className="flex flex-col gap-[30px] items-end w-full max-w-[500px] lg:max-w-[540px]">
-          {/* Ligne du haut */}
-          <div className="flex gap-4 lg:gap-[20px] items-end w-full justify-center">
+        <div className="flex flex-col gap-6 sm:gap-8 items-center md:items-end w-full max-w-[350px] sm:max-w-[420px] lg:max-w-[460px]">
+          {/* Ligne du haut — 40% left (narrow), 60% right (wide) */}
+          <div className="flex gap-6 lg:gap-8 items-start w-full justify-center">
             <div
-              className="overflow-hidden rounded-[12px] bg-[#e0d4bf] flex-1"
-              style={{ maxWidth: "240px", height: "320px" }}
-            >
-              <Image
-                src="/about-1.jpg"
-                alt="Kunuz heritage placeholder 1"
-                width={240}
-                height={320}
-                className="h-full w-full object-cover rounded-[12px]"
-              />
-            </div>
-            <div
-              className="overflow-hidden rounded-[12px] bg-[#e0d4bf] flex items-end flex-1"
-              style={{ maxWidth: "250px", height: "330px" }}
-            >
-              <Image
-                src="/about-2.jpg"
-                alt="Kunuz heritage placeholder 2"
-                width={250}
-                height={330}
-                className="h-full w-full object-cover rounded-[12px]"
-              />
-            </div>
-          </div>
-
-          {/* Ligne du bas */}
-          <div className="flex gap-4 lg:gap-[20px] items-end w-full justify-center">
-            <div
-              className="overflow-hidden rounded-[12px] bg-[#e0d4bf] flex items-end flex-1"
-              style={{ maxWidth: "250px", height: "330px" }}
+              className="overflow-hidden rounded-[12px] bg-[#e0d4bf]"
+              style={{ width: "40%", minWidth: 0, height: "clamp(230px, 42vw, 330px)" }}
             >
               <Image
                 src="/about-3.jpg"
@@ -118,14 +90,42 @@ export default function AboutSection() {
               />
             </div>
             <div
-              className="overflow-hidden rounded-[12px] bg-[#e0d4bf] flex-1"
-              style={{ maxWidth: "240px", height: "320px" }}
+              className="overflow-hidden rounded-[12px] bg-[#e0d4bf]"
+              style={{ width: "60%", minWidth: 0, height: "clamp(220px, 40vw, 320px)" }}
             >
               <Image
-                src="/about-4.jpg"
-                alt="Kunuz heritage placeholder 4"
+                src="/about-1.jpg"
+                alt="Kunuz heritage placeholder 1"
                 width={240}
                 height={320}
+                className="h-full w-full object-cover rounded-[12px]"
+              />
+            </div>
+          </div>
+
+          {/* Ligne du bas — 60% left (wide), 40% right (narrow) */}
+          <div className="flex gap-6 lg:gap-8 items-end w-full justify-center">
+            <div
+              className="overflow-hidden rounded-[12px] bg-[#e0d4bf]"
+              style={{ width: "60%", minWidth: 0, height: "clamp(220px, 40vw, 320px)" }}
+            >
+              <Image
+                src="/about-5.jpg"
+                alt="Kunuz heritage placeholder 5"
+                width={240}
+                height={320}
+                className="h-full w-full object-cover rounded-[12px]"
+              />
+            </div>
+            <div
+              className="overflow-hidden rounded-[12px] bg-[#e0d4bf]"
+              style={{ width: "40%", minWidth: 0, height: "clamp(230px, 42vw, 330px)" }}
+            >
+              <Image
+                src="/about-2.jpg"
+                alt="Kunuz heritage placeholder 2"
+                width={250}
+                height={330}
                 className="h-full w-full object-cover rounded-[12px]"
               />
             </div>

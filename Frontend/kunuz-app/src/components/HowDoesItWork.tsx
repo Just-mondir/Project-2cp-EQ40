@@ -85,18 +85,18 @@ function StepCard({ step }: { step: Step }) {
 
   return (
     <div
-      className={`${lato.className} bg-[#F0EDE6] border border-[#2C1A0E]/100 rounded-2xl p-8 lg:p-10 flex flex-col items-center text-center gap-6 lg:gap-8`}
-      style={{ borderWidth: "1.5px" }}
+      className="border border-[#2C1A0E]/100 p-8 lg:p-10 flex flex-col items-center text-center gap-6 lg:gap-8 transition-transform duration-300 ease-out hover:scale-105"
+      style={{ borderWidth: "1.5px", fontFamily: 'var(--font-lato), system-ui, sans-serif', backgroundColor: '#F7F5EF', borderRadius: '20px', boxShadow: '0 6px 24px 0 rgba(44,26,14,0.13)' }}
     >
       <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-[#2C1A0E] flex items-center justify-center shadow-md">
         <IconComponent className="w-8 h-8 lg:w-10 lg:h-10" />
       </div>
 
       <div>
-        <h3 className="font-bold text-base lg:text-lg text-[#2C1A0E] mb-2">
+        <h3 className="font-bold text-base lg:text-lg text-[#2C1A0E] mb-2" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>
           {step.stepLabel}
         </h3>
-        <p className="font-normal text-sm lg:text-base text-[#2C1A0E] leading-relaxed">
+        <p className="font-normal text-sm lg:text-base text-[#2C1A0E] leading-relaxed" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>
           {step.description}
         </p>
       </div>
@@ -112,7 +112,8 @@ export default function HowDoesItWork() {
       style={{ backgroundColor: "#FFF8E2", minHeight: "80vh" }}
     >
       <h2
-        className={`${playfair.className} text-4xl md:text-5xl lg:text-6xl text-[#2C1A0E] text-center mb-16 lg:mb-20 font-bold`}
+        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-16 lg:mb-20"
+        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
       >
         How Does It Work
       </h2>

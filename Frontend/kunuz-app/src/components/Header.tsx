@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,16 +19,31 @@ const NAV_HREFS: Record<(typeof NAV_LINKS)[number], string> = {
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [signUpHovered, setSignUpHovered] = useState(false);
+  const [signUpMobileHovered, setSignUpMobileHovered] = useState(false);
+
+  // Scroll effect for nav bar appearance
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <header
-      className="fixed inset-x-0 top-0 z-50"
-      style={{ backgroundColor: "#FFF8E2" }}
+      className="fixed inset-x-0 top-0 z-50 transition-colors duration-300"
+      style={{
+        backgroundColor: scrolled ? "#FFF8E2" : "transparent",
+        boxShadow: scrolled ? "0 4px 18px rgba(44,26,14,0.07)" : "none",
+      }}
     >
       {/* ── Main bar ── */}
       <div
         className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
-        style={{ height: "64px", overflow: "hidden" }}
+        style={{ height: "52px", overflow: "hidden" }}
       >
         {/* Logo flush left */}
         <div className="flex flex-shrink-0 items-end" style={{ marginBottom: "-14px", marginLeft: "10px" }}>
@@ -41,13 +57,13 @@ export default function Header() {
           />
         </div>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-4 lg:gap-6">
+        {/* Desktop nav — centered links with spacing from logo & sign in */}
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-4 lg:gap-8 xl:gap-13">
           {NAV_LINKS.map((label) => (
             <Link
               key={label}
               href={NAV_HREFS[label]}
-              className="group relative whitespace-nowrap text-[14px] lg:text-[16px] font-medium transition-colors duration-200"
+              className="group relative whitespace-nowrap text-[14px] md:text-[16px] lg:text-[19px] xl:text-[23px] font-bold transition-colors duration-200"
               style={{ color: "#3B2A1A", fontFamily: "var(--font-lato)" }}
             >
               {label}
@@ -57,20 +73,23 @@ export default function Header() {
               />
             </Link>
           ))}
-
-          <button
-            type="button"
-            className="signin-btn ml-4 rounded-full border-2 px-4 lg:px-6 py-1.5 text-[13px] lg:text-[15px] font-bold transition-all duration-300"
-            style={{
-              borderColor: "#3B2A1A",
-              color: "#3B2A1A",
-              fontFamily: "var(--font-lato)",
-              backgroundColor: "transparent",
-            }}
-          >
-            Sign In
-          </button>
         </nav>
+
+        {/* Sign Up — pinned to the right */}
+        <button
+          type="button"
+          className="hidden md:block flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
+          style={{
+            borderColor: "#3B2A1A",
+            color: "#3B2A1A",
+            fontFamily: "var(--font-lato)",
+            backgroundColor: signUpHovered ? "rgba(255,255,255,0.2)" : "transparent",
+          }}
+          onMouseEnter={() => setSignUpHovered(true)}
+          onMouseLeave={() => setSignUpHovered(false)}
+        >
+          Sign Up
+        </button>
 
         {/* Hamburger — mobile only */}
         <button
@@ -129,28 +148,20 @@ export default function Header() {
           ))}
           <button
             type="button"
-            className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold"
+            className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold transition-all duration-300"
             style={{
               borderColor: "#3B2A1A",
               color: "#3B2A1A",
               fontFamily: "var(--font-lato)",
-              backgroundColor: "transparent",
+              backgroundColor: signUpMobileHovered ? "rgba(255,255,255,0.2)" : "transparent",
             }}
+            onMouseEnter={() => setSignUpMobileHovered(true)}
+            onMouseLeave={() => setSignUpMobileHovered(false)}
           >
-            Sign In
+            Sign Up
           </button>
         </nav>
       </div>
-
-      <style jsx>{`
-        .signin-btn:hover {
-          background-color: #3B2A1A;
-          border-color: #3B2A1A;
-          color: #FFF8E2;
-          box-shadow: 0 6px 18px rgba(59, 42, 26, 0.25);
-          transform: translateY(-1px);
-        }
-      `}</style>
     </header>
   );
 }

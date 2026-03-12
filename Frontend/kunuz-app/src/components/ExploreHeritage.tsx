@@ -22,13 +22,15 @@ export default function ExploreHeritage() {
         {/* Right column – text content */}
         <div className="flex-1 flex flex-col justify-center items-start text-left">
           <h2
-            className={`${playfair.className} font-bold text-4xl md:text-5xl lg:text-6xl leading-tight text-[#2C1A0E] mb-8`}
+            className="font-bold text-[32px] md:text-[36px] lg:text-[44px] leading-tight text-[#2C1A0E] mb-8"
+            style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
           >
             Discover Our Heritage &amp; <br />
             Community
           </h2>
           <p
-            className={`${lato.className} text-lg md:text-xl lg:text-2xl leading-[1.85] text-[#2C1A0E] max-w-[640px]`}
+            className="text-lg md:text-xl lg:text-2xl leading-[1.85] text-[#2C1A0E]"
+            style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif', width: '850px' }}
           >
             Discover reflections, personal experiences, historical insights, and
             cultural discoveries shared by heritage enthusiasts from across the
@@ -41,7 +43,7 @@ export default function ExploreHeritage() {
         </div>
 
         {/* Left column – image mosaic */}
-        <div className="flex flex-row gap-3 shrink-0 w-[340px] md:w-[400px] lg:w-[460px] justify-center mx-auto md:mx-0">
+        <div className="flex flex-row gap-3 shrink-0 w-full max-w-[340px] md:w-[400px] lg:w-[460px] justify-center mx-auto md:mx-0">
           {/* Left sub-column */}
           <div className="flex flex-col gap-3 w-1/2">
             <div className="w-full h-[200px] md:h-[230px] lg:h-[260px] rounded-2xl overflow-hidden relative group cursor-pointer transition-transform duration-300 ease-out hover:scale-105">
@@ -50,9 +52,9 @@ export default function ExploreHeritage() {
                 alt="Tall minaret tower against a blue sky"
                 width={220}
                 height={260}
-                className="w-full h-full object-cover rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
+                className="w-full h-full object-contain rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
               />
-              <div className="absolute inset-0 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Add the title here
               </div>
             </div>
@@ -62,9 +64,9 @@ export default function ExploreHeritage() {
                 alt="Moorish-style building facade with decorated arches"
                 width={220}
                 height={240}
-                className="w-full h-full object-cover rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
+                className="w-full h-full object-contain rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
               />
-              <div className="absolute inset-0 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Add the title here
               </div>
             </div>
@@ -74,9 +76,9 @@ export default function ExploreHeritage() {
                 alt="Stone bridge over a deep gorge at sunset"
                 width={220}
                 height={210}
-                className="w-full h-full object-cover rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
+                className="w-full h-full object-contain rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
               />
-              <div className="absolute inset-0 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Add the title here
               </div>
             </div>
@@ -92,7 +94,7 @@ export default function ExploreHeritage() {
                 height={200}
                 className="w-full h-full object-cover rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
               />
-              <div className="absolute inset-0 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Add the title here
               </div>
             </div>
@@ -104,7 +106,7 @@ export default function ExploreHeritage() {
                 height={270}
                 className="w-full h-full object-cover rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
               />
-              <div className="absolute inset-0 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Add the title here
               </div>
             </div>
@@ -116,7 +118,7 @@ export default function ExploreHeritage() {
                 height={250}
                 className="w-full h-full object-cover rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
               />
-              <div className="absolute inset-0 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 Add the title here
               </div>
             </div>
