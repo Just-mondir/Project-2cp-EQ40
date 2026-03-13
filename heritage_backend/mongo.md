@@ -13,6 +13,40 @@ Everything else is **identical**: same endpoints, same headers, same request bod
 
 ---
 
+## Gmail Setup (Real Email)
+
+Update your local `.env` with this config:
+
+```env
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=your_gmail@gmail.com
+EMAIL_HOST_PASSWORD=your_16_char_app_password
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+DEFAULT_FROM_EMAIL=your_gmail@gmail.com
+```
+
+Important:
+- Use a Gmail **App Password** (not your normal Gmail password).
+- Your Gmail account must have **2-Step Verification** enabled first.
+
+How to create App Password:
+1. Go to Google Account -> Security.
+2. Enable 2-Step Verification.
+3. Open App passwords.
+4. Create one for "Mail" and copy the 16-character password.
+5. Put it in `EMAIL_HOST_PASSWORD`.
+
+Restart server after editing `.env`:
+
+```bash
+python manage.py runserver
+```
+
+---
+
 ## Quick Test Flow (copy-paste ready)
 
 ### 1. Register
@@ -28,7 +62,7 @@ Content-Type: application/json
   "expertise": "student"
 }
 ```
-→ Save the `user_id` string from the response. Check the terminal for your OTP code.
+→ Save the `user_id` string from the response. Check your Gmail inbox for the OTP.
 
 ---
 
@@ -64,7 +98,7 @@ Content-Type: application/json
   "password": "StrongPass123!"
 }
 ```
-→ Save `user_id`, check terminal for new OTP.
+→ Save `user_id`, check your Gmail inbox for new OTP.
 
 ---
 
@@ -87,6 +121,8 @@ The server prints it to the terminal running `manage.py runserver`:
 ```
 Your verification code is: 482910
 ```
+
+With Gmail SMTP enabled, OTP is sent to the real recipient inbox instead of terminal output.
 
 ---
 

@@ -13,7 +13,7 @@ from .models import OTPCode, OTPPurposeChoices, User
 
 OTP_LENGTH = 6
 OTP_MAX_VALUE = 10**OTP_LENGTH
-OTP_EMAIL_SUBJECT = "Heritage Community Algeria — Your Verification Code"
+OTP_EMAIL_SUBJECT = "Verification Code"
 
 
 def _normalize_for_compare(value):
@@ -66,7 +66,7 @@ def verify_otp_code(otp: OTPCode, plain_code: str) -> bool:
 
 def send_otp_email(email: str, code: str) -> None:
     """Send the OTP code to the user email."""
-    message = f"Your verification code is: {code}"
+    message = f"Here is your OTP code for register in Kunuz app: {code}"
     send_mail(
         subject=OTP_EMAIL_SUBJECT,
         message=message,
