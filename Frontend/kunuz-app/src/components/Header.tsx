@@ -4,6 +4,7 @@ import React from "react";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const NAV_LINKS = ["Explore", "About", "Guilds", "At Risk", "Events", "Help", "Contact"] as const;
 
@@ -22,6 +23,21 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [signUpHovered, setSignUpHovered] = useState(false);
   const [signUpMobileHovered, setSignUpMobileHovered] = useState(false);
+  const pathname = usePathname();
+
+  const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    // If already on the home page, smoothly scroll to the hero section
+    if (pathname === "/") {
+      event.preventDefault();
+      const heroSection = document.getElementById("hero");
+      if (heroSection) {
+        heroSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        // Fallback: scroll to top if hero is not found
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    }
+  };
 
   // Scroll effect for nav bar appearance
   React.useEffect(() => {
@@ -45,8 +61,13 @@ export default function Header() {
         className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
         style={{ height: "52px", overflow: "hidden" }}
       >
-        {/* Logo flush left */}
-        <div className="flex flex-shrink-0 items-end" style={{ marginBottom: "-14px", marginLeft: "10px" }}>
+        {/* Logo flush left - go to Hero on home page */}
+        <Link
+          href="/#hero"
+          onClick={handleLogoClick}
+          className="flex flex-shrink-0 items-end"
+          style={{ marginBottom: "-14px", marginLeft: "10px" }}
+        >
           <Image
             src="/kunuz-logo.svg"
             alt="Kunuz logo"
@@ -55,7 +76,7 @@ export default function Header() {
             style={{ height: "76px", width: "auto" }}
             priority
           />
-        </div>
+        </Link>
 
         {/* Desktop nav — centered links with spacing from logo & sign in */}
         <nav className="hidden md:flex flex-1 items-center justify-center gap-4 lg:gap-8 xl:gap-13">
@@ -63,8 +84,8 @@ export default function Header() {
             <Link
               key={label}
               href={NAV_HREFS[label]}
-              className="group relative whitespace-nowrap text-[14px] md:text-[16px] lg:text-[19px] xl:text-[23px] font-bold transition-colors duration-200"
-              style={{ color: "#3B2A1A", fontFamily: "var(--font-lato)" }}
+              className="group relative whitespace-nowrap text-[14px] md:text-[16px] lg:text-[19px] xl:text-[23px] font-bold transition-colors duration-200 text-[#3B2A1A] hover:text-[#8B6343]"
+              style={{ fontFamily: "var(--font-lato)" }}
             >
               {label}
               <span
@@ -135,9 +156,8 @@ export default function Header() {
             <Link
               key={label}
               href={NAV_HREFS[label]}
-              className="border-b py-3 text-[16px] font-medium transition-colors duration-200"
+              className="border-b py-3 text-[16px] font-medium transition-colors duration-200 text-[#3B2A1A] hover:text-[#8B6343]"
               style={{
-                color: "#3B2A1A",
                 fontFamily: "var(--font-lato)",
                 borderColor: "rgba(59,42,26,0.10)",
               }}

@@ -30,7 +30,7 @@ export default function ExploreHeritage() {
           </h2>
           <p
             className="text-lg md:text-xl lg:text-2xl leading-[1.85] text-[#2C1A0E]"
-            style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif', width: '850px' }}
+            style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif', maxWidth: '100%' }}
           >
             Discover reflections, personal experiences, historical insights, and
             cultural discoveries shared by heritage enthusiasts from across the

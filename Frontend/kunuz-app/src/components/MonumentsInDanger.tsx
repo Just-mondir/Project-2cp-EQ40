@@ -124,14 +124,14 @@ export default function MonumentsInDanger() {
 
             {/* Right — three images, overflow visible so scale isn't clipped */}
             <div
-              className="flex flex-row items-end justify-center gap-3 sm:gap-5 lg:gap-6 flex-wrap sm:flex-nowrap"
-              style={{ overflow: "visible" }}
+              className="flex flex-row items-end justify-center gap-3 sm:gap-5 lg:gap-6 flex-nowrap"
+              style={{ overflowX: "auto", paddingBottom: "8px" }}
             >
               {monuments.map((monument, idx) => (
                 <div
                   key={idx}
                   onMouseEnter={() => setActiveIndex(idx)}
-                  className="relative w-[140px] sm:w-[160px] md:w-[200px] lg:w-[220px] h-[220px] sm:h-[260px] md:h-[310px] lg:h-[340px] rounded-3xl flex-shrink-0 cursor-pointer"
+                  className="relative w-[120px] sm:w-[160px] md:w-[200px] lg:w-[220px] h-[200px] sm:h-[260px] md:h-[310px] lg:h-[340px] rounded-3xl flex-shrink-0 cursor-pointer"
                   style={{
                     overflow: "hidden",
                     transformOrigin: "center bottom",
@@ -147,8 +147,6 @@ export default function MonumentsInDanger() {
                       activeIndex === idx
                         ? "0 12px 32px rgba(44,26,14,0.3)"
                         : "none",
-                    /* Give last card enough room to scale without clipping */
-                    marginRight: idx === monuments.length - 1 ? "32px" : "0",
                   }}
                 >
                   <Image
