@@ -1,4 +1,4 @@
-import Footer from "../../components/Footer";
+import Footer from "../components/Footer";
 const rules = [
   {
     id: "Rule 01",

@@ -11,7 +11,7 @@ export default function Footer() {
        <div className="flex flex-col gap-4 col-span-2">
           <div className="max-w-7xl mx-auto grid grid-cols-5 gap-5 items-center">
             {/* Decorative icon placeholder */}
-            <img src="/Logo.svg" alt="Kunuz logo" width={60} height={60} />
+            <img src="/Logo.svg" alt="Kunuz logo" className="w-14 h-14 object-contain flex-shrink-0" />
             <span className="text-4xl font-normal"style={{ fontFamily: "Aclonica, sans-serif", color: "#FFF8E2" }}>Kunuz</span>
           </div>
 
@@ -36,7 +36,7 @@ export default function Footer() {
 
         {/* Column 1 */}
         <div className="flex flex-col gap-3 text-lg">
-          <p className={linkClass}>About the Project</p>
+          <Link href="/about#" className={linkClass}>About the Project</Link>
           <p className={linkClass}>Monuments</p>
           <p className={linkClass}>Endangered Sites</p>
         </div>
@@ -51,7 +51,7 @@ export default function Footer() {
         {/* Column 3 */}
         <div className="flex flex-col gap-3 text-lg">
           <Link href="/guidelines#" className={linkClass}>Guidelines</Link>
-          <p className={linkClass}>Legal</p>
+          <Link href="/legal#" className={linkClass}>Legal</Link>
         </div>
 
       </div>
