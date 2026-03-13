@@ -15,6 +15,7 @@ from .managers import UserQuerySet
 # ---------------------------------------------------------------------------
 
 EXPERTISE_CHOICES = (
+    ("", "Not specified"),
     ("amateur", "Amateur"),
     ("student", "Student"),
     ("researcher", "Researcher"),
@@ -70,12 +71,10 @@ class User(me.Document):
     password = me.StringField(required=True)
     oauth_provider = me.StringField(null=True)
     oauth_id = me.StringField(null=True)
-    display_name = me.StringField(max_length=100, required=True)
-    username = me.StringField(max_length=100, unique=True, required=True)
+    display_name = me.StringField(max_length=100, default="")
+    username = me.StringField(max_length=100, null=True, default=None)
     bio = me.StringField(default="")
-    expertise = me.StringField(
-        choices=[c[0] for c in EXPERTISE_CHOICES], required=True
-    )
+    expertise = me.StringField(choices=[c[0] for c in EXPERTISE_CHOICES], default="")
     speciality = me.StringField(max_length=100, default="")
     profile_picture = me.StringField(max_length=500, default="")
     badge = me.StringField(max_length=100, default="")
@@ -142,6 +141,12 @@ class User(me.Document):
         if not email:
             raise ValueError("Users must have an email address.")
         extra_fields.setdefault("is_active", True)
+        extra_fields.setdefault("username", None)
+        extra_fields.setdefault("display_name", "")
+        extra_fields.setdefault("expertise", "")
+        extra_fields.setdefault("speciality", "")
+        extra_fields.setdefault("profile_picture", "")
+        extra_fields.setdefault("bio", "")
         user = cls(email=email.strip().lower(), **extra_fields)
         user.set_password(password)
         user.save()

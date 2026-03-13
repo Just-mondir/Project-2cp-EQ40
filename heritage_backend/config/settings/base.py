@@ -87,10 +87,19 @@ DATABASES = {
 # MongoDB (MongoEngine) — Users and OTP documents
 # ---------------------------------------------------------------------------
 import mongoengine  # noqa: E402
+from mongoengine.connection import get_db  # noqa: E402
 
 MONGODB_NAME = env("MONGODB_NAME", default="heritage_db")
 MONGODB_HOST = env("MONGODB_HOST", default="mongodb://localhost:27017")
 mongoengine.connect(db=MONGODB_NAME, host=MONGODB_HOST, tz_aware=True)
+
+try:
+    users_collection = get_db().get_collection("users")
+    username_index = users_collection.index_information().get("username_1")
+    if username_index and username_index.get("unique"):
+        users_collection.drop_index("username_1")
+except Exception:
+    pass
 
 # ---------------------------------------------------------------------------
 # Authentication

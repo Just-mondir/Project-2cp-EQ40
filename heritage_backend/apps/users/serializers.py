@@ -17,8 +17,8 @@ class UserProfileSerializer(serializers.Serializer):
 
     id = serializers.SerializerMethodField()
     email = serializers.EmailField(read_only=True)
-    username = serializers.CharField(read_only=True)
-    display_name = serializers.CharField()
+    username = serializers.CharField(read_only=True, allow_null=True)
+    display_name = serializers.CharField(allow_blank=True)
     bio = serializers.CharField()
     expertise = serializers.CharField()
     speciality = serializers.CharField()
@@ -36,8 +36,8 @@ class UserProfileSerializer(serializers.Serializer):
 class PublicUserProfileSerializer(serializers.Serializer):
     """Serializer for public user profile by username."""
 
-    username = serializers.CharField()
-    display_name = serializers.CharField()
+    username = serializers.CharField(allow_null=True)
+    display_name = serializers.CharField(allow_blank=True)
     bio = serializers.CharField()
     expertise = serializers.CharField()
     speciality = serializers.CharField()
@@ -52,18 +52,23 @@ class RegisterSerializer(serializers.Serializer):
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
-    username = serializers.CharField(max_length=100)
-    display_name = serializers.CharField(max_length=100)
-    expertise = serializers.ChoiceField(choices=ExpertiseChoices.choices)
+    username = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    display_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    expertise = serializers.ChoiceField(
+        choices=ExpertiseChoices.choices,
+        required=False,
+        allow_blank=True,
+    )
 
     def validate(self, attrs):
         email = attrs.get("email")
-        username = attrs.get("username")
+        username = attrs.get("username") or None
+        attrs["username"] = username
         if User.objects(email=email.strip().lower()).count() > 0:
             raise serializers.ValidationError(
                 {"email": RESPONSE_CONFLICT_MESSAGE["email_exists"]}
             )
-        if User.objects(username=username).count() > 0:
+        if username and User.objects(username=username).count() > 0:
             raise serializers.ValidationError(
                 {"username": RESPONSE_CONFLICT_MESSAGE["username_exists"]}
             )
@@ -232,11 +237,27 @@ class VerifyLoginOTPSerializer(serializers.Serializer):
 class UserUpdateSerializer(serializers.Serializer):
     """Update serializer for editable profile fields."""
 
-    display_name = serializers.CharField(max_length=100, required=False)
+    username = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    display_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     bio = serializers.CharField(required=False, allow_blank=True)
-    expertise = serializers.ChoiceField(choices=ExpertiseChoices.choices, required=False)
+    expertise = serializers.ChoiceField(
+        choices=ExpertiseChoices.choices,
+        required=False,
+        allow_blank=True,
+    )
     speciality = serializers.CharField(max_length=100, required=False, allow_blank=True)
     profile_picture = serializers.URLField(max_length=500, required=False, allow_blank=True)
+
+    def validate_username(self, value):
+        if not value:
+            return None
+        instance = getattr(self, "instance", None)
+        query = User.objects(username=value)
+        if instance is not None:
+            query = query.filter(id__ne=instance.id)
+        if query.count() > 0:
+            raise serializers.ValidationError(RESPONSE_CONFLICT_MESSAGE["username_exists"])
+        return value
 
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():

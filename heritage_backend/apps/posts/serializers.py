@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from apps.users.models import User
 from .models import AlertDetails, Comment, EventDetails, Gem, Post, PostImage, Save
 
 
@@ -38,22 +39,38 @@ class AlertDetailsSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 
+def _get_user_by_id(user_id: str):
+    if not user_id:
+        return None
+    try:
+        return User.objects.get(id=user_id)
+    except Exception:
+        return None
+
+
 class PostListSerializer(serializers.ModelSerializer):
     """Lightweight serializer used in list views."""
 
-    user_display_name = serializers.CharField(
-        source="user.display_name", read_only=True
-    )
-    user_username = serializers.CharField(source="user.username", read_only=True)
+    user_id = serializers.CharField(source="author_id", read_only=True)
+    user_display_name = serializers.SerializerMethodField()
+    user_username = serializers.SerializerMethodField()
     gems_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
     images = PostImageSerializer(many=True, read_only=True)
+
+    def get_user_display_name(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return user.display_name if user else ""
+
+    def get_user_username(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return user.username if user else ""
 
     class Meta:
         model = Post
         fields = [
             "id",
-            "user",
+            "user_id",
             "user_display_name",
             "user_username",
             "title",
@@ -70,16 +87,15 @@ class PostListSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "user", "created_at", "updated_at", "is_deleted"]
+        read_only_fields = ["id", "user_id", "created_at", "updated_at", "is_deleted"]
 
 
 class PostDetailSerializer(serializers.ModelSerializer):
     """Full serializer used in retrieve / create / update views."""
 
-    user_display_name = serializers.CharField(
-        source="user.display_name", read_only=True
-    )
-    user_username = serializers.CharField(source="user.username", read_only=True)
+    user_id = serializers.CharField(source="author_id", read_only=True)
+    user_display_name = serializers.SerializerMethodField()
+    user_username = serializers.SerializerMethodField()
     gems_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
     countdown_seconds = serializers.IntegerField(read_only=True)
@@ -94,11 +110,19 @@ class PostDetailSerializer(serializers.ModelSerializer):
         choices=AlertDetails.UrgenceLevel.choices, write_only=True, required=False
     )
 
+    def get_user_display_name(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return user.display_name if user else ""
+
+    def get_user_username(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return user.username if user else ""
+
     class Meta:
         model = Post
         fields = [
             "id",
-            "user",
+            "user_id",
             "user_display_name",
             "user_username",
             "title",
@@ -123,7 +147,7 @@ class PostDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "user", "created_at", "updated_at", "is_deleted"]
+        read_only_fields = ["id", "user_id", "created_at", "updated_at", "is_deleted"]
 
     def validate(self, attrs: dict) -> dict:
         post_type = attrs.get("post_type") or (
@@ -184,24 +208,31 @@ class PostDetailSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user_display_name = serializers.CharField(
-        source="user.display_name", read_only=True
-    )
-    user_username = serializers.CharField(source="user.username", read_only=True)
+    user_display_name = serializers.SerializerMethodField()
+    user_username = serializers.SerializerMethodField()
+    user_id = serializers.CharField(read_only=True)
+
+    def get_user_display_name(self, obj):
+        user = _get_user_by_id(obj.user_id)
+        return user.display_name if user else ""
+
+    def get_user_username(self, obj):
+        user = _get_user_by_id(obj.user_id)
+        return user.username if user else ""
 
     class Meta:
         model = Comment
         fields = [
             "id",
             "post",
-            "user",
+            "user_id",
             "user_display_name",
             "user_username",
             "content",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "post", "user", "created_at", "updated_at"]
+        read_only_fields = ["id", "post", "user_id", "created_at", "updated_at"]
 
 
 # ---------------------------------------------------------------------------
@@ -212,12 +243,12 @@ class CommentSerializer(serializers.ModelSerializer):
 class GemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gem
-        fields = ["id", "post", "user", "created_at"]
-        read_only_fields = ["id", "post", "user", "created_at"]
+        fields = ["id", "post", "user_id", "created_at"]
+        read_only_fields = ["id", "post", "user_id", "created_at"]
 
 
 class SaveSerializer(serializers.ModelSerializer):
     class Meta:
         model = Save
-        fields = ["id", "post", "user", "created_at"]
-        read_only_fields = ["id", "post", "user", "created_at"]
+        fields = ["id", "post", "user_id", "created_at"]
+        read_only_fields = ["id", "post", "user_id", "created_at"]
