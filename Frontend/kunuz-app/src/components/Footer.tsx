@@ -1,121 +1,60 @@
-import Image from "next/image";
 import Link from "next/link";
-
 export default function Footer() {
+  const linkClass =
+    "text-[#e8d9c0] hover:text-[#BB9557] relative w-fit after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[1px] after:bg-[#BB9557] after:transition-all after:duration-300 hover:after:w-full cursor-pointer";
+
   return (
-    <footer
-      className="mt-16 border-t border-[rgba(59,42,26,0.12)] bg-[#FFF4D2]"
-      style={{ fontFamily: "var(--font-lato)" }}
-    >
-      <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 py-10 sm:px-10 md:flex-row md:items-start md:justify-between">
-        {/* Brand + short description */}
-        <div className="flex flex-1 flex-col gap-4 max-w-sm">
-          <div className="flex items-center gap-3">
-            <Image
-              src="/kunuz-logo.svg"
-              alt="Kunuz logo"
-              width={56}
-              height={56}
-              className="h-14 w-auto"
-              priority
-            />
-            <span
-              className="text-xl font-semibold tracking-wide"
-              style={{ fontFamily: "var(--font-aclonica)" }}
-            >
-              Kunuz
-            </span>
+    <footer style={{ backgroundColor: "#3b2314" }} className="text-[#e8d9c0] px-12 py-10">
+      <div className="max-w-7xl mx-auto grid grid-cols-5 gap-8">
+
+        {/* Logo + tagline + socials */}
+       <div className="flex flex-col gap-4 col-span-2">
+          <div className="max-w-7xl mx-auto grid grid-cols-5 gap-5 items-center">
+            {/* Decorative icon placeholder */}
+            <img src="/Logo.svg" alt="Kunuz logo" className="w-14 h-14 object-contain flex-shrink-0" />
+            <span className="text-4xl font-normal"style={{ fontFamily: "Aclonica, sans-serif", color: "#FFF8E2" }}>Kunuz</span>
           </div>
-          <p className="text-sm leading-relaxed text-[#3B2A1A] opacity-80">
-            Connecting generations through Algeria&apos;s living heritage –
-            stories, monuments, guilds and events that keep our culture alive.
+
+          <p className="text-[#e8d9c0] font-normal text-xl leading-snug"style={{ fontFamily: "Aclonica, sans-serif" }}>
+            "Preserving Algerian heritage <br></br>through community knowledge and technology."
           </p>
+
+          <div className="flex gap-4 mt-2">
+  {/* X (Twitter) */}
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#FFF8E2" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+
+  {/* LinkedIn */}
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#FFF8E2" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+
+  {/* Instagram */}
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#FFF8E2" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+
+  {/* YouTube */}
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#FFF8E2" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+</div>
         </div>
 
-        {/* Navigation columns */}
-        <div className="flex flex-[1.2] flex-wrap gap-10 text-sm text-[#3B2A1A]">
-          <div className="min-w-[140px] space-y-3">
-            <h3
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8B6343]"
-              style={{ fontFamily: "var(--font-aclonica)" }}
-            >
-              Explore
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/" className="hover:text-[#8B6343]">
-                  Landing
-                </Link>
-              </li>
-              <li>
-                <Link href="/home" className="hover:text-[#8B6343]">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/monuments-in-danger" className="hover:text-[#8B6343]">
-                  Monuments in danger
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div className="min-w-[140px] space-y-3">
-            <h3
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8B6343]"
-              style={{ fontFamily: "var(--font-aclonica)" }}
-            >
-              About
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/about" className="hover:text-[#8B6343]">
-                  About Kunuz
-                </Link>
-              </li>
-              <li>
-                <Link href="/guidelines" className="hover:text-[#8B6343]">
-                  Community guidelines
-                </Link>
-              </li>
-              <li>
-                <Link href="/legal" className="hover:text-[#8B6343]">
-                  Legal &amp; policies
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          <div className="min-w-[160px] space-y-3">
-            <h3
-              className="text-xs font-semibold uppercase tracking-[0.16em] text-[#8B6343]"
-              style={{ fontFamily: "var(--font-aclonica)" }}
-            >
-              Contact
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <a
-                  href="mailto:hello@kunuz.dz"
-                  className="hover:text-[#8B6343]"
-                >
-                  hello@kunuz.dz
-                </a>
-              </li>
-              <li className="text-[13px] opacity-80">
-                Algiers, Algeria
-              </li>
-            </ul>
-          </div>
+        {/* Column 1 */}
+        <div className="flex flex-col gap-3 text-lg">
+          <Link href="/about#" className={linkClass}>About the Project</Link>
+          <p className={linkClass}>Monuments</p>
+          <p className={linkClass}>Endangered Sites</p>
         </div>
-      </div>
 
-      <div className="border-t border-[rgba(59,42,26,0.08)] bg-[#FFE9B0]">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-4 text-[11px] text-[#3B2A1A] opacity-80 sm:flex-row sm:px-10">
-          <p>© {new Date().getFullYear()} Kunuz. All rights reserved.</p>
+        {/* Column 2 */}
+        <div className="flex flex-col gap-3 text-lg">
+          <p className={linkClass}>Events</p>
+          <p className={linkClass}>Join the Community</p>
+          <p className={linkClass}>Guilds</p>
         </div>
+
+        {/* Column 3 */}
+        <div className="flex flex-col gap-3 text-lg">
+          <Link href="/guidelines#" className={linkClass}>Guidelines</Link>
+          <Link href="/legal#" className={linkClass}>Legal</Link>
+        </div>
+
       </div>
     </footer>
   );
 }
-
