@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.responses import RESPONSE_CONFLICT_MESSAGE
 from .models import BlacklistedToken, ExpertiseChoices, OTPCode, OTPPurposeChoices, User
-from .utils import create_hashed_otp, send_otp_email, verify_otp_code
+from .utils import create_hashed_otp, is_otp_expired, send_otp_email, verify_otp_code
 
 
 class UserProfileSerializer(serializers.Serializer):
@@ -116,7 +116,7 @@ class VerifyEmailSerializer(serializers.Serializer):
             raise serializers.ValidationError({"otp_code": "Invalid OTP."})
         if otp.is_used:
             raise serializers.ValidationError({"otp_code": "OTP already used."})
-        if otp.expires_at <= timezone.now():
+        if is_otp_expired(otp.expires_at):
             raise serializers.ValidationError(
                 {"otp_code": "OTP expired. Please request a new one."}
             )
@@ -206,7 +206,7 @@ class VerifyLoginOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError({"otp_code": "Invalid OTP."})
         if otp.is_used:
             raise serializers.ValidationError({"otp_code": "OTP already used."})
-        if otp.expires_at <= timezone.now():
+        if is_otp_expired(otp.expires_at):
             raise serializers.ValidationError(
                 {"otp_code": "OTP expired. Please request a new one."}
             )

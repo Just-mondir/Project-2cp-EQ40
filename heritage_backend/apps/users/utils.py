@@ -16,6 +16,21 @@ OTP_MAX_VALUE = 10**OTP_LENGTH
 OTP_EMAIL_SUBJECT = "Heritage Community Algeria — Your Verification Code"
 
 
+def _normalize_for_compare(value):
+    """Return datetime normalized to match Django timezone awareness."""
+    now = timezone.now()
+    if timezone.is_naive(value) and timezone.is_aware(now):
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    if timezone.is_aware(value) and timezone.is_naive(now):
+        return timezone.make_naive(value, timezone.get_current_timezone())
+    return value
+
+
+def is_otp_expired(expires_at) -> bool:
+    """Safely compare expiry datetime regardless of tz-awareness source."""
+    return _normalize_for_compare(expires_at) <= timezone.now()
+
+
 def generate_otp_code() -> str:
     """Generate a secure numeric OTP of fixed length."""
     number = secrets.randbelow(OTP_MAX_VALUE)
@@ -44,7 +59,7 @@ def verify_otp_code(otp: OTPCode, plain_code: str) -> bool:
     """Verify that a provided OTP matches the stored hash and is not expired."""
     if otp.is_used:
         return False
-    if otp.expires_at <= timezone.now():
+    if is_otp_expired(otp.expires_at):
         return False
     return check_password(plain_code, otp.code)
 

@@ -90,7 +90,7 @@ import mongoengine  # noqa: E402
 
 MONGODB_NAME = env("MONGODB_NAME", default="heritage_db")
 MONGODB_HOST = env("MONGODB_HOST", default="mongodb://localhost:27017")
-mongoengine.connect(db=MONGODB_NAME, host=MONGODB_HOST)
+mongoengine.connect(db=MONGODB_NAME, host=MONGODB_HOST, tz_aware=True)
 
 # ---------------------------------------------------------------------------
 # Authentication
