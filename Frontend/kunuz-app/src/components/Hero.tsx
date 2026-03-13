@@ -10,6 +10,7 @@ export default function Hero() {
 
   return (
     <section
+      id="hero"
       className="relative w-full overflow-hidden"
       style={{ height: "100vh", minHeight: "500px" }}
     >
@@ -47,9 +48,9 @@ export default function Hero() {
         }}
       >
         <h1
-          className="font-bold uppercase whitespace-nowrap"
+          className="font-bold uppercase sm:whitespace-nowrap"
           style={{
-            color: "#FFFFFF",
+            color: "#F0EAD6",
             fontFamily: "var(--font-lato)",
             fontSize: "clamp(24px, 5.5vw, 80px)",
             letterSpacing: "0.06em",
