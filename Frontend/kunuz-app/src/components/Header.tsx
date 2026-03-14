@@ -53,62 +53,70 @@ export default function Header() {
         boxShadow: scrolled ? "0 4px 18px rgba(44,26,14,0.07)" : "none",
       }}
     >
-      {/* ── Main bar ── */}
-      <div
-        className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
-        style={{ height: "52px" }}
+{/* ── Main bar ── */}
+<div
+  className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
+  style={{ height: "52px" }}
+>
+  {/* Logo */}
+  <Link
+    href="/#hero"
+    onClick={handleLogoClick}
+    className="flex flex-shrink-0 items-end"
+    style={{ marginBottom: "-14px", marginLeft: "10px" }}
+  >
+    <Image
+  src="/kunuz-logo.svg"
+  alt="Kunuz logo"
+  width={144}
+  height={99}
+  style={{
+    height: "76px",
+    width: "auto",
+    filter: scrolled
+      ? "none"
+      : "brightness(0) saturate(100%) invert(97%) sepia(10%) saturate(500%) hue-rotate(340deg) brightness(105%)", // 👈 converts to #F0EAD6 (cream)
+  }}
+  priority
+/>
+  </Link>
+
+  {/* Desktop nav */}
+  <nav className="hidden md:flex flex-1 items-center justify-center gap-4 lg:gap-8 xl:gap-13">
+    {NAV_LINKS.map((label) => (
+      <Link
+        key={label}
+        href={NAV_HREFS[label]}
+        className="group relative whitespace-nowrap text-[14px] md:text-[16px] lg:text-[19px] xl:text-[23px] font-bold transition-colors duration-200"
+        style={{
+          fontFamily: "var(--font-lato)",
+          color: scrolled ? "var(--brown)" : "var(--cream)",
+        }}
       >
-        {/* Logo */}
-        <Link
-          href="/#hero"
-          onClick={handleLogoClick}
-          className="flex flex-shrink-0 items-end"
-          style={{ marginBottom: "-14px", marginLeft: "10px" }}
-        >
-          <Image
-            src="/kunuz-logo.svg"
-            alt="Kunuz logo"
-            width={144}
-            height={99}
-            style={{ height: "76px", width: "auto" }}
-            priority
-          />
-        </Link>
+        {label}
+        <span
+          className="absolute -bottom-0.5 left-0 h-[2px] w-0 rounded-full transition-all duration-300 group-hover:w-full"
+          style={{ backgroundColor: scrolled ? "var(--brown)" : "var(--cream)" }}
+        />
+      </Link>
+    ))}
+  </nav>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-4 lg:gap-8 xl:gap-13">
-          {NAV_LINKS.map((label) => (
-            <Link
-              key={label}
-              href={NAV_HREFS[label]}
-              className="group relative whitespace-nowrap text-[14px] md:text-[16px] lg:text-[19px] xl:text-[23px] font-bold transition-colors duration-200 text-[#3B2A1A] hover:text-[#8B6343]"
-              style={{ fontFamily: "var(--font-lato)" }}
-            >
-              {label}
-              <span
-                className="absolute -bottom-0.5 left-0 h-[2px] w-0 rounded-full transition-all duration-300 group-hover:w-full"
-                style={{ backgroundColor: "#8B6343" }}
-              />
-            </Link>
-          ))}
-        </nav>
-
-        {/* Sign Up — desktop */}
-        <button
-          type="button"
-          className="hidden md:block flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
-          style={{
-            borderColor: "#3B2A1A",
-            color: "#3B2A1A",
-            fontFamily: "var(--font-lato)",
-            backgroundColor: signUpHovered ? "rgba(255,255,255,0.2)" : "transparent",
-          }}
-          onMouseEnter={() => setSignUpHovered(true)}
-          onMouseLeave={() => setSignUpHovered(false)}
-        >
-          Sign Up
-        </button>
-
+  {/* Sign Up — desktop */}
+  <button
+    type="button"
+    className="hidden cursor-pointer md:block flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
+    style={{
+      borderColor: scrolled ? "var(--brown)" : "var(--cream)", 
+      color: scrolled ? "var(--brown)" : "var(--cream)",        
+      fontFamily: "var(--font-lato)",
+      backgroundColor: signUpHovered ? "rgba(255, 255, 255, 0.22)" : "transparent",
+    }}
+    onMouseEnter={() => setSignUpHovered(true)}
+    onMouseLeave={() => setSignUpHovered(false)}
+  >
+    Sign Up
+  </button>
         {/* Hamburger + Dropdown — mobile */}
         <div
           className="md:hidden relative"
@@ -124,21 +132,21 @@ export default function Header() {
             <span
               className="block h-[2px] w-6 rounded transition-all duration-300"
               style={{
-                backgroundColor: "#3B2A1A",
+                backgroundColor: "var(--brown)",
                 transform: mobileOpen ? "translateY(7px) rotate(45deg)" : "none",
               }}
             />
             <span
               className="block h-[2px] w-6 rounded transition-all duration-200"
               style={{
-                backgroundColor: "#3B2A1A",
+                backgroundColor: "var(--brown)",
                 opacity: mobileOpen ? 0 : 1,
               }}
             />
             <span
               className="block h-[2px] w-6 rounded transition-all duration-300"
               style={{
-                backgroundColor: "#3B2A1A",
+                backgroundColor: "var(--brown)",
                 transform: mobileOpen ? "translateY(-7px) rotate(-45deg)" : "none",
               }}
             />
@@ -158,7 +166,7 @@ export default function Header() {
                 <Link
                   key={label}
                   href={NAV_HREFS[label]}
-                  className="border-b py-3 text-[16px] font-medium transition-colors duration-200 text-[#3B2A1A] hover:text-[#8B6343]"
+                  className="border-b py-3 text-[16px] font-medium transition-colors duration-200 text-[var(--brown)] hover:text-[#8B6343]"
                   style={{
                     fontFamily: "var(--font-lato)",
                     borderColor: "rgba(59,42,26,0.10)",
@@ -172,8 +180,8 @@ export default function Header() {
                 type="button"
                 className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold transition-all duration-300 cursor-pointer"
                 style={{
-                  borderColor: "#3B2A1A",
-                  color: "#3B2A1A",
+                  borderColor: "var(--brown)",
+                  color: "var(--brown)",
                   fontFamily: "var(--font-lato)",
                   backgroundColor: signUpMobileHovered
                     ? "rgba(255,255,255,0.2)"

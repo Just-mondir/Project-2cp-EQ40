@@ -85,7 +85,7 @@ export default function Hero() {
         {/* Get Started — hover via React state */}
         <button
           type="button"
-          className="w-fit rounded-full border-2 font-bold transition-all duration-300"
+          className="w-fit cursor-pointer rounded-full border-2 font-bold transition-all duration-300"
           style={{
             borderColor: "var(--cream)",
             color: "var(--cream)",
