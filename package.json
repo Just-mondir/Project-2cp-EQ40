@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "npm run dev --prefix Frontend/kunuz-app",
+    "build": "npm run build --prefix Frontend/kunuz-app",
+    "start": "npm run start --prefix Frontend/kunuz-app"
   },
   "dependencies": {
     "next": "16.1.6",
