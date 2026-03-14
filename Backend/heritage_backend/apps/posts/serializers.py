@@ -54,6 +54,7 @@ class PostListSerializer(serializers.ModelSerializer):
     user_id = serializers.CharField(source="author_id", read_only=True)
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
+    content = serializers.CharField(read_only=True)
     gems_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
     images = PostImageSerializer(many=True, read_only=True)
@@ -74,6 +75,7 @@ class PostListSerializer(serializers.ModelSerializer):
             "user_username",
             "title",
             "post_type",
+            "content",
             "historical_period",
             "monument_type",
             "region",

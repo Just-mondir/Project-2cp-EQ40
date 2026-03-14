@@ -142,10 +142,10 @@ export default function MonumentsInDanger() {
               {monuments.map((monument, idx) => (
                 <div
                   key={idx}
-                  className="relative w-[120px] sm:w-[160px] md:w-[200px] lg:w-[220px] h-[200px] sm:h-[260px] md:h-[310px] lg:h-[340px] rounded-3xl flex-shrink-0 cursor-pointer overflow-hidden"
+                  className="relative w-[120px] sm:w-[160px] md:w-[200px] lg:w-[220px] h-[200px] sm:h-[260px] md:h-[310px] lg:h-[340px] rounded-3xl flex-shrink-0 overflow-hidden"
                   style={{
                     transformOrigin: "center bottom",
-                    transform: activeIndex === idx ? "scale(1.08)" : "scale(1)",
+                    transform: activeIndex === idx ? "scale(1.02)" : "scale(1)",
                     transition:
                       "transform 0.4s ease, filter 0.4s ease, box-shadow 0.4s ease",
                     boxShadow:

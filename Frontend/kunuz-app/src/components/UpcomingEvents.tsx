@@ -90,16 +90,15 @@ const fallbackEvents: EventItem[] = [
   },
 ];
 
-// Format "2026-04-20T09:00:00Z" → "20/04/2026"
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
   const date = new Date(dateStr);
-  return date.toLocaleDateString("fr-FR"); // gives DD/MM/YYYY
+  return date.toLocaleDateString("fr-FR");
 }
 
 function EventCard({ item }: { item: EventItem }) {
   return (
-    <div className="bg-white rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-colors duration-200 hover:bg-[#FFFCF2] hover:-translate-y-1">
+    <div className="bg-white rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2]">
       <div className="relative h-full shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
         <img
           src={item.imageUrl}
@@ -159,13 +158,16 @@ export default function UpcomingEvents() {
         const fetched: EventItem[] = data.results
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 6)
-          .map((post: any) => ({
-            title: post.title,
-            description: post.content ?? "",
-            location: post.location || post.region || "",
-            date: formatDate(post.event_details?.starts_at ?? ""),
-            imageUrl: post.images[0].image,
-          }));
+          .map((post: any) => {
+  console.log(post);
+  return {
+    title: post.title,
+    description: post.content ?? "",
+    location: post.location || post.region || "",
+    date: formatDate(post.event_details?.starts_at ?? ""),
+    imageUrl: post.images[0].image,
+  };
+});
 
         if (fetched.length > 0) setEvents(fetched);
       } catch {
