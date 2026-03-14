@@ -3,29 +3,31 @@
 import { useState } from "react";
 import Image from "next/image";
 
-const HERO_IMAGE = "/hero-bg.jpg";
+// const HERO_IMAGE = "/hero-bg.jpg";
+// const HERO_IMAGE = "/download.jpg";
+const HERO_IMAGE = "pic.jpg";
+// const HERO_IMAGE = "/or.jpg";
 
 export default function Hero() {
   const [hovered, setHovered] = useState(false);
 
   return (
     <section
-      id="hero"
-      className="relative w-full overflow-hidden"
-      style={{ height: "100vh", minHeight: "500px" }}
-    >
-      {/* Background image — anchored to top */}
-      <div className="absolute inset-0">
-        <Image
-          src={HERO_IMAGE}
-          alt="Ornate Algerian Moorish architecture with arches and tilework"
-          fill
-          priority
-          quality={100}
-          unoptimized
-          className="object-cover object-[center_30%]"
-          sizes="100vw"
-        />
+  id="hero"
+  className="relative w-full overflow-hidden"
+  style={{ height: "100dvh", minHeight: "500px" }}
+>
+  <div className="absolute inset-0">
+    <Image
+      src={HERO_IMAGE}
+      alt="Ornate Algerian Moorish architecture with arches and tilework"
+      fill
+      priority
+      quality={100}
+      unoptimized
+      className="object-cover object-center"
+      sizes="100vw"
+    />
         {/* Gradient overlay — white to dark */}
         <div
           className="absolute inset-0"
@@ -80,14 +82,13 @@ export default function Hero() {
           </span>{" "}
           Connects Generations Through Algeria&apos;s Rich Cultural Heritage
         </p>
-
         {/* Get Started — hover via React state */}
         <button
           type="button"
           className="w-fit rounded-full border-2 font-bold transition-all duration-300"
           style={{
-            borderColor: "#FFFFFF",
-            color: "#FFFFFF",
+            borderColor: "var(--cream)",
+            color: "var(--cream)",
             fontFamily: "var(--font-lato)",
             backgroundColor: hovered ? "rgba(255,255,255,0.2)" : "transparent",
             fontSize: "clamp(14px, 1.5vw, 24px)",

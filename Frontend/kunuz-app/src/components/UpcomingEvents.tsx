@@ -1,26 +1,17 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Lato, Playfair_Display } from "next/font/google";
+import { Lato } from "next/font/google";
 
 const lato = Lato({
   subsets: ["latin"],
   weight: ["400", "700"],
 });
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["700"],
-});
-
 function CalendarIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={className}
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} aria-hidden="true">
       <rect x="3" y="4" width="18" height="18" rx="2" />
       <path d="M3 9h18" />
       <path d="M8 2v4M16 2v4" />
@@ -31,12 +22,7 @@ function CalendarIcon({ className }: { className?: string }) {
 
 function PinIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      className={className}
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
       <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
     </svg>
   );
@@ -44,32 +30,9 @@ function PinIcon({ className }: { className?: string }) {
 
 function ClockIcon({ className }: { className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      className={className}
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
       <circle cx="12" cy="12" r="10" />
       <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function PencilIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
     </svg>
   );
 }
@@ -80,18 +43,15 @@ type EventItem = {
   location: string;
   date: string;
   imageUrl: string;
-  dateIcon: "clock" | "pencil";
 };
 
-const events: EventItem[] = [
-  // Row 1
+const fallbackEvents: EventItem[] = [
   {
     title: "Casbah Restoration Workshop",
     description: "Volunteers learn basic preservation techniques",
-    location: "Casba, Algiers",
+    location: "Casbah, Algiers",
     date: "20/04/2026",
     imageUrl: "/e872c9fc6c332498e59e855e78490c56%201.jpg",
-    dateIcon: "clock",
   },
   {
     title: "Stone Cleaning Training",
@@ -99,33 +59,6 @@ const events: EventItem[] = [
     location: "Tlemcen",
     date: "27/05/2026",
     imageUrl: "/e108c4a81ca8f617b8f5c16cfc0e2e7f%201.jpg",
-    dateIcon: "pencil",
-  },
-  // Row 2
-  {
-    title: "Stone Cleaning Training",
-    description: "Students practice safe restoration methods on sites",
-    location: "Tlemcen",
-    date: "27/05/2026",
-    imageUrl: "/e108c4a81ca8f617b8f5c16cfc0e2e7f%201.jpg",
-    dateIcon: "pencil",
-  },
-  {
-    title: "Casbah Restoration Workshop",
-    description: "Volunteers learn basic preservation techniques",
-    location: "Casba, Algiers",
-    date: "20/04/2026",
-    imageUrl: "/e872c9fc6c332498e59e855e78490c56%201.jpg",
-    dateIcon: "clock",
-  },
-  // Row 3
-  {
-    title: "Casbah Restoration Workshop",
-    description: "Volunteers learn basic preservation techniques",
-    location: "Casba, Algiers",
-    date: "20/04/2026",
-    imageUrl: "/e872c9fc6c332498e59e855e78490c56%201.jpg",
-    dateIcon: "clock",
   },
   {
     title: "Stone Cleaning Training",
@@ -133,20 +66,45 @@ const events: EventItem[] = [
     location: "Tlemcen",
     date: "27/05/2026",
     imageUrl: "/e108c4a81ca8f617b8f5c16cfc0e2e7f%201.jpg",
-    dateIcon: "pencil",
+  },
+  {
+    title: "Casbah Restoration Workshop",
+    description: "Volunteers learn basic preservation techniques",
+    location: "Casbah, Algiers",
+    date: "20/04/2026",
+    imageUrl: "/e872c9fc6c332498e59e855e78490c56%201.jpg",
+  },
+  {
+    title: "Casbah Restoration Workshop",
+    description: "Volunteers learn basic preservation techniques",
+    location: "Casbah, Algiers",
+    date: "20/04/2026",
+    imageUrl: "/e872c9fc6c332498e59e855e78490c56%201.jpg",
+  },
+  {
+    title: "Stone Cleaning Training",
+    description: "Students practice safe restoration methods on sites",
+    location: "Tlemcen",
+    date: "27/05/2026",
+    imageUrl: "/e108c4a81ca8f617b8f5c16cfc0e2e7f%201.jpg",
   },
 ];
 
+// Format "2026-04-20T09:00:00Z" → "20/04/2026"
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("fr-FR"); // gives DD/MM/YYYY
+}
+
 function EventCard({ item }: { item: EventItem }) {
   return (
-    <div className="bg-white rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-colors transition-transform duration-200 hover:bg-[#FFFCF2] hover:-translate-y-1">
+    <div className="bg-white rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-colors duration-200 hover:bg-[#FFFCF2] hover:-translate-y-1">
       <div className="relative h-full shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
-        <Image
+        <img
           src={item.imageUrl}
           alt={item.title}
-          fill
-          className="object-contain rounded-l-2xl"
-          sizes="(max-width: 640px) 140px, (max-width: 768px) 160px, 200px"
+          className="w-full h-full object-cover rounded-l-2xl"
         />
       </div>
 
@@ -174,15 +132,10 @@ function EventCard({ item }: { item: EventItem }) {
               {item.location}
             </span>
             <span className="flex items-center gap-1.5 text-xs lg:text-sm">
-              {item.dateIcon === "clock" ? (
-                <ClockIcon className="w-3.5 h-3.5 text-[#7a5a3a]" />
-              ) : (
-                <PencilIcon className="w-3.5 h-3.5 text-[#7a5a3a]" />
-              )}
+              <ClockIcon className="w-3.5 h-3.5 text-[#7a5a3a]" />
               {item.date}
             </span>
           </div>
-
           <CalendarIcon className="w-9 h-9 lg:w-10 lg:h-10 text-[#2C1A0E]" />
         </div>
       </div>
@@ -191,6 +144,38 @@ function EventCard({ item }: { item: EventItem }) {
 }
 
 export default function UpcomingEvents() {
+  const [events, setEvents] = useState<EventItem[]>(fallbackEvents);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/posts/?post_type=event`
+        );
+        if (!res.ok) return;
+
+        const data = await res.json();
+
+        const fetched: EventItem[] = data.results
+          .filter((post: any) => post.images?.[0]?.image)
+          .slice(0, 6)
+          .map((post: any) => ({
+            title: post.title,
+            description: post.content ?? "",
+            location: post.location || post.region || "",
+            date: formatDate(post.event_details?.starts_at ?? ""),
+            imageUrl: post.images[0].image,
+          }));
+
+        if (fetched.length > 0) setEvents(fetched);
+      } catch {
+        // silently keep fallback
+      }
+    }
+
+    fetchEvents();
+  }, []);
+
   return (
     <section
       id="events"
@@ -199,7 +184,7 @@ export default function UpcomingEvents() {
     >
       <h2
         className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-14 lg:mb-20"
-        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
+        style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}
       >
         Upcoming Events
       </h2>
@@ -212,4 +197,3 @@ export default function UpcomingEvents() {
     </section>
   );
 }
-

@@ -49,6 +49,9 @@ class PostListCreateView(APIView):
 
     def get(self, request: Request) -> Response:
         posts = Post.objects.filter(is_deleted=False)
+        post_type = request.query_params.get("post_type")
+        if post_type:
+            posts = posts.filter(post_type=post_type)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})

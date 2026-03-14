@@ -26,20 +26,17 @@ export default function Header() {
   const pathname = usePathname();
 
   const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    // If already on the home page, smoothly scroll to the hero section
     if (pathname === "/") {
       event.preventDefault();
       const heroSection = document.getElementById("hero");
       if (heroSection) {
         heroSection.scrollIntoView({ behavior: "smooth", block: "start" });
       } else {
-        // Fallback: scroll to top if hero is not found
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     }
   };
 
-  // Scroll effect for nav bar appearance
   React.useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 40);
@@ -59,9 +56,9 @@ export default function Header() {
       {/* ── Main bar ── */}
       <div
         className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
-        style={{ height: "52px", overflow: "hidden" }}
+        style={{ height: "52px" }}
       >
-        {/* Logo flush left - go to Hero on home page */}
+        {/* Logo */}
         <Link
           href="/#hero"
           onClick={handleLogoClick}
@@ -78,7 +75,7 @@ export default function Header() {
           />
         </Link>
 
-        {/* Desktop nav — centered links with spacing from logo & sign in */}
+        {/* Desktop nav */}
         <nav className="hidden md:flex flex-1 items-center justify-center gap-4 lg:gap-8 xl:gap-13">
           {NAV_LINKS.map((label) => (
             <Link
@@ -96,7 +93,7 @@ export default function Header() {
           ))}
         </nav>
 
-        {/* Sign Up — pinned to the right */}
+        {/* Sign Up — desktop */}
         <button
           type="button"
           className="hidden md:block flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
@@ -112,75 +109,84 @@ export default function Header() {
           Sign Up
         </button>
 
-        {/* Hamburger — mobile only */}
-        <button
-          type="button"
-          className="md:hidden flex flex-col justify-center gap-[5px] p-2"
-          aria-label="Toggle menu"
-          onClick={() => setMobileOpen((v) => !v)}
+        {/* Hamburger + Dropdown — mobile */}
+        <div
+          className="md:hidden relative"
+          onMouseEnter={() => setMobileOpen(true)}
+          onMouseLeave={() => setMobileOpen(false)}
         >
-          <span
-            className="block h-[2px] w-6 rounded transition-all duration-300"
-            style={{
-              backgroundColor: "#3B2A1A",
-              transform: mobileOpen ? "translateY(7px) rotate(45deg)" : "none",
-            }}
-          />
-          <span
-            className="block h-[2px] w-6 rounded transition-all duration-200"
-            style={{
-              backgroundColor: "#3B2A1A",
-              opacity: mobileOpen ? 0 : 1,
-            }}
-          />
-          <span
-            className="block h-[2px] w-6 rounded transition-all duration-300"
-            style={{
-              backgroundColor: "#3B2A1A",
-              transform: mobileOpen ? "translateY(-7px) rotate(-45deg)" : "none",
-            }}
-          />
-        </button>
-      </div>
-
-      {/* ── Mobile dropdown — inside <header> so no layout shift ── */}
-      <div
-        className="md:hidden overflow-hidden transition-all duration-300"
-        style={{
-          maxHeight: mobileOpen ? "320px" : "0px",
-          boxShadow: mobileOpen ? "0 8px 24px rgba(0,0,0,0.10)" : "none",
-        }}
-      >
-        <nav className="flex flex-col gap-1 px-6 pb-5 pt-2">
-          {NAV_LINKS.map((label) => (
-            <Link
-              key={label}
-              href={NAV_HREFS[label]}
-              className="border-b py-3 text-[16px] font-medium transition-colors duration-200 text-[#3B2A1A] hover:text-[#8B6343]"
-              style={{
-                fontFamily: "var(--font-lato)",
-                borderColor: "rgba(59,42,26,0.10)",
-              }}
-              onClick={() => setMobileOpen(false)}
-            >
-              {label}
-            </Link>
-          ))}
+          {/* Hamburger */}
           <button
             type="button"
-            className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold transition-all duration-300"
-            style={{
-              borderColor: "#3B2A1A",
-              color: "#3B2A1A",
-              fontFamily: "var(--font-lato)",
-              backgroundColor: signUpMobileHovered ? "rgba(255,255,255,0.2)" : "transparent",
-            }}
-            onMouseEnter={() => setSignUpMobileHovered(true)}
-            onMouseLeave={() => setSignUpMobileHovered(false)}
+            className="flex flex-col justify-center gap-[5px] p-2 cursor-pointer"
+            aria-label="Toggle menu"
           >
-            Sign Up
+            <span
+              className="block h-[2px] w-6 rounded transition-all duration-300"
+              style={{
+                backgroundColor: "#3B2A1A",
+                transform: mobileOpen ? "translateY(7px) rotate(45deg)" : "none",
+              }}
+            />
+            <span
+              className="block h-[2px] w-6 rounded transition-all duration-200"
+              style={{
+                backgroundColor: "#3B2A1A",
+                opacity: mobileOpen ? 0 : 1,
+              }}
+            />
+            <span
+              className="block h-[2px] w-6 rounded transition-all duration-300"
+              style={{
+                backgroundColor: "#3B2A1A",
+                transform: mobileOpen ? "translateY(-7px) rotate(-45deg)" : "none",
+              }}
+            />
           </button>
-        </nav>
+
+          {/* Dropdown */}
+          <div
+            className="absolute right-0 top-full overflow-hidden transition-all duration-300 bg-[#FFF8E2] rounded-2xl"
+            style={{
+              maxHeight: mobileOpen ? "320px" : "0px",
+              boxShadow: mobileOpen ? "0 8px 24px rgba(0,0,0,0.10)" : "none",
+              minWidth: "200px",
+            }}
+          >
+            <nav className="flex flex-col gap-1 px-6 pb-5 pt-2">
+              {NAV_LINKS.map((label) => (
+                <Link
+                  key={label}
+                  href={NAV_HREFS[label]}
+                  className="border-b py-3 text-[16px] font-medium transition-colors duration-200 text-[#3B2A1A] hover:text-[#8B6343]"
+                  style={{
+                    fontFamily: "var(--font-lato)",
+                    borderColor: "rgba(59,42,26,0.10)",
+                  }}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {label}
+                </Link>
+              ))}
+              <button
+                type="button"
+                className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold transition-all duration-300 cursor-pointer"
+                style={{
+                  borderColor: "#3B2A1A",
+                  color: "#3B2A1A",
+                  fontFamily: "var(--font-lato)",
+                  backgroundColor: signUpMobileHovered
+                    ? "rgba(255,255,255,0.2)"
+                    : "transparent",
+                }}
+                onMouseEnter={() => setSignUpMobileHovered(true)}
+                onMouseLeave={() => setSignUpMobileHovered(false)}
+              >
+                Sign Up
+              </button>
+            </nav>
+          </div>
+        </div>
       </div>
     </header>
   );
