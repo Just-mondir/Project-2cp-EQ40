@@ -144,7 +144,7 @@ function CommentItem({ comment }) {
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold" style={{ color: "#432817" }}>{comment.user}</p>
           <div className="relative" ref={menuRef}>
-            <button 
+            <button
               className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
               style={{ color: "#8B7355" }}
               onClick={() => setShowMenu(!showMenu)}
@@ -152,7 +152,7 @@ function CommentItem({ comment }) {
               ...
             </button>
             {showMenu && (
-              <div 
+              <div
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
@@ -226,6 +226,18 @@ function LeftSidebar() {
       ),
     },
     {
+      label: "Events",
+      href: null,
+      path: (
+        <>
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </>
+      ),
+    },
+    {
       label: "Notifications",
       href: null,
       hasBadge: true,
@@ -290,22 +302,20 @@ function LeftSidebar() {
               {item.href ? (
                 <Link
                   href={item.href}
-                  className={`relative p-2.5 rounded-xl transition-all duration-200 block ${
-                    activeIdx === i
-                      ? "bg-[#432817]"
-                      : "hover:bg-[#F0E8CC]"
-                  }`}
+                  className={`relative p-2.5 rounded-xl transition-all duration-200 block ${activeIdx === i
+                    ? "bg-[#432817]"
+                    : "hover:bg-[#F0E8CC]"
+                    }`}
                 >
                   {iconContent}
                 </Link>
               ) : (
                 <button
                   onClick={() => setActiveIdx(i)}
-                  className={`relative p-2.5 rounded-xl transition-all duration-200 ${
-                    activeIdx === i
-                      ? "bg-[#432817]"
-                      : "hover:bg-[#F0E8CC]"
-                  }`}
+                  className={`relative p-2.5 rounded-xl transition-all duration-200 ${activeIdx === i
+                    ? "bg-[#432817]"
+                    : "hover:bg-[#F0E8CC]"
+                    }`}
                 >
                   {iconContent}
                 </button>
@@ -326,7 +336,7 @@ function LeftSidebar() {
         })}
 
         {/* Spacer */}
-        <div className="h-16" />
+        <div className="h-40" />
 
         {/* Help icon — at the end with spacing */}
         <div className="relative group">
@@ -369,7 +379,7 @@ function LeftSidebar() {
 
 function FilterSection({ isVisible }) {
   if (!isVisible) return null;
-  
+
   return (
     <div
       className="px-3 py-2 mb-2"
@@ -379,9 +389,9 @@ function FilterSection({ isVisible }) {
         boxShadow: "0 2px 12px rgba(67,40,23,0.1)",
       }}
     >
-      <h3 
-        className="text-sm font-bold mb-2 text-center" 
-        style={{ 
+      <h3
+        className="text-sm font-bold mb-2 text-center"
+        style={{
           color: "#432817",
           fontFamily: "Georgia, 'Times New Roman', serif",
         }}
@@ -392,8 +402,8 @@ function FilterSection({ isVisible }) {
         {["Historical Period", "Region", "Monument Type", "User Expertise"].map(
           (label) => (
             <div key={label}>
-              <label 
-                className="text-[9px] font-medium mb-0.5 block" 
+              <label
+                className="text-[9px] font-medium mb-0.5 block"
                 style={{ color: "#6B5344" }}
               >
                 {label}
@@ -489,7 +499,7 @@ function PostModal({ post, onClose }) {
             </div>
             {/* Three dots - horizontal */}
             <div className="relative" ref={postMenuRef}>
-              <button 
+              <button
                 className="p-1 rounded hover:bg-[#E0D5C5] transition-colors mr-2"
                 onClick={() => setShowPostMenu(!showPostMenu)}
               >
@@ -500,7 +510,7 @@ function PostModal({ post, onClose }) {
                 </svg>
               </button>
               {showPostMenu && (
-                <div 
+                <div
                   className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
                   style={{ backgroundColor: "#FFF8E2" }}
                 >
@@ -645,9 +655,8 @@ function PostCard({ post, isNew, onCommentClick }) {
 
   return (
     <div
-      className={`bg-white rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 ${
-        isNew ? "post-fade-in" : ""
-      }`}
+      className={`bg-white rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 ${isNew ? "post-fade-in" : ""
+        }`}
       style={{
         boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
       }}
@@ -682,8 +691,8 @@ function PostCard({ post, isNew, onCommentClick }) {
         </div>
         {/* Three dots with menu */}
         <div className="relative">
-          <button 
-            className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" 
+          <button
+            className="p-1 rounded hover:bg-[#FFF8E2] transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               setShowMenu(!showMenu);
@@ -696,7 +705,7 @@ function PostCard({ post, isNew, onCommentClick }) {
             </svg>
           </button>
           {showMenu && (
-            <div 
+            <div
               className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50"
               style={{ backgroundColor: "#FFF8E2" }}
             >
@@ -770,9 +779,8 @@ function PostCard({ post, isNew, onCommentClick }) {
         {/* Badge */}
         {post.badge && (
           <span
-            className={`absolute top-2 right-6 px-3 py-1 rounded-full text-xs font-semibold ${
-              BADGE_COLORS[post.badge] || ""
-            }`}
+            className={`absolute top-2 right-6 px-3 py-1 rounded-full text-xs font-semibold ${BADGE_COLORS[post.badge] || ""
+              }`}
           >
             {post.badge}
           </span>
@@ -786,15 +794,19 @@ function PostCard({ post, isNew, onCommentClick }) {
             <GemIcon />
             <span>{post.gems}</span>
           </button>
-          <button 
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" 
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
             style={{ color: "#432817" }}
             onClick={onCommentClick}
           >
             <CommentIcon />
             <span>{post.comments}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
+            style={{ color: "#432817" }}
+            onClick={onCommentClick}
+          >
             <AnnotationIcon />
             <span>{post.annotations}</span>
           </button>
@@ -824,7 +836,7 @@ export default function Home() {
   useEffect(() => {
     const feedElement = feedRef.current;
     if (!feedElement) return;
-    
+
     const handleScroll = () => {
       const scrolled = feedElement.scrollTop > 10;
       setIsScrolled(scrolled);
@@ -832,7 +844,7 @@ export default function Home() {
         setShowFilter(false);
       }
     };
-    
+
     feedElement.addEventListener('scroll', handleScroll);
     return () => feedElement.removeEventListener('scroll', handleScroll);
   }, []);
@@ -909,7 +921,7 @@ export default function Home() {
                   className="flex-1 ml-3 outline-none bg-transparent text-sm"
                   style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                 />
-                <button 
+                <button
                   className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors"
                   onClick={() => {
                     if (isScrolled && feedRef.current) {

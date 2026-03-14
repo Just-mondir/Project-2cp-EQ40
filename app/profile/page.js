@@ -103,6 +103,24 @@ const BellIcon = ({ size = 20 }) => (
   </svg>
 );
 
+const DangerIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+const LikeIcon = ({ size = 20 }) => (
+  <svg width={size} height={size} viewBox="0 0 30 30" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19.6512 13.6714L17.7393 18.26L20.7983 28.2018L23.8573 18.26L21.9454 13.6714" strokeWidth="1.31838" />
+    <path d="M24.6255 13.6714C24.8629 13.6714 25.0971 13.7267 25.3095 13.8329C25.5219 13.9391 25.7066 14.0932 25.8491 14.2832L28.1434 17.3422C28.3402 17.6047 28.4473 17.9234 28.4491 18.2514C28.4509 18.5794 28.3472 18.8993 28.1533 19.1639L22.0429 27.5656C21.9012 27.7625 21.7147 27.9229 21.4989 28.0335C21.283 28.1441 21.0439 28.2018 20.8013 28.2018C20.5587 28.2018 20.3196 28.1441 20.1037 28.0335C19.8878 27.9229 19.7014 27.7625 19.5597 27.5656L13.4493 19.1639C13.2555 18.8992 13.1519 18.5793 13.1538 18.2513C13.1558 17.9233 13.2631 17.6046 13.46 17.3422L15.7527 14.2855C15.8951 14.0949 16.08 13.9402 16.2927 13.8335C16.5053 13.7269 16.74 13.6714 16.9779 13.6714H24.6255Z" strokeWidth="1.31838" />
+    <path d="M13.1538 18.2559H28.449" strokeWidth="1.31838" />
+    <path d="M9.78899 18.3545H8.56537C7.26728 18.3545 6.02235 18.8702 5.10446 19.7881C4.18656 20.7059 3.6709 21.9509 3.6709 23.249V25.6962" strokeWidth="1.6781" />
+    <path d="M12.2368 13.4598C14.9399 13.4598 17.1312 11.2685 17.1312 8.56537C17.1312 5.86223 14.9399 3.6709 12.2368 3.6709C9.53361 3.6709 7.34229 5.86223 7.34229 8.56537C7.34229 11.2685 9.53361 13.4598 12.2368 13.4598Z" strokeWidth="1.6781" />
+  </svg>
+);
+
 /* ───────────────── COMMENT ITEM ───────────────── */
 
 function CommentItem({ comment }) {
@@ -140,7 +158,7 @@ function CommentItem({ comment }) {
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold" style={{ color: "#432817" }}>{comment.user}</p>
           <div className="relative" ref={menuRef}>
-            <button 
+            <button
               className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
               style={{ color: "#8B7355" }}
               onClick={() => setShowMenu(!showMenu)}
@@ -148,7 +166,7 @@ function CommentItem({ comment }) {
               ...
             </button>
             {showMenu && (
-              <div 
+              <div
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
@@ -234,6 +252,18 @@ function LeftSidebar() {
       ),
     },
     {
+      label: "Events",
+      href: "#",
+      path: (
+        <>
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </>
+      ),
+    },
+    {
       label: "Notifications",
       href: "#",
       hasBadge: true,
@@ -276,11 +306,10 @@ function LeftSidebar() {
           <div key={i} className="relative group">
             <Link
               href={item.href}
-              className={`relative p-2.5 rounded-xl transition-all duration-200 block ${
-                item.isActive
-                  ? "bg-[#432817]"
-                  : "hover:bg-[#F0E8CC]"
-              }`}
+              className={`relative p-2.5 rounded-xl transition-all duration-200 block ${item.isActive
+                ? "bg-[#432817]"
+                : "hover:bg-[#F0E8CC]"
+                }`}
             >
               <svg
                 width="20"
@@ -314,7 +343,7 @@ function LeftSidebar() {
         ))}
 
         {/* Spacer */}
-        <div className="h-16" />
+        <div className="h-40" />
 
         {/* Help icon — at the end with spacing */}
         <div className="relative group">
@@ -381,7 +410,7 @@ function ProfileHeader({ onClickOutside }) {
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
       {/* Three dots menu - top right */}
       <div className="absolute top-4 right-6" ref={menuRef}>
-        <button 
+        <button
           className="p-2 rounded hover:bg-[#F0EAD8] transition-colors"
           onClick={() => setShowMenu(!showMenu)}
         >
@@ -392,7 +421,7 @@ function ProfileHeader({ onClickOutside }) {
           </svg>
         </button>
         {showMenu && (
-          <div 
+          <div
             className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
             style={{ backgroundColor: "#FFF8E2" }}
           >
@@ -415,13 +444,13 @@ function ProfileHeader({ onClickOutside }) {
         {/* Avatar - Left side */}
         <div
           className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden"
-          style={{ 
+          style={{
             boxShadow: "0 4px 20px rgba(67,40,23,0.15)",
           }}
         >
-          <img 
-            src="/Ellipse 34.jpg" 
-            alt="Profile" 
+          <img
+            src="/Ellipse 34.jpg"
+            alt="Profile"
             className="w-full h-full object-cover"
           />
         </div>
@@ -435,7 +464,7 @@ function ProfileHeader({ onClickOutside }) {
           >
             User4987838
           </h1>
-          
+
           {/* Handle/Pseudo */}
           <p className="text-sm mb-4" style={{ color: "#8B7355" }}>
             @User4987838
@@ -510,10 +539,10 @@ function ProfileHeader({ onClickOutside }) {
 function ProfileTabs({ activeTab, setActiveTab }) {
   const tabs = [
     { id: "grid", icon: <GridIcon size={20} /> },
-    { id: "annotations", icon: <AnnotationIcon size={20} /> },
+    { id: "annotations", icon: <LikeIcon size={20} /> },
     { id: "saved", icon: <BookmarkIcon size={20} /> },
     { id: "events", icon: <CalendarIcon size={20} /> },
-    { id: "alerts", icon: <BellIcon size={20} /> },
+    { id: "alerts", icon: <DangerIcon size={20} /> },
   ];
 
   return (
@@ -529,7 +558,7 @@ function ProfileTabs({ activeTab, setActiveTab }) {
         >
           {tab.icon}
           {activeTab === tab.id && (
-            <div 
+            <div
               className="absolute bottom-0 left-0 right-0 h-[3px]"
               style={{ backgroundColor: "#432817" }}
             />
@@ -606,7 +635,7 @@ function PostModal({ post, onClose }) {
             </div>
             {/* Three dots - horizontal */}
             <div className="relative" ref={postMenuRef}>
-              <button 
+              <button
                 className="p-1 rounded hover:bg-[#E0D5C5] transition-colors mr-2"
                 onClick={() => setShowPostMenu(!showPostMenu)}
               >
@@ -617,7 +646,7 @@ function PostModal({ post, onClose }) {
                 </svg>
               </button>
               {showPostMenu && (
-                <div 
+                <div
                   className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
                   style={{ backgroundColor: "#FFF8E2" }}
                 >
@@ -786,30 +815,30 @@ export default function ProfilePage() {
         <div className="max-w-4xl mx-auto">
           <ProfileHeader />
           <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-          
+
           {activeTab === "grid" && <PostGrid onPostClick={setSelectedPost} />}
           {activeTab === "annotations" && (
-            <div className="text-center py-12" style={{ color: "#8B7355" }}>
-              <AnnotationIcon size={48} />
-              <p className="mt-4">No annotations yet</p>
+            <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
+              <LikeIcon size={48} />
+              <p className="mt-4">no like yet</p>
             </div>
           )}
           {activeTab === "saved" && (
-            <div className="text-center py-12" style={{ color: "#8B7355" }}>
+            <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
               <BookmarkIcon size={48} />
               <p className="mt-4">Your treasure collection is empty</p>
             </div>
           )}
           {activeTab === "events" && (
-            <div className="text-center py-12" style={{ color: "#8B7355" }}>
+            <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
               <CalendarIcon size={48} />
               <p className="mt-4">No upcoming events</p>
             </div>
           )}
           {activeTab === "alerts" && (
-            <div className="text-center py-12" style={{ color: "#8B7355" }}>
-              <BellIcon size={48} />
-              <p className="mt-4">No alerts</p>
+            <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
+              <DangerIcon size={48} />
+              <p className="mt-4">no monuments in danger</p>
             </div>
           )}
         </div>
