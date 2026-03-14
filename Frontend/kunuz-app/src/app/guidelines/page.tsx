@@ -1,4 +1,3 @@
-import Footer from "../components/Footer";
 const rules = [
   {
     id: "Rule 01",
@@ -46,7 +45,7 @@ const rules = [
 
 export default function Guidelines() {
   return (
-   <main className="min-h-screen">
+    <main className="min-h-screen">
       <section className="max-w-4xl mx-auto px-6 py-14">
         <h1 className="text-6xl font-bold mb-10 text-center" >Guidelines</h1>
 
@@ -60,14 +59,14 @@ export default function Guidelines() {
         <div className="space-y-6">
           {rules.map((rule) => (
             <div key={rule.id} className="">
-              
-                <h2 className="text-xl font-black"style={{ color: "#BB9557" }}>
-                   • {rule.id} :{" "} {rule.title}
-                  </h2>
-                  <h2 className="text-lg font-bold ">
-                    <span className="font-bold ">{rule.subtitle}</span>
-                  </h2>
-                  <p className="mt-2 leading-relaxed"style={{ color: "#432817" }}>{rule.desc}</p>
+
+              <h2 className="text-xl font-black" style={{ color: "#BB9557" }}>
+                • {rule.id} :{" "} {rule.title}
+              </h2>
+              <h2 className="text-lg font-bold ">
+                <span className="font-bold ">{rule.subtitle}</span>
+              </h2>
+              <p className="mt-2 leading-relaxed" style={{ color: "#432817" }}>{rule.desc}</p>
             </div>
           ))}
         </div>
@@ -81,7 +80,6 @@ export default function Guidelines() {
           safe and trustworthy space for everyone.
         </p>
       </section>
-      <Footer />
     </main>
   );
 }

@@ -1,5 +1,3 @@
-import Footer from "../components/Footer";
-
 export default function About() {
   return (
     <main className="min-h-screen">
@@ -15,9 +13,9 @@ export default function About() {
         <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 mb-12 md:mb-16">
           <div className="md:basis-1/4 flex justify-center md:justify-start mb-6 md:mb-0">
             <img
-              src="/logo-mixed.svg"
+              src="/g6.jpg"
               alt="Kunuz logo"
-              className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 object-contain"
+              className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 object-contain mix-blend-multiply shrink-0"
             />
           </div>
           <div className="md:basis-3/4 w-full">
@@ -44,9 +42,9 @@ export default function About() {
           </div>
           <div className="md:basis-1/4 flex justify-center md:justify-end mb-6 md:mb-0">
             <img
-              src="/monitoring 1.png"
+              src="/monitoring 1.jpg"
               alt="Community"
-              className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 object-contain"
+              className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 object-contain mix-blend-multiply shrink-0"
             />
           </div>
         </div>
@@ -55,9 +53,9 @@ export default function About() {
         <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
           <div className="md:basis-1/4 flex justify-center md:justify-start mb-6 md:mb-0">
             <img
-              src="/monitoring (1) 1.png"
+              src="/monitoring (1) 1.jpg"
               alt="Vision"
-              className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 object-contain"
+              className="w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 object-contain mix-blend-multiply shrink-0"
             />
           </div>
           <div className="md:basis-3/4 w-full">
@@ -72,8 +70,6 @@ export default function About() {
           </div>
         </div>
       </div>
-
-      <Footer />
     </main>
   );
 }
