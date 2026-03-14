@@ -1,0 +1,29 @@
+<div class="comment-item" style="border-left: 2px solid #ccc; padding-left: 10px; margin-top: 12px; margin-left: 30px;">
+    <strong>{{ comment.user.username }}</strong>
+    <p>{{ comment.content }}</p>
+    <p>Gems: {{ comment.gems_count }}</p>
+
+    <form method="post" action="{% url 'gem_comment' comment.id %}">
+        {% csrf_token %}
+        <button type="submit">💎 Gem</button>
+    </form>
+
+    {% if request.user == comment.user %}
+        <p>
+            <a href="{% url 'edit_comment' comment.id %}">Edit</a>
+            |
+            <a href="{% url 'delete_comment' comment.id %}">Delete</a>
+        </p>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="parent_id" value="{{ comment.id }}">
+        <textarea name="content" rows="2" placeholder="Reply..."></textarea>
+        <button type="submit">Reply</button>
+    </form>
+
+    {% for reply in comment.replies.all %}
+        {% include "comment_item.html" with comment=reply %}
+    {% endfor %}
+</div>
