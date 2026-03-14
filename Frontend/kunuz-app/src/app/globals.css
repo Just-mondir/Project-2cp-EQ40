@@ -36,11 +36,13 @@ body {
 
 /* Hide vertical scrollbar while keeping page scrollable */
 html {
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 html::-webkit-scrollbar {
-  width: 0px; /* Chrome, Safari, Edge */
+  width: 0px;
+  /* Chrome, Safari, Edge */
   height: 0px;
 }
 
@@ -73,7 +75,7 @@ html::-webkit-scrollbar {
   height: 9px;
   border-radius: 9999px;
   top: 18px;
-  right: -4px;
+  right: -10px;
 }
 
 .about2-card-mission::after {
