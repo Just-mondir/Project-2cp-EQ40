@@ -57,15 +57,13 @@ class PostListSerializer(serializers.ModelSerializer):
     gems_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
     images = PostImageSerializer(many=True, read_only=True)
-
+    alert_details = AlertDetailsSerializer(read_only=True)
     def get_user_display_name(self, obj):
         user = _get_user_by_id(obj.author_id)
         return user.display_name if user else ""
-
     def get_user_username(self, obj):
         user = _get_user_by_id(obj.author_id)
         return user.username if user else ""
-
     class Meta:
         model = Post
         fields = [
@@ -83,12 +81,12 @@ class PostListSerializer(serializers.ModelSerializer):
             "gems_count",
             "comments_count",
             "images",
+            "alert_details",
             "is_deleted",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "user_id", "created_at", "updated_at", "is_deleted"]
-
 
 class PostDetailSerializer(serializers.ModelSerializer):
     """Full serializer used in retrieve / create / update views."""
