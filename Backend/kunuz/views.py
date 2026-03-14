@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-
+from .models import Post, Comment, CommentGem, CommentReport
 from .models import Post, Comment, CommentGem
 from .forms import CommentForm
 
@@ -83,3 +83,22 @@ def delete_comment(request, comment_id):
     post_pk = comment.post.pk
     comment.delete()
     return redirect("post_detail", pk=post_pk)
+
+@login_required
+def report_comment(request, comment_id):
+    comment = get_object_or_404(Comment, pk=comment_id)
+
+    if request.method == "POST":
+        reason = request.POST.get("reason")
+        description = request.POST.get("description", "")
+
+        CommentReport.objects.get_or_create(
+            comment=comment,
+            reporter=request.user,
+            defaults={
+                "reason": reason,
+                "description": description,
+            }
+        )
+
+    return redirect("post_detail", pk=comment.post.pk)

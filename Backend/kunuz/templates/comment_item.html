@@ -16,6 +16,19 @@
         </p>
     {% endif %}
 
+    <form method="post" action="{% url 'report_comment' comment.id %}">
+        {% csrf_token %}
+        <select name="reason">
+            <option value="spam">Spam</option>
+            <option value="harassment">Harassment</option>
+            <option value="hate">Hate speech</option>
+            <option value="misinformation">Misinformation</option>
+            <option value="other">Other</option>
+        </select>
+        <input type="text" name="description" placeholder="Optional description">
+        <button type="submit">🚩 Report</button>
+    </form>
+
     <form method="post">
         {% csrf_token %}
         <input type="hidden" name="parent_id" value="{{ comment.id }}">

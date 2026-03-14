@@ -223,3 +223,30 @@ class CommentGem(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["comment", "user"], name="unique_gem_per_user_comment")
         ]
+
+
+class CommentReport(models.Model):
+    class Reason(models.TextChoices):
+        SPAM = "spam", "Spam"
+        HARASSMENT = "harassment", "Harassment"
+        HATE = "hate", "Hate speech"
+        MISINFORMATION = "misinformation", "Misinformation"
+        OTHER = "other", "Other"
+
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="reports")
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE)
+    reason = models.CharField(max_length=30, choices=Reason.choices)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "reporter"],
+                name="unique_report_per_user_comment"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.reporter.username} reported comment {self.comment.id}"
