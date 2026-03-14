@@ -132,21 +132,21 @@ export default function Header() {
             <span
               className="block h-[2px] w-6 rounded transition-all duration-300"
               style={{
-                backgroundColor: "var(--brown)",
+                backgroundColor:  scrolled ? "var(--brown)" : "var(--cream)",
                 transform: mobileOpen ? "translateY(7px) rotate(45deg)" : "none",
               }}
             />
             <span
               className="block h-[2px] w-6 rounded transition-all duration-200"
               style={{
-                backgroundColor: "var(--brown)",
+                backgroundColor:  scrolled ? "var(--brown)" : "var(--cream)",
                 opacity: mobileOpen ? 0 : 1,
               }}
             />
             <span
               className="block h-[2px] w-6 rounded transition-all duration-300"
               style={{
-                backgroundColor: "var(--brown)",
+                backgroundColor:  scrolled ? "var(--brown)" : "var(--cream)",
                 transform: mobileOpen ? "translateY(-7px) rotate(-45deg)" : "none",
               }}
             />
