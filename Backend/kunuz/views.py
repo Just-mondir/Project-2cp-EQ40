@@ -60,3 +60,45 @@ def global_search(request):
         "users": users,
         "posts": posts,
     })
+
+
+from django.db.models import Q
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from .models import Post
+from .serializers import PostSerializer
+
+@api_view(['GET'])
+def global_search(request):
+    """
+    Endpoint pour la recherche globale et filtres.
+    Query params :
+    - q : mot-clé (titre + contenu)
+    - historical_period : prehistory, roman, islamic, ottoman, contemporary
+    - region : algiers, oran, constantine, tlemcen
+    - monument_type : civil, military, religious, funerary
+    """
+    posts = Post.objects.filter(is_deleted=False)
+
+    # Recherche par mots-clés
+    query = request.GET.get("q", "")
+    if query:
+        posts = posts.filter(
+            Q(title__icontains=query) | Q(content__icontains=query)
+        )
+
+    # Filtres indépendants
+    historical_period = request.GET.get("historical_period")
+    if historical_period:
+        posts = posts.filter(historical_period=historical_period)
+
+    region = request.GET.get("region")
+    if region:
+        posts = posts.filter(region=region)
+
+    monument_type = request.GET.get("monument_type")
+    if monument_type:
+        posts = posts.filter(monument_type=monument_type)
+
+    serializer = PostSerializer(posts, many=True)
+    return Response(serializer.data)
