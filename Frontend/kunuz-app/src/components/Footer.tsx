@@ -1,5 +1,15 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 export default function Footer() {
+  const pathname = usePathname();
+
+  // Hide footer on specific pages
+  if (pathname === "/home-page" || pathname.startsWith("/profile")) {
+    return null;
+  }
+
   const linkClass =
     "text-[#e8d9c0] hover:text-[#BB9557] relative w-fit after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[1px] after:bg-[#BB9557] after:transition-all after:duration-300 hover:after:w-full cursor-pointer";
 
