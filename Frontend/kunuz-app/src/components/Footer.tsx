@@ -1,5 +1,15 @@
+"use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 export default function Footer() {
+  const pathname = usePathname();
+
+  // Hide footer on specific pages
+  if (pathname === "/home-page" || pathname.startsWith("/profile")) {
+    return null;
+  }
+
   const linkClass =
     "text-[#e8d9c0] hover:text-[#BB9557] relative w-fit after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[1px] after:bg-[#BB9557] after:transition-all after:duration-300 hover:after:w-full cursor-pointer";
 
@@ -36,15 +46,15 @@ export default function Footer() {
         {/* Column 1 */}
         <div className="flex flex-col gap-3 text-lg">
           <Link href="/about#" className={linkClass}>About the Project</Link>
-          <p className={linkClass}>Monuments</p>
+          <Link href="/#at-risk" className={linkClass}>Monuments</Link>
           <p className={linkClass}>Endangered Sites</p>
         </div>
 
         {/* Column 2 */}
         <div className="flex flex-col gap-3 text-lg">
-          <p className={linkClass}>Events</p>
+          <Link href="/#events" className={linkClass}>Events</Link>
           <p className={linkClass}>Join the Community</p>
-          <p className={linkClass}>Guilds</p>
+          <Link href="/#guilds" className={linkClass}>Guilds</Link>
         </div>
 
         {/* Column 3 */}
