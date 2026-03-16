@@ -12,11 +12,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.responses import api_error, api_success
+from apps.notifications.registry import notify
 
-from .models import Comment, Gem, Post, PostImage, Save
+from .models import Comment, CommentGem, Gem, Post, PostImage, Save
 from .serializers import (
     CommentSerializer,
     GemSerializer,
+    CommentGemSerializer,
     PostDetailSerializer,
     PostImageSerializer,
     PostListSerializer,
@@ -176,11 +178,60 @@ class GemToggleView(APIView):
             )
         try:
             Gem.objects.create(post=post, user_id=str(request.user.id))
+            if post.author_id != str(request.user.id):
+                notify(
+                    event_type="gem_on_post",
+                    actor_id=str(request.user.id),
+                    actor_name=getattr(request.user, "display_name", "Someone"),
+                    recipient_id=post.author_id,
+                    target_type="post",
+                    target_id=post.id,
+                    post_title=post.title,
+                )
         except IntegrityError:
             pass  # already exists (race condition)
         return api_success(
             "Gem added.",
             {"liked": True, "gems_count": post.gems.count()},
+            status.HTTP_201_CREATED,
+        )
+
+
+class CommentGemToggleView(APIView):
+    """POST /api/posts/comments/<pk>/gem/ — toggle gem on a comment."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: int) -> Response:
+        try:
+            comment = Comment.objects.get(pk=pk)
+        except Comment.DoesNotExist:
+            return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
+        
+        gem = CommentGem.objects.filter(comment=comment, user_id=str(request.user.id))
+        if gem.exists():
+            gem.delete()
+            return api_success(
+                "Gem removed from comment.",
+                {"liked": False, "gems_count": comment.gems.count()},
+            )
+        try:
+            CommentGem.objects.create(comment=comment, user_id=str(request.user.id))
+            if comment.user_id != str(request.user.id):
+                notify(
+                    event_type="gem_on_comment",
+                    actor_id=str(request.user.id),
+                    actor_name=getattr(request.user, "display_name", "Someone"),
+                    recipient_id=comment.user_id,
+                    target_type="comment",
+                    target_id=comment.id,
+                )
+        except IntegrityError:
+            pass  # already exists (race condition)
+        
+        return api_success(
+            "Gem added to comment.",
+            {"liked": True, "gems_count": comment.gems.count()},
             status.HTTP_201_CREATED,
         )
 
@@ -240,7 +291,38 @@ class CommentListCreateView(APIView):
         serializer = CommentSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
+        
+        # Save comment
         comment = serializer.save(post=post, user_id=str(request.user.id))
+
+        # Handle notifications
+        actor_name = getattr(request.user, "display_name", "Someone")
+        
+        # 1. Notify post author (if not self)
+        if post.author_id != str(request.user.id):
+            notify(
+                event_type="comment_on_post",
+                actor_id=str(request.user.id),
+                actor_name=actor_name,
+                recipient_id=post.author_id,
+                target_type="post",
+                target_id=post.id,
+                post_title=post.title,
+            )
+            
+        # 2. Notify parent comment author if it's a reply
+        if comment.parent and comment.parent.user_id != str(request.user.id):
+            # Don't double notify if post author == parent comment author
+            if comment.parent.user_id != post.author_id:
+                notify(
+                    event_type="reply_to_comment",
+                    actor_id=str(request.user.id),
+                    actor_name=actor_name,
+                    recipient_id=comment.parent.user_id,
+                    target_type="comment",
+                    target_id=comment.parent.id,
+                )
+
         return api_success(
             "Comment added.",
             CommentSerializer(comment, context={"request": request}).data,

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.posts",
     "apps.reports",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [

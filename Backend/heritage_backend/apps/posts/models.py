@@ -225,6 +225,9 @@ class Comment(models.Model):
     """A comment on a post."""
 
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    parent = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies"
+    )
     user_id = models.CharField(max_length=24, db_index=True, default="")
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -235,3 +238,21 @@ class Comment(models.Model):
 
     def __str__(self) -> str:
         return f"Comment by {self.user_id} on post {self.post_id}"
+
+
+class CommentGem(models.Model):
+    """A 'gem' reaction — like a like/upvote on a comment."""
+
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="gems")
+    user_id = models.CharField(max_length=24, db_index=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "user_id"], name="unique_gem_per_user_comment"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Gem by {self.user_id} on comment {self.comment_id}"
