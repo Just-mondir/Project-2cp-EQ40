@@ -360,9 +360,18 @@ function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: ()
   if (!isAnimating && !isVisible) return null;
 
   const filters = [
-    { label: "Historical Period", options: ["All", "Roman", "Ottoman", "Islamic", "Numidian"] },
-    { label: "Region", options: ["All", "North", "South", "East", "West", "Central"] },
-    { label: "Monument Type", options: ["All", "Ruins", "Mosques", "Palaces", "Museums"] },
+    {
+      label: "Geographical Regions",
+      options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n’Ajjer"]
+    },
+    {
+      label: "Historical Periods",
+      options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"]
+    },
+    {
+      label: "Heritage Type",
+      options: ["All", "Civil", "Religious", "Military", "Funerary"]
+    },
     { label: "User Expertise", options: ["All", "Beginner", "Intermediate", "Expert"] },
   ];
 

@@ -48,6 +48,15 @@ html::-webkit-scrollbar {
   height: 0px;
 }
 
+.feed-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.feed-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* About second page — mission & vision cards */
 .about2-wrapper {
   position: relative;
