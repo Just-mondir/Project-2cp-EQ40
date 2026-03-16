@@ -633,8 +633,9 @@ function PostCard({ post, isNew, onCommentClick }) {
 
   return (
     <div
-      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 ${isNew ? "post-fade-in" : ""}`}
+      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
       style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
+      onClick={onCommentClick}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
     >
