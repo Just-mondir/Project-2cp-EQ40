@@ -314,3 +314,34 @@ class MySavedPostsView(APIView):
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
+class MyGemedPostsView(APIView):
+    """GET /api/posts/gemed/ — posts gemed by the requesting user."""
+    permission_classes = [IsAuthenticated]
+    def get(self, request: Request) -> Response:
+        gemed_post_ids = Gem.objects.filter(user_id=str(request.user.id)).values_list("post_id", flat=True)
+        posts = Post.objects.filter(id__in=gemed_post_ids, is_deleted=False)
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+    
+class MyEventsPostsView(APIView):
+    """GET /api/posts/myevents/ — events posted by the requesting user."""
+    permission_classes = [IsAuthenticated]
+    def get(self, request: Request) -> Response:
+        posts = Post.objects.filter(author_id=request.user.id,post_type=Post.PostType.EVENT, is_deleted=False)
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)  
+    
+class MyAlertsPostsView(APIView):
+    """GET /api/posts/myalerts/ — alerts posted by the requesting user."""
+    permission_classes = [IsAuthenticated]
+    def get(self, request: Request) -> Response:
+        posts = Post.objects.filter(author_id=request.user.id,post_type=Post.PostType.ALERT, is_deleted=False)
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)      
