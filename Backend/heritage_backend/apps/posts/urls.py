@@ -14,13 +14,21 @@ from .views import (
     PostImageUploadView,
     PostListCreateView,
     SaveToggleView,
+    MyGemedPostsView,
+    MyEventsPostsView,
+    MyAlertsPostsView
 )
 
 urlpatterns = [
     # Feed
     path("posts/", PostListCreateView.as_view(), name="post-list-create"),
+
+    # Profile
     path("posts/me/", MyPostsView.as_view(), name="my-posts"),
     path("posts/saved/", MySavedPostsView.as_view(), name="saved-posts"),
+    path("posts/gemed/", MyGemedPostsView.as_view(), name="gemed-posts"),
+    path("posts/myevents/", MyEventsPostsView.as_view(), name="myevents"),
+    path("posts/myalerts/", MyAlertsPostsView.as_view(), name="myalerts"),
 
     # Post detail
     path("posts/<int:pk>/", PostDetailView.as_view(), name="post-detail"),
