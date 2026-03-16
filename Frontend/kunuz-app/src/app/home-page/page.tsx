@@ -127,7 +127,7 @@ function CommentItem({ comment }) {
     <div
       className="flex gap-3 p-3 rounded-xl"
       style={{
-        backgroundColor: "#FFF3D0",
+        backgroundColor: "var(--light)",
         boxShadow: "0 1px 6px rgba(67,40,23,0.06)",
       }}
     >
@@ -203,7 +203,7 @@ function LeftSidebar() {
       ),
     },
     {
-      label: "Communities",
+      label: "Guilds",
       href: null,
       path: (
         <>
@@ -268,12 +268,10 @@ function LeftSidebar() {
         boxShadow: "0 4px 24px rgba(67,40,23,0.12)",
       }}
     >
-      {/* Logo — icon only */}
       <div className="mb-6 px-1">
         <img src="/kunuz-icon.svg" alt="Kunuz" width={42} height={42} />
       </div>
 
-      {/* Nav icons */}
       <nav className="flex flex-col items-center gap-5">
         {navIcons.map((item, i) => {
           const iconContent = (
@@ -302,32 +300,21 @@ function LeftSidebar() {
               {item.href ? (
                 <Link
                   href={item.href}
-                  className={`relative p-2.5 rounded-xl transition-all duration-200 block ${activeIdx === i
-                    ? "bg-[#432817]"
-                    : "hover:bg-[#F0E8CC]"
-                    }`}
+                  className={`relative p-2.5 rounded-xl transition-all duration-200 block ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}
                 >
                   {iconContent}
                 </Link>
               ) : (
                 <button
                   onClick={() => setActiveIdx(i)}
-                  className={`relative p-2.5 rounded-xl transition-all duration-200 ${activeIdx === i
-                    ? "bg-[#432817]"
-                    : "hover:bg-[#F0E8CC]"
-                    }`}
+                  className={`relative p-2.5 rounded-xl transition-all duration-200 ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}
                 >
                   {iconContent}
                 </button>
               )}
-              {/* Tooltip */}
               <span
                 className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
-                style={{
-                  backgroundColor: "#432817",
-                  color: "#FFF8E2",
-                  boxShadow: "0 2px 8px rgba(67,40,23,0.2)",
-                }}
+                style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}
               >
                 {item.label}
               </span>
@@ -335,37 +322,19 @@ function LeftSidebar() {
           );
         })}
 
-        {/* Spacer */}
         <div className="h-40" />
 
-        {/* Help icon — at the end with spacing */}
         <div className="relative group">
-          <button
-            className="p-2.5 rounded-xl transition-all duration-200 hover:bg-[#F0E8CC]"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#432817"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+          <button className="p-2.5 rounded-xl transition-all duration-200 hover:bg-[#F0E8CC]">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
           </button>
-          {/* Tooltip */}
           <span
             className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
-            style={{
-              backgroundColor: "#432817",
-              color: "#FFF8E2",
-              boxShadow: "0 2px 8px rgba(67,40,23,0.2)",
-            }}
+            style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}
           >
             Help
           </span>
@@ -383,51 +352,39 @@ function FilterSection({ isVisible }) {
   return (
     <div
       className="px-3 py-2 mb-2"
-      style={{
-        backgroundColor: "#FFFFFF",
-        borderRadius: "10px",
-        boxShadow: "0 2px 12px rgba(67,40,23,0.1)",
-      }}
+      style={{ backgroundColor: "#FFFFFF", borderRadius: "10px", boxShadow: "0 2px 12px rgba(67,40,23,0.1)" }}
     >
       <h3
         className="text-sm font-bold mb-2 text-center"
-        style={{
-          color: "#432817",
-          fontFamily: "Georgia, 'Times New Roman', serif",
-        }}
+        style={{ color: "#432817", fontFamily: "Georgia, 'Times New Roman', serif" }}
       >
         Personalise News feed filter
       </h3>
       <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-        {["Historical Period", "Region", "Monument Type", "User Expertise"].map(
-          (label) => (
-            <div key={label}>
-              <label
-                className="text-[9px] font-medium mb-0.5 block"
-                style={{ color: "#6B5344" }}
-              >
-                {label}
-              </label>
-              <select
-                className="w-full text-[10px] px-2 py-1.5 outline-none cursor-pointer appearance-none"
-                style={{
-                  backgroundColor: "#FFFFFF",
-                  border: "1px solid #432817",
-                  borderRadius: "999px",
-                  color: "#432817",
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23432817' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 8px center",
-                }}
-              >
-                <option>All</option>
-                <option>Roman</option>
-                <option>Ottoman</option>
-                <option>Islamic</option>
-              </select>
-            </div>
-          )
-        )}
+        {["Historical Period", "Region", "Monument Type", "User Expertise"].map((label) => (
+          <div key={label}>
+            <label className="text-[9px] font-medium mb-0.5 block" style={{ color: "#6B5344" }}>
+              {label}
+            </label>
+            <select
+              className="w-full text-[10px] px-2 py-1.5 outline-none cursor-pointer appearance-none"
+              style={{
+                backgroundColor: "#FFFFFF",
+                border: "1px solid #432817",
+                borderRadius: "999px",
+                color: "#432817",
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23432817' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 8px center",
+              }}
+            >
+              <option>All</option>
+              <option>Roman</option>
+              <option>Ottoman</option>
+              <option>Islamic</option>
+            </select>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -453,34 +410,18 @@ function PostModal({ post, onClose }) {
   if (!post) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      onClick={onClose}
-    >
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-
-      {/* Modal */}
       <div
         className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden"
-        style={{
-          backgroundColor: "#FFFFFF",
-          boxShadow: "0 8px 40px rgba(0,0,0,0.25)",
-        }}
+        style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Left — Image */}
         <div className="w-1/2 flex-shrink-0 bg-black flex items-center justify-center">
-          <img
-            src={post.image}
-            alt={post.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
         </div>
 
-        {/* Right — Comments */}
         <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
-          {/* Modal header */}
           <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
             <div
               className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center"
@@ -497,7 +438,6 @@ function PostModal({ post, onClose }) {
                 <p className="text-[11px]" style={{ color: "#8B7355" }}>{post.date}</p>
               </div>
             </div>
-            {/* Three dots - horizontal */}
             <div className="relative" ref={postMenuRef}>
               <button
                 className="p-1 rounded hover:bg-[#E0D5C5] transition-colors mr-2"
@@ -510,10 +450,7 @@ function PostModal({ post, onClose }) {
                 </svg>
               </button>
               {showPostMenu && (
-                <div
-                  className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
-                  style={{ backgroundColor: "#FFF8E2" }}
-                >
+                <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
@@ -524,10 +461,7 @@ function PostModal({ post, onClose }) {
                 </div>
               )}
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors"
-            >
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
@@ -535,13 +469,11 @@ function PostModal({ post, onClose }) {
             </button>
           </div>
 
-          {/* Post title & description */}
           <div className="px-5 pt-3 pb-2 border-b" style={{ borderColor: "#E0D5C5" }}>
             <h3 className="text-lg font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
             <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>{post.body}</p>
           </div>
 
-          {/* Comments scrollable */}
           <div className="flex-1 overflow-y-auto px-5 py-3 feed-scroll" style={{ maxHeight: "calc(85vh - 280px)" }}>
             <div className="flex flex-col gap-3">
               {MOCK_COMMENTS.map((c) => (
@@ -550,7 +482,6 @@ function PostModal({ post, onClose }) {
             </div>
           </div>
 
-          {/* Interaction stats bar */}
           <div className="px-5 py-2 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}>
@@ -568,7 +499,6 @@ function PostModal({ post, onClose }) {
             </button>
           </div>
 
-          {/* Add comment */}
           <div className="px-5 py-3 flex items-center gap-2">
             <input
               type="text"
@@ -576,11 +506,7 @@ function PostModal({ post, onClose }) {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border"
-              style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E0D5C5",
-                color: "#432817",
-              }}
+              style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }}
             />
             <button
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
@@ -603,10 +529,7 @@ function PostModal({ post, onClose }) {
 function RightSidebar() {
   return (
     <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 overflow-y-auto h-full">
-      <h2
-        className="text-base font-bold mb-5"
-        style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-      >
+      <h2 className="text-base font-bold mb-5" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
         View Popular Guilds
       </h2>
       <div className="flex flex-col gap-2">
@@ -616,20 +539,10 @@ function RightSidebar() {
             className="flex gap-4 py-5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5"
             style={{ width: "283px", boxShadow: "0 2px 10px rgba(67,40,23,0.07)" }}
           >
-            {/* Guild circular thumbnail */}
-            <img
-              src={guild.image}
-              alt={guild.name}
-              className="w-[55px] h-[55px] rounded-full object-cover flex-shrink-0"
-            />
-            {/* Guild info */}
+            <img src={guild.image} alt={guild.name} className="w-[55px] h-[55px] rounded-full object-cover flex-shrink-0" />
             <div className="flex flex-col justify-center min-w-0">
-              <span className="font-bold text-sm" style={{ color: "#432817" }}>
-                {guild.name}
-              </span>
-              <span className="text-xs leading-tight mt-1 line-clamp-2" style={{ color: "#8B7355" }}>
-                {guild.desc}
-              </span>
+              <span className="font-bold text-sm" style={{ color: "#432817" }}>{guild.name}</span>
+              <span className="text-xs leading-tight mt-1 line-clamp-2" style={{ color: "#8B7355" }}>{guild.desc}</span>
               <span className="flex items-center gap-1 text-[11px] mt-1.5" style={{ color: "#8B7355" }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -655,21 +568,12 @@ function PostCard({ post, isNew, onCommentClick }) {
 
   return (
     <div
-      className={`bg-white rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 ${isNew ? "post-fade-in" : ""
-        }`}
-      style={{
-        boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)";
-      }}
+      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 ${isNew ? "post-fade-in" : ""}`}
+      style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor:"var(--light)" }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
     >
-      {/* Header */}
       <div className="flex items-center px-5 pt-4 pb-2">
-        {/* Avatar */}
         <div
           className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center"
           style={{ backgroundColor: "#E0D5C5" }}
@@ -681,22 +585,14 @@ function PostCard({ post, isNew, onCommentClick }) {
         </div>
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-bold text-base" style={{ color: "#432817" }}>
-              {post.username}
-            </p>
-            <p className="text-xs" style={{ color: "#8B7355" }}>
-              {post.date}
-            </p>
+            <p className="font-bold text-base" style={{ color: "#432817" }}>{post.username}</p>
+            <p className="text-xs" style={{ color: "#8B7355" }}>{post.date}</p>
           </div>
         </div>
-        {/* Three dots with menu */}
         <div className="relative">
           <button
             className="p-1 rounded hover:bg-[#FFF8E2] transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
+            onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355">
               <circle cx="12" cy="5" r="1.5" />
@@ -705,17 +601,11 @@ function PostCard({ post, isNew, onCommentClick }) {
             </svg>
           </button>
           {showMenu && (
-            <div
-              className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50"
-              style={{ backgroundColor: "#FFF8E2" }}
-            >
+            <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
               <button
                 className="text-sm font-bold whitespace-nowrap"
                 style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                }}
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
               >
                 Report post
               </button>
@@ -724,42 +614,26 @@ function PostCard({ post, isNew, onCommentClick }) {
         </div>
       </div>
 
-      {/* Location */}
       <div className="flex items-center gap-1 px-5 pb-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
           <circle cx="12" cy="10" r="3" />
         </svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>
-          {post.location}
-        </span>
+        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location}</span>
       </div>
 
-      {/* Title — bold Lato */}
-      <h3
-        className="px-5 pb-2 text-xl font-bold"
-        style={{ color: "#432817" }}
-      >
-        {post.title}
-      </h3>
+      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>{post.title}</h3>
 
-      {/* Body */}
       <p className="px-5 pb-3 text-sm leading-relaxed" style={{ color: "#432817" }}>
         {post.body}{" "}
-        <button className="font-semibold" style={{ color: "#8B6914" }}>
-          See more
-        </button>
+        <button className="font-semibold" style={{ color: "#8B6914" }}>See more</button>
       </p>
 
-      {/* Image */}
       <div className="relative px-4 pb-3">
         {imgError ? (
           <div
             className="w-full rounded-lg flex items-center justify-center"
-            style={{
-              height: 460,
-              background: "linear-gradient(135deg, #C8A96E, #8B6914)",
-            }}
+            style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}
           >
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
               <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
@@ -775,40 +649,23 @@ function PostCard({ post, isNew, onCommentClick }) {
             onError={() => setImgError(true)}
           />
         )}
-
-        {/* Badge */}
         {post.badge && (
-          <span
-            className={`absolute top-2 right-6 px-3 py-1 rounded-full text-xs font-semibold ${BADGE_COLORS[post.badge] || ""
-              }`}
-          >
+          <span className={`absolute top-2 right-6 px-3 py-1 rounded-full text-xs font-semibold ${BADGE_COLORS[post.badge] || ""}`}>
             {post.badge}
           </span>
         )}
       </div>
 
-      {/* Interaction bar — Left: Gem, Comment, Annotation | Right: Save */}
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
           <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
-            <GemIcon />
-            <span>{post.gems}</span>
+            <GemIcon /><span>{post.gems}</span>
           </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
-            style={{ color: "#432817" }}
-            onClick={onCommentClick}
-          >
-            <CommentIcon />
-            <span>{post.comments}</span>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
+            <CommentIcon /><span>{post.comments}</span>
           </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
-            style={{ color: "#432817" }}
-            onClick={onCommentClick}
-          >
-            <AnnotationIcon />
-            <span>{post.annotations}</span>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
+            <AnnotationIcon /><span>{post.annotations}</span>
           </button>
         </div>
         <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
@@ -828,25 +685,21 @@ export default function HomePageRoute() {
   const [selectedPost, setSelectedPost] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isFocused, setIsFocused] = useState(false); 
   const sentinelRef = useRef(null);
   const counterRef = useRef(POSTS.length);
   const feedRef = useRef(null);
 
-  // Track scroll position to hide filter when scrolled
   useEffect(() => {
     const feedElement = feedRef.current;
     if (!feedElement) return;
-
     const handleScroll = () => {
       const scrolled = feedElement.scrollTop > 10;
       setIsScrolled(scrolled);
-      if (scrolled) {
-        setShowFilter(false);
-      }
+      if (scrolled) setShowFilter(false);
     };
-
-    feedElement.addEventListener('scroll', handleScroll);
-    return () => feedElement.removeEventListener('scroll', handleScroll);
+    feedElement.addEventListener("scroll", handleScroll);
+    return () => feedElement.removeEventListener("scroll", handleScroll);
   }, []);
 
   const loadMore = useCallback(() => {
@@ -854,10 +707,7 @@ export default function HomePageRoute() {
     setLoading(true);
     setTimeout(() => {
       const shuffled = [...POSTS].sort(() => Math.random() - 0.5).slice(0, 3);
-      const newPosts = shuffled.map((p) => ({
-        ...p,
-        _key: counterRef.current++,
-      }));
+      const newPosts = shuffled.map((p) => ({ ...p, _key: counterRef.current++ }));
       setPosts((prev) => {
         setNewPostStart(prev.length);
         return [...prev, ...newPosts];
@@ -870,11 +720,7 @@ export default function HomePageRoute() {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore();
-        }
-      },
+      (entries) => { if (entries[0].isIntersecting) loadMore(); },
       { threshold: 0.1 }
     );
     observer.observe(sentinel);
@@ -884,64 +730,47 @@ export default function HomePageRoute() {
   return (
     <>
       <div className="flex h-screen overflow-hidden justify-center" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
-        {/* LEFT SIDEBAR — floating */}
         <LeftSidebar />
 
-        {/* Constrained container */}
         <div className="flex h-full" style={{ width: "1116px", maxWidth: "100%", marginLeft: "80px" }}>
-          {/* MAIN CONTENT AREA */}
           <div className="flex flex-1 flex-col">
+
             {/* TOP SEARCH BAR */}
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3" style={{ backgroundColor: "#FFF8E2" }}>
+            <div className="sticky top-0 z-40 px-6 pt-4 pb-3" style={{ backgroundColor: "var(--cream)" }}>
               <div
-                className="flex items-center w-full rounded-full px-4 py-2.5"
+                className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200"
                 style={{
-                  backgroundColor: "#FFF8E2",
-                  border: "1px solid #432817",
-                  boxShadow: "0 1px 8px rgba(67,40,23,0.06)",
+                  backgroundColor: "var(--light)",
+                  border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", 
+                  boxShadow: isFocused
+                    ? "0 0 0 3px rgba(67,40,23,0.15)"  
+                    : "0 1px 8px rgba(67,40,23,0.06)",
                 }}
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#432817"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="flex-shrink-0"
-                >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
                 <input
                   type="text"
                   placeholder="Search..."
+                  onFocus={() => setIsFocused(true)}  
+                  onBlur={() => setIsFocused(false)} 
                   className="flex-1 ml-3 outline-none bg-transparent text-sm"
-                  style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                  style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}
                 />
                 <button
                   className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors"
                   onClick={() => {
                     if (isScrolled && feedRef.current) {
-                      feedRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                      feedRef.current.scrollTo({ top: 0, behavior: "smooth" });
                       setTimeout(() => setShowFilter(true), 300);
                     } else {
                       setShowFilter(!showFilter);
                     }
                   }}
                 >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#432817"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6" />
                     <line x1="4" y1="12" x2="20" y2="12" />
                     <line x1="4" y1="18" x2="20" y2="18" />
@@ -953,11 +782,8 @@ export default function HomePageRoute() {
               </div>
             </div>
 
-            {/* FEED + RIGHT SIDEBAR row */}
             <div className="flex flex-1 overflow-hidden">
-              {/* CENTER FEED */}
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2">
-                {/* Filter Section — toggleable, hidden when scrolled */}
                 <FilterSection isVisible={showFilter} />
 
                 {posts.map((post, index) => (
@@ -969,7 +795,6 @@ export default function HomePageRoute() {
                   />
                 ))}
 
-                {/* Loader */}
                 {loading && (
                   <div className="flex justify-center py-6">
                     <div
@@ -979,18 +804,15 @@ export default function HomePageRoute() {
                   </div>
                 )}
 
-                {/* Sentinel for infinite scroll */}
                 <div ref={sentinelRef} className="h-4" />
               </main>
 
-              {/* RIGHT SIDEBAR */}
               <RightSidebar />
             </div>
           </div>
         </div>
       </div>
 
-      {/* POST MODAL */}
       {selectedPost && (
         <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
       )}

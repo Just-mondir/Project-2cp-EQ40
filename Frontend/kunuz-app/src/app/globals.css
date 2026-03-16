@@ -5,6 +5,7 @@
   --foreground: #432817;
   --cream: #FFF8E2;
   --brown: #432817;
+  --light: #F7F5EF;
 }
 
 @theme inline {
@@ -12,6 +13,7 @@
   --color-foreground: var(--foreground);
   --color-cream: var(--cream);
   --color-brown: var(--brown);
+  --color-light: var(--light);
   --font-sans: var(--font-lato), system-ui, sans-serif;
   --font-brand: var(--font-brand), Georgia, serif;
 }
