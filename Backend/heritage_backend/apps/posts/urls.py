@@ -8,6 +8,7 @@ from .views import (
     CommentDetailView,
     CommentListCreateView,
     GemToggleView,
+    CommentGemToggleView,
     MyPostsView,
     MySavedPostsView,
     PostDetailView,
@@ -43,4 +44,5 @@ urlpatterns = [
     # Comments
     path("posts/<int:pk>/comments/", CommentListCreateView.as_view(), name="post-comments"),
     path("posts/comments/<int:pk>/", CommentDetailView.as_view(), name="comment-detail"),
+    path("posts/comments/<int:pk>/gem/", CommentGemToggleView.as_view(), name="comment-gem"),
 ]

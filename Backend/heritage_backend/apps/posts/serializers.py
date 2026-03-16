@@ -5,7 +5,7 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from apps.users.models import User
-from .models import AlertDetails, Comment, EventDetails, Gem, Post, PostImage, Save
+from .models import AlertDetails, Comment, CommentGem, EventDetails, Gem, Post, PostImage, Save
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +228,7 @@ class CommentSerializer(serializers.ModelSerializer):
             "id",
             "post",
             "user_id",
+            "parent",
             "user_display_name",
             "user_username",
             "content",
@@ -235,6 +236,13 @@ class CommentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "post", "user_id", "created_at", "updated_at"]
+
+
+class CommentGemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommentGem
+        fields = ["id", "comment", "user_id", "created_at"]
+        read_only_fields = ["id", "comment", "user_id", "created_at"]
 
 
 # ---------------------------------------------------------------------------
