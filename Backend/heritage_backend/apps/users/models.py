@@ -201,3 +201,14 @@ class BlacklistedToken(me.Document):
         "indexes": ["jti"],
     }
 
+class Visitor(me.Document):
+    """Tracks anonymous visitors who visited the landing page without registering."""
+    
+    ip_address = me.StringField(required=True)
+    visited_at = me.DateTimeField(default=timezone.now)
+
+    meta = {
+        "collection": "visitors",
+        "indexes": ["ip_address"],
+    }    
+
