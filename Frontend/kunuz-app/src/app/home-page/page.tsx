@@ -346,49 +346,121 @@ function LeftSidebar() {
 
 /* ───────────────── FILTER SECTION ───────────────── */
 
-function FilterSection({ isVisible }) {
-  if (!isVisible) return null;
+function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: () => void }) {
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    if (isVisible) {
+      setIsAnimating(true);
+    } else {
+      setTimeout(() => setIsAnimating(false), 300);
+    }
+  }, [isVisible]);
+
+  if (!isAnimating && !isVisible) return null;
+
+  const filters = [
+    {
+      label: "Geographical Regions",
+      options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n’Ajjer"]
+    },
+    {
+      label: "Historical Periods",
+      options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"]
+    },
+    {
+      label: "Heritage Type",
+      options: ["All", "Civil", "Religious", "Military", "Funerary"]
+    },
+    { label: "User Expertise", options: ["All", "Beginner", "Intermediate", "Expert"] },
+  ];
 
   return (
     <div
-      className="px-3 py-2 mb-2"
-      style={{ backgroundColor: "#FFFFFF", borderRadius: "10px", boxShadow: "0 2px 12px rgba(67,40,23,0.1)" }}
+      className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) origin-top-right ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 -translate-y-4 pointer-events-none'}`}
+      style={{
+        backgroundColor: "var(--background)",
+        borderRadius: "28px",
+        boxShadow: "0 25px 60px rgba(67,40,23,0.2)",
+        border: "1.5px solid var(--brown)"
+      }}
     >
-      <h3
-        className="text-sm font-bold mb-2 text-center"
-        style={{ color: "#432817", fontFamily: "Georgia, 'Times New Roman', serif" }}
-      >
-        Personalise News feed filter
-      </h3>
-      <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-        {["Historical Period", "Region", "Monument Type", "User Expertise"].map((label) => (
-          <div key={label}>
-            <label className="text-[9px] font-medium mb-0.5 block" style={{ color: "#6B5344" }}>
-              {label}
-            </label>
-            <select
-              className="w-full text-[10px] px-2 py-1.5 outline-none cursor-pointer appearance-none"
-              style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #432817",
-                borderRadius: "999px",
-                color: "#432817",
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 24 24' fill='none' stroke='%23432817' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 8px center",
-              }}
-            >
-              <option>All</option>
-              <option>Roman</option>
-              <option>Ottoman</option>
-              <option>Islamic</option>
-            </select>
+      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
           </div>
-        ))}
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>
+            Filters
+          </h3>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 rounded-full hover:bg-black/5 transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="flex flex-col max-h-[50vh]">
+        <div className="flex-1 overflow-y-auto px-6 py-5 feed-scroll">
+          <div className="flex flex-col gap-5">
+            {filters.map((filter) => (
+              <div key={filter.label} className="flex flex-col gap-2">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--brown)" }}>
+                  {filter.label}
+                </label>
+                <div className="relative group w-full">
+                  <select
+                    className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
+                    style={{
+                      backgroundColor: "var(--light)",
+                      border: "1.5px solid rgba(67, 40, 23, 0.2)",
+                      borderRadius: "14px",
+                      color: "var(--brown)",
+                      fontWeight: "700"
+                    }}
+                  >
+                    {filter.options.map((opt) => (
+                      <option key={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
+        <button
+          onClick={onClose}
+          className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5"
+          style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}
+        >
+          Reset
+        </button>
+        <button
+          className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent"
+          style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}
+        >
+          Apply
+        </button>
       </div>
     </div>
   );
 }
+
 
 /* ───────────────── POST MODAL ───────────────── */
 
@@ -528,33 +600,35 @@ function PostModal({ post, onClose }) {
 
 function RightSidebar() {
   return (
-    <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 overflow-y-auto h-full">
-      <h2 className="text-base font-bold mb-5" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
-        View Popular Guilds
-      </h2>
-      <div className="flex flex-col gap-2">
-        {GUILDS.map((guild, i) => (
-          <div
-            key={i}
-            className="flex gap-4 py-5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5"
-            style={{ width: "283px", boxShadow: "0 2px 10px rgba(67,40,23,0.07)" }}
-          >
-            <img src={guild.image} alt={guild.name} className="w-[55px] h-[55px] rounded-full object-cover flex-shrink-0" />
-            <div className="flex flex-col justify-center min-w-0">
-              <span className="font-bold text-sm" style={{ color: "#432817" }}>{guild.name}</span>
-              <span className="text-xs leading-tight mt-1 line-clamp-2" style={{ color: "#8B7355" }}>{guild.desc}</span>
-              <span className="flex items-center gap-1 text-[11px] mt-1.5" style={{ color: "#8B7355" }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                {guild.members} Members
-              </span>
+    <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
+      <div className="sticky top-0 h-full flex flex-col">
+        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
+          Popular Guilds
+        </h2>
+        <div className="flex flex-col gap-3 flex-shrink-0">
+          {GUILDS.slice(0, 5).map((guild, i) => (
+            <div
+              key={i}
+              className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5"
+              style={{ width: "100%", boxShadow: "0 2px 10px rgba(67,40,23,0.05)", backgroundColor: "rgba(255,255,255,0.4)" }}
+            >
+              <img src={guild.image} alt={guild.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm" />
+              <div className="flex flex-col justify-center min-w-0">
+                <span className="font-bold text-sm truncate" style={{ color: "#432817" }}>{guild.name}</span>
+                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "#8B7355" }}>{guild.desc}</span>
+                <span className="flex items-center gap-1 text-[11px] mt-1.5 font-medium" style={{ color: "#8B6914" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  {guild.members} Members
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </aside>
   );
@@ -568,8 +642,9 @@ function PostCard({ post, isNew, onCommentClick }) {
 
   return (
     <div
-      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 ${isNew ? "post-fade-in" : ""}`}
-      style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor:"var(--light)" }}
+      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
+      style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
+      onClick={onCommentClick}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
     >
@@ -684,8 +759,7 @@ export default function HomePageRoute() {
   const [newPostStart, setNewPostStart] = useState(-1);
   const [selectedPost, setSelectedPost] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isFocused, setIsFocused] = useState(false); 
+  const [isFocused, setIsFocused] = useState(false);
   const sentinelRef = useRef(null);
   const counterRef = useRef(POSTS.length);
   const feedRef = useRef(null);
@@ -695,7 +769,6 @@ export default function HomePageRoute() {
     if (!feedElement) return;
     const handleScroll = () => {
       const scrolled = feedElement.scrollTop > 10;
-      setIsScrolled(scrolled);
       if (scrolled) setShowFilter(false);
     };
     feedElement.addEventListener("scroll", handleScroll);
@@ -736,14 +809,14 @@ export default function HomePageRoute() {
           <div className="flex flex-1 flex-col">
 
             {/* TOP SEARCH BAR */}
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3" style={{ backgroundColor: "var(--cream)" }}>
+            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
               <div
                 className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200"
                 style={{
                   backgroundColor: "var(--light)",
-                  border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", 
+                  border: isFocused ? "1px solid #432817" : "1px solid var(--brown)",
                   boxShadow: isFocused
-                    ? "0 0 0 3px rgba(67,40,23,0.15)"  
+                    ? "0 0 0 3px rgba(67,40,23,0.15)"
                     : "0 1px 8px rgba(67,40,23,0.06)",
                 }}
               >
@@ -754,21 +827,14 @@ export default function HomePageRoute() {
                 <input
                   type="text"
                   placeholder="Search..."
-                  onFocus={() => setIsFocused(true)}  
-                  onBlur={() => setIsFocused(false)} 
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                   className="flex-1 ml-3 outline-none bg-transparent text-sm"
                   style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}
                 />
                 <button
                   className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors"
-                  onClick={() => {
-                    if (isScrolled && feedRef.current) {
-                      feedRef.current.scrollTo({ top: 0, behavior: "smooth" });
-                      setTimeout(() => setShowFilter(true), 300);
-                    } else {
-                      setShowFilter(!showFilter);
-                    }
-                  }}
+                  onClick={() => setShowFilter(!showFilter)}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6" />
@@ -780,11 +846,11 @@ export default function HomePageRoute() {
                   </svg>
                 </button>
               </div>
+              <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} />
             </div>
 
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2">
-                <FilterSection isVisible={showFilter} />
 
                 {posts.map((post, index) => (
                   <PostCard
