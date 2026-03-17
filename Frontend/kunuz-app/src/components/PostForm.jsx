@@ -146,7 +146,7 @@ function TrashIcon({ size = 13, color = GOLD }) {
 /* ══════════════════════════════════════════════
    PostForm
 ══════════════════════════════════════════════ */
-export default function PostForm({ onCancel, onDone, initialValues = {} }) {
+export default function PostForm({ onCancel, onDone, initialValues = {}, showFooter = true }) {
     const [title, setTitle] = useState(initialValues.title ?? "");
     const [description, setDescription] = useState(initialValues.description ?? "");
     const [location, setLocation] = useState(initialValues.location ?? "");
