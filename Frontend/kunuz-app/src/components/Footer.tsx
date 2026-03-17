@@ -6,7 +6,12 @@ export default function Footer() {
   const pathname = usePathname();
 
   // Hide footer on specific pages
-  if (pathname === "/home-page" || pathname.startsWith("/profile") || pathname.startsWith("/add-post")) {
+  if (
+    pathname === "/home-page" ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/add-post") ||
+    pathname.startsWith("/edit-post")
+  ) {
     return null;
   }
 
