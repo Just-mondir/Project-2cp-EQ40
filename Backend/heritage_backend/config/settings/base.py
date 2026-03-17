@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "apps.posts",
     "apps.reports",
     "apps.notifications",
+    "apps.moderator",
 ]
 
 MIDDLEWARE = [
