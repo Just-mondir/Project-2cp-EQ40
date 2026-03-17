@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from django.db import IntegrityError
 from rest_framework import status
+import os
+from django.conf import settings
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -38,11 +39,6 @@ class PostPagination(PageNumberPagination):
 
 
 class PostListCreateView(APIView):
-    """GET /api/posts/  — list all non-deleted posts (public).
-    POST /api/posts/ — create a new post (auth required).
-    """
-
-    pagination_class = PostPagination
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -74,22 +70,21 @@ class PostListCreateView(APIView):
 
 
 class PostDetailView(APIView):
-    """GET/PATCH/DELETE /api/posts/<pk>/"""
 
-    def _get_post(self, pk: int) -> Post | None:
+    def _get_post(self, pk: str) -> Post | None:
         try:
-            return Post.objects.get(pk=pk, is_deleted=False)
+            return Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return None
 
-    def get(self, request: Request, pk: int) -> Response:
+    def get(self, request: Request, pk: str) -> Response:
         post = self._get_post(pk)
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
         serializer = PostDetailSerializer(post, context={"request": request})
         return api_success("Post retrieved.", serializer.data)
 
-    def patch(self, request: Request, pk: int) -> Response:
+    def patch(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
         post = self._get_post(pk)
@@ -105,7 +100,7 @@ class PostDetailView(APIView):
         post = serializer.save()
         return api_success("Post updated.", PostDetailSerializer(post, context={"request": request}).data)
 
-    def delete(self, request: Request, pk: int) -> Response:
+    def delete(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
         post = self._get_post(pk)
@@ -113,9 +108,8 @@ class PostDetailView(APIView):
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
         if post.author_id != str(request.user.id) and not request.user.is_staff:
             return api_error("You can only delete your own posts.", status_code=status.HTTP_403_FORBIDDEN)
-        # Soft-delete
         post.is_deleted = True
-        post.save(update_fields=["is_deleted", "updated_at"])
+        post.save()
         return api_success("Post deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -124,15 +118,15 @@ class PostDetailView(APIView):
 # ---------------------------------------------------------------------------
 
 
+
 class PostImageUploadView(APIView):
-    """POST /api/posts/<pk>/images/ — upload images for a post."""
 
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request: Request, pk: int) -> Response:
+    def post(self, request: Request, pk: str) -> Response:
         try:
-            post = Post.objects.get(pk=pk, is_deleted=False)
+            post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
         if post.author_id != str(request.user.id):
@@ -140,19 +134,27 @@ class PostImageUploadView(APIView):
         images = request.FILES.getlist("images")
         if not images:
             return api_error("No images provided.", status_code=status.HTTP_400_BAD_REQUEST)
-        if post.images.count() + len(images) > 5:
+        existing_count = PostImage.objects.filter(post=post).count()
+        if existing_count + len(images) > 5:
             return api_error(
-                f"A post can have at most 5 images. "
-                f"This post already has {post.images.count()}.",
+                f"A post can have at most 5 images. This post already has {existing_count}.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
-        created = [PostImage(post=post, image=img) for img in images]
-        PostImage.objects.bulk_create(created)
-        serializer = PostImageSerializer(
-            post.images.all(), many=True, context={"request": request}
-        )
-        return api_success("Images uploaded.", serializer.data, status.HTTP_201_CREATED)
+        created = []
+        for img in images:
+            # Save file to disk and store the path as string
+            file_path = os.path.join(settings.MEDIA_ROOT, "post_images", img.name)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, "wb+") as f:
+                for chunk in img.chunks():
+                    f.write(chunk)
+            image_url = f"{settings.MEDIA_URL}post_images/{img.name}"
+            post_image = PostImage(post=post, image=image_url)
+            post_image.save()
+            created.append(post_image)
 
+        serializer = PostImageSerializer(created, many=True, context={"request": request})
+        return api_success("Images uploaded.", serializer.data, status.HTTP_201_CREATED)
 
 # ---------------------------------------------------------------------------
 # Gem (like)
@@ -160,78 +162,68 @@ class PostImageUploadView(APIView):
 
 
 class GemToggleView(APIView):
-    """POST /api/posts/<pk>/gem/ — toggle gem on a post."""
 
     permission_classes = [IsAuthenticated]
 
-    def post(self, request: Request, pk: int) -> Response:
+    def post(self, request: Request, pk: str) -> Response:
         try:
-            post = Post.objects.get(pk=pk, is_deleted=False)
+            post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        gem = Gem.objects.filter(post=post, user_id=str(request.user.id))
-        if gem.exists():
+        gem = Gem.objects.filter(post=post, user_id=str(request.user.id)).first()
+        if gem:
             gem.delete()
             return api_success(
                 "Gem removed.",
-                {"liked": False, "gems_count": post.gems.count()},
+                {"liked": False, "gems_count": post.gems_count},
             )
-        try:
-            Gem.objects.create(post=post, user_id=str(request.user.id))
-            if post.author_id != str(request.user.id):
-                notify(
-                    event_type="gem_on_post",
-                    actor_id=str(request.user.id),
-                    actor_name=getattr(request.user, "display_name", "Someone"),
-                    recipient_id=post.author_id,
-                    target_type="post",
-                    target_id=post.id,
-                    post_title=post.title,
-                )
-        except IntegrityError:
-            pass  # already exists (race condition)
+        Gem(post=post, user_id=str(request.user.id)).save()
+        if post.author_id != str(request.user.id):
+            notify(
+                event_type="gem_on_post",
+                actor_id=str(request.user.id),
+                actor_name=getattr(request.user, "display_name", "Someone"),
+                recipient_id=post.author_id,
+                target_type="post",
+                target_id=str(post.id),
+                post_title=post.title,
+            )
         return api_success(
             "Gem added.",
-            {"liked": True, "gems_count": post.gems.count()},
+            {"liked": True, "gems_count": post.gems_count},
             status.HTTP_201_CREATED,
         )
 
 
 class CommentGemToggleView(APIView):
-    """POST /api/posts/comments/<pk>/gem/ — toggle gem on a comment."""
 
     permission_classes = [IsAuthenticated]
 
-    def post(self, request: Request, pk: int) -> Response:
+    def post(self, request: Request, pk: str) -> Response:
         try:
-            comment = Comment.objects.get(pk=pk)
+            comment = Comment.objects.get(id=pk)
         except Comment.DoesNotExist:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
-        
-        gem = CommentGem.objects.filter(comment=comment, user_id=str(request.user.id))
-        if gem.exists():
+        gem = CommentGem.objects.filter(comment=comment, user_id=str(request.user.id)).first()
+        if gem:
             gem.delete()
             return api_success(
                 "Gem removed from comment.",
-                {"liked": False, "gems_count": comment.gems.count()},
+                {"liked": False, "gems_count": comment.gems_count},
             )
-        try:
-            CommentGem.objects.create(comment=comment, user_id=str(request.user.id))
-            if comment.user_id != str(request.user.id):
-                notify(
-                    event_type="gem_on_comment",
-                    actor_id=str(request.user.id),
-                    actor_name=getattr(request.user, "display_name", "Someone"),
-                    recipient_id=comment.user_id,
-                    target_type="comment",
-                    target_id=comment.id,
-                )
-        except IntegrityError:
-            pass  # already exists (race condition)
-        
+        CommentGem(comment=comment, user_id=str(request.user.id)).save()
+        if comment.user_id != str(request.user.id):
+            notify(
+                event_type="gem_on_comment",
+                actor_id=str(request.user.id),
+                actor_name=getattr(request.user, "display_name", "Someone"),
+                recipient_id=comment.user_id,
+                target_type="comment",
+                target_id=str(comment.id),
+            )
         return api_success(
             "Gem added to comment.",
-            {"liked": True, "gems_count": comment.gems.count()},
+            {"liked": True, "gems_count": comment.gems_count},
             status.HTTP_201_CREATED,
         )
 
@@ -242,23 +234,19 @@ class CommentGemToggleView(APIView):
 
 
 class SaveToggleView(APIView):
-    """POST /api/posts/<pk>/save/ — toggle save on a post."""
 
     permission_classes = [IsAuthenticated]
 
-    def post(self, request: Request, pk: int) -> Response:
+    def post(self, request: Request, pk: str) -> Response:
         try:
-            post = Post.objects.get(pk=pk, is_deleted=False)
+            post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        save = Save.objects.filter(post=post, user_id=str(request.user.id))
-        if save.exists():
+        save = Save.objects.filter(post=post, user_id=str(request.user.id)).first()
+        if save:
             save.delete()
             return api_success("Post unsaved.", {"saved": False})
-        try:
-            Save.objects.create(post=post, user_id=str(request.user.id))
-        except IntegrityError:
-            pass
+        Save(post=post, user_id=str(request.user.id)).save()
         return api_success("Post saved.", {"saved": True}, status.HTTP_201_CREATED)
 
 
@@ -268,37 +256,34 @@ class SaveToggleView(APIView):
 
 
 class CommentListCreateView(APIView):
-    """GET /api/posts/<pk>/comments/ — list comments.
-    POST /api/posts/<pk>/comments/ — add a comment (auth required).
-    """
 
-    def get(self, request: Request, pk: int) -> Response:
+    def get(self, request: Request, pk: str) -> Response:
         try:
-            post = Post.objects.get(pk=pk, is_deleted=False)
+            post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        comments = post.comments.all()
+        comments = Comment.objects.filter(post=post)
         serializer = CommentSerializer(comments, many=True, context={"request": request})
         return api_success("Comments retrieved.", serializer.data)
 
-    def post(self, request: Request, pk: int) -> Response:
+    def post(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
         try:
-            post = Post.objects.get(pk=pk, is_deleted=False)
+            post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
         serializer = CommentSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
-        
-        # Save comment
-        comment = serializer.save(post=post, user_id=str(request.user.id))
-
-        # Handle notifications
+        comment = Comment(
+            post=post,
+            user_id=str(request.user.id),
+            content=serializer.validated_data["content"],
+            parent=serializer.validated_data.get("parent"),
+        )
+        comment.save()
         actor_name = getattr(request.user, "display_name", "Someone")
-        
-        # 1. Notify post author (if not self)
         if post.author_id != str(request.user.id):
             notify(
                 event_type="comment_on_post",
@@ -306,13 +291,10 @@ class CommentListCreateView(APIView):
                 actor_name=actor_name,
                 recipient_id=post.author_id,
                 target_type="post",
-                target_id=post.id,
+                target_id=str(post.id),
                 post_title=post.title,
             )
-            
-        # 2. Notify parent comment author if it's a reply
         if comment.parent and comment.parent.user_id != str(request.user.id):
-            # Don't double notify if post author == parent comment author
             if comment.parent.user_id != post.author_id:
                 notify(
                     event_type="reply_to_comment",
@@ -320,9 +302,8 @@ class CommentListCreateView(APIView):
                     actor_name=actor_name,
                     recipient_id=comment.parent.user_id,
                     target_type="comment",
-                    target_id=comment.parent.id,
+                    target_id=str(comment.parent.id),
                 )
-
         return api_success(
             "Comment added.",
             CommentSerializer(comment, context={"request": request}).data,
@@ -331,18 +312,16 @@ class CommentListCreateView(APIView):
 
 
 class CommentDetailView(APIView):
-    """PATCH/DELETE /api/posts/comments/<pk>/"""
 
     permission_classes = [IsAuthenticated]
 
-    def _get_comment(self, pk: int):
-        from .models import Comment as CommentModel
+    def _get_comment(self, pk: str):
         try:
-            return CommentModel.objects.get(pk=pk)
-        except CommentModel.DoesNotExist:
+            return Comment.objects.get(id=pk)
+        except Comment.DoesNotExist:
             return None
 
-    def patch(self, request: Request, pk: int) -> Response:
+    def patch(self, request: Request, pk: str) -> Response:
         comment = self._get_comment(pk)
         if not comment:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
@@ -353,10 +332,11 @@ class CommentDetailView(APIView):
         )
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
-        comment = serializer.save()
+        comment.content = serializer.validated_data.get("content", comment.content)
+        comment.save()
         return api_success("Comment updated.", CommentSerializer(comment, context={"request": request}).data)
 
-    def delete(self, request: Request, pk: int) -> Response:
+    def delete(self, request: Request, pk: str) -> Response:
         comment = self._get_comment(pk)
         if not comment:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
@@ -372,7 +352,6 @@ class CommentDetailView(APIView):
 
 
 class MyPostsView(APIView):
-    """GET /api/posts/me/ — posts created by the requesting user."""
 
     permission_classes = [IsAuthenticated]
 
@@ -385,45 +364,60 @@ class MyPostsView(APIView):
 
 
 class MySavedPostsView(APIView):
-    """GET /api/posts/saved/ — posts saved by the requesting user."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        saved_post_ids = Save.objects.filter(user_id=str(request.user.id)).values_list("post_id", flat=True)
-        posts = Post.objects.filter(id__in=saved_post_ids, is_deleted=False)
+        saves = Save.objects.filter(user_id=str(request.user.id))
+        post_ids = [save.post.id for save in saves]
+        posts = Post.objects.filter(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
 
 class MyGemedPostsView(APIView):
-    """GET /api/posts/gemed/ — posts gemed by the requesting user."""
+
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request) -> Response:
-        gemed_post_ids = Gem.objects.filter(user_id=str(request.user.id)).values_list("post_id", flat=True)
-        posts = Post.objects.filter(id__in=gemed_post_ids, is_deleted=False)
+        gems = Gem.objects.filter(user_id=str(request.user.id))
+        post_ids = [gem.post.id for gem in gems]
+        posts = Post.objects.filter(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
-    
+
+
 class MyEventsPostsView(APIView):
-    """GET /api/posts/myevents/ — events posted by the requesting user."""
+
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request) -> Response:
-        posts = Post.objects.filter(author_id=request.user.id,post_type=Post.PostType.EVENT, is_deleted=False)
+        posts = Post.objects.filter(
+            author_id=str(request.user.id),
+            post_type="event",
+            is_deleted=False
+        )
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
-        return paginator.get_paginated_response(serializer.data)  
-    
+        return paginator.get_paginated_response(serializer.data)
+
+
 class MyAlertsPostsView(APIView):
-    """GET /api/posts/myalerts/ — alerts posted by the requesting user."""
+
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request) -> Response:
-        posts = Post.objects.filter(author_id=request.user.id,post_type=Post.PostType.ALERT, is_deleted=False)
+        posts = Post.objects.filter(
+            author_id=str(request.user.id),
+            post_type="alert",
+            is_deleted=False
+        )
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
-        return paginator.get_paginated_response(serializer.data)      
+        return paginator.get_paginated_response(serializer.data)
