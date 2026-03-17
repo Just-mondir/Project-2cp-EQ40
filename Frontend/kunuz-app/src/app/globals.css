@@ -36,11 +36,13 @@ body {
 
 /* Hide vertical scrollbar while keeping page scrollable */
 html {
-  scrollbar-width: none; /* Firefox */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 html::-webkit-scrollbar {
-  width: 0px; /* Chrome, Safari, Edge */
+  width: 0px;
+  /* Chrome, Safari, Edge */
   height: 0px;
 }
 
@@ -108,4 +110,196 @@ html::-webkit-scrollbar {
   .about2-card-vision::after {
     display: none;
   }
+}
+
+/* fadeIn animation for conditional PostForm sections */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide scrollbar across all browsers (utility class) */
+.hide-scrollbar {
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE / Edge */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome / Safari */
+}
+
+/* ── Add Post / Edit Post page enhancements ── */
+
+/* Slide-in from left for the left panel */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide-in from right for the right panel */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Subtle scale-up entrance */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.post-panel-left {
+  animation: slideInLeft 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.post-panel-right {
+  animation: slideInRight 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+/* Form panel subtle hover lift */
+.post-form-panel {
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.post-form-panel:hover {
+  box-shadow: 0 8px 32px rgba(67, 40, 23, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Image grid card hover */
+.post-image-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.post-image-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(67, 40, 23, 0.15);
+}
+
+/* Upload slot hover pulse */
+.post-upload-slot {
+  transition: border-color 0.25s ease, background-color 0.25s ease, transform 0.25s ease;
+}
+
+.post-upload-slot:hover {
+  border-color: rgba(67, 40, 23, 0.5) !important;
+  background-color: rgba(67, 40, 23, 0.04) !important;
+  transform: scale(1.03);
+}
+
+/* Title shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+.post-page-title {
+  position: relative;
+  display: inline-block;
+}
+
+.post-page-title::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 105, 20, 0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200px 100%;
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Back button hover effect */
+.post-back-btn {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.post-back-btn:hover {
+  transform: translateX(-3px);
+  color: #8B6914 !important;
+}
+
+/* Post feed fade-in animation (already exists, ensuring consistency) */
+@keyframes postFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.post-fade-in {
+  animation: postFadeIn 0.4s ease both;
+}
+
+/* Loader spin animation */
+@keyframes loaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-spin {
+  animation: loaderSpin 0.8s linear infinite;
+}
+
+/* Feed scroll custom styling */
+.feed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(67, 40, 23, 0.15) transparent;
+}
+
+.feed-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.feed-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.feed-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(67, 40, 23, 0.15);
+  border-radius: 4px;
 }
