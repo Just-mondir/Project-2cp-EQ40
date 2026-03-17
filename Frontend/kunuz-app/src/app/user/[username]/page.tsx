@@ -623,29 +623,9 @@ function PostModal({ post, onClose }: { post: any; onClose: any }) {
                 {/* Right — Comments */}
                 <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
                     {/* Modal header */}
-                    <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-                        <button
-                            className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-75"
-                            style={{ backgroundColor: "#E0D5C5", border: "none", cursor: "pointer" }}
-                            onClick={() => router.push(`/user/${post.username}`)}
-                            title={`View ${post.username}'s profile`}
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg>
-                        </button>
-                        <div className="ml-3 flex-1">
-                            <div className="flex items-center gap-2">
-                                <button
-                                    className="font-bold text-base hover:underline transition-all"
-                                    style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                                    onClick={() => router.push(`/user/${post.username}`)}
-                                >
-                                    {post.username}
-                                </button>
-                                <p className="text-[11px]" style={{ color: "#8B7355" }}>{post.date}</p>
-                            </div>
+                    <div className="flex items-center px-5 pt-4 pb-1">
+                        <div className="flex-1">
+                            <p className="text-[11px]" style={{ color: "#8B7355" }}>{post.date}</p>
                         </div>
                         {/* Three dots - horizontal */}
                         <div className="relative" ref={postMenuRef}>
