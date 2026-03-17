@@ -114,6 +114,10 @@ class Comment(me.Document):
         self.updated_at = timezone.now()
         return super().save(*args, **kwargs)
 
+    @property
+    def gems_count(self) -> int:
+        return CommentGem.objects(comment=self).count()
+
 
 class CommentGem(me.Document):
     comment = me.ReferenceField(Comment, required=True)
