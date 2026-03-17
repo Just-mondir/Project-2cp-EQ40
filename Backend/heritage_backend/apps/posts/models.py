@@ -2,257 +2,125 @@
 
 from __future__ import annotations
 
-from django.core.exceptions import ValidationError
-from django.db import models
+import mongoengine as me
 from django.utils import timezone
 
 
-class Post(models.Model):
-    """A user-created post about Algerian heritage."""
+class Post(me.Document):
+    
+    POST_TYPE_CHOICES = ("discovery", "visit", "question", "alert", "event")
+    VISIBILITY_CHOICES = ("public", "groups")
+    HISTORICAL_PERIOD_CHOICES = ("", "prehistory", "roman", "islamic", "ottoman", "contemporary")
+    MONUMENT_TYPE_CHOICES = ("", "civil", "military", "religious", "funerary")
+    REGION_CHOICES = ("", "algiers", "oran", "constantine", "tlemcen")
+    author_id = me.StringField(required=True, db_field="author_id")
+    title = me.StringField(max_length=300, required=True)
+    content = me.StringField(required=True)
+    post_type = me.StringField(choices=POST_TYPE_CHOICES, required=True)
+    historical_period = me.StringField(choices=HISTORICAL_PERIOD_CHOICES, default="")
+    monument_type = me.StringField(choices=MONUMENT_TYPE_CHOICES, default="")
+    region = me.StringField(choices=REGION_CHOICES, default="")
+    visibility = me.StringField(choices=VISIBILITY_CHOICES, default="public")
+    location = me.StringField(max_length=255, default="")
+    is_deleted = me.BooleanField(default=False)
+    created_at = me.DateTimeField(default=timezone.now)
+    updated_at = me.DateTimeField(default=timezone.now)
 
-    class PostType(models.TextChoices):
-        DISCOVERY = "discovery", "Discovery"
-        VISIT = "visit", "Visit"
-        QUESTION = "question", "Question"
-        ALERT = "alert", "Alert"
-        EVENT = "event", "Event"
+    meta = {
+        "collection": "posts",
+        "ordering": ["-created_at"],
+        "indexes": ["author_id", "post_type", "is_deleted"],
+    }
 
-    class Visibility(models.TextChoices):
-        PUBLIC = "public", "Public"
-        GROUPS = "groups", "Specific Groups"
-
-    class HistoricalPeriod(models.TextChoices):
-        PREHISTORY = "prehistory", "Prehistory"
-        ROMAN = "roman", "Roman"
-        ISLAMIC = "islamic", "Islamic"
-        OTTOMAN = "ottoman", "Ottoman"
-        CONTEMPORARY = "contemporary", "Contemporary"
-
-    class MonumentType(models.TextChoices):
-        CIVIL = "civil", "Civil"
-        MILITARY = "military", "Military"
-        RELIGIOUS = "religious", "Religious"
-        FUNERARY = "funerary", "Funerary"
-
-    class Region(models.TextChoices):
-        ALGIERS = "algiers", "Algiers"
-        ORAN = "oran", "Oran"
-        CONSTANTINE = "constantine", "Constantine"
-        TLEMCEN = "tlemcen", "Tlemcen"
-
-    # Stores the MongoDB ObjectId (string) of the author from the users collection
-    author_id = models.CharField(max_length=24, db_index=True, default="")
-    title = models.CharField(max_length=300)
-    content = models.TextField()
-    post_type = models.CharField(max_length=20, choices=PostType.choices)
-
-    historical_period = models.CharField(
-        max_length=20,
-        choices=HistoricalPeriod.choices,
-        blank=True,
-        default="",
-    )
-    monument_type = models.CharField(
-        max_length=20,
-        choices=MonumentType.choices,
-        blank=True,
-        default="",
-    )
-    region = models.CharField(
-        max_length=20,
-        choices=Region.choices,
-        blank=True,
-        default="",
-    )
-
-    visibility = models.CharField(
-        max_length=20,
-        choices=Visibility.choices,
-        default=Visibility.PUBLIC,
-    )
-    location = models.CharField(max_length=255, blank=True, default="")
-
-    is_deleted = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["-created_at"]
-
-    def clean(self) -> None:
-        super().clean()
-        if not self.pk:
-            return
-        if self.post_type == Post.PostType.EVENT:
-            if not hasattr(self, "event_details"):
-                raise ValidationError(
-                    {"post_type": "EventDetails is required when post_type is Event."}
-                )
-        if self.post_type == Post.PostType.ALERT:
-            if not hasattr(self, "alert_details"):
-                raise ValidationError(
-                    {"post_type": "AlertDetails is required when post_type is Alert."}
-                )
-
-    @property
-    def countdown_seconds(self) -> int | None:
-        if self.post_type != Post.PostType.EVENT:
-            return None
-        if not hasattr(self, "event_details"):
-            return None
-        starts_at = self.event_details.starts_at
-        return max(0, int((starts_at - timezone.now()).total_seconds()))
+    def save(self, *args, **kwargs):
+        self.updated_at = timezone.now()
+        return super().save(*args, **kwargs)
 
     @property
     def gems_count(self) -> int:
-        return self.gems.count()
+        return Gem.objects.filter(post=self).count()
 
     @property
     def comments_count(self) -> int:
-        return self.comments.count()
+        return Comment.objects.filter(post=self).count()
 
     def __str__(self) -> str:
         return f"{self.title} ({self.post_type})"
 
 
-class EventDetails(models.Model):
-    """Extra details for Event-type posts."""
+class EventDetails(me.Document):
+    post = me.ReferenceField(Post, required=True)
+    starts_at = me.DateTimeField(required=True)
+    ends_at = me.DateTimeField(null=True)
 
-    post = models.OneToOneField(
-        Post, on_delete=models.CASCADE, related_name="event_details"
-    )
-    starts_at = models.DateTimeField()
-    ends_at = models.DateTimeField(null=True, blank=True)
-
-    def clean(self) -> None:
-        super().clean()
-        if self.post.post_type != Post.PostType.EVENT:
-            raise ValidationError({"post": "Linked Post must have post_type = Event."})
-        if self.ends_at and self.ends_at < self.starts_at:
-            raise ValidationError({"ends_at": "ends_at must be after starts_at."})
-
-    def __str__(self) -> str:
-        return f"EventDetails for post {self.post_id}"
+    meta = {"collection": "event_details"}
 
 
-class AlertDetails(models.Model):
-    """Extra details for Alert-type posts."""
+class AlertDetails(me.Document):
+    URGENCE_CHOICES = ("low", "medium", "high", "critical")
+    STATUS_CHOICES = ("restored", "under_intervention", "destroyed", "alert")
 
-    class UrgenceLevel(models.TextChoices):
-        LOW = "low", "Low"
-        MEDIUM = "medium", "Medium"
-        HIGH = "high", "High"
-        CRITICAL = "critical", "Critical"
+    post = me.ReferenceField(Post, required=True)
+    urgence_level = me.StringField(choices=URGENCE_CHOICES, required=True)
+    current_status = me.StringField(choices=STATUS_CHOICES, default="alert")
 
-    class CurrentStatus(models.TextChoices):
-        RESTORED = "restored", "Restored"
-        UNDER_INTERVENTION = "under_intervention", "Under intervention"
-        DESTROYED = "destroyed", "Destroyed"
-        ALERT = "alert", "Alert"
-
-    post = models.OneToOneField(
-        Post, on_delete=models.CASCADE, related_name="alert_details"
-    )
-    urgence_level = models.CharField(max_length=20, choices=UrgenceLevel.choices)
-    current_status = models.CharField(
-        max_length=25,
-        choices=CurrentStatus.choices,
-        default=CurrentStatus.ALERT,
-    )
-
-    def clean(self) -> None:
-        super().clean()
-        if self.post.post_type != Post.PostType.ALERT:
-            raise ValidationError({"post": "Linked Post must have post_type = Alert."})
-
-    def __str__(self) -> str:
-        return f"AlertDetails for post {self.post_id}"
+    meta = {"collection": "alert_details"}
 
 
-class PostImage(models.Model):
-    """Images attached to a post (max 5)."""
+class PostImage(me.Document):
+    post = me.ReferenceField(Post, required=True)
+    image = me.StringField(max_length=500, required=True)
+    uploaded_at = me.DateTimeField(default=timezone.now)
 
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField(upload_to="post_images/")
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    def clean(self) -> None:
-        super().clean()
-        if self.post_id and self.post.images.exclude(pk=self.pk).count() >= 5:
-            raise ValidationError("A post can have a maximum of 5 images.")
-
-    def __str__(self) -> str:
-        return f"Image for post {self.post_id}"
+    meta = {"collection": "post_images"}
 
 
-class Gem(models.Model):
-    """A 'gem' reaction — like a like/upvote on a post."""
+class Gem(me.Document):
+    post = me.ReferenceField(Post, required=True)
+    user_id = me.StringField(required=True)
+    created_at = me.DateTimeField(default=timezone.now)
 
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="gems")
-    user_id = models.CharField(max_length=24, db_index=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["post", "user_id"], name="unique_gem_per_user_post"
-            )
-        ]
-
-    def __str__(self) -> str:
-        return f"Gem by {self.user_id} on post {self.post_id}"
+    meta = {
+        "collection": "gems",
+        "indexes": [{"fields": ["post", "user_id"], "unique": True}],
+    }
 
 
-class Save(models.Model):
-    """A bookmarked / saved post."""
+class Save(me.Document):
+    post = me.ReferenceField(Post, required=True)
+    user_id = me.StringField(required=True)
+    created_at = me.DateTimeField(default=timezone.now)
 
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="saves")
-    user_id = models.CharField(max_length=24, db_index=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["post", "user_id"], name="unique_save_per_user_post"
-            )
-        ]
-
-    def __str__(self) -> str:
-        return f"Save by {self.user_id} on post {self.post_id}"
+    meta = {
+        "collection": "saves",
+        "indexes": [{"fields": ["post", "user_id"], "unique": True}],
+    }
 
 
-class Comment(models.Model):
-    """A comment on a post."""
+class Comment(me.Document):
+    post = me.ReferenceField(Post, required=True)
+    parent = me.ReferenceField("self", null=True, default=None)
+    user_id = me.StringField(required=True)
+    content = me.StringField(required=True)
+    created_at = me.DateTimeField(default=timezone.now)
+    updated_at = me.DateTimeField(default=timezone.now)
 
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
-    parent = models.ForeignKey(
-        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies"
-    )
-    user_id = models.CharField(max_length=24, db_index=True, default="")
-    content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    meta = {
+        "collection": "comments",
+        "ordering": ["created_at"],
+    }
 
-    class Meta:
-        ordering = ["created_at"]
-
-    def __str__(self) -> str:
-        return f"Comment by {self.user_id} on post {self.post_id}"
+    def save(self, *args, **kwargs):
+        self.updated_at = timezone.now()
+        return super().save(*args, **kwargs)
 
 
-class CommentGem(models.Model):
-    """A 'gem' reaction — like a like/upvote on a comment."""
+class CommentGem(me.Document):
+    comment = me.ReferenceField(Comment, required=True)
+    user_id = me.StringField(required=True)
+    created_at = me.DateTimeField(default=timezone.now)
 
-    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="gems")
-    user_id = models.CharField(max_length=24, db_index=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["comment", "user_id"], name="unique_gem_per_user_comment"
-            )
-        ]
-
-    def __str__(self) -> str:
-        return f"Gem by {self.user_id} on comment {self.comment_id}"
+    meta = {
+        "collection": "comment_gems",
+        "indexes": [{"fields": ["comment", "user_id"], "unique": True}],
+    }

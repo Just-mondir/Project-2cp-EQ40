@@ -32,17 +32,17 @@ urlpatterns = [
     path("posts/myalerts/", MyAlertsPostsView.as_view(), name="myalerts"),
 
     # Post detail
-    path("posts/<int:pk>/", PostDetailView.as_view(), name="post-detail"),
+    path("posts/<str:pk>/", PostDetailView.as_view(), name="post-detail"),
 
     # Images
-    path("posts/<int:pk>/images/", PostImageUploadView.as_view(), name="post-images"),
+    path("posts/<str:pk>/images/", PostImageUploadView.as_view(), name="post-images"),
 
     # Reactions
-    path("posts/<int:pk>/gem/", GemToggleView.as_view(), name="post-gem"),
-    path("posts/<int:pk>/save/", SaveToggleView.as_view(), name="post-save"),
+    path("posts/<str:pk>/gem/", GemToggleView.as_view(), name="post-gem"),
+    path("posts/<str:pk>/save/", SaveToggleView.as_view(), name="post-save"),
 
     # Comments
-    path("posts/<int:pk>/comments/", CommentListCreateView.as_view(), name="post-comments"),
-    path("posts/comments/<int:pk>/", CommentDetailView.as_view(), name="comment-detail"),
-    path("posts/comments/<int:pk>/gem/", CommentGemToggleView.as_view(), name="comment-gem"),
+    path("posts/<str:pk>/comments/", CommentListCreateView.as_view(), name="post-comments"),
+    path("posts/comments/<str:pk>/", CommentDetailView.as_view(), name="comment-detail"),
+    path("posts/comments/<str:pk>/gem/", CommentGemToggleView.as_view(), name="comment-gem"),
 ]
