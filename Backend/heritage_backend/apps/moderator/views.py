@@ -13,6 +13,7 @@ from .serializers import (
 )
 
 class PlatformStatsView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request: Request) -> Response:
         stats = {
             "members": User.objects.count(),
@@ -25,6 +26,7 @@ class UserPagination(PageNumberPagination):
     page_size = 20
 
 class UserListView(APIView):
+    permission_classes = [IsAuthenticated]
     def get(self, request: Request) -> Response:
         users = User.objects.all()
         paginator = UserPagination()

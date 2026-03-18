@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Lato } from "next/font/google";
 
 const lato = Lato({
@@ -7,31 +6,31 @@ const lato = Lato({
 });
 
 interface PostImage {
-  id: number;
+  id: string;
   image: string;
   uploaded_at: string;
 }
 
 interface Post {
-  id: number;
+  id: string;
   title: string;
   images: PostImage[];
 }
 
 interface HeritageImage {
-  id: number;
+  id: string;
   src: string;
   alt: string;
   title: string;
 }
 
 const fallbackImages: HeritageImage[] = [
-  { id: 1, src: "/Picture 1(1).jpg", alt: "Heritage", title: "Minaret" },
-  { id: 2, src: "/download 2.jpg", alt: "Heritage", title: "Moorish Facade" },
-  { id: 3, src: "/Picture 5.jpg", alt: "Heritage", title: "Stone Bridge" },
-  { id: 4, src: "/Picture 2.jpg", alt: "Heritage", title: "Roman Ruins" },
-  { id: 5, src: "/about-3.jpg", alt: "Heritage", title: "Courtyard" },
-  { id: 6, src: "/Picture 6.jpg", alt: "Heritage", title: "Islamic Corridor" },
+  { id: "1", src: "/Picture 1(1).jpg", alt: "Heritage", title: "Minaret" },
+  { id: "2", src: "/download 2.jpg", alt: "Heritage", title: "Moorish Facade" },
+  { id: "3", src: "/Picture 5.jpg", alt: "Heritage", title: "Stone Bridge" },
+  { id: "4", src: "/Picture 2.jpg", alt: "Heritage", title: "Roman Ruins" },
+  { id: "5", src: "/about-3.jpg", alt: "Heritage", title: "Courtyard" },
+  { id: "6", src: "/Picture 6.jpg", alt: "Heritage", title: "Islamic Corridor" },
 ];
 
 async function getHeritageImages(): Promise<HeritageImage[]> {
@@ -47,7 +46,7 @@ async function getHeritageImages(): Promise<HeritageImage[]> {
       .slice(0, 6)
       .map((post) => ({
         id: post.id,
-        src: post.images[0].image,
+        src: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
         alt: post.title,
         title: post.title,
       }));

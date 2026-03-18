@@ -53,7 +53,7 @@ export default function MonumentsInDanger() {
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 3)
           .map((post: any) => ({
-            src: post.images[0].image,
+            src: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
             alt: post.title,
             name: post.title,
             boldLocation: post.region || post.location || "",

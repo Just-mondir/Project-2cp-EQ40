@@ -46,8 +46,8 @@ export default function Footer() {
         {/* Column 1 */}
         <div className="flex flex-col gap-3 text-lg">
           <Link href="/about#" className={linkClass}>About the Project</Link>
-          <Link href="/#at-risk" className={linkClass}>Monuments</Link>
-          <p className={linkClass}>Endangered Sites</p>
+          <Link href="/#explore" className={linkClass}>Monuments</Link>
+          <Link href="/#at-risk" className={linkClass}>Endangered Sites</Link>
         </div>
 
         {/* Column 2 */}
