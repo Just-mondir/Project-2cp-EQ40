@@ -159,15 +159,14 @@ export default function UpcomingEvents() {
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 6)
           .map((post: any) => {
-  console.log(post);
-  return {
-    title: post.title,
-    description: post.content ?? "",
-    location: post.location || post.region || "",
-    date: formatDate(post.event_details?.starts_at ?? ""),
-    imageUrl: post.images[0].image,
-  };
-});
+            return {
+              title: post.title,
+              description: post.content ?? "",
+              location: post.location || post.region || "",
+              date: formatDate(post.event_details?.starts_at ?? ""),
+              imageUrl: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
+            };
+          });
 
         if (fetched.length > 0) setEvents(fetched);
       } catch {
