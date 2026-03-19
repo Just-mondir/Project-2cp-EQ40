@@ -27,8 +27,8 @@ urlpatterns = [
     path("posts/", PostListCreateView.as_view(), name="post-list-create"),
 
     # Events Feed
-    path("posts/events", EventsView.as_view(), name="events"),
-    path("posts/upcoming-events", UpcomingEventsView.as_view(), name="upcoming-events"),
+    path("posts/events/", EventsView.as_view(), name="events"),
+    path("posts/upcoming-events/", UpcomingEventsView.as_view(), name="upcoming-events"),
 
     # Profile
     path("posts/me/", MyPostsView.as_view(), name="my-posts"),
