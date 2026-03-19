@@ -205,7 +205,7 @@ function CommentItem({ comment }: { comment: any }) {
             )}
           </div>
         </div>
-        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "#432817" }}>{comment.text}</p>
+        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "#8B7355" }}>{comment.text}</p>
         <div className="flex items-center gap-3 mt-1.5">
           <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}>
             <GemIcon size={12} />
@@ -410,7 +410,6 @@ function ProfileHeader() {
   }, []);
 
   const menuItems = [
-    "Edit public info",
     "Change mail",
     "Change password",
     "Delete account",
@@ -685,8 +684,12 @@ function PostModal({ post, onClose }: { post: any, onClose: any }) {
 
           {/* Post title & description */}
           <div className="px-5 pt-3 pb-2 border-b" style={{ borderColor: "#E0D5C5" }}>
-            <h3 className="text-lg font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
-            <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>{post.body}</p>
+            <h3 className="text-lg font-bold mb-1 prose prose-sm max-w-none" style={{ color: "#432817" }}>
+              <div dangerouslySetInnerHTML={{ __html: post.title }} />
+            </h3>
+            <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }}>
+              <div dangerouslySetInnerHTML={{ __html: post.body }} />
+            </div>
           </div>
 
           {/* Comments scrollable */}
@@ -825,13 +828,13 @@ export default function ProfilePage() {
           {activeTab === "annotations" && (
             <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
               <LikeIcon size={48} />
-              <p className="mt-4">no like yet</p>
+              <p className="mt-4">Your treasure collection is empty</p>
             </div>
           )}
           {activeTab === "saved" && (
             <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
               <BookmarkIcon size={48} />
-              <p className="mt-4">Your treasure collection is empty</p>
+              <p className="mt-4">You haven’t saved any treasures yet.</p>
             </div>
           )}
           {activeTab === "events" && (

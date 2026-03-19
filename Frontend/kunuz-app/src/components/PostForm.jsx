@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import AddLocationPopup from "./AddLocationPopup";
 import AddGroupsPopup from "./AddGroupsPopup";
 import AddHistoricalPeriodPopup from "./AddHistoricalPeriodPopup";
+import RichTextEditor from "./RichTextEditor";
 
 /* ─────────────────────────────────────────────
    DESIGN TOKENS
@@ -324,31 +325,27 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                     <SectionLabel>Info</SectionLabel>
 
                     <div style={{ marginBottom: "14px" }}>
-                        <FieldLabel>Title</FieldLabel>
-                        <input
-                            type="text"
+                        <FieldLabel>Title <span style={{ color: "red" }}>*</span></FieldLabel>
+                        <RichTextEditor
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            style={inputStyle}
-                            ref={withFocus}
+                            onChange={setTitle}
+                            placeholder="Entrez le titre de votre post ici..."
+                            minHeight="60px"
                         />
                     </div>
 
-                    <div>
-                        <FieldLabel>Description</FieldLabel>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={4}
-                            style={{ ...inputStyle, resize: "vertical" }}
-                            ref={withFocus}
-                        />
-                    </div>
+                    <FieldLabel>Description <span style={{ color: "red" }}>*</span></FieldLabel>
+                    <RichTextEditor
+                        value={description}
+                        onChange={setDescription}
+                        placeholder="Entrez le contenu de votre post ici..."
+                        minHeight="180px"
+                    />
                 </SectionBlock>
 
                 {/* ══ LOCATION card ══ */}
                 <SectionBlock>
-                    <SectionLabel>Location</SectionLabel>
+                    <SectionLabel>Location <span style={{ color: "red" }}>*</span></SectionLabel>
                     <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                         <input
                             type="text"
@@ -393,7 +390,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
 
                     {/* Post Type */}
                     <div style={{ marginBottom: "18px" }}>
-                        <FieldLabel>Post Type</FieldLabel>
+                        <FieldLabel>Post Type <span style={{ color: "red" }}>*</span></FieldLabel>
                         <PillGroup options={POST_TYPES} value={postType} onChange={setPostType} />
                     </div>
 
@@ -438,7 +435,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
 
                     {/* Monument Type */}
                     <div>
-                        <FieldLabel>Monument Type</FieldLabel>
+                        <FieldLabel>Monument Type <span style={{ color: "red" }}>*</span></FieldLabel>
                         <PillGroup options={MONUMENT_TYPES} value={monumentType} onChange={setMonumentType} />
                     </div>
                 </SectionBlock>

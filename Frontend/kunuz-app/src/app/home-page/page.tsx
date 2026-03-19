@@ -152,10 +152,15 @@ const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = content.length > CONTENT_LIMIT;
+  const strippedText = content.replace(/<[^>]*>/g, "");
+  const isLong = strippedText.length > CONTENT_LIMIT;
   return (
-    <p className={className} style={style}>
-      {isLong && !expanded ? content.slice(0, CONTENT_LIMIT) + "… " : content + " "}
+    <div className={`${className} prose prose-sm max-w-none`} style={style}>
+      {isLong && !expanded ? (
+        <span>{strippedText.slice(0, CONTENT_LIMIT) + "… "}</span>
+      ) : (
+        <div dangerouslySetInnerHTML={{ __html: content }} />
+      )}
       {isLong && (
         <button
           className="font-semibold"
@@ -165,24 +170,24 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
           {expanded ? "See less" : "See more"}
         </button>
       )}
-    </p>
+    </div>
   );
 }
 
 /* ───────────────── POST DETAIL BADGE ───────────────── */
 
 const URGENCY_COLORS: Record<string, { bg: string; border: string; dot: string; label: string }> = {
-  low:      { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E",  label: "Low urgency" },
-  medium:   { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39",  label: "Medium urgency" },
-  high:     { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B",  label: "High urgency" },
-  critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000",  label: "Critical" },
+  low: { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E", label: "Low urgency" },
+  medium: { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39", label: "Medium urgency" },
+  high: { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B", label: "High urgency" },
+  critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000", label: "Critical" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  restored:           "Restored",
+  restored: "Restored",
   under_intervention: "Under Intervention",
-  destroyed:          "Destroyed",
-  alert:              "Alert",
+  destroyed: "Destroyed",
+  alert: "Alert",
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
@@ -254,7 +259,7 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
       <div className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-        </svg>  
+        </svg>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
@@ -415,7 +420,8 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
 
   const imageList = post.images ?? [];
   const tags = buildTags(post);
-  const isContentLong = post.content.length > CONTENT_LIMIT;
+  const strippedContent = post.content.replace(/<[^>]*>/g, "");
+  const isContentLong = strippedContent.length > CONTENT_LIMIT;
 
   const scrollToImage = (index: number) => {
     const el = imageScrollRef.current;
@@ -551,7 +557,9 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
             {/* content block — only when post has images */}
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-                <h3 className="text-base font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
+                <h3 className="text-base font-bold mb-1 prose prose-sm max-w-none" style={{ color: "#432817" }}>
+                  <div dangerouslySetInnerHTML={{ __html: post.title }} />
+                </h3>
 
                 {post.post_type === "event" && post.event_details && (
                   <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -570,10 +578,12 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
                   );
                 })()}
 
-                <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
-                  {isContentLong && !contentExpanded
-                    ? post.content.slice(0, CONTENT_LIMIT) + "… "
-                    : post.content + " "}
+                <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }}>
+                  {isContentLong && !contentExpanded ? (
+                    <p>{strippedContent.slice(0, CONTENT_LIMIT) + "… "}</p>
+                  ) : (
+                    <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                  )}
                   {isContentLong && (
                     <button
                       className="font-semibold"
@@ -583,7 +593,7 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
                       {contentExpanded ? "See less" : "See more"}
                     </button>
                   )}
-                </p>
+                </div>
 
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
@@ -717,7 +727,9 @@ function PostCard({ post, isNew, onCommentClick }: { post: ApiPost; isNew: boole
       <PostDetailBadge post={post} />
 
       {/* Title */}
-      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>{post.title}</h3>
+      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
+        <div dangerouslySetInnerHTML={{ __html: post.title }} />
+      </h3>
 
       {/* Expandable content */}
       <ExpandableContent
