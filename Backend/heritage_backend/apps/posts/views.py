@@ -5,6 +5,7 @@ from __future__ import annotations
 from rest_framework import status
 import os
 from django.conf import settings
+from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +16,7 @@ from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 
-from .models import Comment, CommentGem, Gem, Post, PostImage, Save
+from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails
 from .serializers import (
     CommentSerializer,
     GemSerializer,
@@ -415,6 +416,39 @@ class MyAlertsPostsView(APIView):
         posts = Post.objects.filter(
             author_id=str(request.user.id),
             post_type="alert",
+            is_deleted=False
+        )
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+# ---------------------------------------------------------------------------
+# Events feed
+# ---------------------------------------------------------------------------        
+
+class EventsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request: Request) -> Response:
+        posts = Post.objects.filter(
+            post_type="event",
+            is_deleted=False
+        )
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+class UpcomingEventsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request: Request) -> Response:
+        upcoming_event_details = EventDetails.objects.filter(
+            starts_at__gt=timezone.now()
+        )
+        post_ids = [ed.post.id for ed in upcoming_event_details]
+        posts = Post.objects.filter(
+            id__in=post_ids,
+            post_type="event",
             is_deleted=False
         )
         paginator = PostPagination()
