@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -143,6 +144,7 @@ const AnnotationIcon = ({ className = "", size = 18 }) => (
 /* ───────────────── COMMENT ITEM ───────────────── */
 
 function CommentItem({ comment }: { comment: { id: number; user: string; text: string } }) {
+  const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -164,18 +166,26 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
         boxShadow: "0 1px 6px rgba(67,40,23,0.06)",
       }}
     >
-      <div
-        className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ backgroundColor: "#E0D5C5" }}
+      <button
+        className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-75 cursor-pointer"
+        style={{ backgroundColor: "#E0D5C5", border: "none" }}
+        onClick={() => router.push(`/user/${comment.user}`)}
+        title={`View ${comment.user}'s profile`}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
-      </div>
+      </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold" style={{ color: "#432817" }}>{comment.user}</p>
+          <button
+            className="text-sm font-bold hover:underline transition-all cursor-pointer"
+            style={{ color: "#432817", background: "none", border: "none", padding: 0 }}
+            onClick={() => router.push(`/user/${comment.user}`)}
+          >
+            {comment.user}
+          </button>
           <div className="relative" ref={menuRef}>
             <button
               className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
@@ -534,22 +544,28 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
         </div>
         <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-            <div
-              className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center"
+            <Link
+              href={`/user/${post.username}`}
+              className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-75"
               style={{ backgroundColor: "#E0D5C5" }}
+              title={`View ${post.username}'s profile`}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                 <circle cx="12" cy="7" r="4" />
               </svg>
-            </div>
+            </Link>
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
-                <p className="font-bold text-base" style={{ color: "#432817" }}>
-                  {post.user_display_name || post.user_username}
-                </p>
+                <Link
+                  href={`/user/${post.user_username || post.username}`}
+                  className="font-bold text-base hover:underline transition-all"
+                  style={{ color: "#432817" }}
+                >
+                  {post.user_display_name || post.user_username || post.username}
+                </Link>
                 <p className="text-[11px]" style={{ color: "#8B7355" }}>
-                  {formatDate(post.created_at)}
+                  {formatDate(post.created_at) || post.date}
                 </p>
               </div>
             </div>
@@ -710,21 +726,26 @@ function PostCard({
       }}
     >
       <div className="flex items-center px-5 pt-4 pb-2">
-        <div
-          className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center"
+        <Link
+          href={`/user/${post.user_username || post.username}`}
+          className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-75"
           style={{ backgroundColor: "#E0D5C5" }}
+          title={`View ${post.username}'s profile`}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
           </svg>
-        </div>
-
+        </Link>
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-bold text-base" style={{ color: "#432817" }}>
-              {post.user_display_name || post.user_username}
-            </p>
+            <Link
+              href={`/user/${post.user_username || post.username}`}
+              className="font-bold text-base hover:underline transition-all"
+              style={{ color: "#432817" }}
+            >
+              {post.user_display_name || post.user_username || post.username}
+            </Link>
             <p className="text-xs" style={{ color: "#8B7355" }}>
               {formatDate(post.created_at)}
             </p>
@@ -826,12 +847,12 @@ function PostCard({
                 transform: "scale(1.3)",
               }}
             />
-<div
-  className="absolute inset-0"
-  style={{
-    background: "rgba(0,0,0,0.4)", 
-  }}
-/>
+            <div
+              className="absolute inset-0"
+              style={{
+                background: "rgba(0,0,0,0.4)",
+              }}
+            />
             <div
               className="absolute inset-0"
               style={{
