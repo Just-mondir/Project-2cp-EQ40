@@ -1,9 +1,42 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 /* ───────────────── MOCK DATA ───────────────── */
+
+type PostImage = {
+  id: string;
+  image: string;
+  uploaded_at: string;
+};
+
+type ApiPost = {
+  id: string;
+  user_display_name: string;
+  user_username: string;
+  title: string;
+  content: string;
+  post_type: string;
+  region: string;
+  location: string;
+  gems_count: number;
+  comments_count: number;
+  images: PostImage[];
+  created_at: string;
+  _key?: number;
+};
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("fr-FR");
+}
+
+function formatCount(n: number): string {
+  return n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+}
 
 const POSTS = [
   {
@@ -109,13 +142,13 @@ const AnnotationIcon = ({ className = "", size = 18 }) => (
 
 /* ───────────────── COMMENT ITEM ───────────────── */
 
-function CommentItem({ comment }) {
+function CommentItem({ comment }: { comment: { id: number; user: string; text: string } }) {
   const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setShowMenu(false);
       }
     }
@@ -377,7 +410,7 @@ function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: ()
 
   return (
     <div
-      className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) origin-top-right ${isVisible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-90 -translate-y-4 pointer-events-none'}`}
+      className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
       style={{
         backgroundColor: "var(--background)",
         borderRadius: "28px",
@@ -461,17 +494,16 @@ function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: ()
   );
 }
 
-
 /* ───────────────── POST MODAL ───────────────── */
 
-function PostModal({ post, onClose }) {
+function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => void }) {
   const [newComment, setNewComment] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
-  const postMenuRef = useRef(null);
+  const postMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (postMenuRef.current && !postMenuRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (postMenuRef.current && !postMenuRef.current.contains(event.target as Node)) {
         setShowPostMenu(false);
       }
     }
@@ -490,9 +522,16 @@ function PostModal({ post, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-1/2 flex-shrink-0 bg-black flex items-center justify-center">
-          <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
+          <img
+            src={
+              post.images?.[0]?.image
+                ? `${API_URL}${post.images[0].image}`
+                : "/frame-243.jpg"
+            }
+            alt={post.title}
+            className="w-full h-full object-cover"
+          />
         </div>
-
         <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
             <div
@@ -506,8 +545,12 @@ function PostModal({ post, onClose }) {
             </div>
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
-                <p className="font-bold text-base" style={{ color: "#432817" }}>{post.username}</p>
-                <p className="text-[11px]" style={{ color: "#8B7355" }}>{post.date}</p>
+                <p className="font-bold text-base" style={{ color: "#432817" }}>
+                  {post.user_display_name || post.user_username}
+                </p>
+                <p className="text-[11px]" style={{ color: "#8B7355" }}>
+                  {formatDate(post.created_at)}
+                </p>
               </div>
             </div>
             <div className="relative" ref={postMenuRef}>
@@ -543,7 +586,7 @@ function PostModal({ post, onClose }) {
 
           <div className="px-5 pt-3 pb-2 border-b" style={{ borderColor: "#E0D5C5" }}>
             <h3 className="text-lg font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
-            <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>{post.body}</p>
+            <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>{post.content}</p>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-3 feed-scroll" style={{ maxHeight: "calc(85vh - 280px)" }}>
@@ -557,13 +600,13 @@ function PostModal({ post, onClose }) {
           <div className="px-5 py-2 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}>
-                <GemIcon size={14} /> {post.gems}
+                <GemIcon size={14} /> {formatCount(post.gems_count)}
               </span>
               <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}>
-                <CommentIcon size={14} /> {post.comments}
+                <CommentIcon size={14} /> {formatCount(post.comments_count)}
               </span>
               <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}>
-                <AnnotationIcon size={14} /> {post.annotations}
+                <AnnotationIcon size={14} /> 0
               </span>
             </div>
             <button className="transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
@@ -636,17 +679,35 @@ function RightSidebar() {
 
 /* ───────────────── POST CARD ───────────────── */
 
-function PostCard({ post, isNew, onCommentClick }) {
+function PostCard({
+  post,
+  isNew,
+  onCommentClick,
+}: {
+  post: ApiPost;
+  isNew: boolean;
+  onCommentClick: () => void;
+}) {
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+
+  const imageUrl = post.images?.[0]?.image
+    ? `${API_URL}${post.images[0].image}`
+    : "/frame-243.jpg";
+
+  const bgImageUrl = encodeURI(imageUrl);
 
   return (
     <div
       className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
       style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
       onClick={onCommentClick}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)";
+      }}
     >
       <div className="flex items-center px-5 pt-4 pb-2">
         <div
@@ -658,16 +719,25 @@ function PostCard({ post, isNew, onCommentClick }) {
             <circle cx="12" cy="7" r="4" />
           </svg>
         </div>
+
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-bold text-base" style={{ color: "#432817" }}>{post.username}</p>
-            <p className="text-xs" style={{ color: "#8B7355" }}>{post.date}</p>
+            <p className="font-bold text-base" style={{ color: "#432817" }}>
+              {post.user_display_name || post.user_username}
+            </p>
+            <p className="text-xs" style={{ color: "#8B7355" }}>
+              {formatDate(post.created_at)}
+            </p>
           </div>
         </div>
+
         <div className="relative">
           <button
             className="p-1 rounded hover:bg-[#FFF8E2] transition-colors"
-            onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355">
               <circle cx="12" cy="5" r="1.5" />
@@ -675,12 +745,19 @@ function PostCard({ post, isNew, onCommentClick }) {
               <circle cx="12" cy="19" r="1.5" />
             </svg>
           </button>
+
           {showMenu && (
-            <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+            <div
+              className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50"
+              style={{ backgroundColor: "#FFF8E2" }}
+            >
               <button
                 className="text-sm font-bold whitespace-nowrap"
                 style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(false);
+                }}
               >
                 Report post
               </button>
@@ -694,14 +771,20 @@ function PostCard({ post, isNew, onCommentClick }) {
           <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
           <circle cx="12" cy="10" r="3" />
         </svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location}</span>
+        <span className="text-xs" style={{ color: "#8B7355" }}>
+          {post.location || post.region || "Algeria"}
+        </span>
       </div>
 
-      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>{post.title}</h3>
+      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>
+        {post.title}
+      </h3>
 
       <p className="px-5 pb-3 text-sm leading-relaxed" style={{ color: "#432817" }}>
-        {post.body}{" "}
-        <button className="font-semibold" style={{ color: "#8B6914" }}>See more</button>
+        {post.content}{" "}
+        <button className="font-semibold" style={{ color: "#8B6914" }}>
+          See more
+        </button>
       </p>
 
       <div className="relative px-4 pb-3">
@@ -710,37 +793,83 @@ function PostCard({ post, isNew, onCommentClick }) {
             className="w-full rounded-lg flex items-center justify-center"
             style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}
           >
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity="0.7"
+            >
               <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </div>
         ) : (
-          <img
-            src={post.image}
-            alt={post.title}
-            className="w-full rounded-lg object-cover"
-            style={{ maxHeight: 460, boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}
-            onError={() => setImgError(true)}
-          />
-        )}
-        {post.badge && (
-          <span className={`absolute top-2 right-6 px-3 py-1 rounded-full text-xs font-semibold ${BADGE_COLORS[post.badge] || ""}`}>
-            {post.badge}
-          </span>
+          <div
+            className="relative w-full overflow-hidden rounded-lg"
+            style={{
+              height: 460,
+              boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
+            }}
+          >
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url("${bgImageUrl}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                filter: "blur(15px)",
+                transform: "scale(1.3)",
+              }}
+            />
+<div
+  className="absolute inset-0"
+  style={{
+    background: "rgba(0,0,0,0.4)", 
+  }}
+/>
+            <div
+              className="absolute inset-0"
+              style={{
+                background: "rgba(255,255,255,0.12)",
+              }}
+            />
+
+            <img
+              src={imageUrl}
+              alt={post.title}
+              className="relative z-10 w-full h-full object-contain"
+              onError={() => setImgError(true)}
+            />
+          </div>
         )}
       </div>
 
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
           <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
-            <GemIcon /><span>{post.gems}</span>
+            <GemIcon />
+            <span>{formatCount(post.gems_count)}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
-            <CommentIcon /><span>{post.comments}</span>
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
+            style={{ color: "#432817" }}
+            onClick={onCommentClick}
+          >
+            <CommentIcon />
+            <span>{formatCount(post.comments_count)}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
-            <AnnotationIcon /><span>{post.annotations}</span>
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
+            style={{ color: "#432817" }}
+            onClick={onCommentClick}
+          >
+            <AnnotationIcon />
+            <span>0</span>
           </button>
         </div>
         <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
@@ -750,93 +879,144 @@ function PostCard({ post, isNew, onCommentClick }) {
     </div>
   );
 }
-
 /* ───────────────── MAIN PAGE ───────────────── */
 
 export default function HomePageRoute() {
-  const [posts, setPosts] = useState(() => POSTS.map((p, i) => ({ ...p, _key: i })));
+  const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const sentinelRef = useRef(null);
-  const counterRef = useRef(POSTS.length);
-  const feedRef = useRef(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const feedRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+
+        const res = await fetch(`${API_URL}/api/posts`);
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        const formattedPosts: ApiPost[] = data.results.map((post: any, i: number) => ({
+          id: String(post.id),
+          user_display_name: post.user_display_name ?? "",
+          user_username: post.user_username ?? "",
+          title: post.title ?? "",
+          content: post.content ?? "",
+          post_type: post.post_type ?? "",
+          region: post.region ?? "",
+          location: post.location ?? "",
+          gems_count: post.gems_count ?? 0,
+          comments_count: post.comments_count ?? 0,
+          images: Array.isArray(post.images) ? post.images : [],
+          created_at: post.created_at ?? "",
+          _key: i,
+        }));
+
+        setPosts(formattedPosts);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   useEffect(() => {
     const feedElement = feedRef.current;
     if (!feedElement) return;
+
     const handleScroll = () => {
       const scrolled = feedElement.scrollTop > 10;
       if (scrolled) setShowFilter(false);
     };
+
     feedElement.addEventListener("scroll", handleScroll);
     return () => feedElement.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const loadMore = useCallback(() => {
-    if (loading) return;
-    setLoading(true);
-    setTimeout(() => {
-      const shuffled = [...POSTS].sort(() => Math.random() - 0.5).slice(0, 3);
-      const newPosts = shuffled.map((p) => ({ ...p, _key: counterRef.current++ }));
-      setPosts((prev) => {
-        setNewPostStart(prev.length);
-        return [...prev, ...newPosts];
-      });
-      setLoading(false);
-    }, 1200);
-  }, [loading]);
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) loadMore(); },
-      { threshold: 0.1 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [loadMore]);
-
   return (
     <>
-      <div className="flex h-screen overflow-hidden justify-center" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
+      <div
+        className="flex h-screen overflow-hidden justify-center"
+        style={{
+          fontFamily: "var(--font-lato), sans-serif",
+          backgroundColor: "#FFF8E2",
+        }}
+      >
         <LeftSidebar />
 
-        <div className="flex h-full" style={{ width: "1116px", maxWidth: "100%", marginLeft: "80px" }}>
+        <div
+          className="flex h-full"
+          style={{ width: "1116px", maxWidth: "100%", marginLeft: "80px" }}
+        >
           <div className="flex flex-1 flex-col">
-
             {/* TOP SEARCH BAR */}
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
+            <div
+              className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4"
+              style={{ backgroundColor: "var(--cream)" }}
+            >
               <div
                 className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200"
                 style={{
                   backgroundColor: "var(--light)",
-                  border: isFocused ? "1px solid #432817" : "1px solid var(--brown)",
+                  border: isFocused
+                    ? "1px solid #432817"
+                    : "1px solid var(--brown)",
                   boxShadow: isFocused
                     ? "0 0 0 3px rgba(67,40,23,0.15)"
                     : "0 1px 8px rgba(67,40,23,0.06)",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--brown)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="flex-shrink-0"
+                >
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
+
                 <input
                   type="text"
                   placeholder="Search..."
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                   className="flex-1 ml-3 outline-none bg-transparent text-sm"
-                  style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}
+                  style={{
+                    color: "var(--brown)",
+                    fontFamily: "var(--font-lato)",
+                  }}
                 />
+
                 <button
                   className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors"
                   onClick={() => setShowFilter(!showFilter)}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#432817"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <line x1="4" y1="6" x2="20" y2="6" />
                     <line x1="4" y1="12" x2="20" y2="12" />
                     <line x1="4" y1="18" x2="20" y2="18" />
@@ -846,15 +1026,21 @@ export default function HomePageRoute() {
                   </svg>
                 </button>
               </div>
-              <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} />
+
+              <FilterSection
+                isVisible={showFilter}
+                onClose={() => setShowFilter(false)}
+              />
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2">
-
+              <main
+                ref={feedRef}
+                className="flex-1 overflow-y-auto feed-scroll px-6 py-2"
+              >
                 {posts.map((post, index) => (
                   <PostCard
-                    key={post._key}
+                    key={post._key ?? Number(post.id) ?? index}
                     post={post}
                     isNew={index >= newPostStart && newPostStart !== -1}
                     onCommentClick={() => setSelectedPost(post)}
@@ -865,7 +1051,10 @@ export default function HomePageRoute() {
                   <div className="flex justify-center py-6">
                     <div
                       className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin"
-                      style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }}
+                      style={{
+                        borderColor: "#E0D5C5",
+                        borderTopColor: "#8B6914",
+                      }}
                     />
                   </div>
                 )}
