@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /* ───────────────── MOCK DATA ───────────────── */
 
@@ -124,6 +125,7 @@ const LikeIcon = ({ size = 20 }) => (
 /* ───────────────── COMMENT ITEM ───────────────── */
 
 function CommentItem({ comment }: { comment: any }) {
+  const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<any>(null);
 
@@ -145,18 +147,26 @@ function CommentItem({ comment }: { comment: any }) {
         boxShadow: "0 1px 6px rgba(67,40,23,0.06)",
       }}
     >
-      <div
-        className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ backgroundColor: "#E0D5C5" }}
+      <button
+        className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-75 cursor-pointer"
+        style={{ backgroundColor: "#E0D5C5", border: "none" }}
+        onClick={() => router.push(`/user/${comment.user}`)}
+        title={`View ${comment.user}'s profile`}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
-      </div>
+      </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold" style={{ color: "#432817" }}>{comment.user}</p>
+          <button
+            className="text-sm font-bold hover:underline transition-all"
+            style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+            onClick={() => router.push(`/user/${comment.user}`)}
+          >
+            {comment.user}
+          </button>
           <div className="relative" ref={menuRef}>
             <button
               className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
@@ -385,6 +395,7 @@ function LeftSidebar() {
 /* ───────────────── PROFILE HEADER ───────────────── */
 
 function ProfileHeader() {
+  const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<any>(null);
 
@@ -506,6 +517,7 @@ function ProfileHeader() {
       {/* CTA Buttons - centered in the middle of the page */}
       <div className="flex items-center justify-center gap-3 mt-6">
         <button
+          onClick={() => router.push("/add-post")}
           className="text-sm font-semibold transition-all duration-200 hover:opacity-90"
           style={{
             backgroundColor: "#432817",
@@ -572,6 +584,7 @@ function ProfileTabs({ activeTab, setActiveTab }: { activeTab: any, setActiveTab
 /* ───────────────── POST MODAL ───────────────── */
 
 function PostModal({ post, onClose }: { post: any, onClose: any }) {
+  const router = useRouter();
   const [newComment, setNewComment] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
   const postMenuRef = useRef<any>(null);
@@ -617,21 +630,9 @@ function PostModal({ post, onClose }: { post: any, onClose: any }) {
         {/* Right — Comments */}
         <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
           {/* Modal header */}
-          <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-            <div
-              className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center"
-              style={{ backgroundColor: "#E0D5C5" }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
-            <div className="ml-3 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="font-bold text-base" style={{ color: "#432817" }}>{post.username}</p>
-                <p className="text-[11px]" style={{ color: "#8B7355" }}>{post.date}</p>
-              </div>
+          <div className="flex items-center px-5 pt-4 pb-1">
+            <div className="flex-1">
+              <p className="text-[11px]" style={{ color: "#8B7355" }}>{post.date}</p>
             </div>
             {/* Three dots - horizontal */}
             <div className="relative" ref={postMenuRef}>
@@ -653,7 +654,11 @@ function PostModal({ post, onClose }: { post: any, onClose: any }) {
                   <button
                     className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={() => setShowPostMenu(false)}
+                    onClick={() => {
+                      setShowPostMenu(false);
+                      onClose();
+                      router.push(`/edit-post?id=${post.id}`);
+                    }}
                   >
                     Edit post
                   </button>
