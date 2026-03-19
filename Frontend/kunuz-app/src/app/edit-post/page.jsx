@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import LeftSidebar from "@/components/LeftSidebar";
@@ -34,19 +35,21 @@ function EditPostInner() {
     const searchParams = useSearchParams();
     const postId = searchParams.get("id");
 
-    /* Find the post by ID, fall back to empty if not found */
+    /* Find the post by ID, fall back to null if not found */
     const post = postId ? MOCK_POSTS.find((p) => p.id === Number(postId)) : null;
 
-    const initialValues = post
+    const initialValues = React.useMemo(() => post
         ? {
             title: post.title,
             description: post.body,
             location: post.location,
             postType: post.type,
+            historicalPeriod: "",
+            region: post.location || "",
             visibility: "Public",
             groups: [],
         }
-        : {};
+        : {}, [postId]);  // eslint-disable-line react-hooks/exhaustive-deps
 
     const initialImages = post
         ? [{ url: post.image, name: post.title, isRemote: true }]
