@@ -5,6 +5,7 @@ import AddLocationPopup from "./AddLocationPopup";
 import AddGroupsPopup from "./AddGroupsPopup";
 import AddHistoricalPeriodPopup from "./AddHistoricalPeriodPopup";
 import RichTextEditor from "./RichTextEditor";
+import NotificationModal from "./NotificationModal";
 
 /* ─────────────────────────────────────────────
    DESIGN TOKENS
@@ -266,6 +267,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
     const [showLocationPopup, setShowLocationPopup] = useState(false);
     const [showGroupsPopup, setShowGroupsPopup] = useState(false);
     const [showHistoricalPeriodPopup, setShowHistoricalPeriodPopup] = useState(false);
+    const [showDoneModal, setShowDoneModal] = useState(false);
 
 
     const POST_TYPES = ["Question", "Visit", "Discovery", "In Danger", "Event"];
@@ -576,7 +578,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                 {/* Done */}
                 <button
                     type="button"
-                    onClick={onDone}
+                    onClick={() => setShowDoneModal(true)}
                     style={{
                         padding: "9px 24px",
                         borderRadius: "8px",
@@ -595,6 +597,26 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                     Done
                 </button>
             </div>
+
+            {/* Confirm Done Modal */}
+            <NotificationModal
+                isOpen={showDoneModal}
+                onClose={() => setShowDoneModal(false)}
+                type="success"
+                title="Save changes?"
+                message="Are you sure you want to save these changes and publish your post?"
+                primaryAction={{
+                    label: "Save & Done",
+                    onClick: () => {
+                        setShowDoneModal(false);
+                        onDone();
+                    }
+                }}
+                secondaryAction={{
+                    label: "Review Again",
+                    onClick: () => setShowDoneModal(false)
+                }}
+            />
 
 
             {/* ── AddLocation Popup ── */}

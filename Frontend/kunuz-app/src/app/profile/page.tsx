@@ -1,8 +1,11 @@
 "use client";
+// Force re-compilation of this file to clear stale build cache.
+
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
 
 /* ───────────────── MOCK DATA ───────────────── */
 
@@ -392,11 +395,106 @@ function LeftSidebar() {
   );
 }
 
+/* ───────────────── NOTIFICATION MODAL ───────────────── */
+
+function NotificationModal({
+  isOpen,
+  onClose,
+  type = "info",
+  title,
+  message,
+  primaryAction,
+  secondaryAction,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  type?: "info" | "warning" | "success" | "error";
+  title?: string;
+  message?: string;
+  primaryAction?: { label: string; onClick: () => void };
+  secondaryAction?: { label: string; onClick: () => void };
+}) {
+  if (!isOpen) return null;
+
+  const STATUS_CONFIG = {
+    info: {
+      color: "#000000",
+      icon: <HelpCircle size={48} strokeWidth={1.5} />,
+      iconColor: "#000000",
+    },
+    warning: {
+      color: "#F2994A",
+      icon: <AlertTriangle size={48} strokeWidth={1.5} />,
+      iconColor: "#F2994A",
+    },
+    success: {
+      color: "#27AE60",
+      icon: <CheckCircle size={48} strokeWidth={1.5} />,
+      iconColor: "#27AE60",
+    },
+    error: {
+      color: "#EB5757",
+      icon: <AlertCircle size={48} strokeWidth={1.5} />,
+      iconColor: "#EB5757",
+    },
+  };
+
+  const config = (STATUS_CONFIG as any)[type] || STATUS_CONFIG.info;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[420px] overflow-hidden relative animate-in fade-in zoom-in duration-200">
+        <div style={{ height: "6px", backgroundColor: config.color }} />
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
+        >
+          <X size={20} className="text-gray-400" />
+        </button>
+        <div className="p-8 flex flex-col items-center text-center">
+          <div
+            className="mb-6 flex items-center justify-center p-2 rounded-full border-2"
+            style={{ borderColor: config.iconColor + "40", color: config.iconColor }}
+          >
+            {config.icon}
+          </div>
+          <h2 className="text-[20px] font-bold text-[#432817] mb-2 leading-tight">
+            {title}
+          </h2>
+          <p className="text-[14px] text-[#8B7355] mb-8 leading-relaxed max-w-[300px]">
+            {message}
+          </p>
+          <div className="flex flex-col gap-3 w-full max-w-[200px]">
+            {primaryAction && (
+              <button
+                onClick={primaryAction.onClick}
+                className="w-full py-3 bg-black text-white text-[15px] font-bold rounded-lg hover:bg-black/90 transition-all active:scale-[0.98]"
+              >
+                {primaryAction.label}
+              </button>
+            )}
+            {secondaryAction && (
+              <button
+                onClick={secondaryAction.onClick}
+                className="w-full py-2 bg-transparent text-[#432817] text-[15px] font-semibold hover:opacity-70 transition-all"
+              >
+                {secondaryAction.label}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────── PROFILE HEADER ───────────────── */
 
 function ProfileHeader() {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const menuRef = useRef<any>(null);
 
   useEffect(() => {
@@ -440,7 +538,11 @@ function ProfileHeader() {
                 key={i}
                 className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                 style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                onClick={() => setShowMenu(false)}
+                onClick={() => {
+                  setShowMenu(false);
+                  if (item === "Logout") setShowLogoutModal(true);
+                  if (item === "Delete account") setShowDeleteAccountModal(true);
+                }}
               >
                 {item}
               </button>
@@ -448,6 +550,46 @@ function ProfileHeader() {
           </div>
         )}
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <NotificationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        type="info"
+        title="Are you sure you want to log out?"
+        message="If you continue, you will be redirected to the landing page. You can always log back in anytime."
+        primaryAction={{
+          label: "Log out",
+          onClick: () => {
+            /* Actual logout logic here */
+            window.location.href = "/";
+          }
+        }}
+        secondaryAction={{
+          label: "Cancel",
+          onClick: () => setShowLogoutModal(false)
+        }}
+      />
+
+      {/* Delete Account Confirmation Modal */}
+      <NotificationModal
+        isOpen={showDeleteAccountModal}
+        onClose={() => setShowDeleteAccountModal(false)}
+        type="error"
+        title="Delete your account?"
+        message="This action is permanent and cannot be undone. All your data and posts will be removed."
+        primaryAction={{
+          label: "Delete Account",
+          onClick: () => {
+            /* Actual delete logic here */
+            setShowDeleteAccountModal(false);
+          }
+        }}
+        secondaryAction={{
+          label: "Keep Account",
+          onClick: () => setShowDeleteAccountModal(false)
+        }}
+      />
 
       {/* Top section: Avatar + Info */}
       <div className="flex items-start gap-8">
@@ -586,6 +728,7 @@ function PostModal({ post, onClose }: { post: any, onClose: any }) {
   const router = useRouter();
   const [newComment, setNewComment] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [showDeletePostModal, setShowDeletePostModal] = useState(false);
   const postMenuRef = useRef<any>(null);
 
   useEffect(() => {
@@ -664,7 +807,10 @@ function PostModal({ post, onClose }: { post: any, onClose: any }) {
                   <button
                     className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={() => setShowPostMenu(false)}
+                    onClick={() => {
+                      setShowPostMenu(false);
+                      setShowDeletePostModal(true);
+                    }}
                   >
                     Delete post
                   </button>
@@ -681,6 +827,27 @@ function PostModal({ post, onClose }: { post: any, onClose: any }) {
               </svg>
             </button>
           </div>
+
+          {/* Delete Post Confirmation Modal */}
+          <NotificationModal
+            isOpen={showDeletePostModal}
+            onClose={() => setShowDeletePostModal(false)}
+            type="error"
+            title="Delete this post?"
+            message="This action is permanent and cannot be undone. Your post and all its comments will be removed forever."
+            primaryAction={{
+              label: "Delete Post",
+              onClick: () => {
+                /* Logic for post deletion here */
+                setShowDeletePostModal(false);
+                onClose();
+              }
+            }}
+            secondaryAction={{
+              label: "Cancel",
+              onClick: () => setShowDeletePostModal(false)
+            }}
+          />
 
           {/* Post title & description */}
           <div className="px-5 pt-3 pb-2 border-b" style={{ borderColor: "#E0D5C5" }}>
