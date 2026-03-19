@@ -5,12 +5,24 @@ import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-/* ───────────────── MOCK DATA ───────────────── */
+/* ───────────────── TYPES ───────────────── */
 
 type PostImage = {
   id: string;
   image: string;
   uploaded_at: string;
+};
+
+type AlertDetails = {
+  id: string;
+  urgence_level: "low" | "medium" | "high" | "critical";
+  current_status: "restored" | "under_intervention" | "destroyed" | "alert";
+};
+
+type EventDetails = {
+  id: string;
+  starts_at: string;
+  ends_at: string;
 };
 
 type ApiPost = {
@@ -25,7 +37,12 @@ type ApiPost = {
   gems_count: number;
   comments_count: number;
   images: PostImage[];
+  tags?: string[];
+  historical_period?: string;
+  monument_type?: string;
   created_at: string;
+  alert_details: AlertDetails | null;
+  event_details: EventDetails | null;
   _key?: number;
 };
 
@@ -38,22 +55,30 @@ function formatCount(n: number): string {
   return n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 }
 
-const POSTS = [
-  {
-    id: 1,
-    username: "User7621053",
-    date: "05/03/2025",
-    location: "Sétif",
-    title: "Djémila",
-    body: "Djémila, also known as Cuicul, is a remarkably preserved Roman town perched at 900 meters in the mountains of Kabylie. Its forum, temples, basilicas, and triumphal arches paint a vivid picture of Roman life adapted to a mountainous environment, earning its place as a UNESCO World Heritage Site...",
-    image: "/frame-243.jpg",
-    badge: "Discover",
-    gems: "27K",
-    comments: "1.6K",
-    annotations: "750",
-    saves: "1.6K",
-  },
-];
+function formatEventTime(details: EventDetails): string {
+  const start = new Date(details.starts_at);
+  const end = new Date(details.ends_at);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  const fmtTime = (d: Date) =>
+    d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const sameDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate();
+  return sameDay
+    ? `${fmt(start)} · ${fmtTime(start)} – ${fmtTime(end)}`
+    : `${fmt(start)} ${fmtTime(start)} → ${fmt(end)} ${fmtTime(end)}`;
+}
+
+function buildTags(post: ApiPost): string[] {
+  const tags: string[] = [];
+  if (post.tags && post.tags.length > 0) return post.tags;
+  if (post.historical_period) tags.push(post.historical_period);
+  if (post.monument_type) tags.push(post.monument_type);
+  if (post.region) tags.push(post.region);
+  return tags;
+}
 
 const MOCK_COMMENTS = [
   { id: 1, user: "AminaBen", text: "Incredible architecture! The Roman influence is so well preserved here." },
@@ -65,59 +90,19 @@ const MOCK_COMMENTS = [
 ];
 
 const GUILDS = [
-  {
-    name: "Heritage Photography",
-    desc: "A space for sharing photos of cultural and historical landmarks",
-    members: "2.7k",
-    image: "/heritage-photography.jpg",
-  },
-  {
-    name: "UNESCO World Heritage Sites",
-    desc: "Dedicated to Algeria's UNESCO-recognized sites",
-    members: "4.1k",
-    image: "/unisco.jpg",
-  },
-  {
-    name: "Monuments of Tipaza",
-    desc: "Exploring and documenting the archaeological sites of Tipaza",
-    members: "1.9k",
-    image: "/monuments-of-tipaza.jpg",
-  },
-  {
-    name: "Heritage Photography",
-    desc: "A space for sharing photos of cultural and historical landmarks",
-    members: "2.7k",
-    image: "/heritage-photography.jpg",
-  },
-  {
-    name: "UNESCO World Heritage Sites",
-    desc: "Dedicated to Algeria's UNESCO-recognized sites",
-    members: "4.1k",
-    image: "/unisco.jpg",
-  },
-  {
-    name: "Monuments of Tipaza",
-    desc: "Exploring and documenting the archaeological sites of Tipaza",
-    members: "1.9k",
-    image: "/monuments-of-tipaza.jpg",
-  },
+  { name: "Heritage Photography", desc: "A space for sharing photos of cultural and historical landmarks", members: "2.7k", image: "/heritage-photography.jpg" },
+  { name: "UNESCO World Heritage Sites", desc: "Dedicated to Algeria's UNESCO-recognized sites", members: "4.1k", image: "/unisco.jpg" },
+  { name: "Monuments of Tipaza", desc: "Exploring and documenting the archaeological sites of Tipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
+  { name: "Heritage Photography", desc: "A space for sharing photos of cultural and historical landmarks", members: "2.7k", image: "/heritage-photography.jpg" },
+  { name: "UNESCO World Heritage Sites", desc: "Dedicated to Algeria's UNESCO-recognized sites", members: "4.1k", image: "/unisco.jpg" },
+  { name: "Monuments of Tipaza", desc: "Exploring and documenting the archaeological sites of Tipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
 ];
-
-const BADGE_COLORS = {
-  Discover: "bg-[#8B6914] text-white",
-  Tour: "bg-[#5C7A3E] text-white",
-  Alert: "bg-[#A0522D] text-white",
-  Question: "bg-[#4A6B8A] text-white",
-};
 
 /* ───────────────── SVG ICONS ───────────────── */
 
 const GemIcon = ({ className = "", size = 18 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 3h12l4 6-10 13L2 9z" />
-    <path d="M2 9h20" />
-    <path d="M12 22L6 9l3-6" />
-    <path d="M12 22l6-13-3-6" />
+    <path d="M6 3h12l4 6-10 13L2 9z" /><path d="M2 9h20" /><path d="M12 22L6 9l3-6" /><path d="M12 22l6-13-3-6" />
   </svg>
 );
 
@@ -135,10 +120,116 @@ const BookmarkIcon = ({ className = "", size = 18 }) => (
 
 const AnnotationIcon = ({ className = "", size = 18 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 20h9" />
-    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
   </svg>
 );
+
+/* ───────────────── TAGS ───────────────── */
+
+function PostTags({ tags }: { tags: string[] }) {
+  if (!tags || tags.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5 px-5 pb-3">
+      {tags.map((tag, i) => (
+        <span
+          key={i}
+          className="text-[11px] font-medium"
+          style={{ color: "#A07850" }}
+        >
+          #{tag.toLowerCase().replace(/\s+/g, "_")}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* ───────────────── EXPANDABLE CONTENT ───────────────── */
+
+const CONTENT_LIMIT = 160;
+
+function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > CONTENT_LIMIT;
+  return (
+    <p className={className} style={style}>
+      {isLong && !expanded ? content.slice(0, CONTENT_LIMIT) + "… " : content + " "}
+      {isLong && (
+        <button
+          className="font-semibold"
+          style={{ color: "#8B6914" }}
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+        >
+          {expanded ? "See less" : "See more"}
+        </button>
+      )}
+    </p>
+  );
+}
+
+/* ───────────────── POST DETAIL BADGE ───────────────── */
+
+const URGENCY_COLORS: Record<string, { bg: string; border: string; dot: string; label: string }> = {
+  low:      { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E",  label: "Low urgency" },
+  medium:   { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39",  label: "Medium urgency" },
+  high:     { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B",  label: "High urgency" },
+  critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000",  label: "Critical" },
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  restored:           "Restored",
+  under_intervention: "Under Intervention",
+  destroyed:          "Destroyed",
+  alert:              "Alert",
+};
+
+function PostDetailBadge({ post }: { post: ApiPost }) {
+  if (post.post_type === "event" && post.event_details) {
+    return (
+      <div
+        className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3"
+        style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}
+      >
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (post.post_type === "alert" && post.alert_details) {
+    const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
+    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    return (
+      <div
+        className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3"
+        style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}
+      >
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 /* ───────────────── COMMENT ITEM ───────────────── */
 
@@ -148,69 +239,36 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setShowMenu(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <div
-      className="flex gap-3 p-3 rounded-xl"
-      style={{
-        backgroundColor: "var(--light)",
-        boxShadow: "0 1px 6px rgba(67,40,23,0.06)",
-      }}
-    >
-      <div
-        className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ backgroundColor: "#E0D5C5" }}
-      >
+    <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)" }}>
+      <div className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
         </svg>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold" style={{ color: "#432817" }}>{comment.user}</p>
           <div className="relative" ref={menuRef}>
-            <button
-              className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
-              style={{ color: "#8B7355" }}
-              onClick={() => setShowMenu(!showMenu)}
-            >
-              ...
-            </button>
+            <button className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none" style={{ color: "#8B7355" }} onClick={() => setShowMenu(!showMenu)}>...</button>
             {showMenu && (
-              <div
-                className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
-                style={{ backgroundColor: "#FFF8E2" }}
-              >
-                <button
-                  className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                  style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                  onClick={() => setShowMenu(false)}
-                >
-                  Report comment
-                </button>
+              <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+                <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => setShowMenu(false)}>Report comment</button>
               </div>
             )}
           </div>
         </div>
         <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "#432817" }}>{comment.text}</p>
         <div className="flex items-center gap-3 mt-1.5">
+          <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}><GemIcon size={12} /><span>10</span></button>
           <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}>
-            <GemIcon size={12} />
-            <span>10</span>
-          </button>
-          <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 14 4 9 9 4" />
-              <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
-            </svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4" /><path d="M20 20v-7a4 4 0 0 0-4-4H4" /></svg>
             <span>10</span>
           </button>
         </div>
@@ -219,158 +277,47 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
   );
 }
 
-/* ───────────────── LEFT SIDEBAR (FLOATING) ───────────────── */
+/* ───────────────── LEFT SIDEBAR ───────────────── */
 
 function LeftSidebar() {
   const [activeIdx, setActiveIdx] = useState(0);
-
   const navIcons = [
-    {
-      label: "Home",
-      href: null,
-      path: (
-        <>
-          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </>
-      ),
-    },
-    {
-      label: "Guilds",
-      href: null,
-      path: (
-        <>
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </>
-      ),
-    },
-    {
-      label: "Monuments in Danger",
-      href: null,
-      path: (
-        <>
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-          <line x1="12" y1="9" x2="12" y2="13" />
-          <line x1="12" y1="17" x2="12.01" y2="17" />
-        </>
-      ),
-    },
-    {
-      label: "Events",
-      href: null,
-      path: (
-        <>
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </>
-      ),
-    },
-    {
-      label: "Notifications",
-      href: null,
-      hasBadge: true,
-      path: (
-        <>
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </>
-      ),
-    },
-    {
-      label: "Profile",
-      href: "/profile",
-      path: (
-        <>
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </>
-      ),
-    },
+    { label: "Home", href: null, path: (<><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></>) },
+    { label: "Guilds", href: null, path: (<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>) },
+    { label: "Monuments in Danger", href: null, path: (<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>) },
+    { label: "Events", href: null, path: (<><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>) },
+    { label: "Notifications", href: null, hasBadge: true, path: (<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>) },
+    { label: "Profile", href: "/profile", path: (<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>) },
   ];
 
   return (
-    <aside
-      className="fixed left-4 top-4 w-[56px] flex flex-col items-center py-6 z-50 rounded-2xl"
-      style={{
-        backgroundColor: "#FFF8E2",
-        boxShadow: "0 4px 24px rgba(67,40,23,0.12)",
-      }}
-    >
-      <div className="mb-6 px-1">
-        <img src="/kunuz-icon.svg" alt="Kunuz" width={42} height={42} />
-      </div>
-
+    <aside className="fixed left-4 top-4 w-[56px] flex flex-col items-center py-6 z-50 rounded-2xl" style={{ backgroundColor: "#FFF8E2", boxShadow: "0 4px 24px rgba(67,40,23,0.12)" }}>
+      <div className="mb-6 px-1"><img src="/kunuz-icon.svg" alt="Kunuz" width={42} height={42} /></div>
       <nav className="flex flex-col items-center gap-5">
         {navIcons.map((item, i) => {
           const iconContent = (
             <>
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill={activeIdx === i ? "#FFF8E2" : "none"}
-                stroke={activeIdx === i ? "#FFF8E2" : "#432817"}
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="transition-colors"
-              >
-                {item.path}
-              </svg>
-              {item.hasBadge && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-              )}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={activeIdx === i ? "#FFF8E2" : "none"} stroke={activeIdx === i ? "#FFF8E2" : "#432817"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="transition-colors">{item.path}</svg>
+              {item.hasBadge && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
             </>
           );
-
           return (
             <div key={i} className="relative group">
               {item.href ? (
-                <Link
-                  href={item.href}
-                  className={`relative p-2.5 rounded-xl transition-all duration-200 block ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}
-                >
-                  {iconContent}
-                </Link>
+                <Link href={item.href} className={`relative p-2.5 rounded-xl transition-all duration-200 block ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}>{iconContent}</Link>
               ) : (
-                <button
-                  onClick={() => setActiveIdx(i)}
-                  className={`relative p-2.5 rounded-xl transition-all duration-200 ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}
-                >
-                  {iconContent}
-                </button>
+                <button onClick={() => setActiveIdx(i)} className={`relative p-2.5 rounded-xl transition-all duration-200 ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}>{iconContent}</button>
               )}
-              <span
-                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
-                style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}
-              >
-                {item.label}
-              </span>
+              <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}>{item.label}</span>
             </div>
           );
         })}
-
         <div className="h-40" />
-
         <div className="relative group">
           <button className="p-2.5 rounded-xl transition-all duration-200 hover:bg-[#F0E8CC]">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
           </button>
-          <span
-            className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
-            style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}
-          >
-            Help
-          </span>
+          <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}>Help</span>
         </div>
       </nav>
     </aside>
@@ -381,92 +328,47 @@ function LeftSidebar() {
 
 function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: () => void }) {
   const [isAnimating, setIsAnimating] = useState(false);
-
   useEffect(() => {
-    if (isVisible) {
-      setIsAnimating(true);
-    } else {
-      setTimeout(() => setIsAnimating(false), 300);
-    }
+    if (isVisible) setIsAnimating(true);
+    else setTimeout(() => setIsAnimating(false), 300);
   }, [isVisible]);
-
   if (!isAnimating && !isVisible) return null;
 
   const filters = [
-    {
-      label: "Geographical Regions",
-      options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n’Ajjer"]
-    },
-    {
-      label: "Historical Periods",
-      options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"]
-    },
-    {
-      label: "Heritage Type",
-      options: ["All", "Civil", "Religious", "Military", "Funerary"]
-    },
+    { label: "Geographical Regions", options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer"] },
+    { label: "Historical Periods", options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"] },
+    { label: "Heritage Type", options: ["All", "Civil", "Religious", "Military", "Funerary"] },
     { label: "User Expertise", options: ["All", "Beginner", "Intermediate", "Expert"] },
   ];
 
   return (
     <div
       className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
-      style={{
-        backgroundColor: "var(--background)",
-        borderRadius: "28px",
-        boxShadow: "0 25px 60px rgba(67,40,23,0.2)",
-        border: "1.5px solid var(--brown)"
-      }}
+      style={{ backgroundColor: "var(--background)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--brown)" }}
     >
       <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-            </svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>
-            Filters
-          </h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>Filters</h3>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-full hover:bg-black/5 transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+        <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       </div>
-
       <div className="flex flex-col max-h-[50vh]">
         <div className="flex-1 overflow-y-auto px-6 py-5 feed-scroll">
           <div className="flex flex-col gap-5">
             {filters.map((filter) => (
               <div key={filter.label} className="flex flex-col gap-2">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--brown)" }}>
-                  {filter.label}
-                </label>
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--brown)" }}>{filter.label}</label>
                 <div className="relative group w-full">
-                  <select
-                    className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
-                    style={{
-                      backgroundColor: "var(--light)",
-                      border: "1.5px solid rgba(67, 40, 23, 0.2)",
-                      borderRadius: "14px",
-                      color: "var(--brown)",
-                      fontWeight: "700"
-                    }}
-                  >
-                    {filter.options.map((opt) => (
-                      <option key={opt}>{opt}</option>
-                    ))}
+                  <select className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300" style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--brown)", fontWeight: "700" }}>
+                    {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
                   </div>
                 </div>
               </div>
@@ -474,44 +376,125 @@ function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: ()
           </div>
         </div>
       </div>
-
       <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
-        <button
-          onClick={onClose}
-          className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5"
-          style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}
-        >
-          Reset
-        </button>
-        <button
-          className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent"
-          style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}
-        >
-          Apply
-        </button>
+        <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>Reset</button>
+        <button className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>Apply</button>
       </div>
     </div>
   );
 }
 
 /* ───────────────── POST MODAL ───────────────── */
-
 function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => void }) {
   const [newComment, setNewComment] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [contentExpanded, setContentExpanded] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
+  const imageScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (postMenuRef.current && !postMenuRef.current.contains(event.target as Node)) {
-        setShowPostMenu(false);
-      }
+      if (postMenuRef.current && !postMenuRef.current.contains(event.target as Node)) setShowPostMenu(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   if (!post) return null;
+
+  const imageList = post.images ?? [];
+  const tags = buildTags(post);
+  const isContentLong = post.content.length > CONTENT_LIMIT;
+
+  const scrollToImage = (index: number) => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: el.clientWidth * index, behavior: "smooth" });
+    setCurrentImageIndex(index);
+  };
+
+  const handleImageScroll = () => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    setCurrentImageIndex(Math.round(el.scrollLeft / el.clientWidth));
+  };
+
+  const LeftPanel = imageList.length > 0 ? (
+    <div className="w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
+      <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
+        {imageList.map((img) => {
+          const imageUrl = img.image.startsWith("/media/") ? `${API_URL || "http://localhost:8000"}${img.image}` : img.image;
+          const bgImageUrl = encodeURI(imageUrl);
+          return (
+            <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
+              <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
+              <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
+              <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+            </div>
+          );
+        })}
+      </div>
+      {imageList.length > 1 && currentImageIndex > 0 && (
+        <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+      )}
+      {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
+        <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+        </button>
+      )}
+      {imageList.length > 1 && (
+        <>
+          <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
+            {imageList.map((_, index) => (
+              <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)" }} />
+            ))}
+          </div>
+          <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>{currentImageIndex + 1}/{imageList.length}</div>
+        </>
+      )}
+    </div>
+  ) : (
+    <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
+      <h3 className="text-lg font-bold mb-2" style={{ color: "#432817" }}>{post.title}</h3>
+      {post.post_type === "event" && post.event_details && (
+        <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+          </div>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
+            <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
+          </div>
+        </div>
+      )}
+      {post.post_type === "alert" && post.alert_details && (() => {
+        const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
+        const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
+        return (
+          <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
+            </div>
+          </div>
+        );
+      })()}
+      <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-4">
+          {tags.map((tag, i) => (
+            <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
@@ -521,151 +504,133 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
         style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-1/2 flex-shrink-0 bg-black flex items-center justify-center">
-          <img
-            src={
-              post.images?.[0]?.image
-                ? `${API_URL}${post.images[0].image}`
-                : "/frame-243.jpg"
-            }
-            alt={post.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
+        {LeftPanel}
+
+        {/* right panel */}
         <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
-          <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-            <div
-              className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center"
-              style={{ backgroundColor: "#E0D5C5" }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+
+          {/* header — fixed */}
+          <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+            <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
             </div>
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
-                <p className="font-bold text-base" style={{ color: "#432817" }}>
-                  {post.user_display_name || post.user_username}
-                </p>
-                <p className="text-[11px]" style={{ color: "#8B7355" }}>
-                  {formatDate(post.created_at)}
-                </p>
+                <p className="font-bold text-base" style={{ color: "#432817" }}>{post.user_display_name || post.user_username}</p>
+                <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
               </div>
             </div>
             <div className="relative" ref={postMenuRef}>
-              <button
-                className="p-1 rounded hover:bg-[#E0D5C5] transition-colors mr-2"
-                onClick={() => setShowPostMenu(!showPostMenu)}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355">
-                  <circle cx="5" cy="12" r="1.5" />
-                  <circle cx="12" cy="12" r="1.5" />
-                  <circle cx="19" cy="12" r="1.5" />
-                </svg>
+              <button className="p-1 rounded hover:bg-[#E0D5C5] transition-colors mr-2" onClick={() => setShowPostMenu(!showPostMenu)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                  <button
-                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={() => setShowPostMenu(false)}
-                  >
-                    Report post
-                  </button>
+                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>Report post</button>
                 </div>
               )}
             </div>
             <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
 
-          <div className="px-5 pt-3 pb-2 border-b" style={{ borderColor: "#E0D5C5" }}>
-            <h3 className="text-lg font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
-            <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>{post.content}</p>
-          </div>
+          {/* scrollable area: content + comments together */}
+          <div className="flex-1 overflow-y-auto feed-scroll">
 
-          <div className="flex-1 overflow-y-auto px-5 py-3 feed-scroll" style={{ maxHeight: "calc(85vh - 280px)" }}>
-            <div className="flex flex-col gap-3">
-              {MOCK_COMMENTS.map((c) => (
-                <CommentItem key={c.id} comment={c} />
-              ))}
+            {/* content block — only when post has images */}
+            {imageList.length > 0 && (
+              <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
+                <h3 className="text-base font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
+
+                {post.post_type === "event" && post.event_details && (
+                  <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5C7A3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                    <span className="text-[11px] font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
+                  </div>
+                )}
+                {post.post_type === "alert" && post.alert_details && (() => {
+                  const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
+                  const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
+                  return (
+                    <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
+                      <span className="text-[11px] font-bold" style={{ color: level.dot }}>{level.label}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
+                    </div>
+                  );
+                })()}
+
+                <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
+                  {isContentLong && !contentExpanded
+                    ? post.content.slice(0, CONTENT_LIMIT) + "… "
+                    : post.content + " "}
+                  {isContentLong && (
+                    <button
+                      className="font-semibold"
+                      style={{ color: "#8B6914" }}
+                      onClick={() => setContentExpanded(!contentExpanded)}
+                    >
+                      {contentExpanded ? "See less" : "See more"}
+                    </button>
+                  )}
+                </p>
+
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {tags.map((tag, i) => (
+                      <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* comments flow below content naturally */}
+            <div className="px-5 py-3 flex flex-col gap-3">
+              {MOCK_COMMENTS.map((c) => <CommentItem key={c.id} comment={c} />)}
             </div>
+
           </div>
 
-          <div className="px-5 py-2 flex items-center justify-between">
+          {/* reactions — fixed */}
+          <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}>
-                <GemIcon size={14} /> {formatCount(post.gems_count)}
-              </span>
-              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}>
-                <CommentIcon size={14} /> {formatCount(post.comments_count)}
-              </span>
-              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}>
-                <AnnotationIcon size={14} /> 0
-              </span>
+              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><GemIcon size={14} /> {formatCount(post.gems_count)}</span>
+              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><CommentIcon size={14} /> {formatCount(post.comments_count)}</span>
+              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><AnnotationIcon size={14} /> 0</span>
             </div>
-            <button className="transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
-              <BookmarkIcon size={18} />
+            <button className="transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}><BookmarkIcon size={18} /></button>
+          </div>
+
+          {/* comment input — fixed */}
+          <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
+            <input type="text" placeholder="Add a comment" value={newComment} onChange={(e) => setNewComment(e.target.value)} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+            <button className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80" style={{ backgroundColor: "#432817" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             </button>
           </div>
 
-          <div className="px-5 py-3 flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Add a comment"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border"
-              style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }}
-            />
-            <button
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
-              style={{ backgroundColor: "#432817" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
     </div>
   );
 }
-
 /* ───────────────── RIGHT SIDEBAR ───────────────── */
 
 function RightSidebar() {
   return (
     <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
-          Popular Guilds
-        </h2>
+        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Popular Guilds</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
           {GUILDS.slice(0, 5).map((guild, i) => (
-            <div
-              key={i}
-              className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5"
-              style={{ width: "100%", boxShadow: "0 2px 10px rgba(67,40,23,0.05)", backgroundColor: "rgba(255,255,255,0.4)" }}
-            >
+            <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 2px 10px rgba(67,40,23,0.05)", backgroundColor: "rgba(255,255,255,0.4)" }}>
               <img src={guild.image} alt={guild.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm" />
               <div className="flex flex-col justify-center min-w-0">
                 <span className="font-bold text-sm truncate" style={{ color: "#432817" }}>{guild.name}</span>
                 <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "#8B7355" }}>{guild.desc}</span>
                 <span className="flex items-center gap-1 text-[11px] mt-1.5 font-medium" style={{ color: "#8B6914" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                   {guild.members} Members
                 </span>
               </div>
@@ -679,206 +644,143 @@ function RightSidebar() {
 
 /* ───────────────── POST CARD ───────────────── */
 
-function PostCard({
-  post,
-  isNew,
-  onCommentClick,
-}: {
-  post: ApiPost;
-  isNew: boolean;
-  onCommentClick: () => void;
-}) {
+function PostCard({ post, isNew, onCommentClick }: { post: ApiPost; isNew: boolean; onCommentClick: () => void }) {
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const imageScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const imageUrl = post.images?.[0]?.image
-    ? `${API_URL}${post.images[0].image}`
-    : "/frame-243.jpg";
+  const imageList = post.images ?? [];
+  const tags = buildTags(post);
 
-  const bgImageUrl = encodeURI(imageUrl);
+  const scrollToImage = (index: number) => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: el.clientWidth * index, behavior: "smooth" });
+    setCurrentImageIndex(index);
+  };
+
+  const handleImageScroll = () => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    setCurrentImageIndex(Math.round(el.scrollLeft / el.clientWidth));
+  };
 
   return (
     <div
       className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
       style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
       onClick={onCommentClick}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)";
-      }}
+      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
     >
+      {/* Header */}
       <div className="flex items-center px-5 pt-4 pb-2">
-        <div
-          className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center"
-          style={{ backgroundColor: "#E0D5C5" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
+        <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
         </div>
-
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-bold text-base" style={{ color: "#432817" }}>
-              {post.user_display_name || post.user_username}
-            </p>
-            <p className="text-xs" style={{ color: "#8B7355" }}>
-              {formatDate(post.created_at)}
-            </p>
+            <p className="font-bold text-base" style={{ color: "#432817" }}>{post.user_display_name || post.user_username}</p>
+            <p className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
           </div>
         </div>
-
         <div className="relative">
-          <button
-            className="p-1 rounded hover:bg-[#FFF8E2] transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355">
-              <circle cx="12" cy="5" r="1.5" />
-              <circle cx="12" cy="12" r="1.5" />
-              <circle cx="12" cy="19" r="1.5" />
-            </svg>
+          <button className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
           </button>
-
           {showMenu && (
-            <div
-              className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50"
-              style={{ backgroundColor: "#FFF8E2" }}
-            >
-              <button
-                className="text-sm font-bold whitespace-nowrap"
-                style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(false);
-                }}
-              >
-                Report post
-              </button>
+            <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
             </div>
           )}
         </div>
       </div>
 
+      {/* Location */}
       <div className="flex items-center gap-1 px-5 pb-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>
-          {post.location || post.region || "Algeria"}
-        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
       </div>
 
-      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>
-        {post.title}
-      </h3>
+      {/* Event / Alert badge */}
+      <PostDetailBadge post={post} />
 
-      <p className="px-5 pb-3 text-sm leading-relaxed" style={{ color: "#432817" }}>
-        {post.content}{" "}
-        <button className="font-semibold" style={{ color: "#8B6914" }}>
-          See more
-        </button>
-      </p>
+      {/* Title */}
+      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>{post.title}</h3>
 
-      <div className="relative px-4 pb-3">
-        {imgError ? (
-          <div
-            className="w-full rounded-lg flex items-center justify-center"
-            style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}
-          >
-            <svg
-              width="48"
-              height="48"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.7"
-            >
-              <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-          </div>
-        ) : (
-          <div
-            className="relative w-full overflow-hidden rounded-lg"
-            style={{
-              height: 460,
-              boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
-            }}
-          >
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: `url("${bgImageUrl}")`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                filter: "blur(15px)",
-                transform: "scale(1.3)",
-              }}
-            />
-<div
-  className="absolute inset-0"
-  style={{
-    background: "rgba(0,0,0,0.4)", 
-  }}
-/>
-            <div
-              className="absolute inset-0"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-              }}
-            />
+      {/* Expandable content */}
+      <ExpandableContent
+        content={post.content}
+        className="px-5 pb-2 text-sm leading-relaxed"
+        style={{ color: "#432817" }}
+      />
 
-            <img
-              src={imageUrl}
-              alt={post.title}
-              className="relative z-10 w-full h-full object-contain"
-              onError={() => setImgError(true)}
-            />
-          </div>
-        )}
-      </div>
+      {/* Tags */}
+      <PostTags tags={tags} />
 
+      {/* Images */}
+      {imageList.length > 0 && (
+        <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
+          {imgError ? (
+            <div className="w-full rounded-lg flex items-center justify-center" style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+                <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </div>
+          ) : (
+            <div className="relative w-full overflow-hidden rounded-lg" style={{ height: 460, boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
+              <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
+                {imageList.map((img) => {
+                  const imageUrl = img.image.startsWith("/media/") ? `${API_URL || "http://localhost:8000"}${img.image}` : img.image;
+                  const bgImageUrl = encodeURI(imageUrl);
+                  return (
+                    <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
+                      <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
+                      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
+                      <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
+                    </div>
+                  );
+                })}
+              </div>
+              {imageList.length > 1 && currentImageIndex > 0 && (
+                <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105 hover:bg-white/30" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 4px 18px rgba(0,0,0,0.18)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+              )}
+              {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
+                <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105 hover:bg-white/30" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 4px 18px rgba(0,0,0,0.18)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                </button>
+              )}
+              {imageList.length > 1 && (
+                <>
+                  <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
+                    {imageList.map((_, index) => (
+                      <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)", boxShadow: currentImageIndex === index ? "0 0 10px rgba(255,248,226,0.55)" : "none" }} />
+                    ))}
+                  </div>
+                  <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>{currentImageIndex + 1}/{imageList.length}</div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer */}
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
-            <GemIcon />
-            <span>{formatCount(post.gems_count)}</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
-            style={{ color: "#432817" }}
-            onClick={onCommentClick}
-          >
-            <CommentIcon />
-            <span>{formatCount(post.comments_count)}</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
-            style={{ color: "#432817" }}
-            onClick={onCommentClick}
-          >
-            <AnnotationIcon />
-            <span>0</span>
-          </button>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}><GemIcon /><span>{formatCount(post.gems_count)}</span></button>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}><CommentIcon /><span>{formatCount(post.comments_count)}</span></button>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}><AnnotationIcon /><span>0</span></button>
         </div>
-        <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
-          <BookmarkIcon />
-        </button>
+        <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}><BookmarkIcon /></button>
       </div>
     </div>
   );
 }
+
 /* ───────────────── MAIN PAGE ───────────────── */
 
 export default function HomePageRoute() {
@@ -895,14 +797,9 @@ export default function HomePageRoute() {
     const fetchPosts = async () => {
       try {
         setLoading(true);
-
         const res = await fetch(`${API_URL}/api/posts`);
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         const data = await res.json();
-
         const formattedPosts: ApiPost[] = data.results.map((post: any, i: number) => ({
           id: String(post.id),
           user_display_name: post.user_display_name ?? "",
@@ -915,10 +812,14 @@ export default function HomePageRoute() {
           gems_count: post.gems_count ?? 0,
           comments_count: post.comments_count ?? 0,
           images: Array.isArray(post.images) ? post.images : [],
+          tags: Array.isArray(post.tags) ? post.tags : [],
+          historical_period: post.historical_period ?? "",
+          monument_type: post.monument_type ?? "",
           created_at: post.created_at ?? "",
+          alert_details: post.alert_details ?? null,
+          event_details: post.event_details ?? null,
           _key: i,
         }));
-
         setPosts(formattedPosts);
       } catch (err) {
         console.error("Error fetching posts:", err);
@@ -926,118 +827,39 @@ export default function HomePageRoute() {
         setLoading(false);
       }
     };
-
     fetchPosts();
   }, []);
 
   useEffect(() => {
     const feedElement = feedRef.current;
     if (!feedElement) return;
-
-    const handleScroll = () => {
-      const scrolled = feedElement.scrollTop > 10;
-      if (scrolled) setShowFilter(false);
-    };
-
+    const handleScroll = () => { if (feedElement.scrollTop > 10) setShowFilter(false); };
     feedElement.addEventListener("scroll", handleScroll);
     return () => feedElement.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <>
-      <div
-        className="flex h-screen overflow-hidden justify-center"
-        style={{
-          fontFamily: "var(--font-lato), sans-serif",
-          backgroundColor: "#FFF8E2",
-        }}
-      >
+      <div className="flex h-screen overflow-hidden justify-center" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
         <LeftSidebar />
-
-        <div
-          className="flex h-full"
-          style={{ width: "1116px", maxWidth: "100%", marginLeft: "80px" }}
-        >
+        <div className="flex h-full" style={{ width: "1116px", maxWidth: "100%", marginLeft: "80px" }}>
           <div className="flex flex-1 flex-col">
-            {/* TOP SEARCH BAR */}
-            <div
-              className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4"
-              style={{ backgroundColor: "var(--cream)" }}
-            >
-              <div
-                className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200"
-                style={{
-                  backgroundColor: "var(--light)",
-                  border: isFocused
-                    ? "1px solid #432817"
-                    : "1px solid var(--brown)",
-                  boxShadow: isFocused
-                    ? "0 0 0 3px rgba(67,40,23,0.15)"
-                    : "0 1px 8px rgba(67,40,23,0.06)",
-                }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="var(--brown)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="flex-shrink-0"
-                >
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  className="flex-1 ml-3 outline-none bg-transparent text-sm"
-                  style={{
-                    color: "var(--brown)",
-                    fontFamily: "var(--font-lato)",
-                  }}
-                />
-
-                <button
-                  className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors"
-                  onClick={() => setShowFilter(!showFilter)}
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#432817"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="4" y1="6" x2="20" y2="6" />
-                    <line x1="4" y1="12" x2="20" y2="12" />
-                    <line x1="4" y1="18" x2="20" y2="18" />
-                    <circle cx="8" cy="6" r="1.5" fill="#432817" />
-                    <circle cx="16" cy="12" r="1.5" fill="#432817" />
-                    <circle cx="10" cy="18" r="1.5" fill="#432817" />
+            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
+              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                <input type="text" placeholder="Search..." onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} className="flex-1 ml-3 outline-none bg-transparent text-sm" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }} />
+                <button className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors" onClick={() => setShowFilter(!showFilter)}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
+                    <circle cx="8" cy="6" r="1.5" fill="#432817" /><circle cx="16" cy="12" r="1.5" fill="#432817" /><circle cx="10" cy="18" r="1.5" fill="#432817" />
                   </svg>
                 </button>
               </div>
-
-              <FilterSection
-                isVisible={showFilter}
-                onClose={() => setShowFilter(false)}
-              />
+              <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} />
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-              <main
-                ref={feedRef}
-                className="flex-1 overflow-y-auto feed-scroll px-6 py-2"
-              >
+              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2">
                 {posts.map((post, index) => (
                   <PostCard
                     key={post._key ?? Number(post.id) ?? index}
@@ -1046,31 +868,19 @@ export default function HomePageRoute() {
                     onCommentClick={() => setSelectedPost(post)}
                   />
                 ))}
-
                 {loading && (
                   <div className="flex justify-center py-6">
-                    <div
-                      className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin"
-                      style={{
-                        borderColor: "#E0D5C5",
-                        borderTopColor: "#8B6914",
-                      }}
-                    />
+                    <div className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
                   </div>
                 )}
-
                 <div ref={sentinelRef} className="h-4" />
               </main>
-
               <RightSidebar />
             </div>
           </div>
         </div>
       </div>
-
-      {selectedPost && (
-        <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />
-      )}
+      {selectedPost && <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />}
     </>
   );
 }
