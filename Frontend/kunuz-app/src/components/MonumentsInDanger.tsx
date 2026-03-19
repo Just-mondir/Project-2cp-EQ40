@@ -27,7 +27,7 @@ const monuments: Monument[] = [
     riskLevel: "medium level",
   },
   {
-    src: "/about-4.jpg",
+    src: "/casbah%201.jpg",
     alt: "Traditional Algerian courtyard with tiles and arches",
     name: "Casbah of Algiers",
     boldLocation: "Algiers",
