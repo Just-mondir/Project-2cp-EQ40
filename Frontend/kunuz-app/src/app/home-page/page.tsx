@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 /* ───────────────── TYPES ───────────────── */
 
@@ -27,8 +28,10 @@ type EventDetails = {
 
 type ApiPost = {
   id: string;
-  user_display_name: string;
-  user_username: string;
+  user_display_name?: string;
+  user_username?: string;
+  username?: string; // legacy support
+  date?: string; // legacy support
   title: string;
   content: string;
   post_type: string;
@@ -234,6 +237,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 /* ───────────────── COMMENT ITEM ───────────────── */
 
 function CommentItem({ comment }: { comment: { id: number; user: string; text: string } }) {
+  const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -250,11 +254,17 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
       <div className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-        </svg>
+        </svg>  
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-bold" style={{ color: "#432817" }}>{comment.user}</p>
+          <button
+            className="text-sm font-bold hover:underline transition-all cursor-pointer"
+            style={{ color: "#432817", background: "none", border: "none", padding: 0 }}
+            onClick={() => router.push(`/user/${comment.user}`)}
+          >
+            {comment.user}
+          </button>
           <div className="relative" ref={menuRef}>
             <button className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none" style={{ color: "#8B7355" }} onClick={() => setShowMenu(!showMenu)}>...</button>
             {showMenu && (

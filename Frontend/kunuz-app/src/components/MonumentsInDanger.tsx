@@ -49,7 +49,7 @@ export default function MonumentsInDanger() {
         );
         if (!res.ok) return;
         const data = await res.json();
-        const fetched: Monument[] = data.results
+        const fetched: Monument[] = (data.data?.results || [])
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 3)
           .map((post: any) => ({
