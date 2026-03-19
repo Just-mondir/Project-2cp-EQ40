@@ -40,7 +40,7 @@ async function getHeritageImages(): Promise<HeritageImage[]> {
     });
     if (!res.ok) return fallbackImages;
     const data = await res.json();
-    const posts: Post[] = data.results;
+    const posts: Post[] = data.data?.results || [];
     const postsWithImages = posts
       .filter((post) => post.images?.[0]?.image)
       .slice(0, 6)

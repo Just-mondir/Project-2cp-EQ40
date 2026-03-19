@@ -155,7 +155,7 @@ export default function UpcomingEvents() {
 
         const data = await res.json();
 
-        const fetched: EventItem[] = data.results
+        const fetched: EventItem[] = (data.data?.results || [])
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 6)
           .map((post: any) => {

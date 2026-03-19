@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 /* ───────────────── MOCK DATA ───────────────── */
 
@@ -16,8 +16,10 @@ type PostImage = {
 
 type ApiPost = {
   id: string;
-  user_display_name: string;
-  user_username: string;
+  user_display_name?: string;
+  user_username?: string;
+  username?: string; // legacy support
+  date?: string; // legacy support
   title: string;
   content: string;
   post_type: string;
@@ -917,14 +919,16 @@ export default function HomePageRoute() {
       try {
         setLoading(true);
 
-        const res = await fetch(`${API_URL}/api/posts`);
+        const res = await fetch(`${API_URL}/api/posts/`);
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
 
         const data = await res.json();
 
-        const formattedPosts: ApiPost[] = data.results.map((post: any, i: number) => ({
+        const postsFromApi = data.data?.results || [];
+
+        const formattedPosts: ApiPost[] = postsFromApi.map((post: any, i: number) => ({
           id: String(post.id),
           user_display_name: post.user_display_name ?? "",
           user_username: post.user_username ?? "",
