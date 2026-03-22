@@ -17,6 +17,7 @@ from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 
 from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails
+from apps.users.models import User
 from .serializers import (
     CommentSerializer,
     GemSerializer,
@@ -351,18 +352,19 @@ class CommentDetailView(APIView):
 # User-specific feeds
 # ---------------------------------------------------------------------------
 
-
-class MyPostsView(APIView):
-
+class UserPostsView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def get(self, request: Request) -> Response:
-        posts = Post.objects.filter(author_id=str(request.user.id), is_deleted=False)
+    def get(self, request: Request, username: str) -> Response:
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
+        
+        posts = Post.objects.filter(author_id=str(user.id), is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
-
 
 class MySavedPostsView(APIView):
 
@@ -392,13 +394,15 @@ class MyGemedPostsView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
-class MyEventsPostsView(APIView):
-
+class UserEventsPostsView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def get(self, request: Request) -> Response:
+    def get(self, request: Request, username: str) -> Response:
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
         posts = Post.objects.filter(
-            author_id=str(request.user.id),
+            author_id=str(user.id),
             post_type="event",
             is_deleted=False
         )
@@ -408,13 +412,15 @@ class MyEventsPostsView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 
-class MyAlertsPostsView(APIView):
-
+class UserAlertsPostsView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def get(self, request: Request) -> Response:
+    def get(self, request: Request, username: str) -> Response:
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
         posts = Post.objects.filter(
-            author_id=str(request.user.id),
+            author_id=str(user.id),
             post_type="alert",
             is_deleted=False
         )
