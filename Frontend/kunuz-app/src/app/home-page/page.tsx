@@ -5,6 +5,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc0MjEyMDg1LCJpYXQiOjE3NzQyMDg0ODUsImp0aSI6ImE5NTYzZDQwODYwYjQyOTNiZDFmMTZlYjE2OWE4MDAzIiwidXNlcl9pZCI6IjY5YjQyZDljMTE1ZWI5MmMyNGQ4NTY5NiJ9.TIOHtX_HEjAHlcg6XcOza8sWMIrMCYs-wSnI8VP_tuE";
+
+/* ───────────────── PERSISTENT GEM/SAVE HELPERS ───────────────── */
+
+function getStoredSet(key: string): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function toggleStoredItem(key: string, id: string, add: boolean) {
+  const set = getStoredSet(key);
+  add ? set.add(id) : set.delete(id);
+  localStorage.setItem(key, JSON.stringify([...set]));
+}
 
 /* ───────────────── TYPES ───────────────── */
 
@@ -30,8 +47,8 @@ type ApiPost = {
   id: string;
   user_display_name?: string;
   user_username?: string;
-  username?: string; // legacy support
-  date?: string; // legacy support
+  username?: string;
+  date?: string;
   title: string;
   content: string;
   post_type: string;
@@ -75,8 +92,8 @@ function formatEventTime(details: EventDetails): string {
 }
 
 function buildTags(post: ApiPost): string[] {
-  const tags: string[] = [];
   if (post.tags && post.tags.length > 0) return post.tags;
+  const tags: string[] = [];
   if (post.historical_period) tags.push(post.historical_period);
   if (post.monument_type) tags.push(post.monument_type);
   if (post.region) tags.push(post.region);
@@ -103,9 +120,27 @@ const GUILDS = [
 
 /* ───────────────── SVG ICONS ───────────────── */
 
-const GemIcon = ({ className = "", size = 18 }) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M6 3h12l4 6-10 13L2 9z" /><path d="M2 9h20" /><path d="M12 22L6 9l3-6" /><path d="M12 22l6-13-3-6" />
+const GemIcon = ({ className = "", size = 18, filled = false, active = false }) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{
+      filter: active ? "drop-shadow(0 0 5px #4FC3F7aa)" : "none",
+      transition: "filter 0.2s, transform 0.15s",
+      transform: active ? "scale(1.18)" : "scale(1)",
+    }}
+  >
+    <path d="M6 3h12l4 6-10 13L2 9z" />
+    <path d="M2 9h20" />
+    <path d="M12 22L6 9l3-6" />
+    <path d="M12 22l6-13-3-6" />
   </svg>
 );
 
@@ -115,8 +150,22 @@ const CommentIcon = ({ className = "", size = 18 }) => (
   </svg>
 );
 
-const BookmarkIcon = ({ className = "", size = 18 }) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+const BookmarkIcon = ({ className = "", size = 18, filled = false, active = false }) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{
+      transition: "color 0.2s, transform 0.15s",
+      transform: active ? "scale(1.15)" : "scale(1)",
+    }}
+  >
     <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
   </svg>
 );
@@ -134,11 +183,7 @@ function PostTags({ tags }: { tags: string[] }) {
   return (
     <div className="flex flex-wrap gap-1.5 px-5 pb-3">
       {tags.map((tag, i) => (
-        <span
-          key={i}
-          className="text-[11px] font-medium"
-          style={{ color: "#A07850" }}
-        >
+        <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>
           #{tag.toLowerCase().replace(/\s+/g, "_")}
         </span>
       ))}
@@ -157,11 +202,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
     <p className={className} style={style}>
       {isLong && !expanded ? content.slice(0, CONTENT_LIMIT) + "… " : content + " "}
       {isLong && (
-        <button
-          className="font-semibold"
-          style={{ color: "#8B6914" }}
-          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-        >
+        <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
           {expanded ? "See less" : "See more"}
         </button>
       )}
@@ -172,10 +213,10 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
 /* ───────────────── POST DETAIL BADGE ───────────────── */
 
 const URGENCY_COLORS: Record<string, { bg: string; border: string; dot: string; label: string }> = {
-  low:      { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E",  label: "Low urgency" },
-  medium:   { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39",  label: "Medium urgency" },
-  high:     { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B",  label: "High urgency" },
-  critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000",  label: "Critical" },
+  low:      { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E", label: "Low urgency" },
+  medium:   { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39", label: "Medium urgency" },
+  high:     { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B", label: "High urgency" },
+  critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000", label: "Critical" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -188,10 +229,7 @@ const STATUS_LABELS: Record<string, string> = {
 function PostDetailBadge({ post }: { post: ApiPost }) {
   if (post.post_type === "event" && post.event_details) {
     return (
-      <div
-        className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3"
-        style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}
-      >
+      <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -210,10 +248,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
     const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
     return (
-      <div
-        className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3"
-        style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}
-      >
+      <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -254,7 +289,7 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
       <div className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-        </svg>  
+        </svg>
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
@@ -395,13 +430,29 @@ function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: ()
 }
 
 /* ───────────────── POST MODAL ───────────────── */
+
 function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => void }) {
   const [newComment, setNewComment] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
+  const [gemmed, setGemmed] = useState(false);
+  const [gemsCount, setGemsCount] = useState(post?.gems_count ?? 0);
+  const [saved, setSaved] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Sync state when post changes — read persisted gem/save from localStorage
+  useEffect(() => {
+    if (post) {
+      const isGemmed = getStoredSet("gemmed_posts").has(post.id);
+      const isSaved = getStoredSet("saved_posts").has(post.id);
+      setGemmed(isGemmed);
+      setSaved(isSaved);
+      setGemsCount(post.gems_count);
+      setContentExpanded(false);
+    }
+  }, [post]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -416,6 +467,58 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
+const handleGem = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+
+  const previousGemmed = gemmed;
+  const previousCount = gemsCount;
+
+  const nextGemmed = !previousGemmed;
+  setGemmed(nextGemmed);
+  setGemsCount((prev) => (nextGemmed ? prev + 1 : prev - 1));
+  toggleStoredItem("gemmed_posts", post.id, nextGemmed);
+
+  try {
+    const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AUTH_TOKEN}`,
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to toggle gem");
+  } catch (err) {
+    console.error(err);
+    setGemmed(previousGemmed);
+    setGemsCount(previousCount);
+    toggleStoredItem("gemmed_posts", post.id, previousGemmed);
+  }
+};
+
+const handleSave = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+
+  const previousSaved = saved;
+  const nextSaved = !previousSaved;
+
+  setSaved(nextSaved);
+  toggleStoredItem("saved_posts", post.id, nextSaved);
+
+  try {
+    const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AUTH_TOKEN}`,
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to toggle save");
+  } catch (err) {
+    console.error(err);
+    setSaved(previousSaved);
+    toggleStoredItem("saved_posts", post.id, previousSaved);
+  }
+};
 
   const scrollToImage = (index: number) => {
     const el = imageScrollRef.current;
@@ -509,17 +612,11 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden"
-        style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
-        {/* right panel */}
         <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
-
-          {/* header — fixed */}
+          {/* header */}
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
@@ -545,14 +642,11 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
             </button>
           </div>
 
-          {/* scrollable area: content + comments together */}
+          {/* scrollable: content + comments */}
           <div className="flex-1 overflow-y-auto feed-scroll">
-
-            {/* content block — only when post has images */}
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
                 <h3 className="text-base font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
-
                 {post.post_type === "event" && post.event_details && (
                   <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5C7A3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
@@ -569,22 +663,14 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
                     </div>
                   );
                 })()}
-
                 <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
-                  {isContentLong && !contentExpanded
-                    ? post.content.slice(0, CONTENT_LIMIT) + "… "
-                    : post.content + " "}
+                  {isContentLong && !contentExpanded ? post.content.slice(0, CONTENT_LIMIT) + "… " : post.content + " "}
                   {isContentLong && (
-                    <button
-                      className="font-semibold"
-                      style={{ color: "#8B6914" }}
-                      onClick={() => setContentExpanded(!contentExpanded)}
-                    >
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>
                       {contentExpanded ? "See less" : "See more"}
                     </button>
                   )}
                 </p>
-
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {tags.map((tag, i) => (
@@ -594,37 +680,47 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
                 )}
               </div>
             )}
-
-            {/* comments flow below content naturally */}
             <div className="px-5 py-3 flex flex-col gap-3">
               {MOCK_COMMENTS.map((c) => <CommentItem key={c.id} comment={c} />)}
             </div>
-
           </div>
 
-          {/* reactions — fixed */}
+          {/* reactions */}
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><GemIcon size={14} /> {formatCount(post.gems_count)}</span>
+              <button
+                className="flex items-center gap-1 text-xs transition-all"
+                style={{ color: gemmed ? "#4FC3F7" : "#432817" }}
+                onClick={handleGem}
+              >
+                <GemIcon size={14} filled={gemmed} active={gemmed} />
+                {formatCount(gemsCount)}
+              </button>
               <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><CommentIcon size={14} /> {formatCount(post.comments_count)}</span>
               <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><AnnotationIcon size={14} /> 0</span>
             </div>
-            <button className="transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}><BookmarkIcon size={18} /></button>
+            <button
+              className="transition-all"
+              style={{ color: saved ? "#8B6914" : "#432817" }}
+              onClick={handleSave}
+            >
+              <BookmarkIcon size={18} filled={saved} active={saved} />
+            </button>
           </div>
 
-          {/* comment input — fixed */}
+          {/* comment input */}
           <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
             <input type="text" placeholder="Add a comment" value={newComment} onChange={(e) => setNewComment(e.target.value)} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
             <button className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80" style={{ backgroundColor: "#432817" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             </button>
           </div>
-
         </div>
       </div>
     </div>
   );
 }
+
 /* ───────────────── RIGHT SIDEBAR ───────────────── */
 
 function RightSidebar() {
@@ -658,10 +754,66 @@ function PostCard({ post, isNew, onCommentClick }: { post: ApiPost; isNew: boole
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // Read initial state from localStorage so gem/save persists across page refreshes
+  const [gemmed, setGemmed] = useState(() => getStoredSet("gemmed_posts").has(post.id));
+  const [gemsCount, setGemsCount] = useState(post.gems_count);
+  const [saved, setSaved] = useState(() => getStoredSet("saved_posts").has(post.id));
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
 
   const imageList = post.images ?? [];
   const tags = buildTags(post);
+const handleGem = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+
+  const previousGemmed = gemmed;
+  const previousCount = gemsCount;
+
+  const nextGemmed = !previousGemmed;
+  setGemmed(nextGemmed);
+  setGemsCount((prev) => (nextGemmed ? prev + 1 : prev - 1));
+  toggleStoredItem("gemmed_posts", post.id, nextGemmed);
+
+  try {
+    const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AUTH_TOKEN}`,
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to toggle gem");
+  } catch (err) {
+    console.error(err);
+    setGemmed(previousGemmed);
+    setGemsCount(previousCount);
+    toggleStoredItem("gemmed_posts", post.id, previousGemmed);
+  }
+};
+
+const handleSave = async (e: React.MouseEvent) => {
+  e.stopPropagation();
+
+  const previousSaved = saved;
+  const nextSaved = !previousSaved;
+
+  setSaved(nextSaved);
+  toggleStoredItem("saved_posts", post.id, nextSaved);
+
+  try {
+    const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${AUTH_TOKEN}`,
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to toggle save");
+  } catch (err) {
+    console.error(err);
+    setSaved(previousSaved);
+    toggleStoredItem("saved_posts", post.id, previousSaved);
+  }
+};
 
   const scrollToImage = (index: number) => {
     const el = imageScrollRef.current;
@@ -720,11 +872,7 @@ function PostCard({ post, isNew, onCommentClick }: { post: ApiPost; isNew: boole
       <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>{post.title}</h3>
 
       {/* Expandable content */}
-      <ExpandableContent
-        content={post.content}
-        className="px-5 pb-2 text-sm leading-relaxed"
-        style={{ color: "#432817" }}
-      />
+      <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
 
       {/* Tags */}
       <PostTags tags={tags} />
@@ -781,11 +929,28 @@ function PostCard({ post, isNew, onCommentClick }: { post: ApiPost; isNew: boole
       {/* Footer */}
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}><GemIcon /><span>{formatCount(post.gems_count)}</span></button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}><CommentIcon /><span>{formatCount(post.comments_count)}</span></button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}><AnnotationIcon /><span>0</span></button>
+          <button
+            className="flex items-center gap-1.5 text-xs transition-all"
+            style={{ color: gemmed ? "#4FC3F7" : "#432817" }}
+            onClick={handleGem}
+          >
+            <GemIcon filled={gemmed} active={gemmed} />
+            <span>{formatCount(gemsCount)}</span>
+          </button>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
+            <CommentIcon /><span>{formatCount(post.comments_count)}</span>
+          </button>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
+            <AnnotationIcon /><span>0</span>
+          </button>
         </div>
-        <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}><BookmarkIcon /></button>
+        <button
+          className="flex items-center gap-1.5 text-xs transition-all"
+          style={{ color: saved ? "#8B6914" : "#432817" }}
+          onClick={handleSave}
+        >
+          <BookmarkIcon filled={saved} active={saved} />
+        </button>
       </div>
     </div>
   );
@@ -800,45 +965,53 @@ export default function HomePageRoute() {
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts`);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${API_URL}/api/posts`);
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        const data = await res.json();
-        const formattedPosts: ApiPost[] = data.results.map((post: any, i: number) => ({
-          id: String(post.id),
-          user_display_name: post.user_display_name ?? "",
-          user_username: post.user_username ?? "",
-          title: post.title ?? "",
-          content: post.content ?? "",
-          post_type: post.post_type ?? "",
-          region: post.region ?? "",
-          location: post.location ?? "",
-          gems_count: post.gems_count ?? 0,
-          comments_count: post.comments_count ?? 0,
-          images: Array.isArray(post.images) ? post.images : [],
-          tags: Array.isArray(post.tags) ? post.tags : [],
-          historical_period: post.historical_period ?? "",
-          monument_type: post.monument_type ?? "",
-          created_at: post.created_at ?? "",
-          alert_details: post.alert_details ?? null,
-          event_details: post.event_details ?? null,
-          _key: i,
-        }));
-        setPosts(formattedPosts);
-      } catch (err) {
-        console.error("Error fetching posts:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPosts();
-  }, []);
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        if (!entries[0].isIntersecting || loading || !nextUrl) return;
+        try {
+          setLoading(true);
+          const res = await fetch(nextUrl);
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          const data = await res.json();
+          const formattedPosts: ApiPost[] = data.results.map((post: any, i: number) => ({
+            id: String(post.id),
+            user_display_name: post.user_display_name ?? "",
+            user_username: post.user_username ?? "",
+            title: post.title ?? "",
+            content: post.content ?? "",
+            post_type: post.post_type ?? "",
+            region: post.region ?? "",
+            location: post.location ?? "",
+            gems_count: post.gems_count ?? 0,
+            comments_count: post.comments_count ?? 0,
+            images: Array.isArray(post.images) ? post.images : [],
+            tags: Array.isArray(post.tags) ? post.tags : [],
+            historical_period: post.historical_period ?? "",
+            monument_type: post.monument_type ?? "",
+            created_at: post.created_at ?? "",
+            alert_details: post.alert_details ?? null,
+            event_details: post.event_details ?? null,
+            _key: posts.length + i,
+          }));
+          setPosts(prev => [...prev, ...formattedPosts]);
+          setNextUrl(data.next ?? null);
+        } catch (err) {
+          console.error("Error fetching posts:", err);
+        } finally {
+          setLoading(false);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [nextUrl, loading]);
 
   useEffect(() => {
     const feedElement = feedRef.current;
@@ -847,7 +1020,6 @@ export default function HomePageRoute() {
     feedElement.addEventListener("scroll", handleScroll);
     return () => feedElement.removeEventListener("scroll", handleScroll);
   }, []);
-
   return (
     <>
       <div className="flex h-screen overflow-hidden justify-center" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
@@ -869,7 +1041,7 @@ export default function HomePageRoute() {
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2">
+              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 {posts.map((post, index) => (
                   <PostCard
                     key={post._key ?? Number(post.id) ?? index}

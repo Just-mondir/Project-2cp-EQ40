@@ -9,17 +9,17 @@ from .views import (
     CommentListCreateView,
     GemToggleView,
     CommentGemToggleView,
-    MyPostsView,
     MySavedPostsView,
     PostDetailView,
     PostImageUploadView,
     PostListCreateView,
     SaveToggleView,
     MyGemedPostsView,
-    MyEventsPostsView,
-    MyAlertsPostsView,
+    UserEventsPostsView,
+    UserAlertsPostsView,
     EventsView,
-    UpcomingEventsView
+    UpcomingEventsView,
+    UserPostsView
 )
 
 urlpatterns = [
@@ -31,12 +31,11 @@ urlpatterns = [
     path("posts/upcoming-events/", UpcomingEventsView.as_view(), name="upcoming-events"),
 
     # Profile
-    path("posts/me/", MyPostsView.as_view(), name="my-posts"),
+    path("posts/user/<str:username>/", UserPostsView.as_view(), name="user-posts"),
     path("posts/saved/", MySavedPostsView.as_view(), name="saved-posts"),
     path("posts/gemed/", MyGemedPostsView.as_view(), name="gemed-posts"),
-    path("posts/myevents/", MyEventsPostsView.as_view(), name="myevents"),
-    path("posts/myalerts/", MyAlertsPostsView.as_view(), name="myalerts"),
-
+    path("posts/user/<str:username>/events/", UserEventsPostsView.as_view(), name="user-events"),
+    path("posts/user/<str:username>/alerts/", UserAlertsPostsView.as_view(), name="user-alerts"),
     # Post detail
     path("posts/<str:pk>/", PostDetailView.as_view(), name="post-detail"),
 
