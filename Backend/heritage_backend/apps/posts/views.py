@@ -7,7 +7,7 @@ import os
 from django.conf import settings
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -72,20 +72,18 @@ class PostListCreateView(APIView):
 
 
 class PostDetailView(APIView):
-
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     def _get_post(self, pk: str) -> Post | None:
         try:
             return Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return None
-
     def get(self, request: Request, pk: str) -> Response:
         post = self._get_post(pk)
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
         serializer = PostDetailSerializer(post, context={"request": request})
         return api_success("Post retrieved.", serializer.data)
-
     def patch(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
@@ -101,7 +99,6 @@ class PostDetailView(APIView):
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
         post = serializer.save()
         return api_success("Post updated.", PostDetailSerializer(post, context={"request": request}).data)
-
     def delete(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
@@ -258,7 +255,6 @@ class SaveToggleView(APIView):
 
 
 class CommentListCreateView(APIView):
-
     def get(self, request: Request, pk: str) -> Response:
         try:
             post = Post.objects.get(id=pk, is_deleted=False)
@@ -267,7 +263,6 @@ class CommentListCreateView(APIView):
         comments = Comment.objects.filter(post=post)
         serializer = CommentSerializer(comments, many=True, context={"request": request})
         return api_success("Comments retrieved.", serializer.data)
-
     def post(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)

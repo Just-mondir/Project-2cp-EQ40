@@ -572,7 +572,30 @@ function PostModal({
     </div>
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
-      <h3 className="text-lg font-bold mb-2" style={{ color: "#432817" }}>{post.title}</h3>
+<div className="mb-1">
+  <div className="flex items-center gap-1 mb-1">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#8B7355"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+    <span className="text-xs" style={{ color: "#8B7355" }}>
+      {post.location || post.region || "Algeria"}
+    </span>
+  </div>
+
+  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+    {post.title}
+  </h3>
+</div>
       {post.post_type === "event" && post.event_details && (
         <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
@@ -647,7 +670,30 @@ function PostModal({
           <div className="flex-1 overflow-y-auto feed-scroll">
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-                <h3 className="text-base font-bold mb-1" style={{ color: "#432817" }}>{post.title}</h3>
+                <div className="mb-1">
+  <div className="flex items-center gap-1 mb-1">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#8B7355"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+    <span className="text-xs" style={{ color: "#8B7355" }}>
+      {post.location || post.region || "Algeria"}
+    </span>
+  </div>
+
+  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+    {post.title}
+  </h3>
+</div>
                 {post.post_type === "event" && post.event_details && (
                   <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5C7A3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
