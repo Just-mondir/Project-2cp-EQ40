@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import AddLocationPopup from "./AddLocationPopup";
 import AddGroupsPopup from "./AddGroupsPopup";
 import AddHistoricalPeriodPopup from "./AddHistoricalPeriodPopup";
+import RichTextEditor from "./RichTextEditor";
+import NotificationModal from "./NotificationModal";
 
 /* ─────────────────────────────────────────────
    DESIGN TOKENS
@@ -143,6 +145,109 @@ function TrashIcon({ size = 13, color = GOLD }) {
     );
 }
 
+/* ── Professional custom dropdown ── */
+function StyledDropdown({ value, onChange, options, placeholder }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const handleClick = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, []);
+
+    const display = value || placeholder || "";
+
+    return (
+        <div ref={ref} style={{ position: "relative" }}>
+            <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                style={{
+                    ...inputStyle,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    textAlign: "left",
+                    boxShadow: open ? "0 0 0 2.5px rgba(139,105,20,0.18)" : "0 1px 4px rgba(67,40,23,0.06)",
+                    transition: "box-shadow 0.15s",
+                }}
+            >
+                <span style={{
+                    color: value ? ESPRESSO : "#A09080",
+                    fontSize: "14px",
+                    fontFamily: FONT,
+                    fontStyle: value ? "normal" : "italic",
+                    flex: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                }}>{display}</span>
+                <svg
+                    width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke={ESPRESSO} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0, opacity: 0.5, marginLeft: "6px" }}
+                >
+                    <polyline points="6 9 12 15 18 9" />
+                </svg>
+            </button>
+
+            {open && (
+                <div style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    left: 0,
+                    right: 0,
+                    zIndex: 200,
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: "12px",
+                    boxShadow: "0 8px 32px rgba(67,40,23,0.18)",
+                    border: "1px solid rgba(196,168,130,0.4)",
+                    maxHeight: "220px",
+                    overflowY: "auto",
+                    scrollbarWidth: "thin",
+                    scrollbarColor: `${SISAL} transparent`,
+                    padding: "6px",
+                }}>
+                    {options.map((opt) => {
+                        const isSelected = opt === value;
+                        return (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => { onChange(opt); setOpen(false); }}
+                                style={{
+                                    display: "block",
+                                    width: "100%",
+                                    textAlign: "left",
+                                    padding: "8px 12px",
+                                    borderRadius: "8px",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    fontFamily: FONT,
+                                    fontSize: "13px",
+                                    fontWeight: isSelected ? 700 : 400,
+                                    color: isSelected ? GOLD : ESPRESSO,
+                                    backgroundColor: isSelected ? "rgba(139,105,20,0.08)" : "transparent",
+                                    transition: "background-color 0.12s",
+                                }}
+                                onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "rgba(196,168,130,0.15)"; }}
+                                onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "transparent"; }}
+                            >
+                                {opt}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 /* ══════════════════════════════════════════════
    PostForm
 ══════════════════════════════════════════════ */
@@ -162,11 +267,14 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
     const [showLocationPopup, setShowLocationPopup] = useState(false);
     const [showGroupsPopup, setShowGroupsPopup] = useState(false);
     const [showHistoricalPeriodPopup, setShowHistoricalPeriodPopup] = useState(false);
+    const [showDoneModal, setShowDoneModal] = useState(false);
 
 
     const POST_TYPES = ["Question", "Visit", "Discovery", "In Danger", "Event"];
     const DANGER_LEVELS = ["Low", "Medium", "High", "Critical"];
     const MONUMENT_TYPES = ["Civil", "Military", "Religious", "Funerary"];
+    const HISTORICAL_PERIODS = ["Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"];
+    const REGIONS = ["Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer"];
 
     const removeGroup = (idx) =>
         setSelectedGroups((prev) => prev.filter((_, i) => i !== idx));
@@ -219,31 +327,27 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                     <SectionLabel>Info</SectionLabel>
 
                     <div style={{ marginBottom: "14px" }}>
-                        <FieldLabel>Title</FieldLabel>
-                        <input
-                            type="text"
+                        <FieldLabel>Title <span style={{ color: "red" }}>*</span></FieldLabel>
+                        <RichTextEditor
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            style={inputStyle}
-                            ref={withFocus}
+                            onChange={setTitle}
+                            placeholder="Entrez le titre de votre post ici..."
+                            minHeight="60px"
                         />
                     </div>
 
-                    <div>
-                        <FieldLabel>Description</FieldLabel>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={4}
-                            style={{ ...inputStyle, resize: "vertical" }}
-                            ref={withFocus}
-                        />
-                    </div>
+                    <FieldLabel>Description <span style={{ color: "red" }}>*</span></FieldLabel>
+                    <RichTextEditor
+                        value={description}
+                        onChange={setDescription}
+                        placeholder="Entrez le contenu de votre post ici..."
+                        minHeight="180px"
+                    />
                 </SectionBlock>
 
                 {/* ══ LOCATION card ══ */}
                 <SectionBlock>
-                    <SectionLabel>Location</SectionLabel>
+                    <SectionLabel>Location <span style={{ color: "red" }}>*</span></SectionLabel>
                     <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                         <input
                             type="text"
@@ -274,7 +378,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                             title="Add location"
                         >
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                                stroke={ESPRESSO} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                stroke={ESPRESSO} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="5" x2="12" y2="19" />
                                 <line x1="5" y1="12" x2="19" y2="12" />
                             </svg>
@@ -288,7 +392,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
 
                     {/* Post Type */}
                     <div style={{ marginBottom: "18px" }}>
-                        <FieldLabel>Post Type</FieldLabel>
+                        <FieldLabel>Post Type <span style={{ color: "red" }}>*</span></FieldLabel>
                         <PillGroup options={POST_TYPES} value={postType} onChange={setPostType} />
                     </div>
 
@@ -304,24 +408,36 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                     <div style={{ display: "flex", gap: "16px", marginBottom: "18px" }}>
                         <div style={{ flex: 1 }}>
                             <FieldLabel>Historical Period</FieldLabel>
-                            <input type="text" value={historicalPeriod}
-                                onChange={(e) => setHistoricalPeriod(e.target.value)}
-                                onClick={() => setShowHistoricalPeriodPopup(true)}
-                                style={{ ...inputStyle, cursor: "pointer" }} ref={withFocus}
-                                placeholder="Date or period"
-                                readOnly />
+                            {postType === "Event" ? (
+                                <input type="text" value={historicalPeriod}
+                                    onChange={(e) => setHistoricalPeriod(e.target.value)}
+                                    onClick={() => setShowHistoricalPeriodPopup(true)}
+                                    style={{ ...inputStyle, cursor: "pointer" }} ref={withFocus}
+                                    placeholder="Select period"
+                                    readOnly />
+                            ) : (
+                                <StyledDropdown
+                                    value={historicalPeriod}
+                                    onChange={setHistoricalPeriod}
+                                    options={HISTORICAL_PERIODS}
+                                    placeholder="Select the historical period"
+                                />
+                            )}
                         </div>
                         <div style={{ flex: 1 }}>
                             <FieldLabel>Region</FieldLabel>
-                            <input type="text" value={region}
-                                onChange={(e) => setRegion(e.target.value)}
-                                style={inputStyle} ref={withFocus} />
+                            <StyledDropdown
+                                value={region}
+                                onChange={setRegion}
+                                options={REGIONS}
+                                placeholder="Select the region"
+                            />
                         </div>
                     </div>
 
                     {/* Monument Type */}
                     <div>
-                        <FieldLabel>Monument Type</FieldLabel>
+                        <FieldLabel>Monument Type <span style={{ color: "red" }}>*</span></FieldLabel>
                         <PillGroup options={MONUMENT_TYPES} value={monumentType} onChange={setMonumentType} />
                     </div>
                 </SectionBlock>
@@ -351,7 +467,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                                 boxShadow: "0 1px 4px rgba(67,40,23,0.06)",
                                 minHeight: "46px",
                                 opacity: visibility === "Private" ? 1 : 0.6,
-                                pointerEvents: visibility === "Private" ? "auto" : "none",
+                                pointerEvents: "auto",
                             }}
                         >
                             {selectedGroups.map((group, i) => (
@@ -462,7 +578,7 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                 {/* Done */}
                 <button
                     type="button"
-                    onClick={onDone}
+                    onClick={() => setShowDoneModal(true)}
                     style={{
                         padding: "9px 24px",
                         borderRadius: "8px",
@@ -481,6 +597,26 @@ export default function PostForm({ onCancel, onDone, initialValues = {}, showFoo
                     Done
                 </button>
             </div>
+
+            {/* Confirm Done Modal */}
+            <NotificationModal
+                isOpen={showDoneModal}
+                onClose={() => setShowDoneModal(false)}
+                type="success"
+                title="Save changes?"
+                message="Are you sure you want to save these changes and publish your post?"
+                primaryAction={{
+                    label: "Save & Done",
+                    onClick: () => {
+                        setShowDoneModal(false);
+                        onDone();
+                    }
+                }}
+                secondaryAction={{
+                    label: "Review Again",
+                    onClick: () => setShowDoneModal(false)
+                }}
+            />
 
 
             {/* ── AddLocation Popup ── */}
