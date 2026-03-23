@@ -116,6 +116,7 @@ function EditPostInner() {
 
   const initialImages: ImageItem[] = post
     ? (post.images ?? []).map((img) => ({
+        id:img.id,
         url: img.image.startsWith("/media/")
           ? `${API_URL}${img.image}`
           : img.image,

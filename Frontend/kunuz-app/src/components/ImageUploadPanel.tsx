@@ -4,7 +4,11 @@ import { useState, useRef, useEffect } from "react";
 
 const MAX_IMAGES = 5;
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN || "";
+
 export type ImageItem = {
+  id?: string;       // present for remote images (PostImage.id from backend)
   url: string;
   name: string;
   isRemote: boolean;
@@ -29,10 +33,13 @@ export default function ImageUploadPanel({
   );
 
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const hasSynced = useRef(false);
 
   useEffect(() => {
-    const next = initialImages.length > 0 ? initialImages : DEFAULT_IMAGE;
-    setImages(next);
+    if (!hasSynced.current && initialImages.length > 0) {
+      setImages(initialImages);
+      hasSynced.current = true;
+    }
   }, [initialImages]);
 
   const updateImages = (next: ImageItem[]) => {
@@ -56,7 +63,29 @@ export default function ImageUploadPanel({
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const handleDelete = (index: number) => {
+  const handleDelete = async (index: number) => {
+    const img = images[index];
+
+    // If it's a remote image, delete it from the backend first
+    if (img.isRemote && img.id) {
+      try {
+        const res = await fetch(`${API_URL}/api/posts/images/${img.id}/`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${AUTH_TOKEN}`,
+          },
+        });
+        if (!res.ok) {
+          console.error("Failed to delete image from server");
+          return; // don't remove from UI if server deletion failed
+        }
+      } catch (err) {
+        console.error("Error deleting image:", err);
+        return;
+      }
+    }
+
+    // Remove from local state
     const next = [...images];
     if (!next[index].isRemote && next[index].url) {
       URL.revokeObjectURL(next[index].url);
@@ -78,7 +107,7 @@ export default function ImageUploadPanel({
         className="grid grid-cols-2 gap-3 p-3 pb-2"
         style={{ gridTemplateRows: "repeat(3, 130px)" }}
       >
-        {[...Array(6)].map((_, idx) => {
+        {[...Array(5)].map((_, idx) => {
           if (idx < images.length) {
             const img = images[idx];
             return (
