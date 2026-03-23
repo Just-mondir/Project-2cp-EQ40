@@ -607,6 +607,7 @@ function PostModal({
   const [saved, setSaved] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (post) {
@@ -869,9 +870,30 @@ function PostModal({
         className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5"
         style={{ backgroundColor: "#F5EFE0" }}
       >
-        <h3 className="text-lg font-bold mb-2" style={{ color: "#432817" }}>
-          {post.title}
-        </h3>
+        <div className="mb-1">
+  <div className="flex items-center gap-1 mb-1">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#8B7355"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+    <span className="text-xs" style={{ color: "#8B7355" }}>
+      {post.location || post.region || "Algeria"}
+    </span>
+  </div>
+
+  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+    {post.title}
+  </h3>
+</div>
         <PostDetailBadge post={post} />
         <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>
           {post.content}
@@ -952,13 +974,16 @@ function PostModal({
                   className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
                   style={{ backgroundColor: "#FFF8E2" }}
                 >
-                  <button
-                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817" }}
-                    onClick={() => setShowPostMenu(false)}
-                  >
-                    Edit post
-                  </button>
+<button
+  className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-[#F0EAD8]"
+  style={{ color: "#432817" }}
+  onClick={() => {
+    setShowPostMenu(false);
+    router.push(`/edit-post?id=${post.id}`);
+  }}
+>
+  Edit post
+</button>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-[#F0EAD8]"
                     style={{ color: "#432817" }}
@@ -990,9 +1015,30 @@ function PostModal({
           <div className="flex-1 overflow-y-auto feed-scroll">
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-                <h3 className="text-base font-bold mb-1" style={{ color: "#432817" }}>
-                  {post.title}
-                </h3>
+                <div className="mb-1">
+  <div className="flex items-center gap-1 mb-1">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#8B7355"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+    <span className="text-xs" style={{ color: "#8B7355" }}>
+      {post.location || post.region || "Algeria"}
+    </span>
+  </div>
+
+  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+    {post.title}
+  </h3>
+</div>
 
                 <PostDetailBadge post={post} />
 

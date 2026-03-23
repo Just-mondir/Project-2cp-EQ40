@@ -10,9 +10,54 @@ class Post(me.Document):
     
     POST_TYPE_CHOICES = ("discovery", "visit", "question", "alert", "event")
     VISIBILITY_CHOICES = ("public", "groups")
-    HISTORICAL_PERIOD_CHOICES = ("", "prehistory", "roman", "islamic", "ottoman", "contemporary")
-    MONUMENT_TYPE_CHOICES = ("", "civil", "military", "religious", "funerary")
-    REGION_CHOICES = ("", "algiers", "oran", "constantine", "tlemcen")
+    HISTORICAL_PERIOD_CHOICES = (
+    "",
+    "Prehistory",
+    "Protohistory",
+    "Numidian period",
+    "Punic (Carthaginian) period",
+    "Roman period",
+    "Vandal period",
+    "Byzantine period",
+    "Early Islamic period",
+    "Rostamid dynasty",
+    "Zirid dynasty",
+    "Hammadid dynasty",
+    "Almohad dynasty",
+    "Zayyanid dynasty",
+    "Ottoman period",
+    "French colonization",
+    "War of Independence",
+    "Independent Algeria",
+    "Contemporary period",
+    )
+
+    MONUMENT_TYPE_CHOICES = (
+    "",
+    "Civil",
+    "Military",
+    "Religious",
+    "Funerary",
+    )
+
+    REGION_CHOICES = (
+    "",
+    "Kabylia",
+    "Tuareg",
+    "Chaoui",
+    "Chleuh",
+    "Medea",
+    "Constantine",
+    "Algiers",
+    "Tlemcen",
+    "Oran",
+    "Tipaza",
+    "Setif",
+    "Batna",
+    "Beni Mzab",
+    "Ouled Nail",
+    "Tassili n'Ajjer",
+    )
     author_id = me.StringField(required=True, db_field="author_id")
     title = me.StringField(max_length=300, required=True)
     content = me.StringField(required=True)

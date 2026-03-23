@@ -91,7 +91,6 @@ class PostListSerializer(serializers.Serializer):
         except EventDetails.DoesNotExist:
             return None
 
-
 class PostDetailSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
     user_id = serializers.CharField(source="author_id", read_only=True)
@@ -100,11 +99,11 @@ class PostDetailSerializer(serializers.Serializer):
     title = serializers.CharField()
     content = serializers.CharField()
     post_type = serializers.CharField()
-    historical_period = serializers.CharField(required=False, default="")
-    monument_type = serializers.CharField(required=False, default="")
-    region = serializers.CharField(required=False, default="")
+    historical_period = serializers.CharField(required=False, default="", allow_blank=True)
+    monument_type = serializers.CharField(required=False, default="", allow_blank=True)
+    region = serializers.CharField(required=False, default="", allow_blank=True)
     visibility = serializers.CharField(required=False, default="public")
-    location = serializers.CharField(required=False, default="")
+    location = serializers.CharField(required=False, default="", allow_blank=True)
     gems_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
     images = serializers.SerializerMethodField()
@@ -114,10 +113,17 @@ class PostDetailSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
 
-    # Write-only fields for nested creation
+    # write-only nested fields
     starts_at = serializers.DateTimeField(write_only=True, required=False)
     ends_at = serializers.DateTimeField(write_only=True, required=False, allow_null=True)
     urgence_level = serializers.CharField(write_only=True, required=False)
+
+    # NEW: uploaded image files
+    uploaded_images = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+        required=False
+    )
 
     def get_user_display_name(self, obj):
         user = _get_user_by_id(obj.author_id)
@@ -149,11 +155,11 @@ class PostDetailSerializer(serializers.Serializer):
         post_type = attrs.get("post_type") or (
             self.instance.post_type if self.instance else None
         )
-        if post_type == "event" and not attrs.get("starts_at"):
+        if post_type == "event" and not attrs.get("starts_at") and not self.instance:
             raise serializers.ValidationError(
                 {"starts_at": "starts_at is required for Event posts."}
             )
-        if post_type == "alert" and not attrs.get("urgence_level"):
+        if post_type == "alert" and not attrs.get("urgence_level") and not self.instance:
             raise serializers.ValidationError(
                 {"urgence_level": "urgence_level is required for Alert posts."}
             )
@@ -163,6 +169,7 @@ class PostDetailSerializer(serializers.Serializer):
         starts_at = validated_data.pop("starts_at", None)
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
+        uploaded_images = validated_data.pop("uploaded_images", [])
 
         post = Post(**validated_data)
         post.save()
@@ -173,12 +180,16 @@ class PostDetailSerializer(serializers.Serializer):
         if post.post_type == "alert" and urgence_level:
             AlertDetails(post=post, urgence_level=urgence_level).save()
 
+        for image_file in uploaded_images:
+            PostImage.objects.create(post=post, image=image_file)
+
         return post
 
     def update(self, instance, validated_data):
         starts_at = validated_data.pop("starts_at", None)
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
+        uploaded_images = validated_data.pop("uploaded_images", [])
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -201,9 +212,10 @@ class PostDetailSerializer(serializers.Serializer):
             except AlertDetails.DoesNotExist:
                 AlertDetails(post=instance, urgence_level=urgence_level).save()
 
+        for image_file in uploaded_images:
+            PostImage.objects.create(post=instance, image=image_file)
+
         return instance
-
-
 # ---------------------------------------------------------------------------
 # Comment serializers
 # ---------------------------------------------------------------------------
