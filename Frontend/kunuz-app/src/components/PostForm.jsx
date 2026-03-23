@@ -294,7 +294,6 @@ export default function PostForm({
   const [showHistoricalPeriodPopup, setShowHistoricalPeriodPopup] =
     useState(false);
   const [showDoneModal, setShowDoneModal] = useState(false);
-
   useEffect(() => {
     setTitle(initialValues.title ?? "");
     setDescription(initialValues.description ?? "");
@@ -306,7 +305,18 @@ export default function PostForm({
     setMonumentType(initialValues.monumentType ?? null);
     setVisibility(initialValues.visibility ?? "Public");
     setSelectedGroups(initialValues.groups ?? []);
-  }, [initialValues]);
+  }, [
+    initialValues.title,
+    initialValues.description,
+    initialValues.location,
+    initialValues.postType,
+    initialValues.dangerLevel,
+    initialValues.historicalPeriod,
+    initialValues.region,
+    initialValues.monumentType,
+    initialValues.visibility,
+    JSON.stringify(initialValues.groups ?? []),
+  ]);
 
   const POST_TYPES = ["Question", "Visit", "Discovery", "In Danger", "Event"];
   const DANGER_LEVELS = ["Low", "Medium", "High", "Critical"];
