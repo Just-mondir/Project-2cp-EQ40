@@ -56,7 +56,6 @@ export default function AddPostPage() {
                             <ImageUploadPanel />
                         </div>
                     </div>
-
                     {/* Right panel: Form */}
                     <div
                         className="flex-1 overflow-hidden flex flex-col post-panel-right post-form-panel"

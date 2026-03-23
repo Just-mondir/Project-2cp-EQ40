@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzc0MjEyMDg1LCJpYXQiOjE3NzQyMDg0ODUsImp0aSI6ImE5NTYzZDQwODYwYjQyOTNiZDFmMTZlYjE2OWE4MDAzIiwidXNlcl9pZCI6IjY5YjQyZDljMTE1ZWI5MmMyNGQ4NTY5NiJ9.TIOHtX_HEjAHlcg6XcOza8sWMIrMCYs-wSnI8VP_tuE";
+const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN;
 
 /* ───────────────── PERSISTENT GEM/SAVE HELPERS ───────────────── */
 
@@ -64,6 +64,12 @@ type ApiPost = {
   alert_details: AlertDetails | null;
   event_details: EventDetails | null;
   _key?: number;
+};
+
+type PostInteraction = {
+  gemmed: boolean;
+  gemsCount: number;
+  saved: boolean;
 };
 
 function formatDate(dateStr: string): string {
@@ -197,33 +203,38 @@ const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
   const [expanded, setExpanded] = useState(false);
-  const isLong = content.length > CONTENT_LIMIT;
+  const strippedText = content.replace(/<[^>]*>/g, "");
+  const isLong = strippedText.length > CONTENT_LIMIT;
   return (
-    <p className={className} style={style}>
-      {isLong && !expanded ? content.slice(0, CONTENT_LIMIT) + "… " : content + " "}
+    <div className={`${className} prose prose-sm max-w-none`} style={style}>
+      {isLong && !expanded ? (
+        <span>{strippedText.slice(0, CONTENT_LIMIT) + "… "}</span>
+      ) : (
+        <div dangerouslySetInnerHTML={{ __html: content }} />
+      )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
           {expanded ? "See less" : "See more"}
         </button>
       )}
-    </p>
+    </div>
   );
 }
 
 /* ───────────────── POST DETAIL BADGE ───────────────── */
 
 const URGENCY_COLORS: Record<string, { bg: string; border: string; dot: string; label: string }> = {
-  low:      { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E", label: "Low urgency" },
-  medium:   { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39", label: "Medium urgency" },
-  high:     { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B", label: "High urgency" },
+  low: { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E", label: "Low urgency" },
+  medium: { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39", label: "Medium urgency" },
+  high: { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B", label: "High urgency" },
   critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000", label: "Critical" },
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  restored:           "Restored",
+  restored: "Restored",
   under_intervention: "Under Intervention",
-  destroyed:          "Destroyed",
-  alert:              "Alert",
+  destroyed: "Destroyed",
+  alert: "Alert",
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
@@ -431,27 +442,28 @@ function FilterSection({ isVisible, onClose }: { isVisible: boolean; onClose: ()
 
 /* ───────────────── POST MODAL ───────────────── */
 
-function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => void }) {
+function PostModal({
+  post,
+  onClose,
+  interaction,
+  onInteractionChange,
+}: {
+  post: ApiPost | null;
+  onClose: () => void;
+  interaction: PostInteraction;
+  onInteractionChange: (update: Partial<PostInteraction>) => void;
+}) {
   const [newComment, setNewComment] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
-  const [gemmed, setGemmed] = useState(false);
-  const [gemsCount, setGemsCount] = useState(post?.gems_count ?? 0);
-  const [saved, setSaved] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Sync state when post changes — read persisted gem/save from localStorage
+  const { gemmed, gemsCount, saved } = interaction;
+
   useEffect(() => {
-    if (post) {
-      const isGemmed = getStoredSet("gemmed_posts").has(post.id);
-      const isSaved = getStoredSet("saved_posts").has(post.id);
-      setGemmed(isGemmed);
-      setSaved(isSaved);
-      setGemsCount(post.gems_count);
-      setContentExpanded(false);
-    }
+    if (post) setContentExpanded(false);
   }, [post]);
 
   useEffect(() => {
@@ -467,58 +479,47 @@ function PostModal({ post, onClose }: { post: ApiPost | null; onClose: () => voi
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
-const handleGem = async (e: React.MouseEvent) => {
-  e.stopPropagation();
 
-  const previousGemmed = gemmed;
-  const previousCount = gemsCount;
+  const handleGem = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextGemmed = !gemmed;
+    const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
 
-  const nextGemmed = !previousGemmed;
-  setGemmed(nextGemmed);
-  setGemsCount((prev) => (nextGemmed ? prev + 1 : prev - 1));
-  toggleStoredItem("gemmed_posts", post.id, nextGemmed);
+    onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
+    toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
-  try {
-    const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${AUTH_TOKEN}`,
-      },
-    });
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+      });
+      if (!res.ok) throw new Error("Failed to toggle gem");
+    } catch (err) {
+      console.error(err);
+      onInteractionChange({ gemmed, gemsCount });
+      toggleStoredItem("gemmed_posts", post.id, gemmed);
+    }
+  };
 
-    if (!res.ok) throw new Error("Failed to toggle gem");
-  } catch (err) {
-    console.error(err);
-    setGemmed(previousGemmed);
-    setGemsCount(previousCount);
-    toggleStoredItem("gemmed_posts", post.id, previousGemmed);
-  }
-};
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSaved = !saved;
 
-const handleSave = async (e: React.MouseEvent) => {
-  e.stopPropagation();
+    onInteractionChange({ saved: nextSaved });
+    toggleStoredItem("saved_posts", post.id, nextSaved);
 
-  const previousSaved = saved;
-  const nextSaved = !previousSaved;
-
-  setSaved(nextSaved);
-  toggleStoredItem("saved_posts", post.id, nextSaved);
-
-  try {
-    const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${AUTH_TOKEN}`,
-      },
-    });
-
-    if (!res.ok) throw new Error("Failed to toggle save");
-  } catch (err) {
-    console.error(err);
-    setSaved(previousSaved);
-    toggleStoredItem("saved_posts", post.id, previousSaved);
-  }
-};
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+      });
+      if (!res.ok) throw new Error("Failed to toggle save");
+    } catch (err) {
+      console.error(err);
+      onInteractionChange({ saved });
+      toggleStoredItem("saved_posts", post.id, saved);
+    }
+  };
 
   const scrollToImage = (index: number) => {
     const el = imageScrollRef.current;
@@ -750,70 +751,68 @@ function RightSidebar() {
 
 /* ───────────────── POST CARD ───────────────── */
 
-function PostCard({ post, isNew, onCommentClick }: { post: ApiPost; isNew: boolean; onCommentClick: () => void }) {
+function PostCard({
+  post,
+  isNew,
+  onCommentClick,
+  interaction,
+  onInteractionChange,
+}: {
+  post: ApiPost;
+  isNew: boolean;
+  onCommentClick: () => void;
+  interaction: PostInteraction;
+  onInteractionChange: (update: Partial<PostInteraction>) => void;
+}) {
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  // Read initial state from localStorage so gem/save persists across page refreshes
-  const [gemmed, setGemmed] = useState(() => getStoredSet("gemmed_posts").has(post.id));
-  const [gemsCount, setGemsCount] = useState(post.gems_count);
-  const [saved, setSaved] = useState(() => getStoredSet("saved_posts").has(post.id));
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
 
+  const { gemmed, gemsCount, saved } = interaction;
   const imageList = post.images ?? [];
   const tags = buildTags(post);
-const handleGem = async (e: React.MouseEvent) => {
-  e.stopPropagation();
 
-  const previousGemmed = gemmed;
-  const previousCount = gemsCount;
+  const handleGem = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextGemmed = !gemmed;
+    const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
 
-  const nextGemmed = !previousGemmed;
-  setGemmed(nextGemmed);
-  setGemsCount((prev) => (nextGemmed ? prev + 1 : prev - 1));
-  toggleStoredItem("gemmed_posts", post.id, nextGemmed);
+    onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
+    toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
-  try {
-    const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${AUTH_TOKEN}`,
-      },
-    });
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+      });
+      if (!res.ok) throw new Error("Failed to toggle gem");
+    } catch (err) {
+      console.error(err);
+      onInteractionChange({ gemmed, gemsCount });
+      toggleStoredItem("gemmed_posts", post.id, gemmed);
+    }
+  };
 
-    if (!res.ok) throw new Error("Failed to toggle gem");
-  } catch (err) {
-    console.error(err);
-    setGemmed(previousGemmed);
-    setGemsCount(previousCount);
-    toggleStoredItem("gemmed_posts", post.id, previousGemmed);
-  }
-};
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSaved = !saved;
 
-const handleSave = async (e: React.MouseEvent) => {
-  e.stopPropagation();
+    onInteractionChange({ saved: nextSaved });
+    toggleStoredItem("saved_posts", post.id, nextSaved);
 
-  const previousSaved = saved;
-  const nextSaved = !previousSaved;
-
-  setSaved(nextSaved);
-  toggleStoredItem("saved_posts", post.id, nextSaved);
-
-  try {
-    const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${AUTH_TOKEN}`,
-      },
-    });
-
-    if (!res.ok) throw new Error("Failed to toggle save");
-  } catch (err) {
-    console.error(err);
-    setSaved(previousSaved);
-    toggleStoredItem("saved_posts", post.id, previousSaved);
-  }
-};
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+      });
+      if (!res.ok) throw new Error("Failed to toggle save");
+    } catch (err) {
+      console.error(err);
+      onInteractionChange({ saved });
+      toggleStoredItem("saved_posts", post.id, saved);
+    }
+  };
 
   const scrollToImage = (index: number) => {
     const el = imageScrollRef.current;
@@ -869,7 +868,9 @@ const handleSave = async (e: React.MouseEvent) => {
       <PostDetailBadge post={post} />
 
       {/* Title */}
-      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }}>{post.title}</h3>
+      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
+        <div dangerouslySetInnerHTML={{ __html: post.title }} />
+      </h3>
 
       {/* Expandable content */}
       <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
@@ -966,6 +967,29 @@ export default function HomePageRoute() {
   const [showFilter, setShowFilter] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts`);
+
+  // ── Lifted interaction state ──────────────────────────────────────────────
+  const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+
+  const getInteraction = (post: ApiPost): PostInteraction =>
+    postInteractions[post.id] ?? {
+      gemmed: getStoredSet("gemmed_posts").has(post.id),
+      gemsCount: post.gems_count,
+      saved: getStoredSet("saved_posts").has(post.id),
+    };
+
+  const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
+    setPostInteractions((prev) => {
+      const existing = prev[postId] ?? {
+        gemmed: getStoredSet("gemmed_posts").has(postId),
+        gemsCount: 0,
+        saved: getStoredSet("saved_posts").has(postId),
+      };
+      return { ...prev, [postId]: { ...existing, ...update } };
+    });
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
 
@@ -1020,6 +1044,7 @@ export default function HomePageRoute() {
     feedElement.addEventListener("scroll", handleScroll);
     return () => feedElement.removeEventListener("scroll", handleScroll);
   }, []);
+
   return (
     <>
       <div className="flex h-screen overflow-hidden justify-center" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
@@ -1047,6 +1072,8 @@ export default function HomePageRoute() {
                     key={post._key ?? Number(post.id) ?? index}
                     post={post}
                     isNew={index >= newPostStart && newPostStart !== -1}
+                    interaction={getInteraction(post)}
+                    onInteractionChange={(update) => updateInteraction(post.id, update)}
                     onCommentClick={() => setSelectedPost(post)}
                   />
                 ))}
@@ -1062,7 +1089,15 @@ export default function HomePageRoute() {
           </div>
         </div>
       </div>
-      {selectedPost && <PostModal post={selectedPost} onClose={() => setSelectedPost(null)} />}
+
+      {selectedPost && (
+        <PostModal
+          post={selectedPost}
+          interaction={getInteraction(selectedPost)}
+          onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
+          onClose={() => setSelectedPost(null)}
+        />
+      )}
     </>
   );
 }
