@@ -36,11 +36,32 @@ class PostPagination(PageNumberPagination):
 
 
 # ---------------------------------------------------------------------------
+# Shared image-save helper  (mirrors PostImageUploadView logic exactly)
+# ---------------------------------------------------------------------------
+
+def _save_post_images(post: Post, image_files) -> None:
+    """Write uploaded image files to disk and create PostImage records."""
+    existing_count = PostImage.objects.filter(post=post).count()
+    allowed = 5 - existing_count
+    for img in list(image_files)[:allowed]:
+        # Use a unique filename to avoid collisions: <post_id>_<original_name>
+        safe_name = f"{post.id}_{img.name}"
+        file_path = os.path.join(settings.MEDIA_ROOT, "post_images", safe_name)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb+") as f:
+            for chunk in img.chunks():
+                f.write(chunk)
+        image_url = f"{settings.MEDIA_URL}post_images/{safe_name}"
+        PostImage(post=post, image=image_url).save()
+
+
+# ---------------------------------------------------------------------------
 # Posts
 # ---------------------------------------------------------------------------
 
 
 class PostListCreateView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -64,6 +85,12 @@ class PostListCreateView(APIView):
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
         post = serializer.save(author_id=str(request.user.id))
+
+        # Save any uploaded images after the post is created
+        image_files = request.FILES.getlist("uploaded_images")
+        if image_files:
+            _save_post_images(post, image_files)
+
         return api_success(
             "Post created successfully.",
             PostDetailSerializer(post, context={"request": request}).data,
@@ -73,17 +100,20 @@ class PostListCreateView(APIView):
 
 class PostDetailView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def _get_post(self, pk: str) -> Post | None:
         try:
             return Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return None
+
     def get(self, request: Request, pk: str) -> Response:
         post = self._get_post(pk)
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
         serializer = PostDetailSerializer(post, context={"request": request})
         return api_success("Post retrieved.", serializer.data)
+
     def patch(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
@@ -98,7 +128,20 @@ class PostDetailView(APIView):
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
         post = serializer.save()
+
+        # Save any newly uploaded images
+        image_files = request.FILES.getlist("uploaded_images")
+        if image_files:
+            existing_count = PostImage.objects.filter(post=post).count()
+            if existing_count + len(image_files) > 5:
+                return api_error(
+                    f"A post can have at most 5 images. This post already has {existing_count}.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+            _save_post_images(post, image_files)
+
         return api_success("Post updated.", PostDetailSerializer(post, context={"request": request}).data)
+
     def delete(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
@@ -115,7 +158,6 @@ class PostDetailView(APIView):
 # ---------------------------------------------------------------------------
 # Post Images
 # ---------------------------------------------------------------------------
-
 
 
 class PostImageUploadView(APIView):
@@ -141,7 +183,6 @@ class PostImageUploadView(APIView):
             )
         created = []
         for img in images:
-            # Save file to disk and store the path as string
             file_path = os.path.join(settings.MEDIA_ROOT, "post_images", img.name)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "wb+") as f:
@@ -155,6 +196,27 @@ class PostImageUploadView(APIView):
         serializer = PostImageSerializer(created, many=True, context={"request": request})
         return api_success("Images uploaded.", serializer.data, status.HTTP_201_CREATED)
 
+class PostImageDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request: Request, pk: str) -> Response:
+        try:
+            image = PostImage.objects.get(id=pk)
+        except PostImage.DoesNotExist:
+            return api_error("Image not found.", status_code=status.HTTP_404_NOT_FOUND)
+        
+        post = image.post
+        if post.author_id != str(request.user.id):
+            return api_error("You can only delete images from your own posts.", status_code=status.HTTP_403_FORBIDDEN)
+        
+        # Delete file from disk
+        file_path = os.path.join(settings.MEDIA_ROOT, image.image.lstrip(settings.MEDIA_URL))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        
+        image.delete()
+        return api_success("Image deleted.", status_code=status.HTTP_204_NO_CONTENT)
+    
 # ---------------------------------------------------------------------------
 # Gem (like)
 # ---------------------------------------------------------------------------
@@ -263,6 +325,7 @@ class CommentListCreateView(APIView):
         comments = Comment.objects.filter(post=post)
         serializer = CommentSerializer(comments, many=True, context={"request": request})
         return api_success("Comments retrieved.", serializer.data)
+
     def post(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
@@ -354,12 +417,12 @@ class UserPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        
         posts = Post.objects.filter(author_id=str(user.id), is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
 
 class MySavedPostsView(APIView):
 
@@ -424,9 +487,10 @@ class UserAlertsPostsView(APIView):
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
+
 # ---------------------------------------------------------------------------
 # Events feed
-# ---------------------------------------------------------------------------        
+# ---------------------------------------------------------------------------
 
 class EventsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -439,6 +503,7 @@ class EventsView(APIView):
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
 
 class UpcomingEventsView(APIView):
     permission_classes = [IsAuthenticated]

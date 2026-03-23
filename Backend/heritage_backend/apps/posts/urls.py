@@ -19,7 +19,8 @@ from .views import (
     UserAlertsPostsView,
     EventsView,
     UpcomingEventsView,
-    UserPostsView
+    UserPostsView,
+    PostImageDeleteView
 )
 
 urlpatterns = [
@@ -38,6 +39,7 @@ urlpatterns = [
     path("posts/user/<str:username>/alerts/", UserAlertsPostsView.as_view(), name="user-alerts"),
     # Post detail
     path("posts/<str:pk>/", PostDetailView.as_view(), name="post-detail"),
+    path("posts/images/<str:pk>/", PostImageDeleteView.as_view()),
 
     # Images
     path("posts/<str:pk>/images/", PostImageUploadView.as_view(), name="post-images"),

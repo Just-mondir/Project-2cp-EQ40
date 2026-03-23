@@ -118,12 +118,9 @@ class PostDetailSerializer(serializers.Serializer):
     ends_at = serializers.DateTimeField(write_only=True, required=False, allow_null=True)
     urgence_level = serializers.CharField(write_only=True, required=False)
 
-    # NEW: uploaded image files
-    uploaded_images = serializers.ListField(
-        child=serializers.ImageField(),
-        write_only=True,
-        required=False
-    )
+    # NOTE: uploaded_images is intentionally NOT here.
+    # Image files are extracted and saved in the view (PostDetailView.patch / PostListCreateView.post)
+    # to keep consistent with how PostImageUploadView works (manual disk save → string URL stored).
 
     def get_user_display_name(self, obj):
         user = _get_user_by_id(obj.author_id)
@@ -169,7 +166,6 @@ class PostDetailSerializer(serializers.Serializer):
         starts_at = validated_data.pop("starts_at", None)
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
-        uploaded_images = validated_data.pop("uploaded_images", [])
 
         post = Post(**validated_data)
         post.save()
@@ -180,16 +176,12 @@ class PostDetailSerializer(serializers.Serializer):
         if post.post_type == "alert" and urgence_level:
             AlertDetails(post=post, urgence_level=urgence_level).save()
 
-        for image_file in uploaded_images:
-            PostImage.objects.create(post=post, image=image_file)
-
         return post
 
     def update(self, instance, validated_data):
         starts_at = validated_data.pop("starts_at", None)
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
-        uploaded_images = validated_data.pop("uploaded_images", [])
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -212,10 +204,9 @@ class PostDetailSerializer(serializers.Serializer):
             except AlertDetails.DoesNotExist:
                 AlertDetails(post=instance, urgence_level=urgence_level).save()
 
-        for image_file in uploaded_images:
-            PostImage.objects.create(post=instance, image=image_file)
-
         return instance
+
+
 # ---------------------------------------------------------------------------
 # Comment serializers
 # ---------------------------------------------------------------------------
