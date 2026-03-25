@@ -33,6 +33,7 @@ type PostFormValues = {
   location: string;
   postType: string;
   dangerLevel?: string | null;
+  currentStatus?: string | null;
   historicalPeriod: string;
   region: string;
   monumentType?: string | null;
@@ -88,41 +89,43 @@ function EditPostInner() {
     () =>
       post
         ? {
-            title: post.title ?? "",
-            description: post.content ?? "",
-            location: post.location ?? "",
-            postType: post.post_type ?? "",
-            historicalPeriod: post.historical_period ?? "",
-            region: post.region ?? "",
-            visibility: "Public",
-            groups: [],
-            dangerLevel: null,
-            monumentType: null,
-          }
+          title: post.title ?? "",
+          description: post.content ?? "",
+          location: post.location ?? "",
+          postType: post.post_type ?? "",
+          historicalPeriod: post.historical_period ?? "",
+          region: post.region ?? "",
+          visibility: "Public",
+          groups: [],
+          dangerLevel: null,
+          currentStatus: null,
+          monumentType: null,
+        }
         : {
-            title: "",
-            description: "",
-            location: "",
-            postType: "",
-            historicalPeriod: "",
-            region: "",
-            visibility: "Public",
-            groups: [],
-            dangerLevel: null,
-            monumentType: null,
-          },
+          title: "",
+          description: "",
+          location: "",
+          postType: "",
+          historicalPeriod: "",
+          region: "",
+          visibility: "Public",
+          groups: [],
+          dangerLevel: null,
+          currentStatus: null,
+          monumentType: null,
+        },
     [post]
   );
 
   const initialImages: ImageItem[] = post
     ? (post.images ?? []).map((img) => ({
-        id:img.id,
-        url: img.image.startsWith("/media/")
-          ? `${API_URL}${img.image}`
-          : img.image,
-        name: post.title,
-        isRemote: true,
-      }))
+      id: img.id,
+      url: img.image.startsWith("/media/")
+        ? `${API_URL}${img.image}`
+        : img.image,
+      name: post.title,
+      isRemote: true,
+    }))
     : [];
 
   useEffect(() => {
