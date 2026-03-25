@@ -4,7 +4,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 
 from rest_framework import generics, filters, viewsets, permissions, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
@@ -132,6 +132,26 @@ class AnnotationViewSet(viewsets.ModelViewSet):
         annotation.save()
 
         return Response({"detail": "Annotation rejected and remains hidden publicly."})
+
+
+def search_test_page(request):
+    return render(request, "kunuz/search_test.html")
+
+
+@api_view(["GET"])
+def global_search(request):
+    query = request.GET.get("q", "").strip()
+
+    posts = Post.objects.filter(is_deleted=False)
+
+    if query:
+        posts = posts.filter(
+            Q(title__icontains=query) |
+            Q(content__icontains=query)
+        )
+
+    serializer = PostSerializer(posts, many=True)
+    return Response(serializer.data)
 
 
 def post_detail(request, pk):

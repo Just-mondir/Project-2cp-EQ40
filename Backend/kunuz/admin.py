@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import (
+    UserProfile,
     Post,
     EventDetails,
     AlertDetails,
@@ -9,7 +10,6 @@ from .models import (
     Comment,
     CommentGem,
     CommentReport,
-    UserProfile,
     Annotation,
 )
 

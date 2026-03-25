@@ -1,15 +1,43 @@
 from rest_framework import serializers
-from .models import Post, Annotation
+from .models import Post, PostImage, Annotation
+
+
+class PostImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostImage
+        fields = ["image"]
 
 
 class PostSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()
-    gems_count = serializers.ReadOnlyField()
-    comments_count = serializers.ReadOnlyField()
+    images = PostImageSerializer(many=True, read_only=True)
+    gems_count = serializers.IntegerField(read_only=True)
+    comments_count = serializers.IntegerField(read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+    user = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Post
-        fields = "__all__"
+        fields = [
+            "id",
+            "user",
+            "username",
+            "title",
+            "content",
+            "post_type",
+            "historical_period",
+            "monument_type",
+            "region",
+            "visibility",
+            "location",
+            "latitude",
+            "longitude",
+            "images",
+            "gems_count",
+            "comments_count",
+            "created_at",
+            "updated_at",
+            "is_deleted",
+        ]
 
 
 class AnnotationSerializer(serializers.ModelSerializer):
