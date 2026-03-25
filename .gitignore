@@ -1,37 +1,31 @@
-# ===== Python =====
+# Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.pyc
 
-# ===== Virtual environment =====
+# Virtual env
 venv/
 .venv/
-**/venv/
 .env
 
-# ===== Django =====
-*.log
+# Django
 db.sqlite3
-Backend/db.sqlite3
 media/
 staticfiles/
 
 # Migrations cache
 **/migrations/__pycache__/
 
-# ===== IDE / OS =====
+# IDE / OS
 .vscode/
 .idea/
 *.swp
 .DS_Store
 Thumbs.db
 
-# ===== Tests / coverage =====
+# Tests
 htmlcov/
 .coverage
 .pytest_cache/
 
-# ===== Docker =====
+# Docker
 *.pid
