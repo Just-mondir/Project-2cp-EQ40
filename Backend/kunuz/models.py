@@ -274,3 +274,49 @@ class CommentReport(models.Model):
 
     def __str__(self):
         return f"{self.reporter.username} reported comment {self.comment.id}"
+
+
+class Annotation(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        REJECTED = "rejected", "Rejected"
+
+    post = models.ForeignKey(
+        Post,
+        on_delete=models.CASCADE,
+        related_name="annotations"
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="annotations"
+    )
+    text = models.TextField(blank=True)
+    image = models.ImageField(upload_to="annotations/", blank=True, null=True)
+
+    status = models.CharField(
+        max_length=10,
+        choices=Status.choices,
+        default=Status.PENDING
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    validated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="validated_annotations"
+    )
+    validated_at = models.DateTimeField(null=True, blank=True)
+
+    def clean(self):
+        super().clean()
+        if not self.text and not self.image:
+            raise ValidationError("Annotation must contain text or image.")
+
+    def __str__(self):
+        return f"Annotation {self.id} on {self.post.title}"

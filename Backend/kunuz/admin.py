@@ -10,6 +10,7 @@ from .models import (
     CommentGem,
     CommentReport,
     UserProfile,
+    Annotation,
 )
 
 
@@ -84,3 +85,10 @@ class CommentReportAdmin(admin.ModelAdmin):
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "expertise", "speciality")
+
+
+@admin.register(Annotation)
+class AnnotationAdmin(admin.ModelAdmin):
+    list_display = ("id", "post", "user", "status", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("text", "user__username", "post__title")
