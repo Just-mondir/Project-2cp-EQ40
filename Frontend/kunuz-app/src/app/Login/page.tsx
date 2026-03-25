@@ -2,15 +2,45 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { loginUser, savePendingAuthContext } from "@/lib/authApi";
+
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
+    setIsSubmitting(true);
+    try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const response = await loginUser({
+        email: normalizedEmail,
+        password,
+      });
+
+      savePendingAuthContext({
+        flow: "login",
+        userId: response.user_id,
+        email: normalizedEmail,
+      });
+
+      router.push("/Verify-email");
+    } catch (submitError) {
+      const message =
+        submitError instanceof Error ? submitError.message : "Login failed.";
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -20,8 +50,6 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-[1050px] bg-white rounded-[30px] overflow-hidden shadow-sm">
         <div className="flex flex-col md:flex-row min-h-[520px]">
-
-          {/* Left: Image Panel */}
           <div className="relative w-full md:w-[44%] min-h-[280px] md:min-h-full flex-shrink-0">
             <div className="absolute inset-4 md:inset-6 lg:inset-7 rounded-[32px] overflow-hidden">
               <Image
@@ -33,10 +61,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Right: Form Panel */}
           <div className="flex-1 flex items-center justify-center px-6 py-10 md:px-10 lg:px-16">
             <div className="w-full max-w-[455px]">
-
               <div className="text-center mb-8 lg:mb-10">
                 <h1
                   className="font-black text-4xl lg:text-[53px] leading-tight mb-4 lg:mb-6"
@@ -54,7 +80,6 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-
                 <div className="flex flex-col gap-2">
                   <label
                     htmlFor="email"
@@ -69,6 +94,7 @@ export default function LoginPage() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    required
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
@@ -87,11 +113,11 @@ export default function LoginPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
 
-                {/* Remember me + Forgot password row */}
                 <div className="flex items-center justify-between">
                   <label
                     className="flex items-center gap-2 cursor-pointer"
@@ -115,15 +141,21 @@ export default function LoginPage() {
                   </Link>
                 </div>
 
+                {error ? (
+                  <p className="text-sm" style={{ color: "#B42318" }}>
+                    {error}
+                  </p>
+                ) : null}
+
                 <button
                   type="submit"
-                  className="mt-4 h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80"
+                  disabled={isSubmitting}
+                  className="mt-4 h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
                   style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
                 >
-                  Login
+                  {isSubmitting ? "Logging In..." : "Login"}
                 </button>
 
-                {/* Divider */}
                 <div className="flex items-center gap-2 my-1">
                   <div className="flex-1 h-px bg-[#E0E0E0]" />
                   <span
@@ -135,7 +167,6 @@ export default function LoginPage() {
                   <div className="flex-1 h-px bg-[#E0E0E0]" />
                 </div>
 
-                {/* Google Button */}
                 <div className="flex justify-center">
                   <button
                     type="button"
@@ -151,25 +182,22 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                {/* Sign up link */}
                 <p
                   className="text-center text-base lg:text-[18px]"
                   style={{ color: "#79747E", fontFamily: "var(--font-lato)" }}
                 >
                   New User?{" "}
                   <Link
-                    href="/signup"
+                    href="/Signup"
                     className="font-bold hover:underline transition-all"
                     style={{ color: "#432817" }}
                   >
                     Sign Up
                   </Link>
                 </p>
-
               </form>
             </div>
           </div>
-
         </div>
       </div>
     </div>
