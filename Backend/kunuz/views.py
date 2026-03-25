@@ -15,12 +15,44 @@ from .forms import CommentForm
 
 
 class PostFilterView(generics.ListAPIView):
-    queryset = Post.objects.filter(is_deleted=False).order_by("-created_at")
     serializer_class = PostSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ["region", "historical_period", "monument_type", "post_type", "visibility"]
-    search_fields = ["title", "content", "location"]
     ordering_fields = ["created_at", "updated_at"]
+
+    def get_queryset(self):
+        queryset = Post.objects.filter(is_deleted=False).order_by("-created_at")
+
+        #here we get the recent query 
+        current_query = (
+            self.request.GET.get("q")
+            or self.request.GET.get("search")
+            or ""
+        ).strip()
+
+        #if the user want to delete the recent query
+        clear_query = self.request.GET.get("clear_query", "").lower() in ["1", "true", "yes"]
+
+        if clear_query:
+            self.request.session.pop("latest_post_query", None)
+            return queryset
+
+        #here we store the last recent query if it exists
+        if current_query:
+            self.request.session["latest_post_query"] = current_query
+        else:
+            #else we get the last query stored
+            current_query = self.request.session.get("latest_post_query", "")
+
+        # we apply the search only in the recent query 
+        if current_query:
+            queryset = queryset.filter(
+                Q(title__icontains=current_query) |
+                Q(content__icontains=current_query) |
+                Q(location__icontains=current_query)
+            ).distinct()
+
+        return queryset
 
 
 class FilterChoicesView(APIView):
