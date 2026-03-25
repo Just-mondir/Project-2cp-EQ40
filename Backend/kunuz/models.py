@@ -138,7 +138,7 @@ class Post(models.Model):
 
     @property
     def comments_count(self):
-        return self.comments.count()
+        return self.comments.filter(parent__isnull=True).count()
 
 
 class EventDetails(models.Model):
@@ -214,6 +214,13 @@ class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        related_name="replies",
+        null=True,
+        blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -221,3 +228,49 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+    @property
+    def gems_count(self):
+        return self.gems.count()
+
+    @property
+    def replies_count(self):
+        return self.replies.count()
+
+
+class CommentGem(models.Model):
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="gems")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["comment", "user"], name="unique_gem_per_user_comment")
+        ]
+
+
+class CommentReport(models.Model):
+    class Reason(models.TextChoices):
+        SPAM = "spam", "Spam"
+        HARASSMENT = "harassment", "Harassment"
+        HATE = "hate", "Hate speech"
+        MISINFORMATION = "misinformation", "Misinformation"
+        OTHER = "other", "Other"
+
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="reports")
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE)
+    reason = models.CharField(max_length=30, choices=Reason.choices)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["comment", "reporter"],
+                name="unique_report_per_user_comment"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.reporter.username} reported comment {self.comment.id}"

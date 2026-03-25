@@ -3,6 +3,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = "django-insecure-change-this-in-production"
+
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -31,9 +32,6 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "kunuzBackend.urls"
 
-WSGI_APPLICATION = "kunuzBackend.wsgi.application"
-ASGI_APPLICATION = "kunuzBackend.asgi.application"
-
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -49,6 +47,8 @@ TEMPLATES = [
     },
 ]
 
+WSGI_APPLICATION = "kunuzBackend.wsgi.application"
+ASGI_APPLICATION = "kunuzBackend.asgi.application"
 
 DATABASES = {
     "default": {
@@ -65,6 +65,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 

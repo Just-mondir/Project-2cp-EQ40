@@ -7,6 +7,8 @@ from .models import (
     Gem,
     Save,
     Comment,
+    CommentGem,
+    CommentReport,
     UserProfile,
 )
 
@@ -65,6 +67,18 @@ class SaveAdmin(admin.ModelAdmin):
 class CommentAdmin(admin.ModelAdmin):
     list_display = ("post", "user", "created_at")
     search_fields = ("content", "user__username")
+
+
+@admin.register(CommentGem)
+class CommentGemAdmin(admin.ModelAdmin):
+    list_display = ("comment", "user", "created_at")
+
+
+@admin.register(CommentReport)
+class CommentReportAdmin(admin.ModelAdmin):
+    list_display = ("comment", "reporter", "reason", "resolved", "created_at")
+    list_filter = ("reason", "resolved")
+    search_fields = ("description", "reporter__username")
 
 
 @admin.register(UserProfile)

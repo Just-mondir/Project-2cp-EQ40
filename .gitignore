@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 venv/
 .venv/
 **/venv/
@@ -6,3 +7,38 @@ __pycache__/
 db.sqlite3
 media/
 .env
+=======
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ===== Virtual environment =====
+venv/
+.env
+
+# ===== Django =====
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# Migrations cache
+**/migrations/__pycache__/
+
+# ===== IDE / OS =====
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ===== Tests / coverage =====
+htmlcov/
+.coverage
+.pytest_cache/
+
+# ===== Docker =====
+*.pid
+>>>>>>> origin/feature/comment-section
