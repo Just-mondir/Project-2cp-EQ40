@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
-export default function BackButton() {
+export default function BackButton({ bgColor = "#FFFFFF" }) {
     const router = useRouter();
 
     return (
@@ -12,7 +12,7 @@ export default function BackButton() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
-                backgroundColor: "#FFFFFF",
+                backgroundColor: bgColor,
                 borderRadius: "9999px",
                 border: "none",
                 color: "#432817",

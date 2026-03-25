@@ -4,9 +4,19 @@ import Image from "next/image";
 import { useState } from "react";
 
 export default function ResetPasswordPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+
+  // ← CHANGED: using object instead of separate states
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  // ← CHANGED: single handler for all fields
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,8 +76,8 @@ export default function ResetPasswordPage() {
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={formData.email}
+                    onChange={handleChange}
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
@@ -84,8 +94,8 @@ export default function ResetPasswordPage() {
                   <input
                     id="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={formData.password}
+                    onChange={handleChange}
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
@@ -102,23 +112,22 @@ export default function ResetPasswordPage() {
                   <input
                     id="confirmPassword"
                     type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
 
-               
                 {/* Done Button */}
-<div style={{ marginTop: "40px" }}>
-  <button
-    type="submit"
-    className="h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80"
-    style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
-  >
-    Done
-  </button>
-</div>
+                <div style={{ marginTop: "40px" }}>
+                  <button
+                    type="submit"
+                    className="h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80"
+                    style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
+                  >
+                    Done
+                  </button>
+                </div>
 
               </form>
             </div>

@@ -97,20 +97,21 @@ export default function Header() {
         </nav>
 
         {/* Sign Up — pinned to the right */}
-        <button
-          type="button"
-          className="hidden md:block flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
-          style={{
-            borderColor: "#3B2A1A",
-            color: "#3B2A1A",
-            fontFamily: "var(--font-lato)",
-            backgroundColor: signUpHovered ? "rgba(255,255,255,0.2)" : "transparent",
-          }}
-          onMouseEnter={() => setSignUpHovered(true)}
-          onMouseLeave={() => setSignUpHovered(false)}
-        >
-          Sign Up
-        </button>
+        <Link
+  href="/Signup"
+  className="hidden md:block flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
+  style={{
+    borderColor: "#3B2A1A",
+    color: "#3B2A1A",
+    fontFamily: "var(--font-lato)",
+    backgroundColor: signUpHovered ? "rgba(255,255,255,0.2)" : "transparent",
+    textDecoration: "none",
+  }}
+  onMouseEnter={() => setSignUpHovered(true)}
+  onMouseLeave={() => setSignUpHovered(false)}
+>
+  Sign Up
+</Link>
 
         {/* Hamburger — mobile only */}
         <button
@@ -166,20 +167,21 @@ export default function Header() {
               {label}
             </Link>
           ))}
-          <button
-            type="button"
-            className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold transition-all duration-300"
-            style={{
-              borderColor: "#3B2A1A",
-              color: "#3B2A1A",
-              fontFamily: "var(--font-lato)",
-              backgroundColor: signUpMobileHovered ? "rgba(255,255,255,0.2)" : "transparent",
-            }}
-            onMouseEnter={() => setSignUpMobileHovered(true)}
-            onMouseLeave={() => setSignUpMobileHovered(false)}
-          >
-            Sign Up
-          </button>
+         <Link
+  href="/Signup"
+  className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold transition-all duration-300"
+  style={{
+    borderColor: "#3B2A1A",
+    color: "#3B2A1A",
+    fontFamily: "var(--font-lato)",
+    backgroundColor: signUpMobileHovered ? "rgba(255,255,255,0.2)" : "transparent",
+    textDecoration: "none",
+  }}
+  onMouseEnter={() => setSignUpMobileHovered(true)}
+  onMouseLeave={() => setSignUpMobileHovered(false)}
+>
+  Sign Up
+</Link>
         </nav>
       </div>
     </header>

@@ -5,9 +5,22 @@ import Link from "next/link";
 import { useState } from "react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+
+  // ← CHANGED: using object instead of separate states
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    rememberMe: false,
+  });
+
+  // ← CHANGED: single handler for text inputs
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [id]: type === "checkbox" ? checked : value,
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,12 +76,11 @@ export default function LoginPage() {
                   >
                     Email
                   </label>
-
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={formData.email}
+                    onChange={handleChange}
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
@@ -81,12 +93,11 @@ export default function LoginPage() {
                   >
                     Password
                   </label>
-
                   <input
                     id="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={formData.password}
+                    onChange={handleChange}
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
@@ -98,9 +109,10 @@ export default function LoginPage() {
                     style={{ color: "#79747E", fontFamily: "var(--font-lato)" }}
                   >
                     <input
+                      id="rememberMe"
                       type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
+                      checked={formData.rememberMe}
+                      onChange={handleChange}
                       className="w-4 h-4 rounded border-[#79747E] accent-[#432817] cursor-pointer"
                     />
                     <span className="text-base lg:text-[18px]">Remember me</span>
@@ -158,7 +170,7 @@ export default function LoginPage() {
                 >
                   New User?{" "}
                   <Link
-                    href="/signup"
+                    href="/Signup"
                     className="font-bold hover:underline transition-all"
                     style={{ color: "#432817" }}
                   >

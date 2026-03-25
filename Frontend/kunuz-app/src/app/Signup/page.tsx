@@ -1,21 +1,27 @@
 "use client";
 
-
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
-
 export default function SignupPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
+  // ← CHANGED: using object instead of separate states
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  // ← CHANGED: single handler for all fields
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
   };
-
 
   return (
     <div
@@ -24,7 +30,6 @@ export default function SignupPage() {
     >
       <div className="w-full max-w-[1050px] bg-white rounded-[30px] overflow-hidden shadow-sm">
         <div className="flex flex-col md:flex-row min-h-[520px]">
-
 
           {/* Left: Image Panel */}
           <div className="relative w-full md:w-[44%] min-h-[280px] md:min-h-full flex-shrink-0">
@@ -38,11 +43,9 @@ export default function SignupPage() {
             </div>
           </div>
 
-
           {/* Right: Form Panel */}
           <div className="flex-1 flex items-center justify-center px-6 py-10 md:px-10 lg:px-16">
             <div className="w-full max-w-[455px]">
-
 
               <div className="text-center mb-8 lg:mb-10">
                 <h1
@@ -51,7 +54,6 @@ export default function SignupPage() {
                 >
                   Sign Up
                 </h1>
-
 
                 <p
                   className="text-base lg:text-[20px] leading-snug"
@@ -62,8 +64,7 @@ export default function SignupPage() {
               </div>
 
               { /*the gape between teh fields */}
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4"> 
-
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
                 <div className="flex flex-col gap-2">
                   <label
@@ -74,16 +75,14 @@ export default function SignupPage() {
                     Email
                   </label>
 
-
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={formData.email}              
+                    onChange={handleChange}             
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
-
 
                 <div className="flex flex-col gap-2">
                   <label
@@ -94,16 +93,14 @@ export default function SignupPage() {
                     Password
                   </label>
 
-
                   <input
                     id="password"
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    value={formData.password}          
+                    onChange={handleChange}             
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
-
 
                 <div className="flex flex-col gap-2">
                   <label
@@ -114,16 +111,14 @@ export default function SignupPage() {
                     Confirm Password
                   </label>
 
-
                   <input
                     id="confirmPassword"
                     type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    value={formData.confirmPassword}    
+                    onChange={handleChange}             
                     className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
                   />
                 </div>
-
 
                 <p
                   className="text-base lg:text-[18px]"
@@ -139,25 +134,22 @@ export default function SignupPage() {
                   </Link>
                 </p>
 
-               <Link href="/Verify-email" >
-                <button
-                  type="submit"
-                  className="mt-4 h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80"
-                  style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
-                >
-                  Sign Up
-                </button>
-              </Link>
-
+                <Link href="/Verify-email">
+                  <button
+                    type="submit"
+                    className="mt-4 h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80"
+                    style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
+                  >
+                    Sign Up
+                  </button>
+                </Link>
 
               </form>
             </div>
           </div>
-
 
         </div>
       </div>
     </div>
   );
 }
-

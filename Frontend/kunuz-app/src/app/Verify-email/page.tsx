@@ -5,21 +5,26 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 
 export default function VerificationPage() {
-  const [code, setCode] = useState(["", "", "", "", "", ""]);
+
+  // ← CHANGED: wrapped code array inside formData object
+  const [formData, setFormData] = useState({
+    code: ["", "", "", "", "", ""],
+  });
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    const newCode = [...code];
+    const newCode = [...formData.code];        // ← CHANGED
     newCode[index] = value.slice(-1);
-    setCode(newCode);
+    setFormData(prev => ({ ...prev, code: newCode }));  // ← CHANGED
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !code[index] && index > 0) {
+    if (e.key === "Backspace" && !formData.code[index] && index > 0) {  // ← CHANGED
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -27,11 +32,11 @@ export default function VerificationPage() {
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").slice(0, 6).split("");
-    const newCode = [...code];
+    const newCode = [...formData.code];        // ← CHANGED
     pasted.forEach((char, i) => {
       if (/^\d$/.test(char)) newCode[i] = char;
     });
-    setCode(newCode);
+    setFormData(prev => ({ ...prev, code: newCode }));  // ← CHANGED
     inputRefs.current[Math.min(pasted.length, 5)]?.focus();
   };
 
@@ -93,7 +98,7 @@ export default function VerificationPage() {
 
                   {/* 6 Boxes */}
                   <div className="flex justify-center gap-6">
-                    {code.map((digit, index) => (
+                    {formData.code.map((digit, index) => (   // ← CHANGED
                       <input
                         key={index}
                         ref={(el) => { inputRefs.current[index] = el; }}
@@ -137,17 +142,16 @@ export default function VerificationPage() {
 
                 {/* Next Button */}
                 <div style={{ marginTop: "60px" }}>
-  <Link href="/Set-Profile">
-  <button
-    type="submit"
-    className="h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80"
-    style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
-  >
-    Next
-  </button>
-  </Link>
-</div>
-
+                  <Link href="/Set-Profile">
+                    <button
+                      type="submit"
+                      className="h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80"
+                      style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
+                    >
+                      Next
+                    </button>
+                  </Link>
+                </div>
 
               </form>
             </div>
