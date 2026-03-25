@@ -1,6 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PostFilterView, FilterChoicesView, AnnotationViewSet, global_search, search_test_page
+from .views import (
+    PostFilterView,
+    FilterChoicesView,
+    AnnotationViewSet,
+    global_search,
+    search_users,
+)
 from . import views
 
 router = DefaultRouter()
@@ -17,7 +23,7 @@ urlpatterns = [
     path("comment/<int:comment_id>/report/", views.report_comment, name="report_comment"),
 
     path("search/", global_search, name="global_search"),
-    path("search-test/", search_test_page, name="search_test"),
+    path("search-users/", search_users, name="search_users"),
 
     path("", include(router.urls)),
 ]

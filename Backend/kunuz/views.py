@@ -2,6 +2,7 @@ from django.db.models import Q
 from django.utils import timezone
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 
 from rest_framework import generics, filters, viewsets, permissions, status
 from rest_framework.decorators import action, api_view
@@ -23,28 +24,23 @@ class PostFilterView(generics.ListAPIView):
     def get_queryset(self):
         queryset = Post.objects.filter(is_deleted=False).order_by("-created_at")
 
-        #here we get the recent query 
         current_query = (
             self.request.GET.get("q")
             or self.request.GET.get("search")
             or ""
         ).strip()
 
-        #if the user want to delete the recent query
         clear_query = self.request.GET.get("clear_query", "").lower() in ["1", "true", "yes"]
 
         if clear_query:
             self.request.session.pop("latest_post_query", None)
             return queryset
 
-        #here we store the last recent query if it exists
         if current_query:
             self.request.session["latest_post_query"] = current_query
         else:
-            #else we get the last query stored
             current_query = self.request.session.get("latest_post_query", "")
 
-        # we apply the search only in the recent query 
         if current_query:
             queryset = queryset.filter(
                 Q(title__icontains=current_query) |
@@ -166,10 +162,6 @@ class AnnotationViewSet(viewsets.ModelViewSet):
         return Response({"detail": "Annotation rejected and remains hidden publicly."})
 
 
-def search_test_page(request):
-    return render(request, "kunuz/search_test.html")
-
-
 @api_view(["GET"])
 def global_search(request):
     query = request.GET.get("q", "").strip()
@@ -184,6 +176,28 @@ def global_search(request):
 
     serializer = PostSerializer(posts, many=True)
     return Response(serializer.data)
+
+
+@api_view(["GET"])
+def search_users(request):
+    query = request.GET.get("q", "").strip()
+
+    users = User.objects.all()
+
+    if query:
+        users = users.filter(
+            Q(username__icontains=query)
+        )
+
+    data = [
+        {
+            "id": user.id,
+            "username": user.username,
+        }
+        for user in users
+    ]
+
+    return Response(data)
 
 
 def post_detail(request, pk):
