@@ -5,7 +5,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { Underline } from "@tiptap/extension-underline";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { TextAlign } from "@tiptap/extension-text-align";
-import { Link } from "@tiptap/extension-link";
+
 
 import {
     Bold,
@@ -18,9 +18,6 @@ import {
     AlignJustify,
     List,
     ListOrdered,
-    Link as LinkIcon,
-    Quote,
-    PlusSquare,
     ChevronDown,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -58,7 +55,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
             TextAlign.configure({
                 types: ["heading", "paragraph"],
             }),
-            Link.configure({ openOnClick: false }),
+
         ],
         immediatelyRender: false,
         content: value || "", // HTML content
@@ -170,41 +167,10 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
                     <ListOrdered size={16} />
                 </ToolbarButton>
 
-                <Divider />
-
-                <ToolbarButton
-                    onClick={() => {
-                        const url = window.prompt("Entrez l'URL du lien :");
-                        if (url) editor.chain().focus().setLink({ href: url }).run();
-                    }}
-                    isActive={editor.isActive("link")}
-                    title="Lien"
-                >
-                    <LinkIcon size={16} />
-                </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} isActive={editor.isActive("blockquote")} title="Citation">
-                    <Quote size={16} />
-                </ToolbarButton>
-
 
             </div>
 
-            {/* ── ANNOTATION BAR ── */}
-            <div className="px-5 py-2 border-b border-[#E0D5C5]/60 flex items-center bg-white">
-                <button
-                    type="button"
-                    onClick={() => {
-                        const annotation = window.prompt("Ajoutez votre annotation :");
-                        if (annotation) {
-                            editor.chain().focus().insertContent(`<span class="bg-[#F7F5EF] border border-[#C4A882] px-1 rounded" title="Annotation">${annotation}</span>`).run();
-                        }
-                    }}
-                    className="flex items-center gap-2 text-[#8B7355] hover:text-[#432817] transition-colors text-[13px] font-medium"
-                >
-                    <PlusSquare size={16} strokeWidth={2.5} />
-                    Ajouter une annotation
-                </button>
-            </div>
+
 
             {/* ── CONTENT AREA ── */}
             <div className="flex-1 overflow-y-auto">
