@@ -97,7 +97,7 @@ class PostDetailSerializer(serializers.Serializer):
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
     title = serializers.CharField()
-    content = serializers.CharField()
+    content = serializers.CharField(required=False, allow_blank=True)
     post_type = serializers.CharField()
     historical_period = serializers.CharField(required=False, default="", allow_blank=True)
     monument_type = serializers.CharField(required=False, default="", allow_blank=True)
@@ -117,6 +117,7 @@ class PostDetailSerializer(serializers.Serializer):
     starts_at = serializers.DateTimeField(write_only=True, required=False)
     ends_at = serializers.DateTimeField(write_only=True, required=False, allow_null=True)
     urgence_level = serializers.CharField(write_only=True, required=False)
+    current_status = serializers.CharField(write_only=True, required=False)
 
     # NOTE: uploaded_images is intentionally NOT here.
     # Image files are extracted and saved in the view (PostDetailView.patch / PostListCreateView.post)
@@ -166,23 +167,21 @@ class PostDetailSerializer(serializers.Serializer):
         starts_at = validated_data.pop("starts_at", None)
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
-
+        current_status = validated_data.pop("current_status", None)
         post = Post(**validated_data)
         post.save()
 
         if post.post_type == "event" and starts_at:
             EventDetails(post=post, starts_at=starts_at, ends_at=ends_at).save()
-
         if post.post_type == "alert" and urgence_level:
-            AlertDetails(post=post, urgence_level=urgence_level).save()
-
+            AlertDetails(post=post, urgence_level=urgence_level,current_status=current_status,).save()
         return post
 
     def update(self, instance, validated_data):
         starts_at = validated_data.pop("starts_at", None)
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
-
+        current_status = validated_data.pop("current_status", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -200,10 +199,14 @@ class PostDetailSerializer(serializers.Serializer):
             try:
                 details = AlertDetails.objects.get(post=instance)
                 details.urgence_level = urgence_level
+                details.current_status = current_status
                 details.save()
             except AlertDetails.DoesNotExist:
-                AlertDetails(post=instance, urgence_level=urgence_level).save()
-
+                AlertDetails.objects.create(
+                    post=instance,
+                    urgence_level=urgence_level,
+                    current_status=current_status,
+                )
         return instance
 
 

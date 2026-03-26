@@ -18,7 +18,11 @@ type PostFormValues = {
   dangerLevel?: string | null;
   historicalPeriod: string;
   region: string;
-  monumentType?: string | null;
+  monumentType: string;
+  startDate?: string;
+  startTime?: string;
+  endDate?: string;
+  endTime?: string;
   visibility: string;
   groups: string[];
 };
@@ -67,13 +71,27 @@ export default function AddPostPage() {
       }
 
       if (formValues.monumentType) {
-        formData.append("monument_type", formValues.monumentType.toLowerCase());
+        formData.append("monument_type", formValues.monumentType);
       }
 
       formData.append("visibility", formValues.visibility.toLowerCase());
 
       if (formValues.postType === "Event") {
-        formData.append("starts_at", new Date().toISOString());
+        const toIso = (date?: string, time?: string) => {
+          if (!date || !time) return null;
+          return new Date(`${date}T${time}`).toISOString();
+        };
+
+        const startsAt = toIso(formValues.startDate, formValues.startTime);
+        const endsAt = toIso(formValues.endDate, formValues.endTime);
+
+        if (startsAt) {
+          formData.append("starts_at", startsAt);
+        }
+
+        if (endsAt) {
+          formData.append("ends_at", endsAt);
+        }
       }
 
       if (formValues.postType === "In Danger" && formValues.dangerLevel) {
