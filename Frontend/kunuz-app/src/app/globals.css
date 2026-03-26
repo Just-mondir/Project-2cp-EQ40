@@ -1,0 +1,324 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --background: #FFF8E2;
+  --foreground: #432817;
+  --cream: #FFF8E2;
+  --brown: #432817;
+  --light: #F7F5EF;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-brown: var(--brown);
+  --color-light: var(--light);
+  --font-sans: var(--font-lato), system-ui, sans-serif;
+  --font-brand: var(--font-brand), Georgia, serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-lato), system-ui, sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ensure scrolling to #hero doesn't hide it under the fixed header */
+#hero {
+  scroll-margin-top: 60px;
+}
+
+/* Hide vertical scrollbar while keeping page scrollable */
+html {
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+html::-webkit-scrollbar {
+  width: 0px;
+  /* Chrome, Safari, Edge */
+  height: 0px;
+}
+
+.feed-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.feed-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* About second page — mission & vision cards */
+.about2-wrapper {
+  position: relative;
+}
+
+.about2-card {
+  position: relative;
+  border: 1.5px solid #432819;
+  padding: 36px 40px;
+  max-width: 430px;
+  width: 100%;
+  background-color: transparent;
+}
+
+.about2-card-mission::before,
+.about2-card-mission::after,
+.about2-card-vision::before,
+.about2-card-vision::after {
+  content: "";
+  position: absolute;
+  background-color: #432819;
+}
+
+/* Left card: circle at top-right, line to the right */
+.about2-card-mission::before {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  top: 18px;
+  right: -10px;
+}
+
+.about2-card-mission::after {
+  height: 1px;
+  width: 80px;
+  top: 22px;
+  right: -80px;
+}
+
+/* Right card: circle at bottom-left, line to the left */
+.about2-card-vision::before {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  bottom: 18px;
+  left: -4px;
+}
+
+.about2-card-vision::after {
+  height: 1px;
+  width: 80px;
+  bottom: 22px;
+  left: -80px;
+}
+
+@media (max-width: 767px) {
+
+  /* On mobile, hide the connecting lines/circles to avoid visual clutter when stacked */
+  .about2-card-mission::before,
+  .about2-card-mission::after,
+  .about2-card-vision::before,
+  .about2-card-vision::after {
+    display: none;
+  }
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* fadeIn animation for conditional PostForm sections */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hide scrollbar across all browsers (utility class) */
+.hide-scrollbar {
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE / Edge */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome / Safari */
+}
+
+/* ── Add Post / Edit Post page enhancements ── */
+
+/* Slide-in from left for the left panel */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide-in from right for the right panel */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Subtle scale-up entrance */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.post-panel-left {
+  animation: slideInLeft 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.post-panel-right {
+  animation: slideInRight 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+}
+
+/* Form panel subtle hover lift */
+.post-form-panel {
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.post-form-panel:hover {
+  box-shadow: 0 8px 32px rgba(67, 40, 23, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Image grid card hover */
+.post-image-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.post-image-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(67, 40, 23, 0.15);
+}
+
+/* Upload slot hover pulse */
+.post-upload-slot {
+  transition: border-color 0.25s ease, background-color 0.25s ease, transform 0.25s ease;
+}
+
+.post-upload-slot:hover {
+  border-color: rgba(67, 40, 23, 0.5) !important;
+  background-color: rgba(67, 40, 23, 0.04) !important;
+  transform: scale(1.03);
+}
+
+/* Title shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+.post-page-title {
+  position: relative;
+  display: inline-block;
+}
+
+.post-page-title::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(139, 105, 20, 0.08) 50%,
+      transparent 100%);
+  background-size: 200px 100%;
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Back button hover effect */
+.post-back-btn {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.post-back-btn:hover {
+  transform: translateX(-3px);
+  color: #8B6914 !important;
+}
+
+/* Post feed fade-in animation (already exists, ensuring consistency) */
+@keyframes postFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.post-fade-in {
+  animation: postFadeIn 0.4s ease both;
+}
+
+/* Loader spin animation */
+@keyframes loaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-spin {
+  animation: loaderSpin 0.8s linear infinite;
+}
+
+/* Feed scroll custom styling */
+.feed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(67, 40, 23, 0.15) transparent;
+}
+
+.feed-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.feed-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.feed-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(67, 40, 23, 0.15);
+  border-radius: 4px;
+}
