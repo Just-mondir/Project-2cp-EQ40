@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import AddLocationPopup from "./AddLocationPopup";
 import AddGroupsPopup from "./AddGroupsPopup";
 import AddHistoricalPeriodPopup from "./AddHistoricalPeriodPopup";
-import RichTextEditor from "./RichTextEditor";
+import RichTextEditor, { TitleEditor } from "./RichTextEditor";
 import NotificationModal from "./NotificationModal";
 
 const FONT = "var(--font-lato), 'Lato', sans-serif";
@@ -374,6 +374,7 @@ export default function PostForm({
   initialValues = {},
   showFooter = true,
   isSubmitting = false,
+  isEditMode = false,
 }) {
   const [title, setTitle] = useState(initialValues.title ?? "");
   const [description, setDescription] = useState(
@@ -428,8 +429,6 @@ export default function PostForm({
     setSelectedGroups(initialValues.groups ?? []);
     setStartTime(initialValues.startTime ?? "");
     setEndTime(initialValues.endTime ?? "");
-    setStartDate(initialValues.startDate ?? "");
-    setEndDate(initialValues.endDate ?? "");
   }, [
     initialValues.title,
     initialValues.description,
@@ -560,11 +559,10 @@ export default function PostForm({
             <FieldLabel>
               Title <span style={{ color: "red" }}>*</span>
             </FieldLabel>
-            <RichTextEditor
+            <TitleEditor
               value={title}
               onChange={setTitle}
               placeholder="Entrez le titre de votre post ici..."
-              minHeight="60px"
             />
           </div>
 
@@ -630,106 +628,6 @@ export default function PostForm({
           </div>
         </SectionBlock>
 
-        {postType === "Event" && (
-          <SectionBlock>
-            <SectionLabel>Event time</SectionLabel>
-            <div style={{ display: "flex", gap: "16px" }}>
-              <div style={{ flex: 1, position: "relative" }}>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  placeholder="Start time"
-                  style={{
-                    ...inputStyle,
-                    cursor: "pointer",
-                    paddingRight: "40px",
-                    border: "1px solid rgba(196,168,130,0.4)",
-                  }}
-                  ref={withFocus}
-                />
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={ESPRESSO}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    opacity: 0.45,
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setShowStartCal((v) => !v)}
-                >
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                {showStartCal && (
-                  <MiniCalendar
-                    value={startDate}
-                    onChange={setStartDate}
-                    onClose={() => setShowStartCal(false)}
-                  />
-                )}
-              </div>
-              <div style={{ flex: 1, position: "relative" }}>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  placeholder="End time"
-                  style={{
-                    ...inputStyle,
-                    cursor: "pointer",
-                    paddingRight: "40px",
-                    border: "1px solid rgba(196,168,130,0.4)",
-                  }}
-                  ref={withFocus}
-                />
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={ESPRESSO}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    opacity: 0.45,
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setShowEndCal((v) => !v)}
-                >
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                {showEndCal && (
-                  <MiniCalendar
-                    value={endDate}
-                    onChange={setEndDate}
-                    onClose={() => setShowEndCal(false)}
-                  />
-                )}
-              </div>
-            </div>
-          </SectionBlock>
-        )}
-
         <SectionBlock>
           <SectionLabel>Labels</SectionLabel>
 
@@ -757,42 +655,30 @@ export default function PostForm({
                 />
               </div>
 
-              <div
-                style={{ marginBottom: "18px", animation: "fadeIn 0.25s ease" }}
-              >
-                <FieldLabel>Current Status</FieldLabel>
-                <StyledDropdown
-                  value={currentStatus}
-                  onChange={setCurrentStatus}
-                  options={CURRENT_STATUSES}
-                  placeholder="Select current status"
-                />
-              </div>
+              {isEditMode && (
+                <div
+                  style={{ marginBottom: "18px", animation: "fadeIn 0.25s ease" }}
+                >
+                  <FieldLabel>Current Status</FieldLabel>
+                  <PillGroup
+                    options={CURRENT_STATUSES}
+                    value={currentStatus}
+                    onChange={setCurrentStatus}
+                  />
+                </div>
+              )}
             </>
           )}
 
           <div style={{ display: "flex", gap: "16px", marginBottom: "18px" }}>
             <div style={{ flex: 1 }}>
               <FieldLabel>Historical Period</FieldLabel>
-              {postType === "Event" ? (
-                <input
-                  type="text"
-                  value={historicalPeriod}
-                  onChange={(e) => setHistoricalPeriod(e.target.value)}
-                  onClick={() => setShowHistoricalPeriodPopup(true)}
-                  style={{ ...inputStyle, cursor: "pointer" }}
-                  ref={withFocus}
-                  placeholder="Select period"
-                  readOnly
-                />
-              ) : (
-                <StyledDropdown
-                  value={historicalPeriod}
-                  onChange={setHistoricalPeriod}
-                  options={HISTORICAL_PERIODS}
-                  placeholder="Select the historical period"
-                />
-              )}
+              <StyledDropdown
+                value={historicalPeriod}
+                onChange={setHistoricalPeriod}
+                options={HISTORICAL_PERIODS}
+                placeholder="Select the historical period"
+              />
             </div>
             <div style={{ flex: 1 }}>
               <FieldLabel>Region</FieldLabel>
@@ -813,6 +699,33 @@ export default function PostForm({
               onChange={setMonumentType}
             />
           </div>
+
+          {postType === "Event" && (
+            <div style={{ marginTop: "24px" }}>
+              <FieldLabel>Event Time</FieldLabel>
+              <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>Start time</div>
+                  <input
+                    type="datetime-local"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    style={{ ...inputStyle, border: "1px solid rgba(196,168,130,0.4)" }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>End time</div>
+                  <input
+                    type="datetime-local"
+                    value={endTime}
+                    min={startTime || undefined}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    style={{ ...inputStyle, border: "1px solid rgba(196,168,130,0.4)" }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </SectionBlock>
 
         <SectionBlock isLast={true}>
@@ -967,7 +880,19 @@ export default function PostForm({
 
           <button
             type="button"
-            onClick={() => setShowDoneModal(true)}
+            onClick={() => {
+              if (postType === "Event" && startTime && endTime) {
+                if (new Date(endTime) <= new Date(startTime)) {
+                  alert("The End time must be strictly after the Start time.");
+                  return;
+                }
+              }
+              if (isEditMode) {
+                setShowDoneModal(true);
+              } else {
+                handleConfirmDone();
+              }
+            }}
             disabled={isSubmitting}
             style={{
               padding: "9px 24px",
@@ -1001,7 +926,7 @@ export default function PostForm({
         onClose={() => setShowDoneModal(false)}
         type="success"
         title="Save changes?"
-        message="Are you sure you want to save these changes and publish your post?"
+        message="Are you sure you want to save these changes and update your post?"
         primaryAction={{
           label: isSubmitting ? "Saving..." : "Save & Done",
           onClick: handleConfirmDone,
@@ -1024,14 +949,6 @@ export default function PostForm({
         <AddGroupsPopup
           onConfirm={handleGroupsConfirm}
           onClose={() => setShowGroupsPopup(false)}
-        />
-      )}
-
-      {showHistoricalPeriodPopup && (
-        <AddHistoricalPeriodPopup
-          initialValue={historicalPeriod}
-          onConfirm={(val) => setHistoricalPeriod(val)}
-          onClose={() => setShowHistoricalPeriodPopup(false)}
         />
       )}
     </div>

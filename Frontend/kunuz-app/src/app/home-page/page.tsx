@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN;
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 
 /* ───────────────── PERSISTENT GEM/SAVE HELPERS ───────────────── */
 
@@ -320,7 +325,7 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
             )}
           </div>
         </div>
-        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "#432817" }}>{comment.text}</p>
+        <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: comment.text }} />
         <div className="flex items-center gap-3 mt-1.5">
           <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}><GemIcon size={12} /><span>10</span></button>
           <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}>
@@ -482,6 +487,13 @@ function PostModal({
 
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const token = getAuthToken();
+    if (!token) {
+      alert("Please login to interact with posts.");
+      return;
+    }
+
     const nextGemmed = !gemmed;
     const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
 
@@ -491,9 +503,13 @@ function PostModal({
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to toggle gem");
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(`Failed to toggle gem. Status: ${res.status}. Response: ${errText}`);
+        throw new Error(`Failed to toggle gem: ${res.status} - ${errText}`);
+      }
     } catch (err) {
       console.error(err);
       onInteractionChange({ gemmed, gemsCount });
@@ -503,6 +519,13 @@ function PostModal({
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const token = getAuthToken();
+    if (!token) {
+      alert("Please login to interact with posts.");
+      return;
+    }
+
     const nextSaved = !saved;
 
     onInteractionChange({ saved: nextSaved });
@@ -511,9 +534,12 @@ function PostModal({
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to toggle save");
+      if (!res.ok) {
+        console.error("Failed to toggle save");
+        throw new Error("Failed to toggle save");
+      }
     } catch (err) {
       console.error(err);
       onInteractionChange({ saved });
@@ -544,7 +570,7 @@ function PostModal({
             <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
               <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
               <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-              <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+              <img src={bgImageUrl} alt={post.title.replace(/<[^>]*>/g, "")} className="relative z-10 w-full h-full object-contain" />
             </div>
           );
         })}
@@ -572,30 +598,30 @@ function PostModal({
     </div>
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
-<div className="mb-1">
-  <div className="flex items-center gap-1 mb-1">
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#8B7355"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-    <span className="text-xs" style={{ color: "#8B7355" }}>
-      {post.location || post.region || "Algeria"}
-    </span>
-  </div>
+      <div className="mb-1">
+        <div className="flex items-center gap-1 mb-1">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#8B7355"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span className="text-xs" style={{ color: "#8B7355" }}>
+            {post.location || post.region || "Algeria"}
+          </span>
+        </div>
 
-  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
-    {post.title}
-  </h3>
-</div>
+        <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+          <div dangerouslySetInnerHTML={{ __html: post.title }} />
+        </h3>
+      </div>
       {post.post_type === "event" && post.event_details && (
         <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
@@ -622,7 +648,7 @@ function PostModal({
           </div>
         );
       })()}
-      <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
+      <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: post.content }} />
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4">
           {tags.map((tag, i) => (
@@ -671,29 +697,29 @@ function PostModal({
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
                 <div className="mb-1">
-  <div className="flex items-center gap-1 mb-1">
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#8B7355"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-    <span className="text-xs" style={{ color: "#8B7355" }}>
-      {post.location || post.region || "Algeria"}
-    </span>
-  </div>
+                  <div className="flex items-center gap-1 mb-1">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#8B7355"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span className="text-xs" style={{ color: "#8B7355" }}>
+                      {post.location || post.region || "Algeria"}
+                    </span>
+                  </div>
 
-  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
-    {post.title}
-  </h3>
-</div>
+                  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+                    <div dangerouslySetInnerHTML={{ __html: post.title }} />
+                  </h3>
+                </div>
                 {post.post_type === "event" && post.event_details && (
                   <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5C7A3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
@@ -710,14 +736,17 @@ function PostModal({
                     </div>
                   );
                 })()}
-                <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
-                  {isContentLong && !contentExpanded ? post.content.slice(0, CONTENT_LIMIT) + "… " : post.content + " "}
-                  {isContentLong && (
-                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>
-                      {contentExpanded ? "See less" : "See more"}
-                    </button>
-                  )}
-                </p>
+                {isContentLong && !contentExpanded ? (
+                  <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
+                    {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>See more</button>
+                  </p>
+                ) : (
+                  <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: post.content }} />
+                )}
+                {isContentLong && contentExpanded && (
+                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                )}
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {tags.map((tag, i) => (
@@ -821,6 +850,13 @@ function PostCard({
 
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const token = getAuthToken();
+    if (!token) {
+      alert("Please login to interact with posts.");
+      return;
+    }
+
     const nextGemmed = !gemmed;
     const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
 
@@ -830,9 +866,13 @@ function PostCard({
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to toggle gem");
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error(`Failed to toggle gem. Status: ${res.status}. Response: ${errText}`);
+        throw new Error(`Failed to toggle gem: ${res.status} - ${errText}`);
+      }
     } catch (err) {
       console.error(err);
       onInteractionChange({ gemmed, gemsCount });
@@ -842,6 +882,13 @@ function PostCard({
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const token = getAuthToken();
+    if (!token) {
+      alert("Please login to interact with posts.");
+      return;
+    }
+
     const nextSaved = !saved;
 
     onInteractionChange({ saved: nextSaved });
@@ -850,9 +897,12 @@ function PostCard({
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to toggle save");
+      if (!res.ok) {
+        console.error("Failed to toggle save");
+        throw new Error("Failed to toggle save");
+      }
     } catch (err) {
       console.error(err);
       onInteractionChange({ saved });
@@ -913,6 +963,27 @@ function PostCard({
       {/* Event / Alert badge */}
       <PostDetailBadge post={post} />
 
+      {/* Post Type badge */}
+      {(() => {
+        const typeConfig: Record<string, { label: string; color: string; bg: string; border: string }> = {
+          discovery: { label: "Discovery", color: "#8B6914", bg: "#FFF8E2", border: "#C8A96E" },
+          visit: { label: "Visit", color: "#5C7A3E", bg: "#EAF0E6", border: "#B8D4A8" },
+          question: { label: "Question", color: "#1565C0", bg: "#E3F2FD", border: "#90CAF9" },
+          alert: { label: "In Danger", color: "#C0392B", bg: "#FDE8E8", border: "#EF9A9A" },
+          event: { label: "Event", color: "#5C7A3E", bg: "#EAF0E6", border: "#B8D4A8" },
+        };
+        const cfg = typeConfig[post.post_type];
+        if (!cfg) return null;
+        return (
+          <div className="px-5 pb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full"
+              style={{ color: cfg.color, backgroundColor: cfg.bg, border: `1px solid ${cfg.border}` }}>
+              {cfg.label}
+            </span>
+          </div>
+        );
+      })()}
+
       {/* Title */}
       <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
         <div dangerouslySetInnerHTML={{ __html: post.title }} />
@@ -943,7 +1014,7 @@ function PostCard({
                     <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
                       <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
                       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-                      <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
+                      <img src={bgImageUrl} alt={post.title.replace(/<[^>]*>/g, "")} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
                     </div>
                   );
                 })}
@@ -1012,7 +1083,7 @@ export default function HomePageRoute() {
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts`);
+  const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts/`);
 
   // ── Lifted interaction state ──────────────────────────────────────────────
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});

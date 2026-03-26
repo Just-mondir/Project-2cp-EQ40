@@ -6,8 +6,12 @@ import { useRouter } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN
-
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 /* ───────────────── TYPES ───────────────── */
 
 type PostImage = { id: string; image: string; uploaded_at: string };
@@ -445,10 +449,12 @@ function PostModal({
 
   const confirmDeletePost = async () => {
     setShowDeleteModal(false);
+    const token = getAuthToken();
+    if (!token) return;
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         alert("Failed to delete post.");
@@ -463,6 +469,13 @@ function PostModal({
 
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const token = getAuthToken();
+    if (!token) {
+      alert("Please login to interact with posts.");
+      return;
+    }
+
     const previousGemmed = gemmed;
     const previousCount = gemsCount;
     const nextGemmed = !previousGemmed;
@@ -474,9 +487,12 @@ function PostModal({
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to toggle gem");
+      if (!res.ok) {
+        console.error("Failed to toggle gem");
+        throw new Error("Failed to toggle gem");
+      }
     } catch (err) {
       console.error(err);
       setGemmed(previousGemmed);
@@ -488,6 +504,13 @@ function PostModal({
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const token = getAuthToken();
+    if (!token) {
+      alert("Please login to interact with posts.");
+      return;
+    }
+
     const previousSaved = saved;
     const nextSaved = !previousSaved;
     setSaved(nextSaved);
@@ -495,9 +518,12 @@ function PostModal({
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Failed to toggle save");
+      if (!res.ok) {
+        console.error("Failed to toggle save");
+        throw new Error("Failed to toggle save");
+      }
     } catch (err) {
       console.error(err);
       setSaved(previousSaved);
@@ -528,7 +554,7 @@ function PostModal({
               <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
                 <div className="absolute inset-0" style={{ backgroundImage: `url("${encodeURI(imageUrl)}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
                 <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-                <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+                <img src={imageUrl} alt={post.title.replace(/<[^>]*>/g, "")} className="relative z-10 w-full h-full object-contain" />
               </div>
             );
           })}
@@ -569,10 +595,12 @@ function PostModal({
             </svg>
             <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
           </div>
-          <h3 className="text-base font-bold" style={{ color: "#432817" }}>{post.title}</h3>
+          <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+            <div dangerouslySetInnerHTML={{ __html: post.title }} />
+          </h3>
         </div>
         <PostDetailBadge post={post} />
-        <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
+        <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: post.content }} />
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-4">
             {tags.map((tag, i) => (
@@ -657,7 +685,9 @@ function PostModal({
                       </svg>
                       <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
                     </div>
-                    <h3 className="text-base font-bold" style={{ color: "#432817" }}>{post.title}</h3>
+                    <h3 className="text-base font-bold" style={{ color: "#432817" }}>
+                      <div dangerouslySetInnerHTML={{ __html: post.title }} />
+                    </h3>
                   </div>
 
                   <PostDetailBadge post={post} />
@@ -883,10 +913,10 @@ function PostGridCard({ post, onClick }: { post: ApiPost; onClick: () => void })
   return (
     <div className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group" style={{ boxShadow: "0 2px 12px rgba(67,40,23,0.1)" }} onClick={onClick}>
       {imageUrl ? (
-        <img src={imageUrl} alt={post.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+        <img src={imageUrl} alt={post.title.replace(/<[^>]*>/g, "")} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center px-3" style={{ background: "linear-gradient(135deg, #e8d9bb, #ded2bc)" }}>
-          <p className="text-center text-xs font-semibold leading-snug line-clamp-3" style={{ color: "rgba(0,0,0,0.78)" }}>{post.title}</p>
+          <div className="text-center text-xs font-semibold leading-snug line-clamp-3" style={{ color: "rgba(0,0,0,0.78)" }} dangerouslySetInnerHTML={{ __html: post.title }} />
         </div>
       )}
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-6">
@@ -960,9 +990,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchMe = async () => {
+      const token = getAuthToken();
+      if (!token) return;
       try {
         const res = await fetch(`${API_URL}/api/users/me/`, {
-          headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           const json = await res.json();
@@ -976,14 +1008,15 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (!loggedInUsername) return;
     const fetchAllPosts = async () => {
+      const token = getAuthToken();
+      if (!token) return;
       setLoadingPosts(true);
-      let url: string | null = `${API_URL}/api/posts/user/${loggedInUsername}/`;
+      let url: string | null = `${API_URL}/api/posts/user/me/`;
       const collected: ApiPost[] = [];
       try {
         while (url) {
-          const res = await fetch(url, { headers: { Authorization: `Bearer ${AUTH_TOKEN}` } });
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
           if (!res.ok) break;
           const data = await res.json();
           collected.push(...(data.results ?? []).map(mapPost));
@@ -997,14 +1030,16 @@ export default function ProfilePage() {
       }
     };
     fetchAllPosts();
-  }, [loggedInUsername]);
+  }, []);
 
   useEffect(() => {
     if (activeTab !== "gems") return;
     const fetch_ = async () => {
+      const token = getAuthToken();
+      if (!token) return;
       setLoadingGemmed(true);
       try {
-        const res = await fetch(`${API_URL}/api/posts/gemed/`, { headers: { Authorization: `Bearer ${AUTH_TOKEN}` } });
+        const res = await fetch(`${API_URL}/api/posts/gemed/`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
         const data = await res.json();
         setGemmedPosts((data.results ?? data).map(mapPost));
@@ -1017,9 +1052,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (activeTab !== "saved") return;
     const fetch_ = async () => {
+      const token = getAuthToken();
+      if (!token) return;
       setLoadingSaved(true);
       try {
-        const res = await fetch(`${API_URL}/api/posts/saved/`, { headers: { Authorization: `Bearer ${AUTH_TOKEN}` } });
+        const res = await fetch(`${API_URL}/api/posts/saved/`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
         const data = await res.json();
         setSavedPosts((data.results ?? data).map(mapPost));
@@ -1030,11 +1067,13 @@ export default function ProfilePage() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab !== "events" || !loggedInUsername) return;
+    if (activeTab !== "events") return;
     const fetch_ = async () => {
+      const token = getAuthToken();
+      if (!token) return;
       setLoadingEvents(true);
       try {
-        const res = await fetch(`${API_URL}/api/posts/user/${loggedInUsername}/events/`, { headers: { Authorization: `Bearer ${AUTH_TOKEN}` } });
+        const res = await fetch(`${API_URL}/api/posts/user/me/events/`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
         const data = await res.json();
         setEventPosts((data.results ?? data).map(mapPost));
@@ -1042,14 +1081,16 @@ export default function ProfilePage() {
       finally { setLoadingEvents(false); }
     };
     fetch_();
-  }, [activeTab, loggedInUsername]);
+  }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab !== "alerts" || !loggedInUsername) return;
+    if (activeTab !== "alerts") return;
     const fetch_ = async () => {
+      const token = getAuthToken();
+      if (!token) return;
       setLoadingAlerts(true);
       try {
-        const res = await fetch(`${API_URL}/api/posts/user/${loggedInUsername}/alerts/`, { headers: { Authorization: `Bearer ${AUTH_TOKEN}` } });
+        const res = await fetch(`${API_URL}/api/posts/user/me/alerts/`, { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
         const data = await res.json();
         setAlertPosts((data.results ?? data).map(mapPost));
@@ -1057,7 +1098,7 @@ export default function ProfilePage() {
       finally { setLoadingAlerts(false); }
     };
     fetch_();
-  }, [activeTab, loggedInUsername]);
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FFF8E2", fontFamily: "var(--font-lato)" }}>

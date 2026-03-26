@@ -8,7 +8,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN || "";
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 
 type PostFormValues = {
   title: string;
@@ -21,6 +26,8 @@ type PostFormValues = {
   monumentType?: string | null;
   visibility: string;
   groups: string[];
+  startTime?: string | null;
+  endTime?: string | null;
 };
 
 export default function AddPostPage() {
@@ -51,7 +58,7 @@ export default function AddPostPage() {
 
       const formData = new FormData();
       formData.append("title", formValues.title);
-      formData.append("content", formValues.description);
+      formData.append("content", formValues.description || " ");
       formData.append("location", formValues.location);
       formData.append(
         "post_type",
@@ -67,20 +74,27 @@ export default function AddPostPage() {
       }
 
       if (formValues.monumentType) {
-        formData.append("monument_type", formValues.monumentType.toLowerCase());
+        formData.append("monument_type", formValues.monumentType);
       }
 
       formData.append("visibility", formValues.visibility.toLowerCase());
 
       if (formValues.postType === "Event") {
-        formData.append("starts_at", new Date().toISOString());
+        if (formValues.startTime) {
+          formData.append("starts_at", new Date(formValues.startTime).toISOString());
+        } else {
+          formData.append("starts_at", new Date().toISOString());
+        }
+        if (formValues.endTime) {
+          formData.append("ends_at", new Date(formValues.endTime).toISOString());
+        }
       }
 
       if (formValues.postType === "In Danger" && formValues.dangerLevel) {
         formData.append(
           "urgence_level",
           dangerLevelMap[formValues.dangerLevel] ??
-            formValues.dangerLevel.toLowerCase()
+          formValues.dangerLevel.toLowerCase()
         );
       }
 
@@ -90,10 +104,17 @@ export default function AddPostPage() {
         }
       });
 
+      const token = getAuthToken();
+      if (!token) {
+        alert("Please log in to add a post.");
+        setSaving(false);
+        return;
+      }
+
       const res = await fetch(`${API_URL}/api/posts/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });

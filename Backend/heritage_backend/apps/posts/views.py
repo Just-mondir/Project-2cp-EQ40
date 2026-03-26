@@ -413,10 +413,13 @@ class CommentDetailView(APIView):
 class UserPostsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request: Request, username: str) -> Response:
-        try:
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."}, status=404)
+        if username == "me":
+            user = request.user
+        else:
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({"detail": "User not found."}, status=404)
         posts = Post.objects.filter(author_id=str(user.id), is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
@@ -455,10 +458,13 @@ class MyGemedPostsView(APIView):
 class UserEventsPostsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request: Request, username: str) -> Response:
-        try:
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."}, status=404)
+        if username == "me":
+            user = request.user
+        else:
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({"detail": "User not found."}, status=404)
         posts = Post.objects.filter(
             author_id=str(user.id),
             post_type="event",
@@ -473,10 +479,13 @@ class UserEventsPostsView(APIView):
 class UserAlertsPostsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request: Request, username: str) -> Response:
-        try:
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."}, status=404)
+        if username == "me":
+            user = request.user
+        else:
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                return Response({"detail": "User not found."}, status=404)
         posts = Post.objects.filter(
             author_id=str(user.id),
             post_type="alert",

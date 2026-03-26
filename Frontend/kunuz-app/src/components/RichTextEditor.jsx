@@ -41,6 +41,48 @@ const ToolbarButton = ({ onClick, isActive, children, title, disabled = false })
 
 const Divider = () => <div className="w-[1px] h-[24px] bg-[#E0D5C5]/60 mx-1" />;
 
+export function TitleEditor({ value, onChange, placeholder = "Entrez le titre de votre post ici..." }) {
+    const editor = useEditor({
+        extensions: [
+            StarterKit.configure({ heading: false, blockquote: false, bulletList: false, orderedList: false, codeBlock: false, horizontalRule: false }),
+            Underline,
+            Placeholder.configure({ placeholder }),
+        ],
+        immediatelyRender: false,
+        content: value || "",
+        onUpdate: ({ editor }) => {
+            onChange(editor.getHTML());
+        },
+        editorProps: {
+            attributes: {
+                class: "prose prose-sm max-w-none focus:outline-none text-[#432817] px-3 py-2.5 text-[14px]",
+                style: "font-family: var(--font-lato), sans-serif; min-height: 40px; max-height: 80px; overflow-y: auto;",
+            },
+        },
+    });
+
+    useEffect(() => {
+        if (editor && value !== editor.getHTML()) {
+            editor.commands.setContent(value);
+        }
+    }, [value, editor]);
+
+    if (!editor) return null;
+
+    return (
+        <div className="w-full border border-[#E0D5C5] rounded-[10.75px] overflow-hidden bg-white shadow-sm flex flex-col">
+            {/* Mini toolbar */}
+            <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[#E0D5C5]/60 bg-[#FDFDFD]">
+                <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} title="Bold"><Bold size={13} /></ToolbarButton>
+                <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} title="Italic"><Italic size={13} /></ToolbarButton>
+                <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} title="Underline"><UnderlineIcon size={13} /></ToolbarButton>
+                <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")} title="Strikethrough"><Strikethrough size={13} /></ToolbarButton>
+            </div>
+            <EditorContent editor={editor} />
+        </div>
+    );
+}
+
 export default function RichTextEditor({ value, onChange, placeholder = "Nouveau contenu...", minHeight = "180px" }) {
     const [showHeadingMenu, setShowHeadingMenu] = useState(false);
     const headingMenuRef = useRef(null);
