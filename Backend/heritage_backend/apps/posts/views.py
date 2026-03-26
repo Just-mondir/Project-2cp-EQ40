@@ -441,7 +441,6 @@ class MySavedPostsView(APIView):
 class MyGemedPostsView(APIView):
 
     permission_classes = [IsAuthenticated]
-
     def get(self, request: Request) -> Response:
         gems = Gem.objects.filter(user_id=str(request.user.id))
         post_ids = [gem.post.id for gem in gems]
