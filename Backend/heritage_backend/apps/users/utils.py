@@ -67,7 +67,6 @@ def verify_otp_code(otp: OTPCode, plain_code: str) -> bool:
 def send_otp_email(email: str, code: str) -> None:
     """Send the OTP code to the user email."""
     message = f"Here is your OTP code for register in Kunuz app: {code}"
-    print(f"DEBUG: Calculated OTP for {email}: {code}")
     send_mail(
         subject=OTP_EMAIL_SUBJECT,
         message=message,

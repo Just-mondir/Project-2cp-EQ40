@@ -106,7 +106,7 @@ export default function VerifyEmailPage() {
           <div className="relative w-full md:w-[44%] min-h-[280px] md:min-h-full flex-shrink-0">
             <div className="absolute inset-4 md:inset-6 lg:inset-7 rounded-[32px] overflow-hidden">
               <Image
-                src="/signup.png"
+                src="/Signup.png"
                 alt="Moroccan architectural interior"
                 fill
                 className="object-cover object-center"

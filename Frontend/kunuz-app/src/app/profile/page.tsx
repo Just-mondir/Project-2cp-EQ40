@@ -4,8 +4,23 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
+import DOMPurify from "dompurify";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
+function sanitizeHtml(html: string): string {
+  if (typeof window === "undefined") return html.replace(/<[^>]*>/g, "");
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li", "a"],
+    ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
+  });
+}
+
+function stripHtml(html: string): string {
+  if (typeof window === "undefined") return html.replace(/<[^>]*>/g, "");
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent || "";
+}
 const getAuthToken = () => {
   if (typeof window !== "undefined") {
     return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
@@ -595,12 +610,10 @@ function PostModal({
             </svg>
             <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
           </div>
-          <h3 className="text-base font-bold" style={{ color: "#432817" }}>
-            <div dangerouslySetInnerHTML={{ __html: post.title }} />
-          </h3>
+          <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
         </div>
         <PostDetailBadge post={post} />
-        <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: post.content }} />
+        <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-4">
             {tags.map((tag, i) => (
@@ -685,9 +698,7 @@ function PostModal({
                       </svg>
                       <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
                     </div>
-                    <h3 className="text-base font-bold" style={{ color: "#432817" }}>
-                      <div dangerouslySetInnerHTML={{ __html: post.title }} />
-                    </h3>
+                    <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
                   </div>
 
                   <PostDetailBadge post={post} />
@@ -916,7 +927,7 @@ function PostGridCard({ post, onClick }: { post: ApiPost; onClick: () => void })
         <img src={imageUrl} alt={post.title.replace(/<[^>]*>/g, "")} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center px-3" style={{ background: "linear-gradient(135deg, #e8d9bb, #ded2bc)" }}>
-          <div className="text-center text-xs font-semibold leading-snug line-clamp-3" style={{ color: "rgba(0,0,0,0.78)" }} dangerouslySetInnerHTML={{ __html: post.title }} />
+          <div className="text-center text-xs font-semibold leading-snug line-clamp-3" style={{ color: "rgba(0,0,0,0.78)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
         </div>
       )}
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-6">

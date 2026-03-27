@@ -68,7 +68,10 @@ export default function ImageUploadPanel({
     // If it's a remote image, delete it from the backend first
     if (img.isRemote && img.id) {
       const token = getAuthToken();
-      if (!token) return;
+      if (!token) {
+        alert("Please log in to delete images.");
+        return;
+      }
 
       try {
         const res = await fetch(`${API_URL}/api/posts/images/${img.id}/`, {

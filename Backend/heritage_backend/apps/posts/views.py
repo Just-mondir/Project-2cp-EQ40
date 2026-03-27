@@ -413,12 +413,12 @@ class CommentDetailView(APIView):
 class UserPostsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request: Request, username: str) -> Response:
-        if username == "me":
-            user = request.user
-        else:
-            try:
-                user = User.objects.get(username=username)
-            except User.DoesNotExist:
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            if username == "me":
+                user = request.user
+            else:
                 return Response({"detail": "User not found."}, status=404)
         posts = Post.objects.filter(author_id=str(user.id), is_deleted=False)
         paginator = PostPagination()

@@ -58,7 +58,7 @@ export default function AddPostPage() {
 
       const formData = new FormData();
       formData.append("title", formValues.title);
-      formData.append("content", formValues.description || " ");
+      formData.append("content", formValues.description || "");
       formData.append("location", formValues.location);
       formData.append(
         "post_type",

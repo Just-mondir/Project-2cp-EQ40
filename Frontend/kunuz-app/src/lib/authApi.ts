@@ -1,5 +1,13 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+const rawBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://127.0.0.1:8000";
+
+const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "");
+
+const API_BASE_URL = normalizedBaseUrl.endsWith("/api")
+  ? normalizedBaseUrl
+  : `${normalizedBaseUrl}/api`;
 
 export type PendingAuthFlow = "signup" | "login";
 

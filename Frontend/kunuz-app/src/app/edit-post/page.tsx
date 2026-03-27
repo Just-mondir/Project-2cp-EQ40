@@ -130,11 +130,19 @@ function EditPostInner() {
     // @ts-ignore
     const alertDetails = post.alert_details || {};
 
+    const postTypeUiMap: Record<string, string> = {
+      question: "Question",
+      visit: "Visit",
+      discovery: "Discovery",
+      alert: "In Danger",
+      event: "Event",
+    };
+
     return {
       title: post.title ?? "",
       description: post.content ?? "",
       location: post.location ?? "",
-      postType: post.post_type ?? "",
+      postType: postTypeUiMap[post.post_type ?? ""] ?? post.post_type ?? "",
       historicalPeriod: post.historical_period ?? "",
       region: post.region ?? "",
       visibility: "Public",
@@ -180,7 +188,7 @@ function EditPostInner() {
 
       const formData = new FormData();
       formData.append("title", formValues.title);
-      formData.append("content", formValues.description || " ");
+      formData.append("content", formValues.description?.trim() || "");
       formData.append("location", formValues.location);
       formData.append(
         "post_type",
@@ -212,18 +220,34 @@ function EditPostInner() {
         }
       }
 
-      if (formValues.postType === "In Danger" && formValues.dangerLevel) {
-        const dangerLevelMap: Record<string, string> = {
-          Low: "low",
-          Medium: "medium",
-          High: "high",
-          Critical: "critical",
-        };
-        formData.append(
-          "urgence_level",
-          dangerLevelMap[formValues.dangerLevel] ??
-          formValues.dangerLevel.toLowerCase()
-        );
+      if (formValues.postType === "In Danger") {
+        if (formValues.dangerLevel) {
+          const dangerLevelMap: Record<string, string> = {
+            Low: "low",
+            Medium: "medium",
+            High: "high",
+            Critical: "critical",
+          };
+          formData.append(
+            "urgence_level",
+            dangerLevelMap[formValues.dangerLevel] ??
+            formValues.dangerLevel.toLowerCase()
+          );
+        }
+
+        if (formValues.currentStatus) {
+          const statusMap: Record<string, string> = {
+            "Under intervention": "under_intervention",
+            "Under observation": "under_observation",
+            "Pending intervention": "pending_intervention",
+            Resolved: "resolved",
+          };
+          const rawStatus = formValues.currentStatus;
+          const mappedStatus =
+            statusMap[rawStatus] ??
+            rawStatus.trim().toLowerCase().replace(/\s+/g, "_");
+          formData.append("current_status", mappedStatus);
+        }
       }
 
       images.forEach((img) => {

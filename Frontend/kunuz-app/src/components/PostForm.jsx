@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import AddLocationPopup from "./AddLocationPopup";
 import AddGroupsPopup from "./AddGroupsPopup";
-import AddHistoricalPeriodPopup from "./AddHistoricalPeriodPopup";
 import RichTextEditor, { TitleEditor } from "./RichTextEditor";
 import NotificationModal from "./NotificationModal";
 
@@ -12,117 +11,6 @@ const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const SISAL = "#C4A882";
 const GOLD = "#8B6914";
-
-function MiniCalendar({ value, onChange, onClose }) {
-  const ref = useRef(null);
-  const today = new Date();
-  const selected = value ? new Date(value + "T00:00:00") : null;
-  const [viewYear, setViewYear] = useState(selected ? selected.getFullYear() : today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(selected ? selected.getMonth() : today.getMonth());
-
-  useEffect(() => {
-    const handle = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
-    };
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
-  }, [onClose]);
-
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
-  const DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-  const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
-    else setViewMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
-    else setViewMonth((m) => m + 1);
-  };
-
-  const pad = (n) => String(n).padStart(2, "0");
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  return (
-    <div
-      ref={ref}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 300,
-        backgroundColor: "#fff",
-        borderRadius: "12px",
-        boxShadow: "0 8px 32px rgba(67,40,23,0.18)",
-        border: "1px solid rgba(196,168,130,0.4)",
-        padding: "12px",
-        fontFamily: FONT,
-      }}
-    >
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-        <button type="button" onClick={prevMonth} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px", color: ESPRESSO, padding: "4px 8px", borderRadius: "6px" }}>
-          ‹
-        </button>
-        <span style={{ fontWeight: 700, fontSize: "13px", color: ESPRESSO }}>
-          {MONTHS[viewMonth]} {viewYear}
-        </span>
-        <button type="button" onClick={nextMonth} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px", color: ESPRESSO, padding: "4px 8px", borderRadius: "6px" }}>
-          ›
-        </button>
-      </div>
-      {/* Day headers */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px", marginBottom: "4px" }}>
-        {DAYS.map((d) => (
-          <div key={d} style={{ textAlign: "center", fontSize: "10px", fontWeight: 600, color: "#A09080", padding: "2px 0" }}>
-            {d}
-          </div>
-        ))}
-      </div>
-      {/* Day cells */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "2px" }}>
-        {cells.map((day, i) => {
-          if (day === null) return <div key={`e-${i}`} />;
-          const dateStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
-          const isSelected = value === dateStr;
-          const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => { onChange(dateStr); onClose(); }}
-              style={{
-                width: "30px",
-                height: "30px",
-                borderRadius: "50%",
-                border: isToday && !isSelected ? `1px solid ${SISAL}` : "none",
-                backgroundColor: isSelected ? ESPRESSO : "transparent",
-                color: isSelected ? "#fff" : ESPRESSO,
-                fontSize: "12px",
-                fontWeight: isSelected || isToday ? 700 : 400,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto",
-                transition: "all 0.12s",
-              }}
-              onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "rgba(196,168,130,0.2)"; }}
-              onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "transparent"; }}
-            >
-              {day}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 const inputStyle = {
   backgroundColor: "#FFFFFF",
@@ -405,16 +293,10 @@ export default function PostForm({
   );
   const [startTime, setStartTime] = useState(initialValues.startTime ?? "");
   const [endTime, setEndTime] = useState(initialValues.endTime ?? "");
-  const [startDate, setStartDate] = useState(initialValues.startDate ?? "");
-  const [endDate, setEndDate] = useState(initialValues.endDate ?? "");
 
   const [showLocationPopup, setShowLocationPopup] = useState(false);
   const [showGroupsPopup, setShowGroupsPopup] = useState(false);
-  const [showHistoricalPeriodPopup, setShowHistoricalPeriodPopup] =
-    useState(false);
   const [showDoneModal, setShowDoneModal] = useState(false);
-  const [showStartCal, setShowStartCal] = useState(false);
-  const [showEndCal, setShowEndCal] = useState(false);
   useEffect(() => {
     setTitle(initialValues.title ?? "");
     setDescription(initialValues.description ?? "");
@@ -443,8 +325,6 @@ export default function PostForm({
     JSON.stringify(initialValues.groups ?? []),
     initialValues.startTime,
     initialValues.endTime,
-    initialValues.startDate,
-    initialValues.endDate,
   ]);
 
   const POST_TYPES = ["Question", "Visit", "Discovery", "In Danger", "Event"];
@@ -527,8 +407,6 @@ export default function PostForm({
       groups: selectedGroups,
       startTime,
       endTime,
-      startDate,
-      endDate,
     });
   };
 
