@@ -8,9 +8,12 @@ import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel"
 import PostForm from "@/components/PostForm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = typeof window !== "undefined"
-  ? localStorage.getItem("accessToken")
-  : null;
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 
 type PostImage = {
   id: string;
@@ -47,13 +50,19 @@ type PostFormValues = {
   currentStatus?: string | null;
   historicalPeriod: string;
   region: string;
-  monumentType: string;
-  startDate?: string;
-  startTime?: string;
-  endDate?: string;
-  endTime?: string;
+  monumentType?: string | null;
   visibility: string;
   groups: string[];
+  startTime?: string | null;
+  endTime?: string | null;
+};
+
+const toLocalDatetimeInput = (isoString?: string | null) => {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 function EditPostInner() {
@@ -76,9 +85,14 @@ function EditPostInner() {
       try {
         setLoading(true);
 
+        const token = getAuthToken();
+        if (!token) {
+          throw new Error("No token available");
+        }
+
         const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
           headers: {
-            Authorization: `Bearer ${AUTH_TOKEN}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -100,57 +114,52 @@ function EditPostInner() {
     fetchPost();
   }, [postId]);
 
-  const initialValues: PostFormValues = useMemo(
-  () =>
-    post
-      ? {
-          title: post.title ?? "",
-          description: post.content ?? "",
-          location: post.location ?? "",
-          postType:
-            post.post_type === "event"
-              ? "Event"
-              : post.post_type === "alert"
-              ? "In Danger"
-              : post.post_type ?? "",
-          historicalPeriod: post.historical_period ?? "",
-          region: post.region ?? "",
-          monumentType: post.monument_type ?? "",
-          visibility: "Public",
-          groups: [],
-          dangerLevel: post.alert_details?.urgence_level
-            ? post.alert_details.urgence_level.charAt(0).toUpperCase() +
-              post.alert_details.urgence_level.slice(1)
-            : null,
-          currentStatus: post.alert_details?.current_status
-            ? post.alert_details.current_status
-                .replace(/_/g, " ")
-                .replace(/\b\w/g, (c) => c.toUpperCase())
-            : null,
-          startDate: post.event_details?.starts_at?.slice(0, 10) ?? "",
-          startTime: post.event_details?.starts_at?.slice(11, 16) ?? "",
-          endDate: post.event_details?.ends_at?.slice(0, 10) ?? "",
-          endTime: post.event_details?.ends_at?.slice(11, 16) ?? "",
-        }
-      : {
-          title: "",
-          description: "",
-          location: "",
-          postType: "",
-          historicalPeriod: "",
-          region: "",
-          monumentType: "",
-          visibility: "Public",
-          groups: [],
-          dangerLevel: null,
-          currentStatus: null,
-          startDate: "",
-          startTime: "",
-          endDate: "",
-          endTime: "",
-        },
-  [post]
-  );
+  const initialValues: PostFormValues = useMemo(() => {
+    if (!post) {
+      return {
+        title: "",
+        description: "",
+        location: "",
+        postType: "",
+        historicalPeriod: "",
+        region: "",
+        visibility: "Public",
+        groups: [],
+        dangerLevel: null,
+        currentStatus: null,
+        monumentType: null,
+        startTime: "",
+        endTime: "",
+      };
+    }
+
+    const eventDetails = post.event_details || {};
+    const alertDetails = post.alert_details || {};
+
+    const postTypeUiMap: Record<string, string> = {
+      question: "Question",
+      visit: "Visit",
+      discovery: "Discovery",
+      alert: "In Danger",
+      event: "Event",
+    };
+
+    return {
+      title: post.title ?? "",
+      description: post.content ?? "",
+      location: post.location ?? "",
+      postType: postTypeUiMap[post.post_type ?? ""] ?? post.post_type ?? "",
+      historicalPeriod: post.historical_period ?? "",
+      region: post.region ?? "",
+      visibility: "Public",
+      groups: [],
+      dangerLevel: alertDetails.urgence_level ?? null,
+      currentStatus: alertDetails.current_status ?? null,
+      monumentType: post.monument_type ?? null,
+      startTime: toLocalDatetimeInput(eventDetails.starts_at),
+      endTime: toLocalDatetimeInput(eventDetails.ends_at),
+    };
+  }, [post]);
 
   const initialImages: ImageItem[] = post
     ? (post.images ?? []).map((img) => ({
@@ -182,21 +191,10 @@ function EditPostInner() {
         "In Danger": "alert",
         Event: "event",
       };
-      const dangerLevelMap: Record<string, string> = {
-        Low: "low",
-        Medium: "medium",
-        High: "high",
-        Critical: "critical",
-      };
-      const currentStatusMap: Record<string, string> = {
-        Destroyed: "destroyed",
-        "Under intervention": "under_intervention",
-        Restored: "restored",
-        Alert: "alert",
-      };
+
       const formData = new FormData();
       formData.append("title", formValues.title);
-      formData.append("content", formValues.description);
+      formData.append("content", formValues.description?.trim() || "");
       formData.append("location", formValues.location);
       formData.append(
         "post_type",
@@ -210,39 +208,53 @@ function EditPostInner() {
       if (formValues.region) {
         formData.append("region", formValues.region);
       }
+
       if (formValues.monumentType) {
         formData.append("monument_type", formValues.monumentType);
       }
 
-      const toIso = (date?: string, time?: string) => {
-        if (!date || !time) return null;
-        return new Date(`${date}T${time}`).toISOString();
-      };
+      formData.append("visibility", formValues.visibility.toLowerCase());
 
       if (formValues.postType === "Event") {
-        const startsAt = toIso(formValues.startDate, formValues.startTime);
-        const endsAt = toIso(formValues.endDate, formValues.endTime);
-        if (startsAt) formData.append("starts_at", startsAt);
-        if (endsAt) formData.append("ends_at", endsAt);
+        if (formValues.startTime) {
+          formData.append("starts_at", new Date(formValues.startTime).toISOString());
+        } else {
+          formData.append("starts_at", new Date().toISOString());
+        }
+        if (formValues.endTime) {
+          formData.append("ends_at", new Date(formValues.endTime).toISOString());
+        }
       }
 
       if (formValues.postType === "In Danger") {
         if (formValues.dangerLevel) {
+          const dangerLevelMap: Record<string, string> = {
+            Low: "low",
+            Medium: "medium",
+            High: "high",
+            Critical: "critical",
+          };
           formData.append(
             "urgence_level",
             dangerLevelMap[formValues.dangerLevel] ??
-              formValues.dangerLevel.toLowerCase()
+            formValues.dangerLevel.toLowerCase()
           );
         }
+
         if (formValues.currentStatus) {
-          formData.append(
-            "current_status",
-            currentStatusMap[formValues.currentStatus] ??
-              formValues.currentStatus.toLowerCase().replace(/\s+/g, "_")
-          );
+          const statusMap: Record<string, string> = {
+            "Under intervention": "under_intervention",
+            "Under observation": "under_observation",
+            "Pending intervention": "pending_intervention",
+            Resolved: "resolved",
+          };
+          const rawStatus = formValues.currentStatus;
+          const mappedStatus =
+            statusMap[rawStatus] ??
+            rawStatus.trim().toLowerCase().replace(/\s+/g, "_");
+          formData.append("current_status", mappedStatus);
         }
       }
-
 
       images.forEach((img) => {
         if (!img.isRemote && img.file) {
@@ -250,10 +262,17 @@ function EditPostInner() {
         }
       });
 
+      const token = getAuthToken();
+      if (!token) {
+        alert("Please log in to edit the post.");
+        setSaving(false);
+        return;
+      }
+
       const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
@@ -266,13 +285,8 @@ function EditPostInner() {
         alert(JSON.stringify(data));
         return;
       }
-const meRes = await fetch(`${API_URL}/api/users/me/`, {
-  headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
-});
 
-const me = await meRes.json();
-
-router.push(`/user/${me.data?.username ?? me.username}`);
+      router.push("/profile");
     } catch (err) {
       console.error("Error updating post:", err);
       alert("Failed to update post");
@@ -388,6 +402,7 @@ router.push(`/user/${me.data?.username ?? me.username}`);
               onDone={handleDone}
               initialValues={initialValues}
               isSubmitting={saving}
+              isEditMode={true}
             />
           </div>
         </div>

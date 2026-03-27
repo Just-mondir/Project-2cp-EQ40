@@ -8,9 +8,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = typeof window !== "undefined"
-  ? localStorage.getItem("accessToken")
-  : null;
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 
 type PostFormValues = {
   title: string;
@@ -20,13 +23,11 @@ type PostFormValues = {
   dangerLevel?: string | null;
   historicalPeriod: string;
   region: string;
-  monumentType: string;
-  startDate?: string;
-  startTime?: string;
-  endDate?: string;
-  endTime?: string;
+  monumentType?: string | null;
   visibility: string;
   groups: string[];
+  startTime?: string | null;
+  endTime?: string | null;
 };
 
 export default function AddPostPage() {
@@ -57,7 +58,7 @@ export default function AddPostPage() {
 
       const formData = new FormData();
       formData.append("title", formValues.title);
-      formData.append("content", formValues.description);
+      formData.append("content", formValues.description || "");
       formData.append("location", formValues.location);
       formData.append(
         "post_type",
@@ -79,20 +80,13 @@ export default function AddPostPage() {
       formData.append("visibility", formValues.visibility.toLowerCase());
 
       if (formValues.postType === "Event") {
-        const toIso = (date?: string, time?: string) => {
-          if (!date || !time) return null;
-          return new Date(`${date}T${time}`).toISOString();
-        };
-
-        const startsAt = toIso(formValues.startDate, formValues.startTime);
-        const endsAt = toIso(formValues.endDate, formValues.endTime);
-
-        if (startsAt) {
-          formData.append("starts_at", startsAt);
+        if (formValues.startTime) {
+          formData.append("starts_at", new Date(formValues.startTime).toISOString());
+        } else {
+          formData.append("starts_at", new Date().toISOString());
         }
-
-        if (endsAt) {
-          formData.append("ends_at", endsAt);
+        if (formValues.endTime) {
+          formData.append("ends_at", new Date(formValues.endTime).toISOString());
         }
       }
 
@@ -100,7 +94,7 @@ export default function AddPostPage() {
         formData.append(
           "urgence_level",
           dangerLevelMap[formValues.dangerLevel] ??
-            formValues.dangerLevel.toLowerCase()
+          formValues.dangerLevel.toLowerCase()
         );
       }
 
@@ -110,10 +104,17 @@ export default function AddPostPage() {
         }
       });
 
+      const token = getAuthToken();
+      if (!token) {
+        alert("Please log in to add a post.");
+        setSaving(false);
+        return;
+      }
+
       const res = await fetch(`${API_URL}/api/posts/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${token}`,
         },
         body: formData,
       });
@@ -126,13 +127,8 @@ export default function AddPostPage() {
         alert(JSON.stringify(data));
         return;
       }
-const meRes = await fetch(`${API_URL}/api/users/me/`, {
-  headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
-});
 
-const me = await meRes.json();
-
-router.push(`/user/${me.data?.username ?? me.username}`);
+      router.push("/profile");
     } catch (err) {
       console.error("Error creating post:", err);
       alert("Failed to create post");
