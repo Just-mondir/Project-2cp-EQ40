@@ -1,6 +1,7 @@
 """DRF views for the posts app."""
 
 from __future__ import annotations
+from datetime import datetime, time
 
 from rest_framework import status
 import os
@@ -516,6 +517,108 @@ class UpcomingEventsView(APIView):
             post_type="event",
             is_deleted=False
         )
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+    
+class EventFilterView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        q = request.query_params.get("q", "").strip()
+        location = request.query_params.get("location", "").strip()
+        region = request.query_params.get("region", "").strip()
+        historical_period = request.query_params.get("historical_period", "").strip()
+        monument_type = request.query_params.get("monument_type", "").strip()
+        visibility = request.query_params.get("visibility", "").strip()
+        status_filter = request.query_params.get("status", "").strip().lower()
+        date_from = request.query_params.get("date_from", "").strip()
+        date_to = request.query_params.get("date_to", "").strip()
+
+        posts = Post.objects.filter(
+            post_type="event",
+            is_deleted=False
+        )
+
+        if q:
+            posts = posts.filter(
+                __raw__={
+                    "$or": [
+                        {"title": {"$regex": q, "$options": "i"}},
+                        {"content": {"$regex": q, "$options": "i"}},
+                        {"location": {"$regex": q, "$options": "i"}},
+                    ]
+                }
+            )
+
+        if location:
+            posts = posts.filter(location__icontains=location)
+
+        if region:
+            posts = posts.filter(region=region)
+
+        if historical_period:
+            posts = posts.filter(historical_period=historical_period)
+
+        if monument_type:
+            posts = posts.filter(monument_type=monument_type)
+
+        if visibility:
+            posts = posts.filter(visibility=visibility)
+
+        post_ids = [post.id for post in posts]
+
+        event_details = EventDetails.objects.filter(post__in=post_ids)
+
+        now = timezone.now()
+
+        if status_filter == "upcoming":
+            event_details = event_details.filter(starts_at__gt=now)
+
+        elif status_filter == "ongoing":
+            event_details = event_details.filter(
+                starts_at__lte=now,
+                ends_at__gte=now,
+            )
+
+        elif status_filter == "past":
+            event_details = event_details.filter(ends_at__lt=now)
+
+        if date_from:
+            try:
+                parsed_from = datetime.strptime(date_from, "%Y-%m-%d")
+                parsed_from = timezone.make_aware(
+                    datetime.combine(parsed_from.date(), time.min)
+                )
+                event_details = event_details.filter(starts_at__gte=parsed_from)
+            except ValueError:
+                return api_error(
+                    "Invalid date_from format. Use YYYY-MM-DD.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if date_to:
+            try:
+                parsed_to = datetime.strptime(date_to, "%Y-%m-%d")
+                parsed_to = timezone.make_aware(
+                    datetime.combine(parsed_to.date(), time.max)
+                )
+                event_details = event_details.filter(starts_at__lte=parsed_to)
+            except ValueError:
+                return api_error(
+                    "Invalid date_to format. Use YYYY-MM-DD.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+        post_ids = [event.post.id for event in event_details]
+
+        posts = Post.objects.filter(
+            id__in=post_ids,
+            post_type="event",
+            is_deleted=False
+        )
+
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
