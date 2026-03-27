@@ -8,7 +8,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN || "";
+const AUTH_TOKEN = typeof window !== "undefined"
+  ? localStorage.getItem("accessToken")
+  : null;
 
 type PostFormValues = {
   title: string;
@@ -124,8 +126,13 @@ export default function AddPostPage() {
         alert(JSON.stringify(data));
         return;
       }
+const meRes = await fetch(`${API_URL}/api/users/me/`, {
+  headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+});
 
-      router.push("/profile");
+const me = await meRes.json();
+
+router.push(`/user/${me.data?.username ?? me.username}`);
     } catch (err) {
       console.error("Error creating post:", err);
       alert("Failed to create post");

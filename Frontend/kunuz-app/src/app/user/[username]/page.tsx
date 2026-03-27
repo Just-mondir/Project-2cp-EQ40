@@ -6,7 +6,9 @@ import { useRouter, useParams} from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN
+const AUTH_TOKEN = typeof window !== "undefined"
+  ? localStorage.getItem("accessToken")
+  : null;
 
 /* ───────────────── TYPES ───────────────── */
 
