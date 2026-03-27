@@ -22,11 +22,13 @@ from .views import (
     UserPostsView,
     PostImageDeleteView,
     EventFilterView,
+    GlobalSearchView,
 )
 
 urlpatterns = [
     # Feed
     path("posts/", PostListCreateView.as_view(), name="post-list-create"),
+    path("posts/search/", GlobalSearchView.as_view(), name="global-search"),
 
     # Events Feed
     path("posts/events/", EventsView.as_view(), name="events"),

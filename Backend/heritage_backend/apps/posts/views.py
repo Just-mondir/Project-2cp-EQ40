@@ -17,6 +17,8 @@ from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 
+from apps.users.models import User
+
 from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails
 from apps.users.models import User
 from .serializers import (
@@ -42,7 +44,7 @@ class PostPagination(PageNumberPagination):
 
 def _save_post_images(post: Post, image_files) -> None:
     """Write uploaded image files to disk and create PostImage records."""
-    existing_count = PostImage.objects.filter(post=post).count()
+    existing_count = PostImage.objects(post=post).count()
     allowed = 5 - existing_count
     for img in list(image_files)[:allowed]:
         # Use a unique filename to avoid collisions: <post_id>_<original_name>
@@ -70,7 +72,7 @@ class PostListCreateView(APIView):
         return []
 
     def get(self, request: Request) -> Response:
-        posts = Post.objects.filter(is_deleted=False)
+        posts = Post.objects(is_deleted=False)
         post_type = request.query_params.get("post_type")
         if post_type:
             posts = posts.filter(post_type=post_type)
@@ -133,7 +135,7 @@ class PostDetailView(APIView):
         # Save any newly uploaded images
         image_files = request.FILES.getlist("uploaded_images")
         if image_files:
-            existing_count = PostImage.objects.filter(post=post).count()
+            existing_count = PostImage.objects(post=post).count()
             if existing_count + len(image_files) > 5:
                 return api_error(
                     f"A post can have at most 5 images. This post already has {existing_count}.",
@@ -176,7 +178,7 @@ class PostImageUploadView(APIView):
         images = request.FILES.getlist("images")
         if not images:
             return api_error("No images provided.", status_code=status.HTTP_400_BAD_REQUEST)
-        existing_count = PostImage.objects.filter(post=post).count()
+        existing_count = PostImage.objects(post=post).count()
         if existing_count + len(images) > 5:
             return api_error(
                 f"A post can have at most 5 images. This post already has {existing_count}.",
@@ -232,7 +234,7 @@ class GemToggleView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        gem = Gem.objects.filter(post=post, user_id=str(request.user.id)).first()
+        gem = Gem.objects(post=post, user_id=str(request.user.id)).first()
         if gem:
             gem.delete()
             return api_success(
@@ -266,7 +268,7 @@ class CommentGemToggleView(APIView):
             comment = Comment.objects.get(id=pk)
         except Comment.DoesNotExist:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
-        gem = CommentGem.objects.filter(comment=comment, user_id=str(request.user.id)).first()
+        gem = CommentGem.objects(comment=comment, user_id=str(request.user.id)).first()
         if gem:
             gem.delete()
             return api_success(
@@ -304,7 +306,7 @@ class SaveToggleView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        save = Save.objects.filter(post=post, user_id=str(request.user.id)).first()
+        save = Save.objects(post=post, user_id=str(request.user.id)).first()
         if save:
             save.delete()
             return api_success("Post unsaved.", {"saved": False})
@@ -323,7 +325,7 @@ class CommentListCreateView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        comments = Comment.objects.filter(post=post)
+        comments = Comment.objects(post=post)
         serializer = CommentSerializer(comments, many=True, context={"request": request})
         return api_success("Comments retrieved.", serializer.data)
 
@@ -418,7 +420,7 @@ class UserPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects.filter(author_id=str(user.id), is_deleted=False)
+        posts = Post.objects(author_id=str(user.id), is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -430,9 +432,9 @@ class MySavedPostsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        saves = Save.objects.filter(user_id=str(request.user.id))
+        saves = Save.objects(user_id=str(request.user.id))
         post_ids = [save.post.id for save in saves]
-        posts = Post.objects.filter(id__in=post_ids, is_deleted=False)
+        posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -443,9 +445,9 @@ class MyGemedPostsView(APIView):
 
     permission_classes = [IsAuthenticated]
     def get(self, request: Request) -> Response:
-        gems = Gem.objects.filter(user_id=str(request.user.id))
+        gems = Gem.objects(user_id=str(request.user.id))
         post_ids = [gem.post.id for gem in gems]
-        posts = Post.objects.filter(id__in=post_ids, is_deleted=False)
+        posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -459,7 +461,7 @@ class UserEventsPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects.filter(
+        posts = Post.objects(
             author_id=str(user.id),
             post_type="event",
             is_deleted=False
@@ -477,7 +479,7 @@ class UserAlertsPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects.filter(
+        posts = Post.objects(
             author_id=str(user.id),
             post_type="alert",
             is_deleted=False
@@ -495,7 +497,7 @@ class UserAlertsPostsView(APIView):
 class EventsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request: Request) -> Response:
-        posts = Post.objects.filter(
+        posts = Post.objects(
             post_type="event",
             is_deleted=False
         )
@@ -508,11 +510,11 @@ class EventsView(APIView):
 class UpcomingEventsView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request: Request) -> Response:
-        upcoming_event_details = EventDetails.objects.filter(
+        upcoming_event_details = EventDetails.objects(
             starts_at__gt=timezone.now()
         )
         post_ids = [ed.post.id for ed in upcoming_event_details]
-        posts = Post.objects.filter(
+        posts = Post.objects(
             id__in=post_ids,
             post_type="event",
             is_deleted=False
@@ -536,7 +538,7 @@ class EventFilterView(APIView):
         date_from = request.query_params.get("date_from", "").strip()
         date_to = request.query_params.get("date_to", "").strip()
 
-        posts = Post.objects.filter(
+        posts = Post.objects(
             post_type="event",
             is_deleted=False
         )
@@ -569,7 +571,7 @@ class EventFilterView(APIView):
 
         post_ids = [post.id for post in posts]
 
-        event_details = EventDetails.objects.filter(post__in=post_ids)
+        event_details = EventDetails.objects(post__in=post_ids)
 
         now = timezone.now()
 
@@ -613,7 +615,7 @@ class EventFilterView(APIView):
 
         post_ids = [event.post.id for event in event_details]
 
-        posts = Post.objects.filter(
+        posts = Post.objects(
             id__in=post_ids,
             post_type="event",
             is_deleted=False
@@ -623,3 +625,63 @@ class EventFilterView(APIView):
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+    
+class GlobalSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        q = request.query_params.get("q", "").strip()
+
+        users_data = []
+        posts_data = []
+
+        if q:
+            users = User.objects(
+                is_active=True,
+                __raw__={
+                    "$or": [
+                        {"username": {"$regex": q, "$options": "i"}},
+                        {"display_name": {"$regex": q, "$options": "i"}},
+                    ]
+                },
+            )
+
+            posts = Post.objects(
+                is_deleted=False,
+                __raw__={
+                    "$or": [
+                        {"title": {"$regex": q, "$options": "i"}},
+                        {"content": {"$regex": q, "$options": "i"}},
+                    ]
+                },
+            )
+
+            users_data = [
+                {
+                    "id": str(user.id),
+                    "username": user.username,
+                    "display_name": user.display_name,
+                    "profile_picture": user.profile_picture,
+                }
+                for user in users
+            ]
+
+            posts_data = [
+                {
+                    "id": str(post.id),
+                    "title": post.title,
+                    "content": post.content,
+                    "post_type": post.post_type,
+                    "location": post.location,
+                }
+                for post in posts
+            ]
+
+        return api_success(
+            message="Global search results retrieved successfully.",
+            data={
+                "users": users_data,
+                "posts": posts_data,
+            },
+            status_code=200,
+        )
