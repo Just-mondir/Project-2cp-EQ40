@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import AddDocuments from "@/components/AddDocuments";
 
 
-const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide"];
+const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide","Architect"];
 
 export default function SetProfilePage() {
   const [firstName, setFirstName] = useState("");
@@ -14,19 +15,108 @@ export default function SetProfilePage() {
   const [selectedExpertise, setSelectedExpertise] = useState("Researcher");
   const [speciality, setSpeciality] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileFile, setProfileFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setProfileFile(file);
       const reader = new FileReader();
       reader.onload = () => setProfileImage(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("No authentication token found. Please log in.");
+      }
+
+      const expertiseMap: Record<string, string> = {
+        "Amateur": "amateur",
+        "Student": "student",
+        "Researcher": "researcher",
+        "Historian": "historian",
+        "Tour Guide": "guide",
+        "Architect": "architect"
+      };
+
+      const displayName = `${firstName} ${lastName}`.trim();
+
+      const payload: Record<string, string> = {
+        expertise: expertiseMap[selectedExpertise] || selectedExpertise.toLowerCase(),
+      };
+
+      if (displayName) {
+        payload.display_name = displayName;
+        payload.username = displayName.toLowerCase().replace(/\s+/g, "-");
+      }
+      if (biography) payload.bio = biography;
+      if (speciality) payload.speciality = speciality;
+      
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+      
+      const response = await fetch(`${API_BASE_URL}/users/me/`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || data.errors?.detail || "Failed to update profile form");
+      }
+      
+      if (profileFile) {
+        const formData = new FormData();
+        formData.append("profile_picture", profileFile);
+        
+        const picResponse = await fetch(`${API_BASE_URL}/users/me/profile-picture/`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        const picData = await picResponse.json();
+        if (!picResponse.ok) {
+          throw new Error(picData.message || picData.errors?.detail || "Failed to upload profile picture");
+        }
+        
+        // Update the cached user object in localStorage
+        const authUser = localStorage.getItem("authUser");
+        if (authUser) {
+           try {
+              const parsed = JSON.parse(authUser);
+              parsed.profile_picture = picData.data?.profile_picture;
+              localStorage.setItem("authUser", JSON.stringify(parsed));
+           } catch(e) {}
+        }
+      }
+      
+      router.push("/home-page");
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const [showModal, setShowModal] = useState(false);
@@ -361,10 +451,18 @@ export default function SetProfilePage() {
                   </button>
                 </div>
 
+                {/* Error Message */}
+                {error && (
+                  <div className="text-red-500 text-sm text-center font-medium mt-2" style={{ fontFamily: "var(--font-lato)" }}>
+                    {error}
+                  </div>
+                )}
+
                 {/* Done Button */}
                 <button
                   type="submit"
-                  className="w-full transition-opacity hover:opacity-90 active:opacity-80"
+                  disabled={loading}
+                  className="w-full transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-50"
                   style={{
                     height: "47px",
                     borderRadius: "10px",
@@ -374,11 +472,11 @@ export default function SetProfilePage() {
                     fontWeight: 900,
                     fontSize: "23.8px",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: loading ? "not-allowed" : "pointer",
                     marginTop: "4px",
                   }}
                 >
-                  Done
+                  {loading ? "Saving..." : "Done"}
                 </button>
 
               </form>
