@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter, useParams} from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
 import DOMPurify from "dompurify";
 
@@ -30,9 +30,12 @@ function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   return doc.body.textContent || "";
 }
-const AUTH_TOKEN = typeof window !== "undefined"
-  ? localStorage.getItem("accessToken")
-  : null;
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 
 /* ───────────────── TYPES ───────────────── */
 
@@ -461,8 +464,8 @@ function PostModal({
   }, []);
 
   if (!post) return null;
-const isOwner = post.user_username === loggedInUsername;
-const isLoggedIn = !!loggedInUsername;
+  const isOwner = post.user_username === loggedInUsername;
+  const isLoggedIn = !!loggedInUsername;
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
@@ -474,10 +477,11 @@ const isLoggedIn = !!loggedInUsername;
 
   const confirmDeletePost = async () => {
     setShowDeleteModal(false);
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         alert("Failed to delete post.");
@@ -500,10 +504,11 @@ const isLoggedIn = !!loggedInUsername;
     setGemsCount(nextCount);
     toggleStoredItem("gemmed_posts", post.id, nextGemmed);
     onUpdatePost(post.id, (prevPost) => ({ ...prevPost, gems_count: nextCount }));
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to toggle gem");
     } catch (err) {
@@ -521,10 +526,11 @@ const isLoggedIn = !!loggedInUsername;
     const nextSaved = !previousSaved;
     setSaved(nextSaved);
     toggleStoredItem("saved_posts", post.id, nextSaved);
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to toggle save");
     } catch (err) {
@@ -598,7 +604,7 @@ const isLoggedIn = !!loggedInUsername;
             </svg>
             <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
           </div>
-        <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+          <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
         </div>
         <PostDetailBadge post={post} />
         <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
@@ -641,23 +647,23 @@ const isLoggedIn = !!loggedInUsername;
 
               <div className="ml-3 flex-1">
                 <div className="flex items-center gap-2">
-<button
-  className="font-bold text-base hover:underline text-left"
-  style={{
-    color: "#432817",
-    background: "none",
-    border: "none",
-    padding: 0,
-    cursor: "pointer",
-  }}
-  onClick={() => {
-    if (!post.user_username) return;
-    onClose();
-    router.push(`/user/${post.user_username}`);
-  }}
->
-  {post.user_display_name || post.user_username}
-</button>
+                  <button
+                    className="font-bold text-base hover:underline text-left"
+                    style={{
+                      color: "#432817",
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => {
+                      if (!post.user_username) return;
+                      onClose();
+                      router.push(`/user/${post.user_username}`);
+                    }}
+                  >
+                    {post.user_display_name || post.user_username}
+                  </button>
                   <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
                 </div>
               </div>
@@ -672,51 +678,51 @@ const isLoggedIn = !!loggedInUsername;
                 </button>
 
                 {showPostMenu && (
-  <div
-    className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
-    style={{ backgroundColor: "#FFF8E2" }}
-  >
-    {isOwner ? (
-      <>
-        <button
-          className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
-          style={{ color: "#432817" }}
-          onClick={() => {
-            setShowPostMenu(false);
-            router.push(`/edit-post?id=${post.id}`);
-          }}
-        >
-          Edit
-        </button>
+                  <div
+                    className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
+                    style={{ backgroundColor: "#FFF8E2" }}
+                  >
+                    {isOwner ? (
+                      <>
+                        <button
+                          className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
+                          style={{ color: "#432817" }}
+                          onClick={() => {
+                            setShowPostMenu(false);
+                            router.push(`/edit-post?id=${post.id}`);
+                          }}
+                        >
+                          Edit
+                        </button>
 
-        <button
-          className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
-          style={{ color: "#C0392B" }}
-          onClick={handleDeletePost}
-        >
-          Delete
-        </button>
-      </>
-    ) : (
-      <button
-        className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
-        style={{ color: "#C0392B" }}
-        onClick={() => {
-          setShowPostMenu(false);
+                        <button
+                          className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
+                          style={{ color: "#C0392B" }}
+                          onClick={handleDeletePost}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
+                        style={{ color: "#C0392B" }}
+                        onClick={() => {
+                          setShowPostMenu(false);
 
-          if (!isLoggedIn) {
-            router.push("/login");
-            return;
-          }
+                          if (!isLoggedIn) {
+                            router.push("/login");
+                            return;
+                          }
 
-          console.log("Report post:", post.id);
-        }}
-      >
-        Report post
-      </button>
-    )}
-  </div>
-)}
+                          console.log("Report post:", post.id);
+                        }}
+                      >
+                        Report post
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5]">
@@ -738,22 +744,22 @@ const isLoggedIn = !!loggedInUsername;
                       </svg>
                       <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
                     </div>
-                  <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+                    <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
                   </div>
 
                   <PostDetailBadge post={post} />
 
-                {isContentLong && !contentExpanded ? (
-                  <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
-                    {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>See more</button>
-                  </p>
-                ) : (
-                  <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-                )}
-                {isContentLong && contentExpanded && (
-                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                  {isContentLong && !contentExpanded ? (
+                    <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
+                      {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
+                      <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>See more</button>
+                    </p>
+                  ) : (
+                    <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                  )}
+                  {isContentLong && contentExpanded && (
+                    <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
                   )}
 
                   {tags.length > 0 && (
@@ -944,17 +950,17 @@ function ProfileTabs({
   setActiveTab: (t: string) => void;
   isOwnProfile: boolean;
 }) {
-const tabs = [
-  { id: "grid", icon: <GridIcon size={20} /> },
-  ...(isOwnProfile
-    ? [
+  const tabs = [
+    { id: "grid", icon: <GridIcon size={20} /> },
+    ...(isOwnProfile
+      ? [
         { id: "gems", icon: <GemIcon size={20} /> },
         { id: "saved", icon: <BookmarkIcon size={20} /> },
       ]
-    : []),
-  { id: "events", icon: <CalendarIcon size={20} /> },
-  { id: "alerts", icon: <DangerIcon size={20} /> },
-];
+      : []),
+    { id: "events", icon: <CalendarIcon size={20} /> },
+    { id: "alerts", icon: <DangerIcon size={20} /> },
+  ];
 
   return (
     <div className="flex items-center justify-between px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
@@ -1035,15 +1041,15 @@ export default function ProfilePage() {
 
   const params = useParams();
 
-const viewedUsername =
-  typeof params?.username === "string"
-    ? params.username
-    : loggedInUsername;
+  const viewedUsername =
+    typeof params?.username === "string"
+      ? params.username
+      : loggedInUsername;
 
-const isOwnProfile =
-  !!loggedInUsername &&
-  !!viewedUsername &&
-  loggedInUsername === viewedUsername;
+  const isOwnProfile =
+    !!loggedInUsername &&
+    !!viewedUsername &&
+    loggedInUsername === viewedUsername;
   const updatePostInLists = (postId: string, updater: (post: ApiPost) => ApiPost) => {
     setAllPosts((prev) => prev.map((p) => (p.id === postId ? updater(p) : p)));
     setGemmedPosts((prev) => prev.map((p) => (p.id === postId ? updater(p) : p)));
@@ -1064,8 +1070,9 @@ const isOwnProfile =
   useEffect(() => {
     const fetchMe = async () => {
       try {
+        const token = getAuthToken();
         const res = await fetch(`${API_URL}/api/users/me/`, {
-          headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
           const json = await res.json();
@@ -1078,134 +1085,139 @@ const isOwnProfile =
     fetchMe();
   }, []);
 
-useEffect(() => {
-  if (!viewedUsername) return;
+  useEffect(() => {
+    if (!viewedUsername) return;
 
-  const fetchAllPosts = async () => {
-    setLoadingPosts(true);
-    let url: string | null = `${API_URL}/api/posts/user/${viewedUsername}/`;
-    const collected: ApiPost[] = [];
-    try {
-      while (url) {
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
-        });
-        if (!res.ok) break;
-        const data = await res.json();
-        collected.push(...(data.results ?? []).map(mapPost));
-        url = data.next ?? null;
+    const fetchAllPosts = async () => {
+      setLoadingPosts(true);
+      let url: string | null = `${API_URL}/api/posts/user/${viewedUsername}/`;
+      const collected: ApiPost[] = [];
+      try {
+        while (url) {
+          const token = getAuthToken();
+          const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) break;
+          const data = await res.json();
+          collected.push(...(data.results ?? []).map(mapPost));
+          url = data.next ?? null;
+        }
+        setAllPosts(collected);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+      } finally {
+        setLoadingPosts(false);
       }
-      setAllPosts(collected);
-    } catch (err) {
-      console.error("Error fetching posts:", err);
-    } finally {
-      setLoadingPosts(false);
+    };
+    fetchAllPosts();
+  }, [viewedUsername]);
+
+  useEffect(() => {
+    if (!isOwnProfile || activeTab !== "gems") return;
+    const fetch_ = async () => {
+      setLoadingGemmed(true);
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`${API_URL}/api/posts/gemed/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setGemmedPosts((data.results ?? data).map(mapPost));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingGemmed(false);
+      }
+    };
+
+    fetch_();
+  }, [activeTab, isOwnProfile]);
+
+  useEffect(() => {
+    if (!isOwnProfile || activeTab !== "saved") return;
+
+    const fetch_ = async () => {
+      setLoadingSaved(true);
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`${API_URL}/api/posts/saved/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setSavedPosts((data.results ?? data).map(mapPost));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingSaved(false);
+      }
+    };
+    fetch_();
+  }, [activeTab, isOwnProfile]);
+
+  useEffect(() => {
+    if (activeTab !== "events" || !viewedUsername) return;
+
+    const fetch_ = async () => {
+      setLoadingEvents(true);
+      try {
+        const token = getAuthToken();
+        const res = await fetch(
+          `${API_URL}/api/posts/user/${viewedUsername}/events/`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setEventPosts((data.results ?? data).map(mapPost));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+    fetch_();
+  }, [activeTab, viewedUsername]);
+
+  useEffect(() => {
+    if (activeTab !== "alerts" || !viewedUsername) return;
+    const fetch_ = async () => {
+      setLoadingAlerts(true);
+      try {
+        const token = getAuthToken();
+        const res = await fetch(
+          `${API_URL}/api/posts/user/${viewedUsername}/alerts/`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        setAlertPosts((data.results ?? data).map(mapPost));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingAlerts(false);
+      }
+    };
+    fetch_();
+  }, [activeTab, viewedUsername]);
+
+  useEffect(() => {
+    if (!isOwnProfile && (activeTab === "gems" || activeTab === "saved")) {
+      setActiveTab("grid");
     }
-  };
-  fetchAllPosts();
-}, [viewedUsername]);
-
-useEffect(() => {
-  if (!isOwnProfile || activeTab !== "gems") return;
-  const fetch_ = async () => {
-    setLoadingGemmed(true);
-    try {
-      const res = await fetch(`${API_URL}/api/posts/gemed/`, {
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setGemmedPosts((data.results ?? data).map(mapPost));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingGemmed(false);
-    }
-  };
-
-  fetch_();
-}, [activeTab, isOwnProfile]);
-
-useEffect(() => {
-  if (!isOwnProfile || activeTab !== "saved") return;
-
-  const fetch_ = async () => {
-    setLoadingSaved(true);
-    try {
-      const res = await fetch(`${API_URL}/api/posts/saved/`, {
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      setSavedPosts((data.results ?? data).map(mapPost));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingSaved(false);
-    }
-  };
-  fetch_();
-}, [activeTab, isOwnProfile]);
-
-useEffect(() => {
-  if (activeTab !== "events" || !viewedUsername) return;
-
-  const fetch_ = async () => {
-    setLoadingEvents(true);
-    try {
-      const res = await fetch(
-        `${API_URL}/api/posts/user/${viewedUsername}/events/`,
-        { headers: { Authorization: `Bearer ${AUTH_TOKEN}` } }
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      setEventPosts((data.results ?? data).map(mapPost));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
-  fetch_();
-}, [activeTab, viewedUsername]);
-
-useEffect(() => {
-  if (activeTab !== "alerts" || !viewedUsername) return;
-  const fetch_ = async () => {
-    setLoadingAlerts(true);
-    try {
-      const res = await fetch(
-        `${API_URL}/api/posts/user/${viewedUsername}/alerts/`,
-        { headers: { Authorization: `Bearer ${AUTH_TOKEN}` } }
-      );
-      if (!res.ok) return;
-      const data = await res.json();
-      setAlertPosts((data.results ?? data).map(mapPost));
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingAlerts(false);
-    }
-  };
-  fetch_();
-}, [activeTab, viewedUsername]);
-
-useEffect(() => {
-  if (!isOwnProfile && (activeTab === "gems" || activeTab === "saved")) {
-    setActiveTab("grid");
-  }
-}, [isOwnProfile, activeTab]);
+  }, [isOwnProfile, activeTab]);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FFF8E2", fontFamily: "var(--font-lato)" }}>
       {selectedPost && (
-<PostModal
-  post={selectedPost}
-  onClose={() => setSelectedPost(null)}
-  onUpdatePost={updatePostInLists}
-  onDeletePost={deletePostFromLists}
-  loggedInUsername={loggedInUsername}
-/>
+        <PostModal
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
+          onUpdatePost={updatePostInLists}
+          onDeletePost={deletePostFromLists}
+          loggedInUsername={loggedInUsername}
+        />
       )}
 
       <LeftSidebar />
@@ -1216,25 +1228,25 @@ useEffect(() => {
           <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
           {activeTab === "grid" && (loadingPosts ? <Spinner /> : allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message="No Posts yet" /> : <PostsGrid posts={allPosts} onPostClick={setSelectedPost} />)}
-{isOwnProfile && activeTab === "gems" && (
-  loadingGemmed ? (
-    <Spinner />
-  ) : gemmedPosts.length === 0 ? (
-    <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" />
-  ) : (
-    <PostsGrid posts={gemmedPosts} onPostClick={setSelectedPost} />
-  )
-)}
+          {isOwnProfile && activeTab === "gems" && (
+            loadingGemmed ? (
+              <Spinner />
+            ) : gemmedPosts.length === 0 ? (
+              <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" />
+            ) : (
+              <PostsGrid posts={gemmedPosts} onPostClick={setSelectedPost} />
+            )
+          )}
 
-{isOwnProfile && activeTab === "saved" && (
-  loadingSaved ? (
-    <Spinner />
-  ) : savedPosts.length === 0 ? (
-    <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" />
-  ) : (
-    <PostsGrid posts={savedPosts} onPostClick={setSelectedPost} />
-  )
-)}
+          {isOwnProfile && activeTab === "saved" && (
+            loadingSaved ? (
+              <Spinner />
+            ) : savedPosts.length === 0 ? (
+              <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" />
+            ) : (
+              <PostsGrid posts={savedPosts} onPostClick={setSelectedPost} />
+            )
+          )}
           {activeTab === "events" && (loadingEvents ? <Spinner /> : eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message="No Events yet" /> : <PostsGrid posts={eventPosts} onPostClick={setSelectedPost} />)}
           {activeTab === "alerts" && (loadingAlerts ? <Spinner /> : alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message="No Monuments in Danger yet" /> : <PostsGrid posts={alertPosts} onPostClick={setSelectedPost} />)}
         </div>
