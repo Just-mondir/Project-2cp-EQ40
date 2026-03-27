@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { loginUser, savePendingAuthContext } from "@/lib/authApi";
+import { clearPendingAuthContext, loginUser, saveAuthTokens } from "@/lib/authApi";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,13 +27,9 @@ export default function LoginPage() {
         password,
       });
 
-      savePendingAuthContext({
-        flow: "login",
-        userId: response.user_id,
-        email: normalizedEmail,
-      });
-
-      router.push("/verify-email");
+      saveAuthTokens(response);
+      clearPendingAuthContext();
+      router.push("/home-page");
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : "Login failed.";

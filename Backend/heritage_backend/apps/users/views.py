@@ -27,7 +27,6 @@ from .serializers import (
     UserUpdateSerializer,
     DeactivateAccountSerializer,
     VerifyEmailSerializer,
-    VerifyLoginOTPSerializer,
 )
 
 
@@ -83,40 +82,18 @@ class VerifyEmailView(APIView):
 
 
 class LoginView(APIView):
-    """Authenticate user and send login OTP."""
+    """Authenticate user and issue JWT tokens."""
 
     permission_classes = [AllowAny]
 
     def post(self, request: Request) -> Response:
-        """Validate credentials and send OTP."""
+        """Validate credentials and return tokens."""
         serializer = LoginSerializer(data=request.data)
         if not serializer.is_valid():
             return api_error(
                 message="Login failed.",
                 errors=serializer.errors,
                 status_code=401,
-            )
-        user = serializer.save()
-        return api_success(
-            message="OTP sent to your email",
-            data={"user_id": user.pk},
-            status_code=200,
-        )
-
-
-class VerifyLoginOTPView(APIView):
-    """Verify login OTP and issue JWT tokens."""
-
-    permission_classes = [AllowAny]
-
-    def post(self, request: Request) -> Response:
-        """Verify login OTP and return tokens."""
-        serializer = VerifyLoginOTPSerializer(data=request.data)
-        if not serializer.is_valid():
-            return api_error(
-                message="Login OTP verification failed.",
-                errors=serializer.errors,
-                status_code=400,
             )
         token_data = serializer.save()
         return api_success(

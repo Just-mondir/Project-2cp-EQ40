@@ -8,14 +8,12 @@ import {
   clearPendingAuthContext,
   readPendingAuthContext,
   saveAuthTokens,
-  verifyLoginOtp,
   verifySignupOtp,
 } from "@/lib/authApi";
 
 export default function VerifyEmailPage() {
   const router = useRouter();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
-  const [flowLabel, setFlowLabel] = useState("Sign Up");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,12 +21,11 @@ export default function VerifyEmailPage() {
 
   useEffect(() => {
     const pending = readPendingAuthContext();
-    if (!pending) {
-      setError("No pending verification was found. Please sign up or login again.");
+    if (!pending || pending.flow !== "signup") {
+      setError("No pending verification was found. Please sign up again.");
       return;
     }
 
-    setFlowLabel(pending.flow === "login" ? "Login" : "Sign Up");
     setEmail(pending.email);
   }, []);
 
@@ -70,17 +67,14 @@ export default function VerifyEmailPage() {
     }
 
     const pending = readPendingAuthContext();
-    if (!pending) {
-      setError("No pending verification was found. Please sign up or login again.");
+    if (!pending || pending.flow !== "signup") {
+      setError("No pending verification was found. Please sign up again.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const data =
-        pending.flow === "login"
-          ? await verifyLoginOtp({ userId: pending.userId, otpCode })
-          : await verifySignupOtp({ userId: pending.userId, otpCode });
+      const data = await verifySignupOtp({ userId: pending.userId, otpCode });
 
       saveAuthTokens(data);
       clearPendingAuthContext();
@@ -121,7 +115,7 @@ export default function VerifyEmailPage() {
                   className="font-black text-4xl lg:text-[53px] leading-tight mb-4 lg:mb-6"
                   style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                 >
-                  {flowLabel}
+                  Sign Up
                 </h1>
                 <p
                   className="text-base lg:text-[20px] leading-snug"
