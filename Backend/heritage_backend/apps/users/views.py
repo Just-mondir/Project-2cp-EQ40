@@ -7,8 +7,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
+import os
+from django.conf import settings
+import uuid
 
 from apps.core.responses import (
     RESPONSE_CONFLICT_MESSAGE,
@@ -27,6 +31,9 @@ from .serializers import (
     UserUpdateSerializer,
     DeactivateAccountSerializer,
     VerifyEmailSerializer,
+    ForgotPasswordSerializer,
+    VerifyResetOTPSerializer,
+    ResetPasswordSerializer,
 )
 
 
@@ -214,5 +221,114 @@ class PublicUserProfileView(APIView):
             message="Profile retrieved successfully.",
             data=serializer.data,
             status_code=200,
+        )
+
+class ProfilePictureUploadView(APIView):
+    """Upload and set the authenticated user's profile picture."""
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        """Upload image to storage and update user's profile_picture URL."""
+        image_file = request.FILES.get("profile_picture")
+        if not image_file:
+            return api_error(
+                message="No image provided.",
+                status_code=400,
+            )
+
+        # Generate unique filename to avoid collisions
+        ext = os.path.splitext(image_file.name)[1]
+        safe_name = f"profile_{request.user.id}_{uuid.uuid4().hex[:8]}{ext}"
+        file_path = os.path.join(settings.MEDIA_ROOT, "profile_pictures", safe_name)
+        
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb+") as f:
+            for chunk in image_file.chunks():
+                f.write(chunk)
+                
+        image_url = f"{settings.MEDIA_URL}profile_pictures/{safe_name}"
+        
+        # We need to manually update and save the user via MongoEngine
+        from apps.users.models import User
+        user = User.objects.get(id=request.user.id)
+        
+        # Optional: Delete old picture if it exists
+        if user.profile_picture and user.profile_picture.startswith(settings.MEDIA_URL):
+            old_path = os.path.join(settings.MEDIA_ROOT, user.profile_picture.lstrip(settings.MEDIA_URL))
+            if os.path.exists(old_path):
+                os.remove(old_path)
+
+        user.profile_picture = image_url
+        user.save()
+        
+        # Update request user object for consistent response serialization
+        request.user.profile_picture = image_url
+
+        from apps.users.serializers import UserProfileSerializer
+        return api_success(
+            message="Profile picture uploaded successfully.",
+            data={"profile_picture": image_url, "user": UserProfileSerializer(request.user).data},
+            status_code=200,
+        )
+
+
+class ForgotPasswordView(APIView):
+    """View to initiate password reset via OTP."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        serializer = ForgotPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return api_success(
+                message="If the email is registered, an OTP will be sent.",
+                status_code=200,
+            )
+        return api_error(
+            message="Password reset initiation failed.",
+            errors=serializer.errors,
+            status_code=400,
+        )
+
+
+class VerifyResetOTPView(APIView):
+    """View to verify reset OTP without expiring it."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        serializer = VerifyResetOTPSerializer(data=request.data)
+        if serializer.is_valid():
+            return api_success(
+                message="OTP is valid.",
+                status_code=200,
+            )
+        return api_error(
+            message="OTP verification failed.",
+            errors=serializer.errors,
+            status_code=400,
+        )
+
+
+class ResetPasswordView(APIView):
+    """View to finalize the password reset process."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request, *args, **kwargs) -> Response:
+        serializer = ResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return api_success(
+                message="Password reset successfully. You can now log in.",
+                status_code=200,
+            )
+        return api_error(
+            message="Password reset failed.",
+            errors=serializer.errors,
+            status_code=400,
         )
 
