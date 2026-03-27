@@ -13,16 +13,18 @@ from .views import (
     RegisterView,
     VerifyEmailView,
     VerifyLoginOTPView,
+    SearchUserView,
 )
 
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
     path("auth/verify-email/", VerifyEmailView.as_view(), name="auth-verify-email"),
     path("auth/login/", LoginView.as_view(), name="auth-login"),
-    path("auth/verify-login-otp/",VerifyLoginOTPView.as_view(),name="auth-verify-login-otp"),
+    path("auth/verify-login-otp/", VerifyLoginOTPView.as_view(), name="auth-verify-login-otp"),
     path("auth/refresh/", RefreshTokenView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutView.as_view(), name="auth-logout"),
     path("users/me/", MeView.as_view(), name="users-me"),
+    path("users/search/", SearchUserView.as_view(), name="users-search"),
     path("users/<str:username>/", PublicUserProfileView.as_view(), name="users-public"),
 ]
 
