@@ -1,7 +1,7 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
 
-export type PendingAuthFlow = "signup" | "login";
+export type PendingAuthFlow = "signup";
 
 export type PendingAuthContext = {
   flow: PendingAuthFlow;
@@ -134,8 +134,8 @@ export async function registerUser(input: {
 export async function loginUser(input: {
   email: string;
   password: string;
-}): Promise<UserIdPayload> {
-  return postJson<UserIdPayload>("/auth/login/", input, "Login failed.");
+}): Promise<AuthTokenPayload> {
+  return postJson<AuthTokenPayload>("/auth/login/", input, "Login failed.");
 }
 
 export async function verifySignupOtp(input: {
@@ -149,19 +149,5 @@ export async function verifySignupOtp(input: {
       otp_code: input.otpCode,
     },
     "Email verification failed.",
-  );
-}
-
-export async function verifyLoginOtp(input: {
-  userId: string;
-  otpCode: string;
-}): Promise<AuthTokenPayload> {
-  return postJson<AuthTokenPayload>(
-    "/auth/verify-login-otp/",
-    {
-      user_id: input.userId,
-      otp_code: input.otpCode,
-    },
-    "Login OTP verification failed.",
   );
 }

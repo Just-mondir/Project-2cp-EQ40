@@ -147,7 +147,7 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """Validate credentials and trigger OTP for login."""
+    """Validate credentials and issue JWT tokens for login."""
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -171,61 +171,6 @@ class LoginSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         user = validated_data["user"]
-        _, plain_otp = create_hashed_otp(user, OTPPurposeChoices.LOGIN)
-        send_otp_email(user.email, plain_otp)
-        return user
-
-
-class VerifyLoginOTPSerializer(serializers.Serializer):
-    """Verify login OTP and issue JWT tokens."""
-
-    user_id = serializers.CharField(required=False)
-    email = serializers.EmailField(required=False)
-    otp_code = serializers.CharField(max_length=6)
-
-    def validate(self, attrs):
-        user_id = attrs.get("user_id")
-        email = attrs.get("email")
-        otp_code = attrs.get("otp_code")
-
-        if not user_id and not email:
-            raise serializers.ValidationError(
-                {"user": "Either user_id or email must be provided."}
-            )
-
-        try:
-            if user_id:
-                user = User.objects.get(id=user_id)
-            else:
-                user = User.objects.get(email=email)
-        except (User.DoesNotExist, Exception):
-            raise serializers.ValidationError({"user": "User not found."})
-
-        otp = (
-            OTPCode.objects(user=user, purpose=OTPPurposeChoices.LOGIN)
-            .order_by("-created_at")
-            .first()
-        )
-
-        if otp is None:
-            raise serializers.ValidationError({"otp_code": "Invalid OTP."})
-        if otp.is_used:
-            raise serializers.ValidationError({"otp_code": "OTP already used."})
-        if is_otp_expired(otp.expires_at):
-            raise serializers.ValidationError(
-                {"otp_code": "OTP expired. Please request a new one."}
-            )
-        if not verify_otp_code(otp, otp_code):
-            raise serializers.ValidationError({"otp_code": "Invalid OTP."})
-
-        attrs["user"] = user
-        attrs["otp"] = otp
-        return attrs
-
-    def save(self, **kwargs):
-        user = self.validated_data["user"]
-        otp = self.validated_data["otp"]
-        OTPCode.objects(id=otp.id).update_one(set__is_used=True)
         refresh = RefreshToken.for_user(user)
         return {
             "refresh": str(refresh),
