@@ -20,7 +20,8 @@ from .views import (
     EventsView,
     UpcomingEventsView,
     UserPostsView,
-    PostImageDeleteView
+    PostImageDeleteView,
+    EventFilterView,
 )
 
 urlpatterns = [
@@ -30,6 +31,7 @@ urlpatterns = [
     # Events Feed
     path("posts/events/", EventsView.as_view(), name="events"),
     path("posts/upcoming-events/", UpcomingEventsView.as_view(), name="upcoming-events"),
+    path("posts/events/filter/", EventFilterView.as_view(), name="events-filter"),
 
     # Profile
     path("posts/user/<str:username>/", UserPostsView.as_view(), name="user-posts"),
