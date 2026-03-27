@@ -7,8 +7,18 @@ import DOMPurify from "dompurify";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
+function stripHtmlFallback(html: string): string {
+  let result = html;
+  let prev: string;
+  do {
+    prev = result;
+    result = prev.replace(/<[^>]*>/g, "");
+  } while (result !== prev);
+  return result;
+}
+
 function sanitizeHtml(html: string): string {
-  if (typeof window === "undefined") return html.replace(/<[^>]*>/g, "");
+  if (typeof window === "undefined") return stripHtmlFallback(html);
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li", "a"],
     ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
@@ -16,7 +26,7 @@ function sanitizeHtml(html: string): string {
 }
 
 function stripHtml(html: string): string {
-  if (typeof window === "undefined") return html.replace(/<[^>]*>/g, "");
+  if (typeof window === "undefined") return stripHtmlFallback(html);
   const doc = new DOMParser().parseFromString(html, "text/html");
   return doc.body.textContent || "";
 }
