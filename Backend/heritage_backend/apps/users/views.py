@@ -239,3 +239,39 @@ class PublicUserProfileView(APIView):
             status_code=200,
         )
 
+class SearchUserView(APIView):
+    """Search users by username or display_name."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        query = request.query_params.get("q", "").strip()
+
+        users = User.objects.filter(is_active=True)
+
+        if query:
+            users = users.filter(
+                __raw__={
+                    "$or": [
+                        {"username": {"$regex": query, "$options": "i"}},
+                        {"display_name": {"$regex": query, "$options": "i"}},
+                    ]
+                }
+            )
+
+        data = [
+            {
+                "id": str(user.id),
+                "username": user.username,
+                "display_name": user.display_name,
+                "profile_picture": user.profile_picture,
+            }
+            for user in users
+        ]
+
+        return api_success(
+            message="Users retrieved successfully.",
+            data=data,
+            status_code=200,
+        )
+    
