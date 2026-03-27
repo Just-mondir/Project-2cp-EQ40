@@ -3,8 +3,32 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import DOMPurify from "dompurify";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+function stripHtmlFallback(html: string): string {
+  let result = html;
+  let prev: string;
+  do {
+    prev = result;
+    result = prev.replace(/<[^>]*>/g, "");
+  } while (result !== prev);
+  return result;
+}
+
+function sanitizeHtml(html: string): string {
+  if (typeof window === "undefined") return stripHtmlFallback(html);
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li", "a"],
+    ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
+  });
+}
+
+function stripHtml(html: string): string {
+  if (typeof window === "undefined") return stripHtmlFallback(html);
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent || "";
+}
 const AUTH_TOKEN = typeof window !== "undefined"
   ? localStorage.getItem("accessToken")
   : null;
@@ -212,7 +236,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       {isLong && !expanded ? (
         <span>{strippedText.slice(0, CONTENT_LIMIT) + "… "}</span>
       ) : (
-        <div dangerouslySetInnerHTML={{ __html: content }} />
+        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }} />
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
@@ -322,7 +346,7 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
             )}
           </div>
         </div>
-        <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "#432817" }}>{comment.text}</p>
+        <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }}>{stripHtml(comment.text)}</div>
         <div className="flex items-center gap-3 mt-1.5">
           <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}><GemIcon size={12} /><span>10</span></button>
           <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }}>
@@ -619,9 +643,8 @@ function PostModal({
     </span>
   </div>
 
-  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
-    {post.title}
-  </h3>
+        <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+
 </div>
       {post.post_type === "event" && post.event_details && (
         <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -733,9 +756,7 @@ function PostModal({
     </span>
   </div>
 
-  <h3 className="text-base font-bold" style={{ color: "#432817" }}>
-    {post.title}
-  </h3>
+                  <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 </div>
                 {post.post_type === "event" && post.event_details && (
                   <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -753,14 +774,17 @@ function PostModal({
                     </div>
                   );
                 })()}
-                <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
-                  {isContentLong && !contentExpanded ? post.content.slice(0, CONTENT_LIMIT) + "… " : post.content + " "}
-                  {isContentLong && (
-                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>
-                      {contentExpanded ? "See less" : "See more"}
-                    </button>
+                {isContentLong && !contentExpanded ? (
+                  <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
+                    {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>See more</button>
+                  </p>
+                ) : (
+                  <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                )}
+                {isContentLong && contentExpanded && (
+                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
                   )}
-                </p>
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {tags.map((tag, i) => (

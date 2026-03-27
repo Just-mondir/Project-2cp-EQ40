@@ -4,8 +4,32 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams} from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
+import DOMPurify from "dompurify";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+function stripHtmlFallback(html: string): string {
+  let result = html;
+  let prev: string;
+  do {
+    prev = result;
+    result = prev.replace(/<[^>]*>/g, "");
+  } while (result !== prev);
+  return result;
+}
+
+function sanitizeHtml(html: string): string {
+  if (typeof window === "undefined") return stripHtmlFallback(html);
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li", "a"],
+    ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
+  });
+}
+
+function stripHtml(html: string): string {
+  if (typeof window === "undefined") return stripHtmlFallback(html);
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent || "";
+}
 const AUTH_TOKEN = typeof window !== "undefined"
   ? localStorage.getItem("accessToken")
   : null;
@@ -574,7 +598,7 @@ const isLoggedIn = !!loggedInUsername;
             </svg>
             <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
           </div>
-          <h3 className="text-base font-bold" style={{ color: "#432817" }}>{post.title}</h3>
+        <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
         </div>
         <PostDetailBadge post={post} />
         <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
@@ -714,19 +738,23 @@ const isLoggedIn = !!loggedInUsername;
                       </svg>
                       <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
                     </div>
-                    <h3 className="text-base font-bold" style={{ color: "#432817" }}>{post.title}</h3>
+                  <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+
                   </div>
 
                   <PostDetailBadge post={post} />
 
+                {isContentLong && !contentExpanded ? (
                   <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
-                    {isContentLong && !contentExpanded ? post.content.slice(0, CONTENT_LIMIT) + "… " : post.content + " "}
-                    {isContentLong && (
-                      <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>
-                        {contentExpanded ? "See less" : "See more"}
-                      </button>
-                    )}
+                    {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>See more</button>
                   </p>
+                ) : (
+                  <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                )}
+                {isContentLong && contentExpanded && (
+                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                  )}
 
                   {tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
