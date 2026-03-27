@@ -29,9 +29,12 @@ function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   return doc.body.textContent || "";
 }
-const AUTH_TOKEN = typeof window !== "undefined"
-  ? localStorage.getItem("accessToken")
-  : null;
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 
 /* ───────────────── PERSISTENT GEM/SAVE HELPERS ───────────────── */
 
@@ -364,12 +367,13 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
 function LeftSidebar() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [loggedInUsername, setLoggedInUsername] = useState("");
-    useEffect(() => {
+  useEffect(() => {
     const fetchLoggedInUser = async () => {
       try {
+        const token = getAuthToken();
         const res = await fetch(`${API_URL}/api/users/me/`, {
           headers: {
-            Authorization: `Bearer ${AUTH_TOKEN}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -539,10 +543,11 @@ function PostModal({
     onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
     toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to toggle gem");
     } catch (err) {
@@ -559,10 +564,11 @@ function PostModal({
     onInteractionChange({ saved: nextSaved });
     toggleStoredItem("saved_posts", post.id, nextSaved);
 
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to toggle save");
     } catch (err) {
@@ -623,29 +629,29 @@ function PostModal({
     </div>
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
-<div className="mb-1">
-  <div className="flex items-center gap-1 mb-1">
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#8B7355"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-    <span className="text-xs" style={{ color: "#8B7355" }}>
-      {post.location || post.region || "Algeria"}
-    </span>
-  </div>
+      <div className="mb-1">
+        <div className="flex items-center gap-1 mb-1">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#8B7355"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          <span className="text-xs" style={{ color: "#8B7355" }}>
+            {post.location || post.region || "Algeria"}
+          </span>
+        </div>
 
         <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
-</div>
+      </div>
       {post.post_type === "event" && post.event_details && (
         <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
@@ -698,22 +704,22 @@ function PostModal({
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
                 <button
-  className="font-bold text-base hover:underline text-left"
-  style={{
-    color: "#432817",
-    background: "none",
-    border: "none",
-    padding: 0,
-    cursor: "pointer",
-  }}
-  onClick={() => {
-    if (!post.user_username) return;
-    onClose();
-    router.push(`/user/${post.user_username}`);
-  }}
->
-  {post.user_display_name || post.user_username}
-</button>
+                  className="font-bold text-base hover:underline text-left"
+                  style={{
+                    color: "#432817",
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    if (!post.user_username) return;
+                    onClose();
+                    router.push(`/user/${post.user_username}`);
+                  }}
+                >
+                  {post.user_display_name || post.user_username}
+                </button>
                 <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
               </div>
             </div>
@@ -737,27 +743,27 @@ function PostModal({
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
                 <div className="mb-1">
-  <div className="flex items-center gap-1 mb-1">
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#8B7355"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-    <span className="text-xs" style={{ color: "#8B7355" }}>
-      {post.location || post.region || "Algeria"}
-    </span>
-  </div>
+                  <div className="flex items-center gap-1 mb-1">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#8B7355"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span className="text-xs" style={{ color: "#8B7355" }}>
+                      {post.location || post.region || "Algeria"}
+                    </span>
+                  </div>
 
                   <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-</div>
+                </div>
                 {post.post_type === "event" && post.event_details && (
                   <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5C7A3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
@@ -784,7 +790,7 @@ function PostModal({
                 )}
                 {isContentLong && contentExpanded && (
                   <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
-                  )}
+                )}
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {tags.map((tag, i) => (
@@ -894,10 +900,11 @@ function PostCard({
     onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
     toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to toggle gem");
     } catch (err) {
@@ -914,10 +921,11 @@ function PostCard({
     onInteractionChange({ saved: nextSaved });
     toggleStoredItem("saved_posts", post.id, nextSaved);
 
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${AUTH_TOKEN}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to toggle save");
     } catch (err) {
@@ -955,22 +963,22 @@ function PostCard({
         </div>
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-<button
-  className="font-bold text-base hover:underline text-left"
-  style={{
-    color: "#432817",
-    background: "none",
-    border: "none",
-    padding: 0,
-    cursor: "pointer",
-  }}
-onClick={() => {
-  if (!post.user_username) return;
-  router.push(`/user/${post.user_username}`);
-}}
->
-  {post.user_display_name || post.user_username}
-</button>
+            <button
+              className="font-bold text-base hover:underline text-left"
+              style={{
+                color: "#432817",
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+              }}
+              onClick={() => {
+                if (!post.user_username) return;
+                router.push(`/user/${post.user_username}`);
+              }}
+            >
+              {post.user_display_name || post.user_username}
+            </button>
             <p className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
           </div>
         </div>
