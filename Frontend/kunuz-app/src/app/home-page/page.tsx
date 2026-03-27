@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN;
+const AUTH_TOKEN = typeof window !== "undefined"
+  ? localStorage.getItem("accessToken")
+  : null;
 
 /* ───────────────── PERSISTENT GEM/SAVE HELPERS ───────────────── */
 
