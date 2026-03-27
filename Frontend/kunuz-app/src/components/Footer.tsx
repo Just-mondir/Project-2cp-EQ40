@@ -8,7 +8,12 @@ export default function Footer() {
   // Hide footer on specific pages
   if (
     pathname === "/home-page" ||
-    pathname.startsWith("/profile") ||
+    pathname === "/login" ||
+  pathname === "/sign-up" ||
+  pathname === "/set-profile" ||
+  pathname === "/verify-email" ||
+  pathname === "/forgot-password"||
+    pathname.startsWith("/user") ||
     pathname.startsWith("/add-post") ||
     pathname.startsWith("/edit-post")
   ) {
