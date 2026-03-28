@@ -365,7 +365,7 @@ function CommentItem({ comment }: { comment: { id: number; user: string; text: s
 /* ───────────────── LEFT SIDEBAR ───────────────── */
 
 function LeftSidebar() {
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [activeIdx, setActiveIdx] = useState(3);
   const [loggedInUsername, setLoggedInUsername] = useState("");
   useEffect(() => {
     const fetchLoggedInUser = async () => {
@@ -393,10 +393,10 @@ function LeftSidebar() {
     fetchLoggedInUser();
   }, []);
   const navIcons = [
-    { label: "Home", href: null, path: (<><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></>) },
+    { label: "Home", href: "/home-page", path: (<><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></>) },
     { label: "Guilds", href: null, path: (<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>) },
     { label: "Monuments in Danger", href: null, path: (<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>) },
-    { label: "Events", href: null, path: (<><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>) },
+    { label: "Events", href: "/events", path: (<><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>) },
     { label: "Notifications", href: null, hasBadge: true, path: (<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>) },
     { label: "Profile", href: `/user/${loggedInUsername}`, path: (<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>) },
   ];
@@ -630,39 +630,12 @@ function PostModal({
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
       <div className="mb-1">
-        <div className="flex items-center gap-1 mb-1">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#8B7355"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <span className="text-xs" style={{ color: "#8B7355" }}>
-            {post.location || post.region || "Algeria"}
-          </span>
-        </div>
+
 
         <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
       </div>
-      {post.post_type === "event" && post.event_details && (
-        <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-          </div>
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
-            <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
-          </div>
-        </div>
-      )}
+
       {post.post_type === "alert" && post.alert_details && (() => {
         const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
         const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
@@ -702,7 +675,7 @@ function PostModal({
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
             </div>
             <div className="ml-3 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   className="font-bold text-base hover:underline text-left"
                   style={{
@@ -720,7 +693,24 @@ function PostModal({
                 >
                   {post.user_display_name || post.user_username}
                 </button>
-                <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+                <span className="text-xs" style={{ color: "#8B7355" }}>
+                  posted in {formatDate(post.created_at)}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-4 mt-1">
+                <div className="flex items-center gap-1">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                  <span className="text-[11px] font-bold" style={{ color: "#8B6914" }}>{post.location || post.region || "Algeria"}</span>
+                </div>
+                {post.post_type === "event" && post.event_details && (
+                  <div className="flex items-center gap-1 border-l pl-4" style={{ borderColor: "rgba(139,105,20,0.2)" }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                    <span className="text-[11px] font-bold" style={{ color: "#8B6914" }}>
+                      {formatEventTime(post.event_details).replace(/ – | → | · /g, " - ")}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="relative" ref={postMenuRef}>
@@ -743,33 +733,11 @@ function PostModal({
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
                 <div className="mb-1">
-                  <div className="flex items-center gap-1 mb-1">
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#8B7355"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    <span className="text-xs" style={{ color: "#8B7355" }}>
-                      {post.location || post.region || "Algeria"}
-                    </span>
-                  </div>
+
 
                   <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
                 </div>
-                {post.post_type === "event" && post.event_details && (
-                  <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5C7A3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                    <span className="text-[11px] font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
-                  </div>
-                )}
+
                 {post.post_type === "alert" && post.alert_details && (() => {
                   const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
                   const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
@@ -843,22 +811,58 @@ function PostModal({
 
 /* ───────────────── RIGHT SIDEBAR ───────────────── */
 
+const UPCOMING_EVENTS_MOCKS = Array(5).fill({
+  id: 1,
+  user_name: "user 85258",
+  event_image: "/timgad 1.jpg",
+  user_avatar: "/kunuz-icon.svg",
+  title: "Timgad Visit",
+  location: "Batna",
+  start_date: "20/09/2026",
+  end_date: "21/09/2026",
+}).map((item, index) => ({ ...item, id: index + 1 }));
+
 function RightSidebar() {
   return (
-    <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
+    <aside className="w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden xl:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Popular Guilds</h2>
+        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Upcoming Events</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
-          {GUILDS.slice(0, 5).map((guild, i) => (
-            <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 2px 10px rgba(67,40,23,0.05)", backgroundColor: "rgba(255,255,255,0.4)" }}>
-              <img src={guild.image} alt={guild.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm" />
-              <div className="flex flex-col justify-center min-w-0">
-                <span className="font-bold text-sm truncate" style={{ color: "#432817" }}>{guild.name}</span>
-                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "#8B7355" }}>{guild.desc}</span>
-                <span className="flex items-center gap-1 text-[11px] mt-1.5 font-medium" style={{ color: "#8B6914" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                  {guild.members} Members
-                </span>
+          {UPCOMING_EVENTS_MOCKS.map((eventItem, i) => (
+            <div key={i} className="flex p-4 mb-2 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
+              {/* Event Image: square 75x75, 20px radius */}
+              <div className="w-[75px] h-[75px] flex-shrink-0 mr-4">
+                <img src={eventItem.event_image} alt={eventItem.title} className="w-full h-full object-cover rounded-[20px]" />
+              </div>
+
+              {/* Content on the right */}
+              <div className="flex flex-col justify-between flex-1 min-w-0">
+                <div>
+                  {/* Line 1: User name and icon */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#E0D5C5", color: "#8B7355" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      </svg>
+                    </div>
+                    <span className="text-[11px] font-bold truncate" style={{ color: "#8B7355" }}>{eventItem.user_name}</span>
+                  </div>
+
+                  {/* Line 2: Title */}
+                  <span className="font-bold text-[14px] leading-snug line-clamp-2 mb-1.5" style={{ color: "#432817" }}>{eventItem.title}</span>
+                </div>
+
+                {/* Line 3: Location and Time */}
+                <div className="flex items-center justify-between mt-auto">
+                  <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: "#8B6914" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                    {eventItem.location}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: "#8B6914" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                    {eventItem.start_date} - {eventItem.end_date}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -956,52 +960,49 @@ function PostCard({
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
     >
-      {/* Header */}
-      <div className="flex items-center px-5 pt-4 pb-2">
-        <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-        </div>
-        <div className="ml-3 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <button
-              className="font-bold text-base hover:underline text-left"
-              style={{
-                color: "#432817",
-                background: "none",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-              }}
-              onClick={() => {
-                if (!post.user_username) return;
-                router.push(`/user/${post.user_username}`);
-              }}
-            >
-              {post.user_display_name || post.user_username}
+      {/* Header & Location */}
+      <div className="flex flex-col px-5 pt-4 pb-0">
+        <div className="flex items-center gap-3">
+          <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button className="font-bold text-base hover:underline" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); if (post.user_username) router.push(`/user/${post.user_username}`); }}>
+                {post.user_display_name || post.user_username}
+              </button>
+              <span className="text-xs" style={{ color: "#8B7355" }}>
+                posted in {formatDate(post.created_at)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4 mt-1">
+              <div className="flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <span className="text-[11px] font-bold" style={{ color: "#8B6914" }}>{post.location || post.region || "Algeria"}</span>
+              </div>
+              {post.post_type === "event" && post.event_details && (
+                <div className="flex items-center gap-1 border-l pl-4" style={{ borderColor: "rgba(139,105,20,0.2)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8B6914" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                  <span className="text-[11px] font-bold" style={{ color: "#8B6914" }}>
+                    {formatEventTime(post.event_details).replace(/ – | → | · /g, " - ")}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="relative self-start">
+            <button className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
             </button>
-            <p className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+                <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+              </div>
+            )}
           </div>
         </div>
-        <div className="relative">
-          <button className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
-            </div>
-          )}
-        </div>
       </div>
-
-      {/* Location */}
-      <div className="flex items-center gap-1 px-5 pb-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-      </div>
-
-      {/* Event / Alert badge */}
-      <PostDetailBadge post={post} />
 
       {/* Title */}
       <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
@@ -1071,14 +1072,14 @@ function PostCard({
             style={{ color: gemmed ? "#4FC3F7" : "#432817" }}
             onClick={handleGem}
           >
-            <GemIcon filled={gemmed} active={gemmed} />
+            <GemIcon size={18} filled={gemmed} active={gemmed} />
             <span>{formatCount(gemsCount)}</span>
           </button>
           <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
-            <CommentIcon /><span>{formatCount(post.comments_count)}</span>
+            <CommentIcon size={18} /><span>{formatCount(post.comments_count)}</span>
           </button>
           <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
-            <AnnotationIcon /><span>0</span>
+            <AnnotationIcon size={18} /><span>0</span>
           </button>
         </div>
         <button
@@ -1086,7 +1087,7 @@ function PostCard({
           style={{ color: saved ? "#8B6914" : "#432817" }}
           onClick={handleSave}
         >
-          <BookmarkIcon filled={saved} active={saved} />
+          <BookmarkIcon size={18} filled={saved} active={saved} />
         </button>
       </div>
     </div>
@@ -1095,14 +1096,14 @@ function PostCard({
 
 /* ───────────────── MAIN PAGE ───────────────── */
 
-export default function HomePageRoute() {
+export default function EventsPageRoute() {
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts`);
+  const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts/?post_type=event`);
 
   // ── Lifted interaction state ──────────────────────────────────────────────
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});

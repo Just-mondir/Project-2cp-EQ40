@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-
+import Link from "next/link";
 // const HERO_IMAGE = "/hero-bg.jpg";
 // const HERO_IMAGE = "/download.jpg";
 const HERO_IMAGE = "pic.jpg";
@@ -83,23 +83,23 @@ export default function Hero() {
           Connects Generations Through Algeria&apos;s Rich Cultural Heritage
         </p>
         {/* Get Started — hover via React state */}
-        <button
-          type="button"
-          className="w-fit cursor-pointer rounded-full border-2 font-bold transition-all duration-300"
-          style={{
-            borderColor: "var(--cream)",
-            color: "var(--cream)",
-            fontFamily: "var(--font-lato)",
-            backgroundColor: hovered ? "rgba(255,255,255,0.2)" : "transparent",
-            fontSize: "clamp(14px, 1.5vw, 24px)",
-            padding: "clamp(10px, 1.8vh, 22px) clamp(28px, 4.5vw, 64px)",
-            marginTop: "clamp(6px, 1.2vh, 14px)",
-          }}
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-        >
-          Get Started
-        </button>
+<Link
+  href="/sign-up"
+  className="w-fit cursor-pointer rounded-full border-2 font-bold transition-all duration-300"
+  style={{
+    borderColor: "var(--cream)",
+    color: "var(--cream)",
+    fontFamily: "var(--font-lato)",
+    backgroundColor: hovered ? "rgba(255,255,255,0.2)" : "transparent",
+    fontSize: "clamp(14px, 1.5vw, 24px)",
+    padding: "clamp(10px, 1.8vh, 22px) clamp(28px, 4.5vw, 64px)",
+    marginTop: "clamp(6px, 1.2vh, 14px)",
+  }}
+  onMouseEnter={() => setHovered(true)}
+  onMouseLeave={() => setHovered(false)}
+>
+  Get Started
+</Link>
       </div>
     </section>
   );
