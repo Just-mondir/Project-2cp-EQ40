@@ -5,7 +5,12 @@ import { useState, useRef, useEffect } from "react";
 const MAX_IMAGES = 5;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = process.env.NEXT_PUBLIC_TOKEN || "";
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+  }
+  return process.env.NEXT_PUBLIC_TOKEN || "";
+};
 
 export type ImageItem = {
   id?: string;       // present for remote images (PostImage.id from backend)
@@ -20,17 +25,11 @@ type ImageUploadPanelProps = {
   onImagesChange?: (images: ImageItem[]) => void;
 };
 
-const DEFAULT_IMAGE: ImageItem[] = [
-  { url: "/download 1.jpg", name: "Heritage photo", isRemote: true },
-];
-
 export default function ImageUploadPanel({
   initialImages = [],
   onImagesChange,
 }: ImageUploadPanelProps) {
-  const [images, setImages] = useState<ImageItem[]>(
-    initialImages.length > 0 ? initialImages : DEFAULT_IMAGE
-  );
+  const [images, setImages] = useState<ImageItem[]>(initialImages);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const hasSynced = useRef(false);
@@ -68,11 +67,17 @@ export default function ImageUploadPanel({
 
     // If it's a remote image, delete it from the backend first
     if (img.isRemote && img.id) {
+      const token = getAuthToken();
+      if (!token) {
+        alert("Please log in to delete images.");
+        return;
+      }
+
       try {
         const res = await fetch(`${API_URL}/api/posts/images/${img.id}/`, {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${AUTH_TOKEN}`,
+            Authorization: `Bearer ${token}`,
           },
         });
         if (!res.ok) {

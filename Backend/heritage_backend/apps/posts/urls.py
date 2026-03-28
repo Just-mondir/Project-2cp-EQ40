@@ -21,6 +21,7 @@ from .views import (
     UpcomingEventsView,
     UserPostsView,
     PostImageDeleteView,
+<<<<<<< HEAD
     EventFilterView,
     GlobalSearchView,
     AnnotationListCreateView,
@@ -29,6 +30,10 @@ from .views import (
     AnnotationRejectView,
     FilterChoicesView,
     PostFilterView,
+=======
+    MonumentsView,
+    CriticalView
+>>>>>>> 24f8332f0ce1f6a50f59903bf4628eb5d36357e4
 )
 
 urlpatterns = [
@@ -42,6 +47,10 @@ urlpatterns = [
     path("posts/events/", EventsView.as_view(), name="events"),
     path("posts/upcoming-events/", UpcomingEventsView.as_view(), name="upcoming-events"),
     path("posts/events/filter/", EventFilterView.as_view(), name="events-filter"),
+
+    # Alerts Feed
+    path("posts/alerts/", MonumentsView.as_view(), name="alerts"),
+    path("posts/critical/", CriticalView.as_view(), name="critical"),
 
     # Profile
     path("posts/saved/", MySavedPostsView.as_view(), name="saved-posts"),

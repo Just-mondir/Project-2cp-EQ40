@@ -8,7 +8,12 @@ export default function Footer() {
   // Hide footer on specific pages
   if (
     pathname === "/home-page" ||
-    pathname.startsWith("/profile") ||
+    pathname === "/login" ||
+  pathname === "/sign-up" ||
+  pathname === "/set-profile" ||
+  pathname === "/verify-email" ||
+  pathname === "/forgot-password"||
+    pathname.startsWith("/user") ||
     pathname.startsWith("/add-post") ||
     pathname.startsWith("/edit-post")
   ) {
@@ -58,7 +63,7 @@ export default function Footer() {
         {/* Column 2 */}
         <div className="flex flex-col gap-3 text-lg">
           <Link href="/#events" className={linkClass}>Events</Link>
-          <p className={linkClass}>Join the Community</p>
+          <Link href="/login#" className={linkClass}>Join the Community</Link>
           <Link href="/#guilds" className={linkClass}>Guilds</Link>
         </div>
 

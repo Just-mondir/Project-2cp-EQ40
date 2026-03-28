@@ -34,22 +34,27 @@ const fallbackImages: HeritageImage[] = [
 ];
 
 async function getHeritageImages(): Promise<HeritageImage[]> {
-  try {
+try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/posts/`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return fallbackImages;
     const data = await res.json();
-    const posts: Post[] = data.data?.results || [];
+    const posts: Post[] = data.results || [];
     const postsWithImages = posts
       .filter((post) => post.images?.[0]?.image)
       .slice(0, 6)
-      .map((post) => ({
-        id: post.id,
-        src: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
-        alt: post.title,
-        title: post.title,
-      }));
+      .map((post) => {
+        const imageUrl = post.images[0].image.startsWith("http")
+          ? post.images[0].image
+          : `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`;
+        return {
+          id: post.id,
+          src: imageUrl,
+          alt: post.title,
+          title: post.title,
+        };
+      });
     return postsWithImages.length > 0 ? postsWithImages : fallbackImages;
   } catch {
     return fallbackImages;

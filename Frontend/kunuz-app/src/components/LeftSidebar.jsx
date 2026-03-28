@@ -198,8 +198,9 @@ export default function LeftSidebar({
         <div className="h-40" />
 
         <div className="relative group">
-          <button
-            className="p-2.5 rounded-xl transition-all duration-200"
+          <Link
+            href="/help"
+            className="p-2.5 rounded-xl transition-all duration-200 block"
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = iconHover;
             }}
@@ -214,21 +215,18 @@ export default function LeftSidebar({
               fill="none"
               stroke={iconDefault}
               strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
             >
               <circle cx="12" cy="12" r="10" />
               <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
-          </button>
+          </Link>
+
           <span
-            className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
+            className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
             style={{
               backgroundColor: "#432817",
               color: "#FFF8E2",
-              boxShadow: "0 2px 8px rgba(67,40,23,0.2)",
-              fontFamily: "var(--font-lato)",
             }}
           >
             Help

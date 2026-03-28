@@ -1,8 +1,6 @@
 """DRF views for the posts app."""
-
 from __future__ import annotations
 from datetime import datetime, time
-
 from rest_framework import status
 import os
 from django.conf import settings
@@ -13,14 +11,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
-
 from apps.users.models import User
-from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, Annotation
-
-from apps.users.models import User
+from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails, Annotation
 from .serializers import (
     CommentSerializer,
     GemSerializer,
@@ -29,7 +23,7 @@ from .serializers import (
     PostImageSerializer,
     PostListSerializer,
     SaveSerializer,
-    AnnotationSerializer, 
+    AnnotationSerializer,
 )
 
 
@@ -39,16 +33,10 @@ class PostPagination(PageNumberPagination):
     max_page_size = 100
 
 
-# ---------------------------------------------------------------------------
-# Shared image-save helper  (mirrors PostImageUploadView logic exactly)
-# ---------------------------------------------------------------------------
-
 def _save_post_images(post: Post, image_files) -> None:
-    """Write uploaded image files to disk and create PostImage records."""
     existing_count = PostImage.objects(post=post).count()
     allowed = 5 - existing_count
     for img in list(image_files)[:allowed]:
-        # Use a unique filename to avoid collisions: <post_id>_<original_name>
         safe_name = f"{post.id}_{img.name}"
         file_path = os.path.join(settings.MEDIA_ROOT, "post_images", safe_name)
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -57,11 +45,6 @@ def _save_post_images(post: Post, image_files) -> None:
                 f.write(chunk)
         image_url = f"{settings.MEDIA_URL}post_images/{safe_name}"
         PostImage(post=post, image=image_url).save()
-
-
-# ---------------------------------------------------------------------------
-# Posts
-# ---------------------------------------------------------------------------
 
 
 class PostListCreateView(APIView):
@@ -83,23 +66,14 @@ class PostListCreateView(APIView):
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request: Request) -> Response:
-        serializer = PostDetailSerializer(
-            data=request.data, context={"request": request}
-        )
+        serializer = PostDetailSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
         post = serializer.save(author_id=str(request.user.id))
-
-        # Save any uploaded images after the post is created
         image_files = request.FILES.getlist("uploaded_images")
         if image_files:
             _save_post_images(post, image_files)
-
-        return api_success(
-            "Post created successfully.",
-            PostDetailSerializer(post, context={"request": request}).data,
-            status.HTTP_201_CREATED,
-        )
+        return api_success("Post created successfully.", PostDetailSerializer(post, context={"request": request}).data, status.HTTP_201_CREATED)
 
 
 class PostDetailView(APIView):
@@ -126,24 +100,16 @@ class PostDetailView(APIView):
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
         if post.author_id != str(request.user.id):
             return api_error("You can only edit your own posts.", status_code=status.HTTP_403_FORBIDDEN)
-        serializer = PostDetailSerializer(
-            post, data=request.data, partial=True, context={"request": request}
-        )
+        serializer = PostDetailSerializer(post, data=request.data, partial=True, context={"request": request})
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
         post = serializer.save()
-
-        # Save any newly uploaded images
         image_files = request.FILES.getlist("uploaded_images")
         if image_files:
             existing_count = PostImage.objects(post=post).count()
             if existing_count + len(image_files) > 5:
-                return api_error(
-                    f"A post can have at most 5 images. This post already has {existing_count}.",
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                )
+                return api_error(f"A post can have at most 5 images. This post already has {existing_count}.", status_code=status.HTTP_400_BAD_REQUEST)
             _save_post_images(post, image_files)
-
         return api_success("Post updated.", PostDetailSerializer(post, context={"request": request}).data)
 
     def delete(self, request: Request, pk: str) -> Response:
@@ -159,13 +125,7 @@ class PostDetailView(APIView):
         return api_success("Post deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
 
-# ---------------------------------------------------------------------------
-# Post Images
-# ---------------------------------------------------------------------------
-
-
 class PostImageUploadView(APIView):
-
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -181,10 +141,7 @@ class PostImageUploadView(APIView):
             return api_error("No images provided.", status_code=status.HTTP_400_BAD_REQUEST)
         existing_count = PostImage.objects(post=post).count()
         if existing_count + len(images) > 5:
-            return api_error(
-                f"A post can have at most 5 images. This post already has {existing_count}.",
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
+            return api_error(f"A post can have at most 5 images. This post already has {existing_count}.", status_code=status.HTTP_400_BAD_REQUEST)
         created = []
         for img in images:
             file_path = os.path.join(settings.MEDIA_ROOT, "post_images", img.name)
@@ -196,9 +153,9 @@ class PostImageUploadView(APIView):
             post_image = PostImage(post=post, image=image_url)
             post_image.save()
             created.append(post_image)
-
         serializer = PostImageSerializer(created, many=True, context={"request": request})
         return api_success("Images uploaded.", serializer.data, status.HTTP_201_CREATED)
+
 
 class PostImageDeleteView(APIView):
     permission_classes = [IsAuthenticated]
@@ -208,26 +165,17 @@ class PostImageDeleteView(APIView):
             image = PostImage.objects.get(id=pk)
         except PostImage.DoesNotExist:
             return api_error("Image not found.", status_code=status.HTTP_404_NOT_FOUND)
-        
         post = image.post
         if post.author_id != str(request.user.id):
             return api_error("You can only delete images from your own posts.", status_code=status.HTTP_403_FORBIDDEN)
-        
-        # Delete file from disk
         file_path = os.path.join(settings.MEDIA_ROOT, image.image.lstrip(settings.MEDIA_URL))
         if os.path.exists(file_path):
             os.remove(file_path)
-        
         image.delete()
         return api_success("Image deleted.", status_code=status.HTTP_204_NO_CONTENT)
-    
-# ---------------------------------------------------------------------------
-# Gem (like)
-# ---------------------------------------------------------------------------
 
 
 class GemToggleView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request, pk: str) -> Response:
@@ -238,30 +186,14 @@ class GemToggleView(APIView):
         gem = Gem.objects(post=post, user_id=str(request.user.id)).first()
         if gem:
             gem.delete()
-            return api_success(
-                "Gem removed.",
-                {"liked": False, "gems_count": post.gems_count},
-            )
+            return api_success("Gem removed.", {"liked": False, "gems_count": post.gems_count})
         Gem(post=post, user_id=str(request.user.id)).save()
         if post.author_id != str(request.user.id):
-            notify(
-                event_type="gem_on_post",
-                actor_id=str(request.user.id),
-                actor_name=getattr(request.user, "display_name", "Someone"),
-                recipient_id=post.author_id,
-                target_type="post",
-                target_id=str(post.id),
-                post_title=post.title,
-            )
-        return api_success(
-            "Gem added.",
-            {"liked": True, "gems_count": post.gems_count},
-            status.HTTP_201_CREATED,
-        )
+            notify(event_type="gem_on_post", actor_id=str(request.user.id), actor_name=getattr(request.user, "display_name", "Someone"), recipient_id=post.author_id, target_type="post", target_id=str(post.id), post_title=post.title)
+        return api_success("Gem added.", {"liked": True, "gems_count": post.gems_count}, status.HTTP_201_CREATED)
 
 
 class CommentGemToggleView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request, pk: str) -> Response:
@@ -272,34 +204,14 @@ class CommentGemToggleView(APIView):
         gem = CommentGem.objects(comment=comment, user_id=str(request.user.id)).first()
         if gem:
             gem.delete()
-            return api_success(
-                "Gem removed from comment.",
-                {"liked": False, "gems_count": comment.gems_count},
-            )
+            return api_success("Gem removed from comment.", {"liked": False, "gems_count": comment.gems_count})
         CommentGem(comment=comment, user_id=str(request.user.id)).save()
         if comment.user_id != str(request.user.id):
-            notify(
-                event_type="gem_on_comment",
-                actor_id=str(request.user.id),
-                actor_name=getattr(request.user, "display_name", "Someone"),
-                recipient_id=comment.user_id,
-                target_type="comment",
-                target_id=str(comment.id),
-            )
-        return api_success(
-            "Gem added to comment.",
-            {"liked": True, "gems_count": comment.gems_count},
-            status.HTTP_201_CREATED,
-        )
-
-
-# ---------------------------------------------------------------------------
-# Save (bookmark)
-# ---------------------------------------------------------------------------
+            notify(event_type="gem_on_comment", actor_id=str(request.user.id), actor_name=getattr(request.user, "display_name", "Someone"), recipient_id=comment.user_id, target_type="comment", target_id=str(comment.id))
+        return api_success("Gem added to comment.", {"liked": True, "gems_count": comment.gems_count}, status.HTTP_201_CREATED)
 
 
 class SaveToggleView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request, pk: str) -> Response:
@@ -313,11 +225,6 @@ class SaveToggleView(APIView):
             return api_success("Post unsaved.", {"saved": False})
         Save(post=post, user_id=str(request.user.id)).save()
         return api_success("Post saved.", {"saved": True}, status.HTTP_201_CREATED)
-
-
-# ---------------------------------------------------------------------------
-# Comments
-# ---------------------------------------------------------------------------
 
 
 class CommentListCreateView(APIView):
@@ -340,43 +247,18 @@ class CommentListCreateView(APIView):
         serializer = CommentSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
-        comment = Comment(
-            post=post,
-            user_id=str(request.user.id),
-            content=serializer.validated_data["content"],
-            parent=serializer.validated_data.get("parent"),
-        )
+        comment = Comment(post=post, user_id=str(request.user.id), content=serializer.validated_data["content"], parent=serializer.validated_data.get("parent"))
         comment.save()
         actor_name = getattr(request.user, "display_name", "Someone")
         if post.author_id != str(request.user.id):
-            notify(
-                event_type="comment_on_post",
-                actor_id=str(request.user.id),
-                actor_name=actor_name,
-                recipient_id=post.author_id,
-                target_type="post",
-                target_id=str(post.id),
-                post_title=post.title,
-            )
+            notify(event_type="comment_on_post", actor_id=str(request.user.id), actor_name=actor_name, recipient_id=post.author_id, target_type="post", target_id=str(post.id), post_title=post.title)
         if comment.parent and comment.parent.user_id != str(request.user.id):
             if comment.parent.user_id != post.author_id:
-                notify(
-                    event_type="reply_to_comment",
-                    actor_id=str(request.user.id),
-                    actor_name=actor_name,
-                    recipient_id=comment.parent.user_id,
-                    target_type="comment",
-                    target_id=str(comment.parent.id),
-                )
-        return api_success(
-            "Comment added.",
-            CommentSerializer(comment, context={"request": request}).data,
-            status.HTTP_201_CREATED,
-        )
+                notify(event_type="reply_to_comment", actor_id=str(request.user.id), actor_name=actor_name, recipient_id=comment.parent.user_id, target_type="comment", target_id=str(comment.parent.id))
+        return api_success("Comment added.", CommentSerializer(comment, context={"request": request}).data, status.HTTP_201_CREATED)
 
 
 class CommentDetailView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def _get_comment(self, pk: str):
@@ -391,9 +273,7 @@ class CommentDetailView(APIView):
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
         if comment.user_id != str(request.user.id):
             return api_error("You can only edit your own comments.", status_code=status.HTTP_403_FORBIDDEN)
-        serializer = CommentSerializer(
-            comment, data=request.data, partial=True, context={"request": request}
-        )
+        serializer = CommentSerializer(comment, data=request.data, partial=True, context={"request": request})
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
         comment.content = serializer.validated_data.get("content", comment.content)
@@ -410,12 +290,9 @@ class CommentDetailView(APIView):
         return api_success("Comment deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
 
-# ---------------------------------------------------------------------------
-# User-specific feeds
-# ---------------------------------------------------------------------------
-
 class UserPostsView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request, username: str) -> Response:
         try:
             user = User.objects.get(username=username)
@@ -429,7 +306,6 @@ class UserPostsView(APIView):
 
 
 class MySavedPostsView(APIView):
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
@@ -443,8 +319,8 @@ class MySavedPostsView(APIView):
 
 
 class MyGemedPostsView(APIView):
-
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request) -> Response:
         gems = Gem.objects(user_id=str(request.user.id))
         post_ids = [gem.post.id for gem in gems]
@@ -457,16 +333,13 @@ class MyGemedPostsView(APIView):
 
 class UserEventsPostsView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request, username: str) -> Response:
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(
-            author_id=str(user.id),
-            post_type="event",
-            is_deleted=False
-        )
+        posts = Post.objects(author_id=str(user.id), post_type="event", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -475,33 +348,24 @@ class UserEventsPostsView(APIView):
 
 class UserAlertsPostsView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request, username: str) -> Response:
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(
-            author_id=str(user.id),
-            post_type="alert",
-            is_deleted=False
-        )
+        posts = Post.objects(author_id=str(user.id), post_type="alert", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
 
-# ---------------------------------------------------------------------------
-# Events feed
-# ---------------------------------------------------------------------------
-
 class EventsView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request) -> Response:
-        posts = Post.objects(
-            post_type="event",
-            is_deleted=False
-        )
+        posts = Post.objects(post_type="event", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -510,26 +374,21 @@ class EventsView(APIView):
 
 class UpcomingEventsView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request) -> Response:
-        upcoming_event_details = EventDetails.objects(
-            starts_at__gt=timezone.now()
-        )
+        upcoming_event_details = EventDetails.objects(starts_at__gt=timezone.now())
         post_ids = [ed.post.id for ed in upcoming_event_details]
-        posts = Post.objects(
-            id__in=post_ids,
-            post_type="event",
-            is_deleted=False
-        )
+        posts = Post.objects(id__in=post_ids, post_type="event", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
-    
+
+
 class EventFilterView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Paramètres de la requête
         q = request.query_params.get("q", "").strip()
         location = request.query_params.get("location", "").strip()
         region = request.query_params.get("region", "").strip()
@@ -540,158 +399,94 @@ class EventFilterView(APIView):
         date_from = request.query_params.get("date_from", "").strip()
         date_to = request.query_params.get("date_to", "").strip()
 
-        # Initialisation de la requête pour récupérer les événements
-        posts = Post.objects(
-            post_type="event",
-            is_deleted=False
-        )
+        posts = Post.objects(post_type="event", is_deleted=False)
 
-        # Appliquer les filtres textuels si disponibles
         if q:
-            posts = posts.filter(
-                Q(title__icontains=q) | Q(content__icontains=q) | Q(location__icontains=q)
-            )
-
+            posts = posts.filter(__raw__={"$or": [{"title": {"$regex": q, "$options": "i"}}, {"content": {"$regex": q, "$options": "i"}}, {"location": {"$regex": q, "$options": "i"}}]})
         if location:
-            posts = posts.filter(location__icontains=location)
-
+            posts = posts.filter(__raw__={"location": {"$regex": location, "$options": "i"}})
         if region:
             posts = posts.filter(region=region)
-
         if historical_period:
             posts = posts.filter(historical_period=historical_period)
-
         if monument_type:
             posts = posts.filter(monument_type=monument_type)
-
         if visibility:
             posts = posts.filter(visibility=visibility)
 
-        # Récupérer les IDs des posts après filtrage
         post_ids = [post.id for post in posts]
-
-        # Filtrage par statut de l'événement (upcoming, ongoing, past)
         event_details = EventDetails.objects(post__in=post_ids)
-
         now = timezone.now()
 
-        # Filtrage par `upcoming` (événements à venir)
         if status_filter == "upcoming":
             event_details = event_details.filter(starts_at__gt=now)
-
-        # Filtrage par `ongoing` (événements en cours)
         elif status_filter == "ongoing":
-            event_details = event_details.filter(
-                starts_at__lte=now,
-                ends_at__gte=now,
-            )
-
-        # Filtrage par `past` (événements passés)
+            event_details = event_details.filter(starts_at__lte=now, ends_at__gte=now)
         elif status_filter == "past":
             event_details = event_details.filter(ends_at__lt=now)
 
-        # Filtrage par date `date_from`
         if date_from:
             try:
                 parsed_from = datetime.strptime(date_from, "%Y-%m-%d")
                 parsed_from = timezone.make_aware(datetime.combine(parsed_from.date(), time.min))
                 event_details = event_details.filter(starts_at__gte=parsed_from)
             except ValueError:
-                return Response(
-                    {"detail": "Invalid date_from format. Use YYYY-MM-DD."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return Response({"detail": "Invalid date_from format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Filtrage par date `date_to`
         if date_to:
             try:
                 parsed_to = datetime.strptime(date_to, "%Y-%m-%d")
                 parsed_to = timezone.make_aware(datetime.combine(parsed_to.date(), time.max))
                 event_details = event_details.filter(starts_at__lte=parsed_to)
             except ValueError:
-                return Response(
-                    {"detail": "Invalid date_to format. Use YYYY-MM-DD."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+                return Response({"detail": "Invalid date_to format. Use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Récupérer les post IDs après application des filtres
         post_ids = [event.post.id for event in event_details]
-
-        # Récupérer les posts filtrés à partir des IDs
-        posts = Post.objects(
-            id__in=post_ids,
-            post_type="event",
-            is_deleted=False
-        )
-
-        # Pagination des résultats
+        posts = Post.objects(id__in=post_ids, post_type="event", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
-
         return paginator.get_paginated_response(serializer.data)
-    
+
+
+class MonumentsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        posts = Post.objects(post_type="alert", is_deleted=False)
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class CriticalView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        critical_details = AlertDetails.objects(urgence_level="critical")
+        post_ids = [ed.post.id for ed in critical_details]
+        posts = Post.objects(id__in=post_ids, post_type="alert", is_deleted=False)
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
 
 class GlobalSearchView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
         q = request.query_params.get("q", "").strip()
-
         users_data = []
         posts_data = []
-
         if q:
-            users = User.objects(
-                is_active=True,
-                __raw__={
-                    "$or": [
-                        {"username": {"$regex": q, "$options": "i"}},
-                        {"display_name": {"$regex": q, "$options": "i"}},
-                    ]
-                },
-            )
+            users = User.objects(is_active=True, __raw__={"$or": [{"username": {"$regex": q, "$options": "i"}}, {"display_name": {"$regex": q, "$options": "i"}}]})
+            posts = Post.objects(is_deleted=False, __raw__={"$or": [{"title": {"$regex": q, "$options": "i"}}, {"content": {"$regex": q, "$options": "i"}}]})
+            users_data = [{"id": str(user.id), "username": user.username, "display_name": user.display_name, "profile_picture": user.profile_picture} for user in users]
+            posts_data = [{"id": str(post.id), "title": post.title, "content": post.content, "post_type": post.post_type, "location": post.location} for post in posts]
+        return api_success(message="Global search results retrieved successfully.", data={"users": users_data, "posts": posts_data}, status_code=200)
 
-            posts = Post.objects(
-                is_deleted=False,
-                __raw__={
-                    "$or": [
-                        {"title": {"$regex": q, "$options": "i"}},
-                        {"content": {"$regex": q, "$options": "i"}},
-                    ]
-                },
-            )
-
-            users_data = [
-                {
-                    "id": str(user.id),
-                    "username": user.username,
-                    "display_name": user.display_name,
-                    "profile_picture": user.profile_picture,
-                }
-                for user in users
-            ]
-
-            posts_data = [
-                {
-                    "id": str(post.id),
-                    "title": post.title,
-                    "content": post.content,
-                    "post_type": post.post_type,
-                    "location": post.location,
-                }
-                for post in posts
-            ]
-
-        return api_success(
-            message="Global search results retrieved successfully.",
-            data={
-                "users": users_data,
-                "posts": posts_data,
-            },
-            status_code=200,
-        )
-    
 
 class AnnotationListCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -701,18 +496,8 @@ class AnnotationListCreateView(APIView):
             post = Post.objects.get(id=post_id, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-
         user_id = str(request.user.id)
-        annotations = Annotation.objects(
-            __raw__={
-                "$or": [
-                    {"status": "accepted"},
-                    {"user_id": user_id},
-                    {"post": post.id},
-                ]
-            }
-        ).order_by("-created_at")
-
+        annotations = Annotation.objects(__raw__={"$or": [{"status": "accepted"}, {"user_id": user_id}, {"post": post.id}]}).order_by("-created_at")
         serializer = AnnotationSerializer(annotations, many=True)
         return api_success("Annotations retrieved.", serializer.data)
 
@@ -721,24 +506,12 @@ class AnnotationListCreateView(APIView):
             post = Post.objects.get(id=post_id, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-
         serializer = AnnotationSerializer(data=request.data)
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
-
-        annotation = Annotation(
-            post=post,
-            user_id=str(request.user.id),
-            text=serializer.validated_data.get("text", ""),
-            image=serializer.validated_data.get("image", ""),
-            status="pending",
-        )
+        annotation = Annotation(post=post, user_id=str(request.user.id), text=serializer.validated_data.get("text", ""), image=serializer.validated_data.get("image", ""), status="pending")
         annotation.save()
-        return api_success(
-            "Annotation created.",
-            AnnotationSerializer(annotation).data,
-            status.HTTP_201_CREATED,
-        )
+        return api_success("Annotation created.", AnnotationSerializer(annotation).data, status.HTTP_201_CREATED)
 
 
 class AnnotationDetailView(APIView):
@@ -756,11 +529,9 @@ class AnnotationDetailView(APIView):
             return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
         if annotation.user_id != str(request.user.id):
             return api_error("You can only edit your own annotation.", status_code=status.HTTP_403_FORBIDDEN)
-
         serializer = AnnotationSerializer(data=request.data, partial=True)
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
-
         if "text" in serializer.validated_data:
             annotation.text = serializer.validated_data["text"]
         if "image" in serializer.validated_data:
@@ -790,12 +561,8 @@ class AnnotationAcceptView(APIView):
             annotation = Annotation.objects.get(id=annotation_id)
         except Annotation.DoesNotExist:
             return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
-
         if annotation.post.author_id != str(request.user.id):
-            return api_error(
-                "Only the creator of the post can accept this annotation.",
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
+            return api_error("Only the creator of the post can accept this annotation.", status_code=status.HTTP_403_FORBIDDEN)
         annotation.status = "accepted"
         annotation.validated_by_id = str(request.user.id)
         annotation.validated_at = timezone.now()
@@ -811,18 +578,14 @@ class AnnotationRejectView(APIView):
             annotation = Annotation.objects.get(id=annotation_id)
         except Annotation.DoesNotExist:
             return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
-
         if annotation.post.author_id != str(request.user.id):
-            return api_error(
-                "Only the creator of the post can reject this annotation.",
-                status_code=status.HTTP_403_FORBIDDEN,
-            )
+            return api_error("Only the creator of the post can reject this annotation.", status_code=status.HTTP_403_FORBIDDEN)
         annotation.status = "rejected"
         annotation.validated_by_id = str(request.user.id)
         annotation.validated_at = timezone.now()
         annotation.save()
         return api_success("Annotation rejected.")
-    
+
 
 class FilterChoicesView(APIView):
     permission_classes = [IsAuthenticated]
@@ -839,7 +602,8 @@ class FilterChoicesView(APIView):
             },
             status_code=200,
         )
-    
+
+
 class PostFilterView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -848,9 +612,7 @@ class PostFilterView(APIView):
         post_type = request.query_params.get("post_type", "").strip()
         historical_period = request.query_params.get("historical_period", "").strip()
         monument_type = request.query_params.get("monument_type", "").strip()
-
         filters = {"is_deleted": False}
-
         if region:
             filters["region"] = region
         if post_type:
@@ -859,10 +621,6 @@ class PostFilterView(APIView):
             filters["historical_period"] = historical_period
         if monument_type:
             filters["monument_type"] = monument_type
-
         posts = Post.objects(**filters).order_by("-created_at")
-
-        serializer = PostListSerializer(
-            posts, many=True, context={"request": request}
-        )
+        serializer = PostListSerializer(posts, many=True, context={"request": request})
         return api_success("Filtered posts retrieved.", serializer.data)
