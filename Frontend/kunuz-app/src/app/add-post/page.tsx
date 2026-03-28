@@ -8,12 +8,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const getAuthToken = () => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
-  }
-  return process.env.NEXT_PUBLIC_TOKEN || "";
-};
+const AUTH_TOKEN = typeof window !== "undefined"
+  ? localStorage.getItem("accessToken")
+  : null;
 
 type PostFormValues = {
   title: string;
@@ -104,31 +101,29 @@ export default function AddPostPage() {
         }
       });
 
-      const token = getAuthToken();
-      if (!token) {
-        alert("Please log in to add a post.");
-        setSaving(false);
-        return;
-      }
 
       const res = await fetch(`${API_URL}/api/posts/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${AUTH_TOKEN}`,
         },
         body: formData,
       });
 
-      const data = await res.json();
-      console.log("POST status:", res.status);
-      console.log("POST response:", data);
-
       if (!res.ok) {
+        const data = await res.json();
         alert(JSON.stringify(data));
         return;
       }
 
-      router.push("/profile");
+      const meRes = await fetch(`${API_URL}/api/users/me/`, {
+        headers: {
+          Authorization: `Bearer ${AUTH_TOKEN}`,
+        },
+      });
+
+      const me = await meRes.json();
+      router.push(`/user/${me.data?.username ?? me.username}`);
     } catch (err) {
       console.error("Error creating post:", err);
       alert("Failed to create post");
