@@ -34,6 +34,7 @@ from .serializers import (
     ForgotPasswordSerializer,
     VerifyResetOTPSerializer,
     ResetPasswordSerializer,
+    GoogleAuthSerializer,
 )
 
 
@@ -231,3 +232,15 @@ class ResetPasswordView(APIView):
             serializer.save()
             return api_success(message="Password reset successfully. You can now log in.", status_code=200)
         return api_error(message="Password reset failed.", errors=serializer.errors, status_code=400)
+
+
+class GoogleAuthView(APIView):
+    """Exchange a Google id_token for internal JWT tokens."""
+    permission_classes = [AllowAny]
+
+    def post(self, request: Request) -> Response:
+        serializer = GoogleAuthSerializer(data=request.data)
+        if not serializer.is_valid():
+            return api_error(message="Google authentication failed.", errors=serializer.errors, status_code=400)
+        token_data = serializer.save()
+        return api_success(message="Google authentication successful.", data=token_data, status_code=200)

@@ -4,6 +4,7 @@ Django==4.2.29
 django-cloudinary-storage==0.3.0
 django-environ==0.11.2
 dnspython==2.8.0
+google-auth==2.38.0
 gunicorn==21.2.0
 mongoengine==0.29.3
 packaging==26.0

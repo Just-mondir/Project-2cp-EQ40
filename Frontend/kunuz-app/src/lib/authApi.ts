@@ -151,3 +151,11 @@ export async function verifySignupOtp(input: {
     "Email verification failed.",
   );
 }
+
+export async function googleAuthLogin(googleIdToken: string): Promise<AuthTokenPayload> {
+  return postJson<AuthTokenPayload>(
+    "/auth/google/",
+    { token: googleIdToken },
+    "Google authentication failed.",
+  );
+}
