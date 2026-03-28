@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 
-from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails
+from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails
 from apps.users.models import User
 from .serializers import (
     CommentSerializer,
@@ -514,6 +514,41 @@ class UpcomingEventsView(APIView):
         posts = Post.objects.filter(
             id__in=post_ids,
             post_type="event",
+            is_deleted=False
+        )
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+# ---------------------------------------------------------------------------
+# Monuments in danger feed
+# ---------------------------------------------------------------------------
+
+class MonumentsView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request: Request) -> Response:
+        posts = Post.objects.filter(
+            post_type="alert",
+            is_deleted=False
+        )
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class CriticalView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request: Request) -> Response:
+        critical_details = AlertDetails.objects.filter(
+            urgence_level="critical"
+        )
+        post_ids = [ed.post.id for ed in critical_details]
+        posts = Post.objects.filter(
+            id__in=post_ids,
+            post_type="alert",
             is_deleted=False
         )
         paginator = PostPagination()
