@@ -74,7 +74,7 @@ class PostListSerializer(serializers.Serializer):
         return user.username if user else ""
 
     def get_images(self, obj):
-        images = PostImage.objects.filter(post=obj)
+        images = PostImage.objects(post=obj)
         return PostImageSerializer(images, many=True).data
 
     def get_alert_details(self, obj):
@@ -132,7 +132,7 @@ class PostDetailSerializer(serializers.Serializer):
         return user.username if user else ""
 
     def get_images(self, obj):
-        images = PostImage.objects.filter(post=obj)
+        images = PostImage.objects(post=obj)
         return PostImageSerializer(images, many=True).data
 
     def get_event_details(self, obj):
@@ -257,3 +257,27 @@ class SaveSerializer(serializers.Serializer):
     post = serializers.CharField(read_only=True)
     user_id = serializers.CharField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
+
+
+class AnnotationSerializer(serializers.Serializer):
+    id = serializers.SerializerMethodField()
+    post = serializers.SerializerMethodField()
+    user_id = serializers.CharField(read_only=True)
+    text = serializers.CharField(required=False, allow_blank=True)
+    image = serializers.CharField(required=False, allow_blank=True)
+    status = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
+    validated_by_id = serializers.CharField(read_only=True)
+    validated_at = serializers.DateTimeField(read_only=True)
+
+    def get_id(self, obj):
+        return str(obj.id)
+
+    def get_post(self, obj):
+        return str(obj.post.id)
+
+    def validate(self, attrs):
+        if not attrs.get("text") and not attrs.get("image"):
+            raise serializers.ValidationError("Annotation must contain text or image.")
+        return attrs
