@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from rest_framework import serializers
@@ -360,6 +361,81 @@ class VerifyLoginOTPSerializer(serializers.Serializer):
         user = self.validated_data["user"]
         otp = self.validated_data["otp"]
         OTPCode.objects(id=otp.id).update_one(set__is_used=True)
+        refresh = RefreshToken.for_user(user)
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": UserProfileSerializer(user).data,
+        }
+
+
+class GoogleAuthSerializer(serializers.Serializer):
+    """Verify a Google access_token and return internal JWT tokens.
+
+    The frontend sends an access_token obtained from useGoogleLogin (implicit flow).
+    We verify it by calling Google's tokeninfo endpoint.
+
+    The user profile (display_name, bio, expertise, etc.) is intentionally
+    NOT pre-filled from the Google account. The user fills it in via the
+    normal /set-profile flow, exactly like email-registered users.
+    """
+
+    token = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        import urllib.request
+        import json as _json
+
+        raw_token = attrs.get("token")
+
+        # Verify the access_token via Google's userinfo endpoint
+        req = urllib.request.Request(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {raw_token}"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                id_info = _json.loads(resp.read().decode())
+        except Exception as exc:
+            raise serializers.ValidationError(
+                {"token": f"Could not verify Google token: {exc}"}
+            )
+
+        email = id_info.get("email", "").strip().lower()
+        if not email:
+            raise serializers.ValidationError(
+                {"token": "Google account has no email address."}
+            )
+
+        attrs["email"] = email
+        attrs["google_sub"] = id_info.get("sub", "")
+        return attrs
+
+    def save(self, **kwargs):
+        email = self.validated_data["email"]
+        google_sub = self.validated_data["google_sub"]
+
+        # Find existing user or create a brand-new one (no profile data copied)
+        user = User.objects(email=email).first()
+        if user is None:
+            user = User(
+                email=email,
+                is_verified=True,
+                is_active=True,
+                oauth_provider="google",
+                oauth_id=google_sub,
+            )
+            # Set an unusable password (they will never log in with password)
+            user.set_password(None)
+            user.save()
+        else:
+            # If they previously registered with email/password, link OAuth
+            if not user.oauth_provider:
+                User.objects(id=user.id).update_one(
+                    set__oauth_provider="google",
+                    set__oauth_id=google_sub,
+                )
+
         refresh = RefreshToken.for_user(user)
         return {
             "refresh": str(refresh),

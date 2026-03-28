@@ -15,6 +15,7 @@ from .views import (
     ForgotPasswordView,
     VerifyResetOTPView,
     ResetPasswordView,
+    GoogleAuthView,
 )
 urlpatterns = [
     path("auth/register/", RegisterView.as_view(), name="auth-register"),
@@ -26,6 +27,7 @@ urlpatterns = [
     path("auth/forgot-password/", ForgotPasswordView.as_view(), name="auth-forgot-password"),
     path("auth/verify-reset-otp/", VerifyResetOTPView.as_view(), name="auth-verify-reset-otp"),
     path("auth/reset-password/", ResetPasswordView.as_view(), name="auth-reset-password"),
+    path("auth/google/", GoogleAuthView.as_view(), name="auth-google"),
     path("users/me/", MeView.as_view(), name="users-me"),
     path("users/me/profile-picture/", ProfilePictureUploadView.as_view(), name="users-profile-picture"),
     path("users/search/", SearchUserView.as_view(), name="users-search"),

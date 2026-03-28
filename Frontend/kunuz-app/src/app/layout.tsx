@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Lato, Aclonica, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
+import GoogleProvider from "@/components/GoogleProvider";
 
 const lato = Lato({
   weight: ["400", "700"],
@@ -36,9 +37,12 @@ export default function RootLayout({
       <body
         className={`${lato.variable} ${aclonica.variable} ${playfair.variable} font-sans antialiased`}
       >
-        {children}
+        <GoogleProvider>
+          {children}
+        </GoogleProvider>
         <Footer />
       </body>
     </html>
   );
 }
+

@@ -4,8 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useGoogleLogin } from "@react-oauth/google";
 
-import { registerUser, savePendingAuthContext } from "@/lib/authApi";
+import { registerUser, savePendingAuthContext, saveAuthTokens, clearPendingAuthContext } from "@/lib/authApi";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +50,42 @@ export default function SignUpPage() {
       setIsSubmitting(false);
     }
   };
+
+  const handleGoogleSignUp = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsGoogleLoading(true);
+      setError("");
+      try {
+        const API_BASE =
+          process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+
+        const res = await fetch(`${API_BASE}/auth/google/`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: tokenResponse.access_token }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data?.data) {
+          throw new Error(data?.message ?? "Google authentication failed.");
+        }
+
+        saveAuthTokens(data.data);
+        clearPendingAuthContext();
+
+        // Always go to set-profile after Google sign-up so user fills in their info
+        router.push("/set-profile");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Google sign-up failed.";
+        setError(msg);
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+    onError: () => {
+      setError("Google sign-in was cancelled or failed. Please try again.");
+    },
+  });
 
   return (
     <div
@@ -165,12 +203,48 @@ export default function SignUpPage() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="mt-4 h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
+                  disabled={isSubmitting || isGoogleLoading}
+                  className="mt-2 h-[47px] w-full rounded-[10px] font-black text-xl text-white transition-opacity hover:opacity-90 active:opacity-80 disabled:opacity-60"
                   style={{ backgroundColor: "#432817", fontFamily: "var(--font-lato)" }}
                 >
                   {isSubmitting ? "Signing Up..." : "Sign Up"}
                 </button>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px bg-[#E0E0E0]" />
+                  <span
+                    className="text-sm"
+                    style={{ color: "#79747E", fontFamily: "var(--font-lato)" }}
+                  >
+                    or sign up using
+                  </span>
+                  <div className="flex-1 h-px bg-[#E0E0E0]" />
+                </div>
+
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => handleGoogleSignUp()}
+                    disabled={isGoogleLoading || isSubmitting}
+                    className="w-[56px] h-[56px] rounded-[14px] bg-[#F2F2F2] flex items-center justify-center hover:bg-[#E8E8E8] transition-colors disabled:opacity-60"
+                    title="Continue with Google"
+                  >
+                    {isGoogleLoading ? (
+                      <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#432817" strokeWidth="4"/>
+                        <path className="opacity-75" fill="#432817" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                    ) : (
+                      <Image
+                        src="/google.png"
+                        alt="Google"
+                        width={27}
+                        height={27}
+                        className="object-contain"
+                      />
+                    )}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
