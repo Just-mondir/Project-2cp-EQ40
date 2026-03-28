@@ -247,7 +247,7 @@ class SearchUserView(APIView):
     def get(self, request: Request) -> Response:
         query = request.query_params.get("q", "").strip()
 
-        users = User.objects.filter(is_active=True)
+        users = User.objects(is_active=True)
 
         if query:
             users = users.filter(

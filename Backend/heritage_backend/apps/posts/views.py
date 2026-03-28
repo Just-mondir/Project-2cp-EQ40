@@ -18,8 +18,8 @@ from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 
 from apps.users.models import User
+from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, Annotation
 
-from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails
 from apps.users.models import User
 from .serializers import (
     CommentSerializer,
@@ -29,6 +29,7 @@ from .serializers import (
     PostImageSerializer,
     PostListSerializer,
     SaveSerializer,
+    AnnotationSerializer, 
 )
 
 
@@ -527,7 +528,8 @@ class UpcomingEventsView(APIView):
 class EventFilterView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request: Request) -> Response:
+    def get(self, request):
+        # Paramètres de la requête
         q = request.query_params.get("q", "").strip()
         location = request.query_params.get("location", "").strip()
         region = request.query_params.get("region", "").strip()
@@ -538,20 +540,16 @@ class EventFilterView(APIView):
         date_from = request.query_params.get("date_from", "").strip()
         date_to = request.query_params.get("date_to", "").strip()
 
+        # Initialisation de la requête pour récupérer les événements
         posts = Post.objects(
             post_type="event",
             is_deleted=False
         )
 
+        # Appliquer les filtres textuels si disponibles
         if q:
             posts = posts.filter(
-                __raw__={
-                    "$or": [
-                        {"title": {"$regex": q, "$options": "i"}},
-                        {"content": {"$regex": q, "$options": "i"}},
-                        {"location": {"$regex": q, "$options": "i"}},
-                    ]
-                }
+                Q(title__icontains=q) | Q(content__icontains=q) | Q(location__icontains=q)
             )
 
         if location:
@@ -569,63 +567,71 @@ class EventFilterView(APIView):
         if visibility:
             posts = posts.filter(visibility=visibility)
 
+        # Récupérer les IDs des posts après filtrage
         post_ids = [post.id for post in posts]
 
+        # Filtrage par statut de l'événement (upcoming, ongoing, past)
         event_details = EventDetails.objects(post__in=post_ids)
 
         now = timezone.now()
 
+        # Filtrage par `upcoming` (événements à venir)
         if status_filter == "upcoming":
             event_details = event_details.filter(starts_at__gt=now)
 
+        # Filtrage par `ongoing` (événements en cours)
         elif status_filter == "ongoing":
             event_details = event_details.filter(
                 starts_at__lte=now,
                 ends_at__gte=now,
             )
 
+        # Filtrage par `past` (événements passés)
         elif status_filter == "past":
             event_details = event_details.filter(ends_at__lt=now)
 
+        # Filtrage par date `date_from`
         if date_from:
             try:
                 parsed_from = datetime.strptime(date_from, "%Y-%m-%d")
-                parsed_from = timezone.make_aware(
-                    datetime.combine(parsed_from.date(), time.min)
-                )
+                parsed_from = timezone.make_aware(datetime.combine(parsed_from.date(), time.min))
                 event_details = event_details.filter(starts_at__gte=parsed_from)
             except ValueError:
-                return api_error(
-                    "Invalid date_from format. Use YYYY-MM-DD.",
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                return Response(
+                    {"detail": "Invalid date_from format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        # Filtrage par date `date_to`
         if date_to:
             try:
                 parsed_to = datetime.strptime(date_to, "%Y-%m-%d")
-                parsed_to = timezone.make_aware(
-                    datetime.combine(parsed_to.date(), time.max)
-                )
+                parsed_to = timezone.make_aware(datetime.combine(parsed_to.date(), time.max))
                 event_details = event_details.filter(starts_at__lte=parsed_to)
             except ValueError:
-                return api_error(
-                    "Invalid date_to format. Use YYYY-MM-DD.",
-                    status_code=status.HTTP_400_BAD_REQUEST,
+                return Response(
+                    {"detail": "Invalid date_to format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
+        # Récupérer les post IDs après application des filtres
         post_ids = [event.post.id for event in event_details]
 
+        # Récupérer les posts filtrés à partir des IDs
         posts = Post.objects(
             id__in=post_ids,
             post_type="event",
             is_deleted=False
         )
 
+        # Pagination des résultats
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
+
         return paginator.get_paginated_response(serializer.data)
     
+
 class GlobalSearchView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -685,3 +691,178 @@ class GlobalSearchView(APIView):
             },
             status_code=200,
         )
+    
+
+class AnnotationListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, post_id: str) -> Response:
+        try:
+            post = Post.objects.get(id=post_id, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        user_id = str(request.user.id)
+        annotations = Annotation.objects(
+            __raw__={
+                "$or": [
+                    {"status": "accepted"},
+                    {"user_id": user_id},
+                    {"post": post.id},
+                ]
+            }
+        ).order_by("-created_at")
+
+        serializer = AnnotationSerializer(annotations, many=True)
+        return api_success("Annotations retrieved.", serializer.data)
+
+    def post(self, request: Request, post_id: str) -> Response:
+        try:
+            post = Post.objects.get(id=post_id, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        serializer = AnnotationSerializer(data=request.data)
+        if not serializer.is_valid():
+            return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
+
+        annotation = Annotation(
+            post=post,
+            user_id=str(request.user.id),
+            text=serializer.validated_data.get("text", ""),
+            image=serializer.validated_data.get("image", ""),
+            status="pending",
+        )
+        annotation.save()
+        return api_success(
+            "Annotation created.",
+            AnnotationSerializer(annotation).data,
+            status.HTTP_201_CREATED,
+        )
+
+
+class AnnotationDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_annotation(self, annotation_id: str):
+        try:
+            return Annotation.objects.get(id=annotation_id)
+        except Annotation.DoesNotExist:
+            return None
+
+    def patch(self, request: Request, post_id: str, annotation_id: str) -> Response:
+        annotation = self._get_annotation(annotation_id)
+        if not annotation:
+            return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if annotation.user_id != str(request.user.id):
+            return api_error("You can only edit your own annotation.", status_code=status.HTTP_403_FORBIDDEN)
+
+        serializer = AnnotationSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
+
+        if "text" in serializer.validated_data:
+            annotation.text = serializer.validated_data["text"]
+        if "image" in serializer.validated_data:
+            annotation.image = serializer.validated_data["image"]
+        annotation.status = "pending"
+        annotation.validated_by_id = ""
+        annotation.validated_at = None
+        annotation.updated_at = timezone.now()
+        annotation.save()
+        return api_success("Annotation updated.", AnnotationSerializer(annotation).data)
+
+    def delete(self, request: Request, post_id: str, annotation_id: str) -> Response:
+        annotation = self._get_annotation(annotation_id)
+        if not annotation:
+            return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if annotation.user_id != str(request.user.id):
+            return api_error("You can only delete your own annotation.", status_code=status.HTTP_403_FORBIDDEN)
+        annotation.delete()
+        return api_success("Annotation deleted.", status_code=status.HTTP_204_NO_CONTENT)
+
+
+class AnnotationAcceptView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, post_id: str, annotation_id: str) -> Response:
+        try:
+            annotation = Annotation.objects.get(id=annotation_id)
+        except Annotation.DoesNotExist:
+            return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        if annotation.post.author_id != str(request.user.id):
+            return api_error(
+                "Only the creator of the post can accept this annotation.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        annotation.status = "accepted"
+        annotation.validated_by_id = str(request.user.id)
+        annotation.validated_at = timezone.now()
+        annotation.save()
+        return api_success("Annotation accepted.")
+
+
+class AnnotationRejectView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, post_id: str, annotation_id: str) -> Response:
+        try:
+            annotation = Annotation.objects.get(id=annotation_id)
+        except Annotation.DoesNotExist:
+            return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        if annotation.post.author_id != str(request.user.id):
+            return api_error(
+                "Only the creator of the post can reject this annotation.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        annotation.status = "rejected"
+        annotation.validated_by_id = str(request.user.id)
+        annotation.validated_at = timezone.now()
+        annotation.save()
+        return api_success("Annotation rejected.")
+    
+
+class FilterChoicesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        return api_success(
+            message="Filter choices retrieved.",
+            data={
+                "post_types": list(Post.POST_TYPE_CHOICES),
+                "visibilities": list(Post.VISIBILITY_CHOICES),
+                "historical_periods": [p for p in Post.HISTORICAL_PERIOD_CHOICES if p],
+                "monument_types": [m for m in Post.MONUMENT_TYPE_CHOICES if m],
+                "regions": [r for r in Post.REGION_CHOICES if r],
+            },
+            status_code=200,
+        )
+    
+class PostFilterView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        region = request.query_params.get("region", "").strip()
+        post_type = request.query_params.get("post_type", "").strip()
+        historical_period = request.query_params.get("historical_period", "").strip()
+        monument_type = request.query_params.get("monument_type", "").strip()
+
+        filters = {"is_deleted": False}
+
+        if region:
+            filters["region"] = region
+        if post_type:
+            filters["post_type"] = post_type
+        if historical_period:
+            filters["historical_period"] = historical_period
+        if monument_type:
+            filters["monument_type"] = monument_type
+
+        posts = Post.objects(**filters).order_by("-created_at")
+
+        serializer = PostListSerializer(
+            posts, many=True, context={"request": request}
+        )
+        return api_success("Filtered posts retrieved.", serializer.data)
