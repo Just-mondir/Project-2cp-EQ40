@@ -103,20 +103,20 @@ export default function Header() {
   </nav>
 
   {/* Sign Up — desktop */}
-  <button
-    type="button"
-    className="hidden cursor-pointer md:block flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
-    style={{
-      borderColor: scrolled ? "var(--brown)" : "var(--cream)", 
-      color: scrolled ? "var(--brown)" : "var(--cream)",        
-      fontFamily: "var(--font-lato)",
-      backgroundColor: signUpHovered ? "rgba(255, 255, 255, 0.22)" : "transparent",
-    }}
-    onMouseEnter={() => setSignUpHovered(true)}
-    onMouseLeave={() => setSignUpHovered(false)}
-  >
-    Sign Up
-  </button>
+<Link
+  href="/sign-up"
+  className="hidden cursor-pointer md:flex flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
+  style={{
+    borderColor: scrolled ? "var(--brown)" : "var(--cream)",
+    color: scrolled ? "var(--brown)" : "var(--cream)",
+    fontFamily: "var(--font-lato)",
+    backgroundColor: signUpHovered ? "rgba(255, 255, 255, 0.22)" : "transparent",
+  }}
+  onMouseEnter={() => setSignUpHovered(true)}
+  onMouseLeave={() => setSignUpHovered(false)}
+>
+  Sign Up
+</Link>
         {/* Hamburger + Dropdown — mobile */}
         <div
           className="md:hidden relative"
