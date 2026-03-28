@@ -8,12 +8,9 @@ import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel"
 import PostForm from "@/components/PostForm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const getAuthToken = () => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
-  }
-  return process.env.NEXT_PUBLIC_TOKEN || "";
-};
+const AUTH_TOKEN = typeof window !== "undefined"
+  ? localStorage.getItem("accessToken")
+  : null;
 
 type PostImage = {
   id: string;
@@ -85,14 +82,10 @@ function EditPostInner() {
       try {
         setLoading(true);
 
-        const token = getAuthToken();
-        if (!token) {
-          throw new Error("No token available");
-        }
 
         const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${AUTH_TOKEN}`,
           },
         });
 
@@ -262,31 +255,29 @@ function EditPostInner() {
         }
       });
 
-      const token = getAuthToken();
-      if (!token) {
-        alert("Please log in to edit the post.");
-        setSaving(false);
-        return;
-      }
 
       const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${AUTH_TOKEN}`,
         },
         body: formData,
       });
 
-      const data = await res.json();
-      console.log("PATCH status:", res.status);
-      console.log("PATCH response:", data);
-
       if (!res.ok) {
+        const data = await res.json();
         alert(JSON.stringify(data));
         return;
       }
 
-      router.push("/profile");
+      const meRes = await fetch(`${API_URL}/api/users/me/`, {
+        headers: {
+          Authorization: `Bearer ${AUTH_TOKEN}`,
+        },
+      });
+
+      const me = await meRes.json();
+      router.push(`/user/${me.data?.username ?? me.username}`);
     } catch (err) {
       console.error("Error updating post:", err);
       alert("Failed to update post");

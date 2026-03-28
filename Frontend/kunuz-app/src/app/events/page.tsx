@@ -29,12 +29,9 @@ function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   return doc.body.textContent || "";
 }
-const getAuthToken = () => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
-  }
-  return process.env.NEXT_PUBLIC_TOKEN || "";
-};
+const AUTH_TOKEN = typeof window !== "undefined"
+  ? localStorage.getItem("accessToken")
+  : null;
 
 /* ───────────────── PERSISTENT GEM/SAVE HELPERS ───────────────── */
 
@@ -370,7 +367,7 @@ function LeftSidebar() {
   useEffect(() => {
     const fetchLoggedInUser = async () => {
       try {
-        const token = getAuthToken();
+        const token = AUTH_TOKEN;
         const res = await fetch(`${API_URL}/api/users/me/`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -543,7 +540,7 @@ function PostModal({
     onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
     toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
-    const token = getAuthToken();
+    const token = AUTH_TOKEN;
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
@@ -564,7 +561,7 @@ function PostModal({
     onInteractionChange({ saved: nextSaved });
     toggleStoredItem("saved_posts", post.id, nextSaved);
 
-    const token = getAuthToken();
+    const token = AUTH_TOKEN;
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
@@ -904,7 +901,7 @@ function PostCard({
     onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
     toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
-    const token = getAuthToken();
+    const token = AUTH_TOKEN;
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
         method: "POST",
@@ -925,7 +922,7 @@ function PostCard({
     onInteractionChange({ saved: nextSaved });
     toggleStoredItem("saved_posts", post.id, nextSaved);
 
-    const token = getAuthToken();
+    const token = AUTH_TOKEN;
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
         method: "POST",
