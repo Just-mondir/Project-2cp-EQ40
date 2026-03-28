@@ -33,6 +33,7 @@ ROLE_CHOICES = (
 OTP_PURPOSE_CHOICES = (
     ("email_verification", "Email Verification"),
     ("login", "Login"),
+    ("password_reset", "Password Reset"),
 )
 
 
@@ -56,6 +57,7 @@ class RoleChoices:
 class OTPPurposeChoices:
     EMAIL_VERIFICATION = "email_verification"
     LOGIN = "login"
+    PASSWORD_RESET = "password_reset"
     choices = OTP_PURPOSE_CHOICES
 
 

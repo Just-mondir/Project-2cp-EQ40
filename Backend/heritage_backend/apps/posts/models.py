@@ -83,11 +83,11 @@ class Post(me.Document):
 
     @property
     def gems_count(self) -> int:
-        return Gem.objects.filter(post=self).count()
+        return Gem.objects(post=self).count()
 
     @property
     def comments_count(self) -> int:
-        return Comment.objects.filter(post=self).count()
+        return Comment.objects(post=self).count()
 
     def __str__(self) -> str:
         return f"{self.title} ({self.post_type})"
@@ -173,3 +173,24 @@ class CommentGem(me.Document):
         "collection": "comment_gems",
         "indexes": [{"fields": ["comment", "user_id"], "unique": True}],
     }
+
+class Annotation(me.Document):
+    class Status(me.StringField):
+        PENDING = "pending"
+        ACCEPTED = "accepted"
+        REJECTED = "rejected"
+
+    post = me.ReferenceField(Post, required=True)
+    user_id = me.StringField(required=True)
+    text = me.StringField(default="")
+    image = me.StringField(default="")
+    status = me.StringField(
+        choices=["pending", "accepted", "rejected"],
+        default="pending"
+    )
+    created_at = me.DateTimeField(default=timezone.now)
+    updated_at = me.DateTimeField(default=timezone.now)
+    validated_by_id = me.StringField(default="")
+    validated_at = me.DateTimeField(null=True)
+
+    meta = {"collection": "annotations"}
