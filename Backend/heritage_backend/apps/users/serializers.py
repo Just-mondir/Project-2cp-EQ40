@@ -171,12 +171,9 @@ class LoginSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         user = validated_data["user"]
-        refresh = RefreshToken.for_user(user)
-        return {
-            "refresh": str(refresh),
-            "access": str(refresh.access_token),
-            "user": UserProfileSerializer(user).data,
-        }
+        _, plain_otp = create_hashed_otp(user, OTPPurposeChoices.LOGIN)
+        send_otp_email(user.email, plain_otp)
+        return user
 
 
 class UserUpdateSerializer(serializers.Serializer):
