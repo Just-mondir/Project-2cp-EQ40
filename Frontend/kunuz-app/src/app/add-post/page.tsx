@@ -8,9 +8,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = typeof window !== "undefined"
-  ? localStorage.getItem("accessToken")
-  : null;
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || "";
+  }
+  return "";
+};
 
 type PostFormValues = {
   title: string;
@@ -105,7 +108,7 @@ export default function AddPostPage() {
       const res = await fetch(`${API_URL}/api/posts/`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: formData,
       });
@@ -118,7 +121,7 @@ export default function AddPostPage() {
 
       const meRes = await fetch(`${API_URL}/api/users/me/`, {
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
 

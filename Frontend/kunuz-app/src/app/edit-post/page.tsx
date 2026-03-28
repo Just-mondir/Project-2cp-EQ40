@@ -8,9 +8,12 @@ import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel"
 import PostForm from "@/components/PostForm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-const AUTH_TOKEN = typeof window !== "undefined"
-  ? localStorage.getItem("accessToken")
-  : null;
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("accessToken") || "";
+  }
+  return "";
+};
 
 type PostImage = {
   id: string;
@@ -85,7 +88,7 @@ function EditPostInner() {
 
         const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
           headers: {
-            Authorization: `Bearer ${AUTH_TOKEN}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
         });
 
@@ -259,7 +262,7 @@ function EditPostInner() {
       const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
         method: "PATCH",
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: formData,
       });
@@ -272,7 +275,7 @@ function EditPostInner() {
 
       const meRes = await fetch(`${API_URL}/api/users/me/`, {
         headers: {
-          Authorization: `Bearer ${AUTH_TOKEN}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
 
