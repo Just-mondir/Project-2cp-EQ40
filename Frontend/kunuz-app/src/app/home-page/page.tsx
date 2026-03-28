@@ -555,6 +555,12 @@ function PostModal({
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        router.push("/");
+        return;
+      }
       if (!res.ok) throw new Error("Failed to toggle gem");
     } catch (err) {
       console.error(err);
@@ -576,6 +582,12 @@ function PostModal({
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        router.push("/");
+        return;
+      }
       if (!res.ok) throw new Error("Failed to toggle save");
     } catch (err) {
       console.error(err);
@@ -912,6 +924,12 @@ function PostCard({
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        router.push("/");
+        return;
+      }
       if (!res.ok) throw new Error("Failed to toggle gem");
     } catch (err) {
       console.error(err);
@@ -933,6 +951,12 @@ function PostCard({
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        router.push("/");
+        return;
+      }
       if (!res.ok) throw new Error("Failed to toggle save");
     } catch (err) {
       console.error(err);
