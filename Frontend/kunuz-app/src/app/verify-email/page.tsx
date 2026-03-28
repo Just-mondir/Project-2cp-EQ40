@@ -78,7 +78,7 @@ export default function VerifyEmailPage() {
 
       saveAuthTokens(data);
       clearPendingAuthContext();
-      router.push("/home-page");
+      router.push("/set-profile");
     } catch (submitError) {
       const message =
         submitError instanceof Error
