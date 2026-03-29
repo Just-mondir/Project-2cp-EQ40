@@ -5,8 +5,77 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AddDocuments from "@/components/AddDocuments";
 
+const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide", "Architect"];
+const MAX_USERNAME_ATTEMPTS = 5;
 
-const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide","Architect"];
+const slugifyForUsername = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const randomSuffix = () => Math.random().toString(36).substring(2, 6);
+
+const pickFirstErrorMessage = (errors: unknown): string | null => {
+  if (!errors) return null;
+  if (typeof errors === "string") return errors;
+  if (Array.isArray(errors)) {
+    for (const entry of errors) {
+      if (typeof entry === "string") {
+        return entry;
+      }
+      const nested = pickFirstErrorMessage(entry);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+  if (typeof errors === "object") {
+    for (const value of Object.values(errors as Record<string, unknown>)) {
+      const nested = pickFirstErrorMessage(value);
+      if (nested) {
+        return nested;
+      }
+    }
+  }
+  return null;
+};
+
+const extractBackendErrorMessage = (body: any, fallback: string): string => {
+  if (body?.errors?.detail && typeof body.errors.detail === "string") {
+    return body.errors.detail;
+  }
+  const nested = pickFirstErrorMessage(body?.errors);
+  if (nested) {
+    return nested;
+  }
+  if (typeof body?.message === "string" && body.message.trim()) {
+    return body.message;
+  }
+  return fallback;
+};
+
+const isUsernameConflictResponse = (body: any): boolean => {
+  const usernameError = pickFirstErrorMessage(body?.errors?.username);
+  if (!usernameError) {
+    return false;
+  }
+  const normalized = usernameError.toLowerCase();
+  return normalized.includes("username") || normalized.includes("exists");
+};
+
+const persistAuthUser = (payload: any) => {
+  if (!payload) {
+    return;
+  }
+  try {
+    localStorage.setItem("authUser", JSON.stringify(payload));
+  } catch {
+    // Ignore write failures (e.g., storage disabled).
+  }
+};
 
 export default function SetProfilePage() {
   const [firstName, setFirstName] = useState("");
@@ -49,67 +118,115 @@ export default function SetProfilePage() {
         "Researcher": "researcher",
         "Historian": "historian",
         "Tour Guide": "guide",
-        "Architect": "architect"
+        "Architect": "architect",
       };
 
       const displayName = `${firstName} ${lastName}`.trim();
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
 
-      const payload: Record<string, string> = {
+      const basePayload: Record<string, string> = {
         expertise: expertiseMap[selectedExpertise] || selectedExpertise.toLowerCase(),
       };
 
       if (displayName) {
-        payload.display_name = displayName;
-        payload.username = displayName.toLowerCase().replace(/\s+/g, "-");
+        basePayload.display_name = displayName;
       }
-      if (biography) payload.bio = biography;
-      if (speciality) payload.speciality = speciality;
-      
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api";
-      
-      const response = await fetch(`${API_BASE_URL}/users/me/`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || data.errors?.detail || "Failed to update profile form");
+      if (biography) {
+        basePayload.bio = biography;
       }
-      
+      if (speciality) {
+        basePayload.speciality = speciality;
+      }
+
+      const callProfileUpdate = async (usernameOverride?: string) => {
+        const payload: Record<string, string> = { ...basePayload };
+        if (usernameOverride) {
+          payload.username = usernameOverride;
+        }
+        const response = await fetch(`${API_BASE_URL}/users/me/`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        let body: any = {};
+        try {
+          body = await response.json();
+        } catch {
+          body = {};
+        }
+        return { ok: response.ok, body };
+      };
+
+      let profileBody: any | null = null;
+
+      if (displayName) {
+        const baseSlug = slugifyForUsername(displayName) || `member-${randomSuffix()}`;
+        let attempt = 0;
+        let currentSlug = baseSlug;
+        while (attempt < MAX_USERNAME_ATTEMPTS) {
+          const result = await callProfileUpdate(currentSlug);
+          if (result.ok) {
+            profileBody = result.body;
+            break;
+          }
+          if (isUsernameConflictResponse(result.body)) {
+            currentSlug = `${baseSlug}-${randomSuffix()}`;
+            attempt += 1;
+            continue;
+          }
+          throw new Error(
+            extractBackendErrorMessage(result.body, "Failed to update profile form"),
+          );
+        }
+        if (!profileBody) {
+          throw new Error(
+            "We couldn't find a unique username. Please tweak your name and try again.",
+          );
+        }
+      } else {
+        const result = await callProfileUpdate();
+        if (!result.ok) {
+          throw new Error(
+            extractBackendErrorMessage(result.body, "Failed to update profile form"),
+          );
+        }
+        profileBody = result.body;
+      }
+
+      persistAuthUser(profileBody?.data);
+
       if (profileFile) {
         const formData = new FormData();
         formData.append("profile_picture", profileFile);
-        
+
         const picResponse = await fetch(`${API_BASE_URL}/users/me/profile-picture/`, {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${token}`
+            "Authorization": `Bearer ${token}`,
           },
-          body: formData
+          body: formData,
         });
-        
-        const picData = await picResponse.json();
+
+        let picData: any = {};
+        try {
+          picData = await picResponse.json();
+        } catch {
+          picData = {};
+        }
+
         if (!picResponse.ok) {
-          throw new Error(picData.message || picData.errors?.detail || "Failed to upload profile picture");
+          throw new Error(
+            extractBackendErrorMessage(picData, "Failed to upload profile picture"),
+          );
         }
-        
-        // Update the cached user object in localStorage
-        const authUser = localStorage.getItem("authUser");
-        if (authUser) {
-           try {
-              const parsed = JSON.parse(authUser);
-              parsed.profile_picture = picData.data?.profile_picture;
-              localStorage.setItem("authUser", JSON.stringify(parsed));
-           } catch(e) {}
-        }
+
+        const updatedFromPicture = picData?.data?.user ?? picData?.data;
+        persistAuthUser(updatedFromPicture);
       }
-      
+
       router.push("/home-page");
     } catch (err: any) {
       console.error(err);
