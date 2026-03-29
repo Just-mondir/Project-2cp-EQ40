@@ -38,8 +38,7 @@ export default function LoginPage() {
 
       // Check if the user still needs to complete their profile
       const user = response.user as Record<string, unknown> | undefined;
-      const needsProfile = !user?.display_name && !user?.expertise;
-      router.push(needsProfile ? "/set-profile" : "/home-page");
+      router.push("/home-page");
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : "Login failed.";
@@ -82,8 +81,7 @@ export default function LoginPage() {
         clearPendingAuthContext();
 
         const user = data.data.user as Record<string, unknown> | undefined;
-        const needsProfile = !user?.display_name && !user?.expertise;
-        router.push(needsProfile ? "/set-profile" : "/home-page");
+        router.push("/home-page");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Google login failed.";
         setError(msg);
