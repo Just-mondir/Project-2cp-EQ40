@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FFF8E2;
+  --foreground: #432817;
+  --cream: #FFF8E2;
+  --brown: #432817;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-cream: var(--cream);
+  --color-brown: var(--brown);
+  --font-sans: var(--font-lato), system-ui, sans-serif;
+  --font-brand: var(--font-brand), Georgia, serif;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-lato), system-ui, sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ensure scrolling to #hero doesn't hide it under the fixed header */
+#hero {
+  scroll-margin-top: 60px;
+}
+
+/* Hide vertical scrollbar while keeping page scrollable */
+html {
+  scrollbar-width: none; /* Firefox */
+}
+
+html::-webkit-scrollbar {
+  width: 0px; /* Chrome, Safari, Edge */
+  height: 0px;
+}
+
+/* About second page — mission & vision cards */
+.about2-wrapper {
+  position: relative;
+}
+
+.about2-card {
+  position: relative;
+  border: 1.5px solid #432819;
+  padding: 36px 40px;
+  max-width: 430px;
+  width: 100%;
+  background-color: transparent;
+}
+
+.about2-card-mission::before,
+.about2-card-mission::after,
+.about2-card-vision::before,
+.about2-card-vision::after {
+  content: "";
+  position: absolute;
+  background-color: #432819;
+}
+
+/* Left card: circle at top-right, line to the right */
+.about2-card-mission::before {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  top: 18px;
+  right: -4px;
+}
+
+.about2-card-mission::after {
+  height: 1px;
+  width: 80px;
+  top: 22px;
+  right: -80px;
+}
+
+/* Right card: circle at bottom-left, line to the left */
+.about2-card-vision::before {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  bottom: 18px;
+  left: -4px;
+}
+
+.about2-card-vision::after {
+  height: 1px;
+  width: 80px;
+  bottom: 22px;
+  left: -80px;
+}
+
+@media (max-width: 767px) {
+
+  /* On mobile, hide the connecting lines/circles to avoid visual clutter when stacked */
+  .about2-card-mission::before,
+  .about2-card-mission::after,
+  .about2-card-vision::before,
+  .about2-card-vision::after {
+    display: none;
+  }
+}
