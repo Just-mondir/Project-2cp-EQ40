@@ -820,7 +820,7 @@ function PostModal({
 const UPCOMING_EVENTS_MOCKS = Array(5).fill({
   id: 1,
   user_name: "user 85258",
-  event_image: "/timgad 1.jpg",
+  event_image: "/timgad%201.jpg",
   user_avatar: "/kunuz-icon.svg",
   title: "Timgad Visit",
   location: "Batna",
@@ -830,7 +830,7 @@ const UPCOMING_EVENTS_MOCKS = Array(5).fill({
 
 function RightSidebar() {
   return (
-    <aside className="w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden xl:block overflow-hidden">
+    <aside className="w-[320px] xl:w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
         <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Upcoming Events</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
@@ -1140,6 +1140,7 @@ export default function EventsPageRoute() {
     const observer = new IntersectionObserver(
       async (entries) => {
         if (!entries[0].isIntersecting || loading || !nextUrl) return;
+        if (!API_URL) { console.warn("NEXT_PUBLIC_API_URL is not set. Skipping fetch."); return; }
         try {
           setLoading(true);
           const res = await fetch(nextUrl);
