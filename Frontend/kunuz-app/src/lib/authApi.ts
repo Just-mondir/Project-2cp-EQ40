@@ -26,6 +26,15 @@ type UserIdPayload = {
   user_id: string;
 };
 
+type ToggleGemPayload = {
+  liked: boolean;
+  gems_count: number;
+};
+
+type ToggleSavePayload = {
+  saved: boolean;
+};
+
 export const AUTH_STORAGE_KEYS = {
   access: "accessToken",
   refresh: "refreshToken",
@@ -65,6 +74,11 @@ export function saveAuthTokens(payload: AuthTokenPayload): void {
   if (payload.user) {
     localStorage.setItem(AUTH_STORAGE_KEYS.user, JSON.stringify(payload.user));
   }
+}
+
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(AUTH_STORAGE_KEYS.access);
 }
 
 function extractErrorMessage(
@@ -120,6 +134,37 @@ async function postJson<TResponse>(
   return envelope.data;
 }
 
+async function postAuthJson<TResponse>(
+  path: string,
+  fallbackError: string,
+): Promise<TResponse> {
+  const token = getAccessToken();
+
+  if (!token) {
+    throw new Error("No access token found. Please login again.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  let envelope: ApiEnvelope<TResponse> | null = null;
+  try {
+    envelope = (await response.json()) as ApiEnvelope<TResponse>;
+  } catch {
+    envelope = null;
+  }
+
+  if (!response.ok || !envelope?.data) {
+    throw new Error(extractErrorMessage(envelope, fallbackError));
+  }
+
+  return envelope.data;
+}
+
 export async function registerUser(input: {
   email: string;
   password: string;
@@ -152,10 +197,30 @@ export async function verifySignupOtp(input: {
   );
 }
 
-export async function googleAuthLogin(googleIdToken: string): Promise<AuthTokenPayload> {
+export async function googleAuthLogin(
+  googleIdToken: string,
+): Promise<AuthTokenPayload> {
   return postJson<AuthTokenPayload>(
     "/auth/google/",
     { token: googleIdToken },
     "Google authentication failed.",
+  );
+}
+
+export async function togglePostGem(
+  postId: string,
+): Promise<ToggleGemPayload> {
+  return postAuthJson<ToggleGemPayload>(
+    `/posts/${postId}/gem/`,
+    "Failed to toggle gem.",
+  );
+}
+
+export async function togglePostSave(
+  postId: string,
+): Promise<ToggleSavePayload> {
+  return postAuthJson<ToggleSavePayload>(
+    `/posts/${postId}/save/`,
+    "Failed to toggle save.",
   );
 }
