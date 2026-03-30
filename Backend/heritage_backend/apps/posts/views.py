@@ -1,6 +1,7 @@
 """DRF views for the posts app."""
 from __future__ import annotations
-from datetime import datetime, time
+from datetime import datetime
+from mongoengine.queryset.visitor import Q
 from rest_framework import status
 import os
 from django.conf import settings
@@ -603,7 +604,6 @@ class FilterChoicesView(APIView):
             status_code=200,
         )
 
-
 class PostFilterView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -612,15 +612,173 @@ class PostFilterView(APIView):
         post_type = request.query_params.get("post_type", "").strip()
         historical_period = request.query_params.get("historical_period", "").strip()
         monument_type = request.query_params.get("monument_type", "").strip()
-        filters = {"is_deleted": False}
-        if region:
-            filters["region"] = region
-        if post_type:
-            filters["post_type"] = post_type
-        if historical_period:
-            filters["historical_period"] = historical_period
-        if monument_type:
-            filters["monument_type"] = monument_type
-        posts = Post.objects(**filters).order_by("-created_at")
+        search = request.query_params.get("search", "").strip()
+
+        posts = Post.objects(is_deleted=False)
+
+        if region and region.lower() != "all":
+            posts = posts.filter(
+                __raw__={"region": {"$regex": f"^{region}$", "$options": "i"}}
+            )
+
+        if historical_period and historical_period.lower() != "all":
+            posts = posts.filter(
+                __raw__={
+                    "historical_period": {
+                        "$regex": f"^{historical_period}$",
+                        "$options": "i",
+                    }
+                }
+            )
+
+        if monument_type and monument_type.lower() != "all":
+            posts = posts.filter(
+                __raw__={
+                    "monument_type": {
+                        "$regex": f"^{monument_type}$",
+                        "$options": "i",
+                    }
+                }
+            )
+
+        if post_type and post_type.lower() != "all":
+            posts = posts.filter(
+                __raw__={"post_type": {"$regex": f"^{post_type}$", "$options": "i"}}
+            )
+
+        if search:
+            posts = posts.filter(
+                __raw__={
+                    "$or": [
+                        {"title": {"$regex": search, "$options": "i"}},
+                        {"content": {"$regex": search, "$options": "i"}},
+                        {"region": {"$regex": search, "$options": "i"}},
+                        {"historical_period": {"$regex": search, "$options": "i"}},
+                        {"monument_type": {"$regex": search, "$options": "i"}},
+                        {"location": {"$regex": search, "$options": "i"}},
+                    ]
+                }
+            )
+
+        posts = posts.order_by("-created_at")
         serializer = PostListSerializer(posts, many=True, context={"request": request})
         return api_success("Filtered posts retrieved.", serializer.data)
+
+
+class MonumentsInDangerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        search = request.query_params.get("search", "").strip()
+        region = request.query_params.get("region", "").strip()
+        historical_period = request.query_params.get("historical_period", "").strip()
+        monument_type = request.query_params.get("monument_type", "").strip()
+        urgence_level = request.query_params.get("urgence_level", "").strip()
+        current_status = request.query_params.get("current_status", "").strip()
+
+        posts = Post.objects(post_type="alert", is_deleted=False)
+
+        if region and region.lower() != "all":
+            posts = posts.filter(
+                __raw__={"region": {"$regex": f"^{region}$", "$options": "i"}}
+            )
+
+        if historical_period and historical_period.lower() != "all":
+            posts = posts.filter(
+                __raw__={
+                    "historical_period": {
+                        "$regex": f"^{historical_period}$",
+                        "$options": "i",
+                    }
+                }
+            )
+
+        if monument_type and monument_type.lower() != "all":
+            posts = posts.filter(
+                __raw__={
+                    "monument_type": {
+                        "$regex": f"^{monument_type}$",
+                        "$options": "i",
+                    }
+                }
+            )
+
+        if search:
+            posts = posts.filter(
+                __raw__={
+                    "$or": [
+                        {"title": {"$regex": search, "$options": "i"}},
+                        {"content": {"$regex": search, "$options": "i"}},
+                        {"region": {"$regex": search, "$options": "i"}},
+                        {"historical_period": {"$regex": search, "$options": "i"}},
+                        {"monument_type": {"$regex": search, "$options": "i"}},
+                        {"location": {"$regex": search, "$options": "i"}},
+                    ]
+                }
+            )
+
+        posts = list(posts)
+        post_ids = [post.id for post in posts]
+
+        alert_map = {}
+        if post_ids:
+            alert_qs = AlertDetails.objects(post__in=post_ids)
+
+            if urgence_level and urgence_level.lower() != "all":
+                alert_qs = alert_qs.filter(
+                    __raw__={
+                        "urgence_level": {
+                            "$regex": f"^{urgence_level}$",
+                            "$options": "i",
+                        }
+                    }
+                )
+
+            if current_status and current_status.lower() != "all":
+                alert_qs = alert_qs.filter(
+                    __raw__={
+                        "current_status": {
+                            "$regex": f"^{current_status}$",
+                            "$options": "i",
+                        }
+                    }
+                )
+
+            alert_list = list(alert_qs)
+            alert_map = {str(alert.post.id): alert for alert in alert_list}
+
+            if (urgence_level and urgence_level.lower() != "all") or (
+                current_status and current_status.lower() != "all"
+            ):
+                posts = [post for post in posts if str(post.id) in alert_map]
+
+        posts.sort(key=lambda p: p.created_at, reverse=True)
+
+        data = []
+        for post in posts:
+            alert_detail = alert_map.get(str(post.id))
+            if alert_detail is None:
+                alert_detail = AlertDetails.objects(post=post).first()
+
+            data.append(
+                {
+                    "id": str(post.id),
+                    "title": post.title,
+                    "content": post.content,
+                    "post_type": post.post_type,
+                    "region": post.region,
+                    "location": post.location,
+                    "historical_period": post.historical_period,
+                    "monument_type": post.monument_type,
+                    "created_at": post.created_at.isoformat() if post.created_at else None,
+                    "alert_details": {
+                        "id": str(alert_detail.id),
+                        "urgence_level": alert_detail.urgence_level,
+                        "current_status": alert_detail.current_status,
+                    }
+                    if alert_detail
+                    else None,
+                }
+            )
+
+        return api_success("Monuments in danger retrieved.", data)
