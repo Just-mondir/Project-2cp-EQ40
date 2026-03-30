@@ -1,5 +1,6 @@
 "use client";
 
+import { getAccessToken, togglePostGem, togglePostSave } from "@/lib/authApi";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,12 +30,7 @@ function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   return doc.body.textContent || "";
 }
-const getAuthToken = () => {
-  if (typeof window !== "undefined") {
-    return localStorage.getItem("accessToken") || "";
-  }
-  return "";
-};
+const getAuthToken = () => getAccessToken();
 
 /* ───────────────── PERSISTENT GEM/SAVE HELPERS ───────────────── */
 
@@ -529,7 +525,12 @@ function PostModal({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (postMenuRef.current && !postMenuRef.current.contains(event.target as Node)) setShowPostMenu(false);
+      if (
+        postMenuRef.current &&
+        !postMenuRef.current.contains(event.target as Node)
+      ) {
+        setShowPostMenu(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -543,56 +544,57 @@ function PostModal({
 
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextGemmed = !gemmed;
-    const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
 
-    onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
+    const previousGemmed = gemmed;
+    const previousCount = gemsCount;
+    const nextGemmed = !gemmed;
+    const nextCount = nextGemmed ? gemsCount + 1 : Math.max(0, gemsCount - 1);
+
+    onInteractionChange({
+      gemmed: nextGemmed,
+      gemsCount: nextCount,
+    });
     toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
-    const token = getAuthToken();
     try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await togglePostGem(post.id);
+
+      onInteractionChange({
+        gemmed: data.liked,
+        gemsCount:
+          typeof data.gems_count === "number"
+            ? Math.max(0, data.gems_count)
+            : nextCount,
       });
-      if (res.status === 401) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        router.push("/");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to toggle gem");
+
+      toggleStoredItem("gemmed_posts", post.id, data.liked);
     } catch (err) {
       console.error(err);
-      onInteractionChange({ gemmed, gemsCount });
-      toggleStoredItem("gemmed_posts", post.id, gemmed);
+      onInteractionChange({
+        gemmed: previousGemmed,
+        gemsCount: previousCount,
+      });
+      toggleStoredItem("gemmed_posts", post.id, previousGemmed);
     }
   };
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const previousSaved = saved;
     const nextSaved = !saved;
 
     onInteractionChange({ saved: nextSaved });
     toggleStoredItem("saved_posts", post.id, nextSaved);
 
-    const token = getAuthToken();
     try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        router.push("/");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to toggle save");
+      const data = await togglePostSave(post.id);
+      onInteractionChange({ saved: data.saved });
+      toggleStoredItem("saved_posts", post.id, data.saved);
     } catch (err) {
       console.error(err);
-      onInteractionChange({ saved });
-      toggleStoredItem("saved_posts", post.id, saved);
+      onInteractionChange({ saved: previousSaved });
+      toggleStoredItem("saved_posts", post.id, previousSaved);
     }
   };
 
@@ -609,116 +611,250 @@ function PostModal({
     setCurrentImageIndex(Math.round(el.scrollLeft / el.clientWidth));
   };
 
-  const LeftPanel = imageList.length > 0 ? (
-    <div className="w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
-      <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
-        {imageList.map((img) => {
-          const imageUrl = img.image.startsWith("/media/") ? `${API_URL || "http://localhost:8000"}${img.image}` : img.image;
-          const bgImageUrl = encodeURI(imageUrl);
-          return (
-            <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
-              <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
-              <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-              <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+  const LeftPanel =
+    imageList.length > 0 ? (
+      <div
+        className="w-1/2 flex-shrink-0 relative overflow-hidden"
+        style={{ backgroundColor: "#000" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          ref={imageScrollRef}
+          onScroll={handleImageScroll}
+          className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth"
+          style={{
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {imageList.map((img) => {
+            const imageUrl = img.image.startsWith("/media/")
+              ? `${API_URL || "http://localhost:8000"}${img.image}`
+              : img.image;
+            const bgImageUrl = encodeURI(imageUrl);
+
+            return (
+              <div
+                key={img.id}
+                className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden"
+              >
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `url("${bgImageUrl}")`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    filter: "blur(15px)",
+                    transform: "scale(1.2)",
+                  }}
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{ background: "rgba(0,0,0,0.35)" }}
+                />
+                <img
+                  src={imageUrl}
+                  alt={post.title}
+                  className="relative z-10 w-full h-full object-contain"
+                />
+              </div>
+            );
+          })}
+        </div>
+
+        {imageList.length > 1 && currentImageIndex > 0 && (
+          <button
+            type="button"
+            className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105"
+            style={{
+              background: "rgba(255,255,255,0.18)",
+              border: "1px solid rgba(255,255,255,0.28)",
+              color: "#fff",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              scrollToImage(currentImageIndex - 1);
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+
+        {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105"
+            style={{
+              background: "rgba(255,255,255,0.18)",
+              border: "1px solid rgba(255,255,255,0.28)",
+              color: "#fff",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              scrollToImage(currentImageIndex + 1);
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        )}
+
+        {imageList.length > 1 && (
+          <>
+            <div
+              className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md"
+              style={{
+                background: "rgba(0,0,0,0.22)",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {imageList.map((_, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    scrollToImage(index);
+                  }}
+                  className="transition-all duration-200"
+                  style={{
+                    width: currentImageIndex === index ? 18 : 8,
+                    height: 8,
+                    borderRadius: 999,
+                    background:
+                      currentImageIndex === index
+                        ? "#FFF8E2"
+                        : "rgba(255,255,255,0.5)",
+                  }}
+                />
+              ))}
             </div>
-          );
-        })}
+
+            <div
+              className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md"
+              style={{
+                background: "rgba(0,0,0,0.35)",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              {currentImageIndex + 1}/{imageList.length}
+            </div>
+          </>
+        )}
       </div>
-      {imageList.length > 1 && currentImageIndex > 0 && (
-        <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-        </button>
-      )}
-      {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
-        <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-        </button>
-      )}
-      {imageList.length > 1 && (
-        <>
-          <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
-            {imageList.map((_, index) => (
-              <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)" }} />
+    ) : (
+      <div
+        className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5"
+        style={{ backgroundColor: "#F5EFE0" }}
+      >
+        <div className="mb-1">
+          <div className="flex items-center gap-1 mb-1">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#8B7355"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span className="text-xs" style={{ color: "#8B7355" }}>
+              {post.location || post.region || "Algeria"}
+            </span>
+          </div>
+
+          <h3
+            className="text-base font-bold"
+            style={{ color: "#432817" }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }}
+          />
+        </div>
+
+        <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>
+          {post.content}
+        </p>
+
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-4">
+            {tags.map((tag, i) => (
+              <span
+                key={i}
+                className="text-[11px] font-medium"
+                style={{ color: "#A07850" }}
+              >
+                #{tag.toLowerCase().replace(/\s+/g, "_")}
+              </span>
             ))}
           </div>
-          <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>{currentImageIndex + 1}/{imageList.length}</div>
-        </>
-      )}
-    </div>
-  ) : (
-    <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
-      <div className="mb-1">
-        <div className="flex items-center gap-1 mb-1">
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#8B7355"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <span className="text-xs" style={{ color: "#8B7355" }}>
-            {post.location || post.region || "Algeria"}
-          </span>
-        </div>
-
-        <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-
+        )}
       </div>
-      {post.post_type === "event" && post.event_details && (
-        <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-          </div>
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
-            <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
-          </div>
-        </div>
-      )}
-      {post.post_type === "alert" && post.alert_details && (() => {
-        const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
-        const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
-        return (
-          <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-            </div>
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
-            </div>
-          </div>
-        );
-      })()}
-      <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-4">
-          {tags.map((tag, i) => (
-            <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+    );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      onClick={onClose}
+    >
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden"
+        style={{
+          backgroundColor: "#FFFFFF",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.25)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {LeftPanel}
 
         <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
-          {/* header */}
-          <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-            <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          <div
+            className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0"
+            style={{ borderColor: "#E0D5C5" }}
+          >
+            <div
+              className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center"
+              style={{ backgroundColor: "#E0D5C5" }}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="#8B7355"
+                stroke="none"
+              >
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
             </div>
+
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
                 <button
@@ -738,93 +874,44 @@ function PostModal({
                 >
                   {post.user_display_name || post.user_username}
                 </button>
-                <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+                <p className="text-[11px]" style={{ color: "#8B7355" }}>
+                  {formatDate(post.created_at)}
+                </p>
               </div>
             </div>
-            <div className="relative" ref={postMenuRef}>
-              <button className="p-1 rounded hover:bg-[#E0D5C5] transition-colors mr-2" onClick={() => setShowPostMenu(!showPostMenu)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
-              </button>
-              {showPostMenu && (
-                <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>Report post</button>
-                </div>
-              )}
-            </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#432817"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
           </div>
 
-          {/* scrollable: content + comments */}
           <div className="flex-1 overflow-y-auto feed-scroll">
-            {imageList.length > 0 && (
-              <div className="px-5 pt-3 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-                <div className="mb-1">
-                  <div className="flex items-center gap-1 mb-1">
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#8B7355"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    <span className="text-xs" style={{ color: "#8B7355" }}>
-                      {post.location || post.region || "Algeria"}
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-                </div>
-                {post.post_type === "event" && post.event_details && (
-                  <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5C7A3E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                    <span className="text-[11px] font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
-                  </div>
-                )}
-                {post.post_type === "alert" && post.alert_details && (() => {
-                  const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
-                  const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
-                  return (
-                    <div className="mb-2 px-3 py-2 rounded-lg flex items-center gap-2" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
-                      <span className="text-[11px] font-bold" style={{ color: level.dot }}>{level.label}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
-                    </div>
-                  );
-                })()}
-                {isContentLong && !contentExpanded ? (
-                  <p className="text-xs leading-relaxed" style={{ color: "#432817" }}>
-                    {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(!contentExpanded)}>See more</button>
-                  </p>
-                ) : (
-                  <div className="text-xs leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-                )}
-                {isContentLong && contentExpanded && (
-                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
-                )}
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {tags.map((tag, i) => (
-                      <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
             <div className="px-5 py-3 flex flex-col gap-3">
-              {MOCK_COMMENTS.map((c) => <CommentItem key={c.id} comment={c} />)}
+              {MOCK_COMMENTS.map((c) => (
+                <CommentItem key={c.id} comment={c} />
+              ))}
             </div>
           </div>
 
-          {/* reactions */}
-          <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
+          <div
+            className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t"
+            style={{ borderColor: "#E0D5C5" }}
+          >
             <div className="flex items-center gap-4">
               <button
                 className="flex items-center gap-1 text-xs transition-all"
@@ -834,9 +921,22 @@ function PostModal({
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
               </button>
-              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><CommentIcon size={14} /> {formatCount(post.comments_count)}</span>
-              <span className="flex items-center gap-1 text-xs" style={{ color: "#432817" }}><AnnotationIcon size={14} /> 0</span>
+
+              <span
+                className="flex items-center gap-1 text-xs"
+                style={{ color: "#432817" }}
+              >
+                <CommentIcon size={14} /> {formatCount(post.comments_count)}
+              </span>
+
+              <span
+                className="flex items-center gap-1 text-xs"
+                style={{ color: "#432817" }}
+              >
+                <AnnotationIcon size={14} /> 0
+              </span>
             </div>
+
             <button
               className="transition-all"
               style={{ color: saved ? "#8B6914" : "#432817" }}
@@ -846,11 +946,36 @@ function PostModal({
             </button>
           </div>
 
-          {/* comment input */}
           <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
-            <input type="text" placeholder="Add a comment" value={newComment} onChange={(e) => setNewComment(e.target.value)} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
-            <button className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80" style={{ backgroundColor: "#432817" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            <input
+              type="text"
+              placeholder="Add a comment"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border"
+              style={{
+                backgroundColor: "#FFFFFF",
+                border: "1px solid #E0D5C5",
+                color: "#432817",
+              }}
+            />
+            <button
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
+              style={{ backgroundColor: "#432817" }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#FFF8E2"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
             </button>
           </div>
         </div>
@@ -912,56 +1037,57 @@ function PostCard({
 
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const nextGemmed = !gemmed;
-    const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
 
-    onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
+    const previousGemmed = gemmed;
+    const previousCount = gemsCount;
+    const nextGemmed = !gemmed;
+    const nextCount = nextGemmed ? gemsCount + 1 : Math.max(0, gemsCount - 1);
+
+    onInteractionChange({
+      gemmed: nextGemmed,
+      gemsCount: nextCount,
+    });
     toggleStoredItem("gemmed_posts", post.id, nextGemmed);
 
-    const token = getAuthToken();
     try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await togglePostGem(post.id);
+
+      onInteractionChange({
+        gemmed: data.liked,
+        gemsCount:
+          typeof data.gems_count === "number"
+            ? Math.max(0, data.gems_count)
+            : nextCount,
       });
-      if (res.status === 401) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        router.push("/");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to toggle gem");
+
+      toggleStoredItem("gemmed_posts", post.id, data.liked);
     } catch (err) {
       console.error(err);
-      onInteractionChange({ gemmed, gemsCount });
-      toggleStoredItem("gemmed_posts", post.id, gemmed);
+      onInteractionChange({
+        gemmed: previousGemmed,
+        gemsCount: previousCount,
+      });
+      toggleStoredItem("gemmed_posts", post.id, previousGemmed);
     }
   };
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    const previousSaved = saved;
     const nextSaved = !saved;
 
     onInteractionChange({ saved: nextSaved });
     toggleStoredItem("saved_posts", post.id, nextSaved);
 
-    const token = getAuthToken();
     try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 401) {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        router.push("/");
-        return;
-      }
-      if (!res.ok) throw new Error("Failed to toggle save");
+      const data = await togglePostSave(post.id);
+      onInteractionChange({ saved: data.saved });
+      toggleStoredItem("saved_posts", post.id, data.saved);
     } catch (err) {
       console.error(err);
-      onInteractionChange({ saved });
-      toggleStoredItem("saved_posts", post.id, saved);
+      onInteractionChange({ saved: previousSaved });
+      toggleStoredItem("saved_posts", post.id, previousSaved);
     }
   };
 
@@ -980,17 +1106,38 @@ function PostCard({
 
   return (
     <div
-      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
-      style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
+      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
+        isNew ? "post-fade-in" : ""
+      }`}
+      style={{
+        boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
+        backgroundColor: "var(--light)",
+      }}
       onClick={onCommentClick}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)";
+      }}
     >
-      {/* Header */}
       <div className="flex items-center px-5 pt-4 pb-2">
-        <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+        <div
+          className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center"
+          style={{ backgroundColor: "#E0D5C5" }}
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="#8B7355"
+            stroke="none"
+          >
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
         </div>
+
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <button
@@ -1009,83 +1156,272 @@ function PostCard({
             >
               {post.user_display_name || post.user_username}
             </button>
-            <p className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+            <p className="text-xs" style={{ color: "#8B7355" }}>
+              {formatDate(post.created_at)}
+            </p>
           </div>
         </div>
+
         <div className="relative">
-          <button className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+          <button
+            className="p-1 rounded hover:bg-[#FFF8E2] transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355">
+              <circle cx="12" cy="5" r="1.5" />
+              <circle cx="12" cy="12" r="1.5" />
+              <circle cx="12" cy="19" r="1.5" />
+            </svg>
           </button>
+
           {showMenu && (
-            <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+            <div
+              className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50"
+              style={{ backgroundColor: "#FFF8E2" }}
+            >
+              <button
+                className="text-sm font-bold whitespace-nowrap"
+                style={{ color: "#432817" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(false);
+                }}
+              >
+                Report post
+              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Location */}
       <div className="flex items-center gap-1 px-5 pb-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#8B7355"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+        <span className="text-xs" style={{ color: "#8B7355" }}>
+          {post.location || post.region || "Algeria"}
+        </span>
       </div>
 
-      {/* Event / Alert badge */}
       <PostDetailBadge post={post} />
 
-      {/* Title */}
-      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
+      <h3
+        className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none"
+        style={{ color: "#432817" }}
+      >
         <div dangerouslySetInnerHTML={{ __html: post.title }} />
       </h3>
 
-      {/* Expandable content */}
-      <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
+      <ExpandableContent
+        content={post.content}
+        className="px-5 pb-2 text-sm leading-relaxed"
+        style={{ color: "#432817" }}
+      />
 
-      {/* Tags */}
       <PostTags tags={tags} />
 
-      {/* Images */}
       {imageList.length > 0 && (
-        <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="relative px-4 pb-3"
+          onClick={(e) => e.stopPropagation()}
+        >
           {imgError ? (
-            <div className="w-full rounded-lg flex items-center justify-center" style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
-                <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" />
+            <div
+              className="w-full rounded-lg flex items-center justify-center"
+              style={{
+                height: 460,
+                background: "linear-gradient(135deg, #C8A96E, #8B6914)",
+              }}
+            >
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity="0.7"
+              >
+                <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
             </div>
           ) : (
-            <div className="relative w-full overflow-hidden rounded-lg" style={{ height: 460, boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
-              <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
+            <div
+              className="relative w-full overflow-hidden rounded-lg"
+              style={{
+                height: 460,
+                boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
+              }}
+            >
+              <div
+                ref={imageScrollRef}
+                onScroll={handleImageScroll}
+                className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth"
+                style={{
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
                 {imageList.map((img) => {
-                  const imageUrl = img.image.startsWith("/media/") ? `${API_URL || "http://localhost:8000"}${img.image}` : img.image;
+                  const imageUrl = img.image.startsWith("/media/")
+                    ? `${API_URL || "http://localhost:8000"}${img.image}`
+                    : img.image;
                   const bgImageUrl = encodeURI(imageUrl);
+
                   return (
-                    <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
-                      <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
-                      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-                      <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
+                    <div
+                      key={img.id}
+                      className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden"
+                    >
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: `url("${bgImageUrl}")`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          filter: "blur(15px)",
+                          transform: "scale(1.2)",
+                        }}
+                      />
+                      <div
+                        className="absolute inset-0"
+                        style={{ background: "rgba(0,0,0,0.35)" }}
+                      />
+                      <img
+                        src={imageUrl}
+                        alt={post.title}
+                        className="relative z-10 w-full h-full object-contain"
+                        onError={() => setImgError(true)}
+                      />
                     </div>
                   );
                 })}
               </div>
+
               {imageList.length > 1 && currentImageIndex > 0 && (
-                <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105 hover:bg-white/30" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 4px 18px rgba(0,0,0,0.18)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                <button
+                  type="button"
+                  className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105 hover:bg-white/30"
+                  style={{
+                    background: "rgba(255,255,255,0.18)",
+                    border: "1px solid rgba(255,255,255,0.28)",
+                    boxShadow: "0 4px 18px rgba(0,0,0,0.18)",
+                    color: "#fff",
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    scrollToImage(currentImageIndex - 1);
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
                 </button>
               )}
-              {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
-                <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105 hover:bg-white/30" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", boxShadow: "0 4px 18px rgba(0,0,0,0.18)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-                </button>
-              )}
+
+              {imageList.length > 1 &&
+                currentImageIndex < imageList.length - 1 && (
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105 hover:bg-white/30"
+                    style={{
+                      background: "rgba(255,255,255,0.18)",
+                      border: "1px solid rgba(255,255,255,0.28)",
+                      boxShadow: "0 4px 18px rgba(0,0,0,0.18)",
+                      color: "#fff",
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      scrollToImage(currentImageIndex + 1);
+                    }}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                )}
+
               {imageList.length > 1 && (
                 <>
-                  <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md"
+                    style={{
+                      background: "rgba(0,0,0,0.22)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {imageList.map((_, index) => (
-                      <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)", boxShadow: currentImageIndex === index ? "0 0 10px rgba(255,248,226,0.55)" : "none" }} />
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          scrollToImage(index);
+                        }}
+                        className="transition-all duration-200"
+                        style={{
+                          width: currentImageIndex === index ? 18 : 8,
+                          height: 8,
+                          borderRadius: 999,
+                          background:
+                            currentImageIndex === index
+                              ? "#FFF8E2"
+                              : "rgba(255,255,255,0.5)",
+                          boxShadow:
+                            currentImageIndex === index
+                              ? "0 0 10px rgba(255,248,226,0.55)"
+                              : "none",
+                        }}
+                      />
                     ))}
                   </div>
-                  <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>{currentImageIndex + 1}/{imageList.length}</div>
+
+                  <div
+                    className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md"
+                    style={{
+                      background: "rgba(0,0,0,0.35)",
+                      color: "#fff",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                    }}
+                  >
+                    {currentImageIndex + 1}/{imageList.length}
+                  </div>
                 </>
               )}
             </div>
@@ -1093,8 +1429,10 @@ function PostCard({
         </div>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
+      <div
+        className="flex items-center justify-between px-5 py-3 border-t"
+        style={{ borderColor: "#F0EAD8" }}
+      >
         <div className="flex items-center gap-5">
           <button
             className="flex items-center gap-1.5 text-xs transition-all"
@@ -1104,13 +1442,26 @@ function PostCard({
             <GemIcon filled={gemmed} active={gemmed} />
             <span>{formatCount(gemsCount)}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
-            <CommentIcon /><span>{formatCount(post.comments_count)}</span>
+
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
+            style={{ color: "#432817" }}
+            onClick={onCommentClick}
+          >
+            <CommentIcon />
+            <span>{formatCount(post.comments_count)}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer" style={{ color: "#432817" }} onClick={onCommentClick}>
-            <AnnotationIcon /><span>0</span>
+
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
+            style={{ color: "#432817" }}
+            onClick={onCommentClick}
+          >
+            <AnnotationIcon />
+            <span>0</span>
           </button>
         </div>
+
         <button
           className="flex items-center gap-1.5 text-xs transition-all"
           style={{ color: saved ? "#8B6914" : "#432817" }}
@@ -1144,16 +1495,32 @@ export default function HomePageRoute() {
       saved: getStoredSet("saved_posts").has(post.id),
     };
 
-  const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
+  const updateInteraction = (
+    postId: string,
+    update: Partial<PostInteraction>
+  ) => {
     setPostInteractions((prev) => {
+      const sourcePost = posts.find((p) => p.id === postId);
+
       const existing = prev[postId] ?? {
         gemmed: getStoredSet("gemmed_posts").has(postId),
-        gemsCount: 0,
+        gemsCount: sourcePost?.gems_count ?? 0,
         saved: getStoredSet("saved_posts").has(postId),
       };
-      return { ...prev, [postId]: { ...existing, ...update } };
-    });
-  };
+
+      return {
+        ...prev,
+        [postId]: {
+          ...existing,
+          ...update,
+        gemsCount: Math.max(
+          0,
+          update.gemsCount ?? existing.gemsCount ?? 0
+        ),
+      },
+    };
+  });
+};
   // ─────────────────────────────────────────────────────────────────────────
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
