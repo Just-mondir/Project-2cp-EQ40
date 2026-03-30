@@ -14,6 +14,7 @@ export default function Footer() {
     pathname === "/set-profile" ||
     pathname === "/verify-email" ||
     pathname === "/forgot-password" ||
+    pathname.startsWith("/help") ||
     pathname.startsWith("/user") ||
     pathname.startsWith("/add-post") ||
     pathname.startsWith("/edit-post")
