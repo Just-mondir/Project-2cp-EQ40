@@ -13,11 +13,18 @@ from rest_framework.views import APIView
 
 from apps.core.pagination import StandardResultsSetPagination
 from apps.core.responses import api_error, api_success
+from apps.posts.models import Post
 
-from .models import Report
+from .models import MobilizationReport, Report
 from .permissions import IsModeratorOrAdmin
-from .serializers import ReportCreateSerializer, ReportResolveSerializer, ReportSerializer
-
+from .serializers import (
+    MobilizationReportCreateSerializer,
+    MobilizationReportSerializer,
+    MobilizationReportUpdateSerializer,
+    ReportCreateSerializer,
+    ReportResolveSerializer,
+    ReportSerializer,
+)
 
 # ---------------------------------------------------------------------------
 # POST /api/reports/  (auth)  +  GET /api/reports/  (mod)
@@ -196,3 +203,163 @@ class ReportResolveView(APIView):
             "Report resolved successfully.",
             ReportSerializer(report).data,
         )
+
+
+class MobilizationReportListCreateView(APIView):
+    """GET list mobilization reports, POST create a mobilization report."""
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated()]
+        return [IsAuthenticated()]
+
+    def get(self, request: Request) -> Response:
+        qs = MobilizationReport.objects.all()
+
+        post_id = request.query_params.get("post_id")
+
+        if post_id:
+            try:
+                post = Post.objects.get(id=ObjectId(post_id))
+                qs = qs.filter(post=post)
+            except (Post.DoesNotExist, InvalidId):
+                return api_error(
+                    "Invalid or non-existent post_id.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+        qs = qs.order_by("-created_at")
+
+        paginator = StandardResultsSetPagination()
+        page_size = paginator.get_page_size(request)
+        page_number = int(request.query_params.get(paginator.page_query_param, 1))
+        start = (page_number - 1) * page_size
+        end = start + page_size
+        total = qs.count()
+        page_items = list(qs[start:end])
+
+        serializer = MobilizationReportSerializer(page_items, many=True)
+
+        return Response(
+            {
+                "success": True,
+                "message": "Mobilization reports retrieved successfully.",
+                "data": {
+                    "count": total,
+                    "next": None,
+                    "previous": None,
+                    "results": serializer.data,
+                },
+            }
+        )
+
+    def post(self, request: Request) -> Response:
+        created_by = str(request.user.id)
+
+        serializer = MobilizationReportCreateSerializer(
+            data=request.data,
+            context={"created_by": created_by},
+        )
+        if not serializer.is_valid():
+            return api_error(
+                "Validation failed.",
+                serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        mobilization_report = serializer.save()
+
+        return api_success(
+            "Mobilization report submitted successfully.",
+            MobilizationReportSerializer(mobilization_report).data,
+            status_code=status.HTTP_201_CREATED,
+        )
+
+
+class MobilizationReportDetailView(APIView):
+    """GET, PATCH, DELETE a mobilization report."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, report_id: str) -> Response:
+        report = _get_mobilization_report(report_id)
+        if not report:
+            return api_error(
+                "Mobilization report not found.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        return api_success(
+            "Mobilization report retrieved successfully.",
+            MobilizationReportSerializer(report).data,
+        )
+
+    def patch(self, request: Request, report_id: str) -> Response:
+        report = _get_mobilization_report(report_id)
+        if not report:
+            return api_error(
+                "Mobilization report not found.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        if report.created_by != str(request.user.id) and not request.user.is_staff:
+            return api_error(
+                "You can only edit your own mobilization reports.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = MobilizationReportUpdateSerializer(
+            data=request.data,
+            partial=True,
+            context={"report": report},
+        )
+        if not serializer.is_valid():
+            return api_error(
+                "Validation failed.",
+                serializer.errors,
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if "description" in serializer.validated_data:
+            report.description = serializer.validated_data["description"]
+        if "images" in serializer.validated_data:
+            report.images = serializer.validated_data["images"]
+        if "previous_status" in serializer.validated_data:
+            report.previous_status = serializer.validated_data["previous_status"]
+        if "requested_status" in serializer.validated_data:
+            report.requested_status = serializer.validated_data["requested_status"]
+
+        report.save()
+
+        return api_success(
+            "Mobilization report updated successfully.",
+            MobilizationReportSerializer(report).data,
+        )
+
+    def delete(self, request: Request, report_id: str) -> Response:
+        report = _get_mobilization_report(report_id)
+        if not report:
+            return api_error(
+                "Mobilization report not found.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        if report.created_by != str(request.user.id) and not request.user.is_staff:
+            return api_error(
+                "You can only delete your own mobilization reports.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+
+        report.delete()
+
+        return api_success(
+            "Mobilization report deleted successfully.",
+            status_code=status.HTTP_204_NO_CONTENT,
+        )
+
+
+def _get_mobilization_report(report_id: str):
+    try:
+        return MobilizationReport.objects.get(id=ObjectId(report_id))
+    except (MobilizationReport.DoesNotExist, InvalidId):
+        return None
