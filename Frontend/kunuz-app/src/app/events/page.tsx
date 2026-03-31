@@ -422,12 +422,16 @@ function CommentItem({
   const [gemsCount, setGemsCount] = useState(comment.gems_count);
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setGemmed(comment.is_gemmed);
     setGemsCount(comment.gems_count);
-  }, [comment.id, comment.is_gemmed, comment.gems_count]);
+    setEditText(comment.content);
+    setIsEditing(false);
+  }, [comment.id, comment.is_gemmed, comment.gems_count, comment.content]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -505,6 +509,54 @@ function CommentItem({
     } catch {}
   };
 
+  const handleEditComment = () => {
+    setEditText(comment.content);
+    setIsEditing(true);
+    setShowMenu(false);
+  };
+
+  const handleSaveEditedComment = async () => {
+    const nextContent = editText.trim();
+    if (!nextContent) return;
+
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: nextContent }),
+      });
+
+      if (!res.ok) return;
+
+      setIsEditing(false);
+      onRefresh?.();
+    } catch {}
+  };
+
+  const handleCancelEditComment = () => {
+    setEditText(comment.content);
+    setIsEditing(false);
+  };
+
+  const handleReportComment = async () => {
+    const reason = window.prompt("Why are you reporting this comment?");
+    if (!reason || !reason.trim()) return;
+
+    try {
+      await submitReport("comment", comment.id, reason.trim());
+      setShowMenu(false);
+      window.alert("Comment reported successfully.");
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : "Failed to report comment."
+      );
+    }
+  };
+
   return (
     <div
       className="flex gap-3 p-3 rounded-xl"
@@ -549,18 +601,27 @@ function CommentItem({
                 style={{ backgroundColor: "#FFF8E2" }}
               >
                 {isOwner ? (
-                  <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
-                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={handleDeleteComment}
-                  >
-                    Delete comment
-                  </button>
+                  <>
+                    <button
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                      onClick={handleEditComment}
+                    >
+                      Edit comment
+                    </button>
+                    <button
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                      onClick={handleDeleteComment}
+                    >
+                      Delete comment
+                    </button>
+                  </>
                 ) : (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={() => setShowMenu(false)}
+                    onClick={handleReportComment}
                   >
                     Report comment
                   </button>
@@ -570,12 +631,44 @@ function CommentItem({
           </div>
         </div>
 
-        <div
-          className="text-sm leading-relaxed prose prose-sm max-w-none"
-          style={{ color: "#432817" }}
-        >
-          {stripHtml(comment.content)}
-        </div>
+        {isEditing ? (
+          <div className="mt-1">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none"
+              rows={3}
+              style={{
+                backgroundColor: "#FFFFFF",
+                border: "1px solid #E0D5C5",
+                color: "#432817",
+              }}
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
+                onClick={handleSaveEditedComment}
+              >
+                Save
+              </button>
+              <button
+                className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
+                onClick={handleCancelEditComment}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="text-sm leading-relaxed prose prose-sm max-w-none"
+            style={{ color: "#432817" }}
+          >
+            {stripHtml(comment.content)}
+          </div>
+        )}
 
         <div className="flex items-center gap-3 mt-1.5">
           <button
@@ -643,6 +736,7 @@ function AnnotationItem({
   onDelete,
   onAccept,
   onReject,
+  onRefresh,
 }: {
   annotation: Annotation;
   postId: string;
@@ -650,8 +744,11 @@ function AnnotationItem({
   onDelete: (id: string) => void;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
+  onRefresh?: () => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(annotation.text ?? "");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const currentUserId = String(getAuthUser()?.id ?? "");
@@ -719,6 +816,46 @@ function AnnotationItem({
     } catch {}
   };
 
+  const handleEditAnnotation = () => {
+    setEditText(annotation.text ?? "");
+    setIsEditing(true);
+    setShowMenu(false);
+  };
+
+  const handleSaveEditedAnnotation = async () => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: editText }),
+      });
+      if (!res.ok) return;
+      setIsEditing(false);
+      onRefresh?.();
+    } catch {}
+  };
+
+  const handleCancelEditAnnotation = () => {
+    setEditText(annotation.text ?? "");
+    setIsEditing(false);
+  };
+
+  const handleReportAnnotation = async () => {
+    const reason = window.prompt("Why are you reporting this annotation?");
+    if (!reason || !reason.trim()) return;
+    try {
+      await submitReport("annotation", annotation.id, reason.trim());
+      setShowMenu(false);
+      window.alert("Annotation reported successfully.");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to report annotation.");
+    }
+  };
+
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
     pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
     accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
@@ -773,20 +910,29 @@ function AnnotationItem({
                 style={{ backgroundColor: "#FFF8E2" }}
               >
                 {isOwner && (
-                  <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
-                    style={{ color: "#432817" }}
-                    onClick={handleDelete}
-                  >
-                    Delete annotation
-                  </button>
+                  <>
+                    <button
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
+                      style={{ color: "#432817" }}
+                      onClick={handleEditAnnotation}
+                    >
+                      Edit annotation
+                    </button>
+                    <button
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
+                      style={{ color: "#432817" }}
+                      onClick={handleDelete}
+                    >
+                      Delete annotation
+                    </button>
+                  </>
                 )}
 
                 {!isOwner && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
                     style={{ color: "#432817" }}
-                    onClick={() => setShowMenu(false)}
+                    onClick={handleReportAnnotation}
                   >
                     Report annotation
                   </button>
@@ -816,11 +962,41 @@ function AnnotationItem({
           </div>
         </div>
 
-        {annotation.text && (
+        {isEditing ? (
+          <div className="mt-1">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none"
+              rows={3}
+              style={{
+                backgroundColor: "#FFFFFF",
+                border: "1px solid #E0D5C5",
+                color: "#432817",
+              }}
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <button
+                className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
+                onClick={handleSaveEditedAnnotation}
+              >
+                Save
+              </button>
+              <button
+                className="px-3 py-1.5 rounded-lg text-xs font-bold"
+                style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
+                onClick={handleCancelEditAnnotation}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : annotation.text ? (
           <p className="text-xs" style={{ color: "#432817" }}>
             {annotation.text}
           </p>
-        )}
+        ) : null}
 
         {imageUrl ? (
           <img
@@ -1130,6 +1306,10 @@ function PostModal({
   };
 
   const handleDeleteAnnotation = (id: string) => {
+    if (id === "__refresh__") {
+      fetchAnnotations(post.id);
+      return;
+    }
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
   };
 
@@ -1471,6 +1651,7 @@ function PostModal({
                       onDelete={handleDeleteAnnotation}
                       onAccept={handleAcceptAnnotation}
                       onReject={handleRejectAnnotation}
+                      onRefresh={() => fetchAnnotations(post.id)}
                     />
                   ))
                 )}
