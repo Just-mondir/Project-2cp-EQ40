@@ -29,21 +29,30 @@ from .views import (
     MonumentsView,
     CriticalView,
     MonumentsInDangerView,
+    MobilizationEventCreateView
 )
 urlpatterns = [
+    # Home
     path("posts/", PostListCreateView.as_view(), name="post-list-create"),
     path("posts/search/", GlobalSearchView.as_view(), name="global-search"),
     path("posts/filter-choices/", FilterChoicesView.as_view(), name="posts-filter-choices"),
     path("posts/filter/", PostFilterView.as_view(), name="posts-filter"),
+
+    # Events
     path("posts/events/", EventsView.as_view(), name="events"),
     path("posts/upcoming-events/", UpcomingEventsView.as_view(), name="upcoming-events"),
     path("posts/events/filter/", EventFilterView.as_view(), name="events-filter"),
+
+    # Alerts
     path("posts/alerts/", MonumentsView.as_view(), name="alerts"),
     path("posts/critical/", CriticalView.as_view(), name="critical"),
     path("posts/monuments-danger/", MonumentsInDangerView.as_view(), name="monuments-danger"),
+    path("posts/mobilization-event/", MobilizationEventCreateView.as_view(), name="mobilization-event"),
+    
+
+    # Profile
     path("posts/saved/", MySavedPostsView.as_view(), name="saved-posts"),
     path("posts/gemed/", MyGemedPostsView.as_view(), name="gemed-posts"),
-
     path("posts/user/<str:username>/", UserPostsView.as_view(), name="user-posts"),
     path("posts/user/<str:username>/events/", UserEventsPostsView.as_view(), name="user-events"),
     path("posts/user/<str:username>/alerts/", UserAlertsPostsView.as_view(), name="user-alerts"),

@@ -807,3 +807,26 @@ class MonumentsInDangerView(APIView):
             )
 
         return api_success("Monuments in danger retrieved.", data)
+
+class MobilizationEventCreateView(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [IsAuthenticated]
+    def post(self, request: Request) -> Response:
+        data = request.data.copy()
+        data["post_type"] = "event"
+        serializer = PostDetailSerializer(data=data, context={"request": request})
+        if not serializer.is_valid():
+            return api_error(
+                "Validation failed.",
+                serializer.errors,
+                status.HTTP_400_BAD_REQUEST,
+            )
+        post = serializer.save(author_id=str(request.user.id))
+        image_files = request.FILES.getlist("uploaded_images")
+        if image_files:
+            _save_post_images(post, image_files)
+        return api_success(
+            "Mobilization event created successfully.",
+            PostDetailSerializer(post, context={"request": request}).data,
+            status.HTTP_201_CREATED,
+        )
