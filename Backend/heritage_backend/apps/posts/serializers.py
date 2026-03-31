@@ -5,7 +5,17 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from apps.users.models import User
-from .models import AlertDetails, Comment, CommentGem, EventDetails, Gem, Post, PostImage, Save
+from .models import (
+    AlertDetails,
+    Annotation,
+    Comment,
+    CommentGem,
+    EventDetails,
+    Gem,
+    Post,
+    PostImage,
+    Save,
+)
 
 
 def _get_user_by_id(user_id: str):
@@ -16,10 +26,6 @@ def _get_user_by_id(user_id: str):
     except Exception:
         return None
 
-
-# ---------------------------------------------------------------------------
-# Nested serializers
-# ---------------------------------------------------------------------------
 
 class PostImageSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
@@ -39,10 +45,6 @@ class AlertDetailsSerializer(serializers.Serializer):
     current_status = serializers.CharField()
 
 
-# ---------------------------------------------------------------------------
-# Post serializers
-# ---------------------------------------------------------------------------
-
 class PostListSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
     user_id = serializers.CharField(source="author_id", read_only=True)
@@ -58,6 +60,9 @@ class PostListSerializer(serializers.Serializer):
     location = serializers.CharField()
     gems_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
+    accepted_annotations_count = serializers.SerializerMethodField()
+    is_gemmed = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
     alert_details = serializers.SerializerMethodField()
     event_details = serializers.SerializerMethodField()
@@ -90,6 +95,22 @@ class PostListSerializer(serializers.Serializer):
             return EventDetailsSerializer(details).data
         except EventDetails.DoesNotExist:
             return None
+
+    def get_accepted_annotations_count(self, obj):
+        return Annotation.objects(post=obj, status="accepted").count()
+
+    def get_is_gemmed(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return Gem.objects(post=obj, user_id=str(request.user.id)).first() is not None
+
+    def get_is_saved(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return Save.objects(post=obj, user_id=str(request.user.id)).first() is not None
+
 
 class PostDetailSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
@@ -106,6 +127,9 @@ class PostDetailSerializer(serializers.Serializer):
     location = serializers.CharField(required=False, default="", allow_blank=True)
     gems_count = serializers.IntegerField(read_only=True)
     comments_count = serializers.IntegerField(read_only=True)
+    accepted_annotations_count = serializers.SerializerMethodField()
+    is_gemmed = serializers.SerializerMethodField()
+    is_saved = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
     event_details = serializers.SerializerMethodField()
     alert_details = serializers.SerializerMethodField()
@@ -113,15 +137,10 @@ class PostDetailSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
 
-    # write-only nested fields
     starts_at = serializers.DateTimeField(write_only=True, required=False)
     ends_at = serializers.DateTimeField(write_only=True, required=False, allow_null=True)
     urgence_level = serializers.CharField(write_only=True, required=False)
     current_status = serializers.CharField(write_only=True, required=False)
-
-    # NOTE: uploaded_images is intentionally NOT here.
-    # Image files are extracted and saved in the view (PostDetailView.patch / PostListCreateView.post)
-    # to keep consistent with how PostImageUploadView works (manual disk save → string URL stored).
 
     def get_user_display_name(self, obj):
         user = _get_user_by_id(obj.author_id)
@@ -149,10 +168,23 @@ class PostDetailSerializer(serializers.Serializer):
         except AlertDetails.DoesNotExist:
             return None
 
+    def get_accepted_annotations_count(self, obj):
+        return Annotation.objects(post=obj, status="accepted").count()
+
+    def get_is_gemmed(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return Gem.objects(post=obj, user_id=str(request.user.id)).first() is not None
+
+    def get_is_saved(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return Save.objects(post=obj, user_id=str(request.user.id)).first() is not None
+
     def validate(self, attrs):
-        post_type = attrs.get("post_type") or (
-            self.instance.post_type if self.instance else None
-        )
+        post_type = attrs.get("post_type") or (self.instance.post_type if self.instance else None)
         if post_type == "event" and not attrs.get("starts_at") and not self.instance:
             raise serializers.ValidationError(
                 {"starts_at": "starts_at is required for Event posts."}
@@ -168,13 +200,20 @@ class PostDetailSerializer(serializers.Serializer):
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
         current_status = validated_data.pop("current_status", None)
+
         post = Post(**validated_data)
         post.save()
 
         if post.post_type == "event" and starts_at:
             EventDetails(post=post, starts_at=starts_at, ends_at=ends_at).save()
+
         if post.post_type == "alert" and urgence_level:
-            AlertDetails(post=post, urgence_level=urgence_level,current_status=current_status,).save()
+            AlertDetails(
+                post=post,
+                urgence_level=urgence_level,
+                current_status=current_status,
+            ).save()
+
         return post
 
     def update(self, instance, validated_data):
@@ -182,6 +221,7 @@ class PostDetailSerializer(serializers.Serializer):
         ends_at = validated_data.pop("ends_at", None)
         urgence_level = validated_data.pop("urgence_level", None)
         current_status = validated_data.pop("current_status", None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
@@ -202,28 +242,36 @@ class PostDetailSerializer(serializers.Serializer):
                 details.current_status = current_status
                 details.save()
             except AlertDetails.DoesNotExist:
-                AlertDetails.objects.create(
+                AlertDetails(
                     post=instance,
                     urgence_level=urgence_level,
                     current_status=current_status,
-                )
+                ).save()
+
         return instance
 
 
-# ---------------------------------------------------------------------------
-# Comment serializers
-# ---------------------------------------------------------------------------
-
 class CommentSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
-    post = serializers.CharField(read_only=True)
+    post = serializers.SerializerMethodField()
     user_id = serializers.CharField(read_only=True)
-    parent = serializers.CharField(allow_null=True, required=False)
+    parent = serializers.SerializerMethodField()
+    parent_id = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
     content = serializers.CharField()
+    gems_count = serializers.SerializerMethodField()
+    is_gemmed = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
+
+    def get_post(self, obj):
+        return str(obj.post.id) if getattr(obj, "post", None) else ""
+
+    def get_parent(self, obj):
+        if getattr(obj, "parent", None):
+            return str(obj.parent.id)
+        return None
 
     def get_user_display_name(self, obj):
         user = _get_user_by_id(obj.user_id)
@@ -233,6 +281,36 @@ class CommentSerializer(serializers.Serializer):
         user = _get_user_by_id(obj.user_id)
         return user.username if user else ""
 
+    def get_gems_count(self, obj):
+        return CommentGem.objects(comment=obj).count()
+
+    def get_is_gemmed(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return CommentGem.objects(comment=obj, user_id=str(request.user.id)).first() is not None
+
+    def validate_parent_id(self, value):
+        if value in (None, "", "null"):
+            return None
+        try:
+            return Comment.objects.get(id=value)
+        except Comment.DoesNotExist:
+            raise serializers.ValidationError("Parent comment not found.")
+        except Exception:
+            raise serializers.ValidationError("Invalid parent comment id.")
+
+    def validate(self, attrs):
+        parent_comment = attrs.get("parent_id")
+        post = self.context.get("post")
+
+        if parent_comment and post and str(parent_comment.post.id) != str(post.id):
+            raise serializers.ValidationError(
+                {"parent_id": "Parent comment must belong to the same post."}
+            )
+
+        return attrs
+
 
 class CommentGemSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
@@ -240,10 +318,6 @@ class CommentGemSerializer(serializers.Serializer):
     user_id = serializers.CharField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
 
-
-# ---------------------------------------------------------------------------
-# Gem / Save serializers
-# ---------------------------------------------------------------------------
 
 class GemSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)

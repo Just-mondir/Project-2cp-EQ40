@@ -1,7 +1,6 @@
 """DRF views for the posts app."""
 from __future__ import annotations
-from datetime import datetime
-from mongoengine.queryset.visitor import Q
+from datetime import datetime, time
 from rest_framework import status
 import os
 from django.conf import settings
@@ -234,30 +233,73 @@ class CommentListCreateView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        comments = Comment.objects(post=post)
-        serializer = CommentSerializer(comments, many=True, context={"request": request})
+
+        comments = Comment.objects(post=post).order_by("created_at")
+        serializer = CommentSerializer(
+            comments,
+            many=True,
+            context={"request": request, "post": post},
+        )
         return api_success("Comments retrieved.", serializer.data)
 
     def post(self, request: Request, pk: str) -> Response:
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
+
         try:
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        serializer = CommentSerializer(data=request.data, context={"request": request})
+
+        serializer = CommentSerializer(
+            data=request.data,
+            context={"request": request, "post": post},
+        )
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
-        comment = Comment(post=post, user_id=str(request.user.id), content=serializer.validated_data["content"], parent=serializer.validated_data.get("parent"))
-        comment.save()
-        actor_name = getattr(request.user, "display_name", "Someone")
-        if post.author_id != str(request.user.id):
-            notify(event_type="comment_on_post", actor_id=str(request.user.id), actor_name=actor_name, recipient_id=post.author_id, target_type="post", target_id=str(post.id), post_title=post.title)
-        if comment.parent and comment.parent.user_id != str(request.user.id):
-            if comment.parent.user_id != post.author_id:
-                notify(event_type="reply_to_comment", actor_id=str(request.user.id), actor_name=actor_name, recipient_id=comment.parent.user_id, target_type="comment", target_id=str(comment.parent.id))
-        return api_success("Comment added.", CommentSerializer(comment, context={"request": request}).data, status.HTTP_201_CREATED)
 
+        parent_comment = serializer.validated_data.get("parent_id")
+
+        comment = Comment(
+            post=post,
+            user_id=str(request.user.id),
+            content=serializer.validated_data["content"],
+            parent=parent_comment,
+        )
+        comment.save()
+
+        actor_name = getattr(request.user, "display_name", "Someone")
+
+        if post.author_id != str(request.user.id):
+            notify(
+                event_type="comment_on_post",
+                actor_id=str(request.user.id),
+                actor_name=actor_name,
+                recipient_id=post.author_id,
+                target_type="post",
+                target_id=str(post.id),
+                post_title=post.title,
+            )
+
+        if parent_comment and parent_comment.user_id != str(request.user.id):
+            if parent_comment.user_id != post.author_id:
+                notify(
+                    event_type="reply_to_comment",
+                    actor_id=str(request.user.id),
+                    actor_name=actor_name,
+                    recipient_id=parent_comment.user_id,
+                    target_type="comment",
+                    target_id=str(parent_comment.id),
+                )
+
+        return api_success(
+            "Comment added.",
+            CommentSerializer(
+                comment,
+                context={"request": request, "post": post},
+            ).data,
+            status.HTTP_201_CREATED,
+        )
 
 class CommentDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -285,11 +327,19 @@ class CommentDetailView(APIView):
         comment = self._get_comment(pk)
         if not comment:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
+
         if comment.user_id != str(request.user.id) and not request.user.is_staff:
             return api_error("You can only delete your own comments.", status_code=status.HTTP_403_FORBIDDEN)
-        comment.delete()
-        return api_success("Comment deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
+        replies = Comment.objects(parent=comment)
+        for reply in replies:
+            CommentGem.objects(comment=reply).delete()
+            reply.delete()
+
+        CommentGem.objects(comment=comment).delete()
+        comment.delete()
+
+        return api_success("Comment deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
 class UserPostsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -497,8 +547,22 @@ class AnnotationListCreateView(APIView):
             post = Post.objects.get(id=post_id, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
         user_id = str(request.user.id)
-        annotations = Annotation.objects(__raw__={"$or": [{"status": "accepted"}, {"user_id": user_id}, {"post": post.id}]}).order_by("-created_at")
+
+        if post.author_id == user_id:
+            annotations = Annotation.objects(post=post).order_by("-created_at")
+        else:
+            annotations = Annotation.objects(
+                post=post,
+                __raw__={
+                    "$or": [
+                        {"status": "accepted"},
+                        {"user_id": user_id},
+                    ]
+                },
+            ).order_by("-created_at")
+
         serializer = AnnotationSerializer(annotations, many=True)
         return api_success("Annotations retrieved.", serializer.data)
 
@@ -604,6 +668,7 @@ class FilterChoicesView(APIView):
             status_code=200,
         )
 
+
 class PostFilterView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -612,58 +677,18 @@ class PostFilterView(APIView):
         post_type = request.query_params.get("post_type", "").strip()
         historical_period = request.query_params.get("historical_period", "").strip()
         monument_type = request.query_params.get("monument_type", "").strip()
-        search = request.query_params.get("search", "").strip()
-
-        posts = Post.objects(is_deleted=False)
-
-        if region and region.lower() != "all":
-            posts = posts.filter(
-                __raw__={"region": {"$regex": f"^{region}$", "$options": "i"}}
-            )
-
-        if historical_period and historical_period.lower() != "all":
-            posts = posts.filter(
-                __raw__={
-                    "historical_period": {
-                        "$regex": f"^{historical_period}$",
-                        "$options": "i",
-                    }
-                }
-            )
-
-        if monument_type and monument_type.lower() != "all":
-            posts = posts.filter(
-                __raw__={
-                    "monument_type": {
-                        "$regex": f"^{monument_type}$",
-                        "$options": "i",
-                    }
-                }
-            )
-
-        if post_type and post_type.lower() != "all":
-            posts = posts.filter(
-                __raw__={"post_type": {"$regex": f"^{post_type}$", "$options": "i"}}
-            )
-
-        if search:
-            posts = posts.filter(
-                __raw__={
-                    "$or": [
-                        {"title": {"$regex": search, "$options": "i"}},
-                        {"content": {"$regex": search, "$options": "i"}},
-                        {"region": {"$regex": search, "$options": "i"}},
-                        {"historical_period": {"$regex": search, "$options": "i"}},
-                        {"monument_type": {"$regex": search, "$options": "i"}},
-                        {"location": {"$regex": search, "$options": "i"}},
-                    ]
-                }
-            )
-
-        posts = posts.order_by("-created_at")
+        filters = {"is_deleted": False}
+        if region:
+            filters["region"] = region
+        if post_type:
+            filters["post_type"] = post_type
+        if historical_period:
+            filters["historical_period"] = historical_period
+        if monument_type:
+            filters["monument_type"] = monument_type
+        posts = Post.objects(**filters).order_by("-created_at")
         serializer = PostListSerializer(posts, many=True, context={"request": request})
         return api_success("Filtered posts retrieved.", serializer.data)
-
 
 class MonumentsInDangerView(APIView):
     permission_classes = [IsAuthenticated]
