@@ -77,11 +77,7 @@ class RegisterSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        user = User.create_user(
-            password=password,
-            is_verified=False,
-            **validated_data,
-        )
+        user = User.create_user(password=password,is_verified=False,**validated_data,)
         _, plain_otp = create_hashed_otp(user, OTPPurposeChoices.EMAIL_VERIFICATION)
         send_otp_email(user.email, plain_otp)
         return user
@@ -149,10 +145,8 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 class LoginSerializer(serializers.Serializer):
     """Validate credentials and issue JWT tokens for login."""
-
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
-
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
@@ -169,7 +163,6 @@ class LoginSerializer(serializers.Serializer):
             )
         attrs["user"] = user
         return attrs
-
     def create(self, validated_data):
         user = validated_data["user"]
         _, plain_otp = create_hashed_otp(user, OTPPurposeChoices.LOGIN)

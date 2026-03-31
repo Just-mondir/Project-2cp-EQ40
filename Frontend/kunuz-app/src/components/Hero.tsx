@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 // const HERO_IMAGE = "/hero-bg.jpg";
@@ -10,7 +10,11 @@ const HERO_IMAGE = "pic.jpg";
 
 export default function Hero() {
   const [hovered, setHovered] = useState(false);
-
+useEffect(() => {
+  fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/moderator/visitors-track/`, {
+    method: "POST",
+  });
+}, []);
   return (
     <section
   id="hero"
