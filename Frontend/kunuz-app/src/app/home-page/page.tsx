@@ -1558,7 +1558,18 @@ function PostModal({
           <div className="flex-1 overflow-y-auto feed-scroll">
             {activeTab === "comments" && (
               <div className="px-5 py-3 flex flex-col gap-3">
-                {topLevelComments.map((comment) => renderCommentThread(comment))}
+                {topLevelComments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2">
+                    <CommentIcon size={28} className="opacity-30" />
+                    <p className="text-xs" style={{ color: "#8B7355" }}>
+                      No comments yet. Be the first to comment!
+                    </p>
+                  </div>
+                ) : (
+                  topLevelComments.map((comment) =>
+                    renderCommentThread(comment)
+                  )
+                )}
               </div>
             )}
 
