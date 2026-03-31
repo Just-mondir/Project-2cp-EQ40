@@ -1,3 +1,10 @@
-from django.db import models
+from mongoengine import Document, StringField, DateTimeField
 
-# Create your models here.
+class Visitor(Document):
+    ip_address = StringField(required=True)
+    date = DateTimeField(required=True)
+    meta = {
+        "indexes": [
+            {"fields": ["ip_address", "date"], "unique": True}
+        ]
+    }
