@@ -52,14 +52,27 @@ export default function MonumentsInDanger() {
         const fetched: Monument[] = (data.results || [])
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 3)
-          .map((post: any) => ({
-            src: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
-            alt: post.title,
-            name: post.title,
-            boldLocation: post.region || post.location || "",
-            urgenceLevel: post.alert_details?.urgence_level ?? "unknown",
-            currentStatus: post.alert_details?.current_status ?? "unknown",
-          }));
+          .map((post: any) => {
+            const stripHtml = (html: string) => {
+              if (!html) return "";
+              let result = html;
+              let prev: string;
+              do {
+                prev = result;
+                result = prev.replace(/<[^>]*>/g, "");
+              } while (result !== prev);
+              return result;
+            };
+            const cleanTitle = stripHtml(post.title);
+            return {
+              src: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
+              alt: cleanTitle,
+              name: cleanTitle,
+              boldLocation: post.region || post.location || "",
+              urgenceLevel: post.alert_details?.urgence_level ?? "unknown",
+              currentStatus: post.alert_details?.current_status ?? "unknown",
+            };
+          });
         if (fetched.length > 0) setMonuments(fetched);
       } catch {
       }

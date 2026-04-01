@@ -159,9 +159,19 @@ export default function UpcomingEvents() {
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 6)
           .map((post: any) => {
+            const stripHtml = (html: string) => {
+              if (!html) return "";
+              let result = html;
+              let prev: string;
+              do {
+                prev = result;
+                result = prev.replace(/<[^>]*>/g, "");
+              } while (result !== prev);
+              return result;
+            };
             return {
-              title: post.title,
-              description: post.content ?? "",
+              title: stripHtml(post.title),
+              description: stripHtml(post.content ?? ""),
               location: post.location || post.region || "",
               date: formatDate(post.event_details?.starts_at ?? ""),
               imageUrl: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,

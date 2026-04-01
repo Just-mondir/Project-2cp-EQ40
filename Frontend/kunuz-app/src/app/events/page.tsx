@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
+import LeftSidebar from "@/components/LeftSidebar";
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -422,16 +423,12 @@ function CommentItem({
   const [gemsCount, setGemsCount] = useState(comment.gems_count);
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyText, setReplyText] = useState("");
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(comment.content);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setGemmed(comment.is_gemmed);
     setGemsCount(comment.gems_count);
-    setEditText(comment.content);
-    setIsEditing(false);
-  }, [comment.id, comment.is_gemmed, comment.gems_count, comment.content]);
+  }, [comment.id, comment.is_gemmed, comment.gems_count]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -484,7 +481,7 @@ function CommentItem({
         setShowMenu(false);
         onDelete?.(comment.id);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleSubmitReply = async () => {
@@ -506,55 +503,7 @@ function CommentItem({
       setReplyText("");
       setShowReplyInput(false);
       onRefresh?.();
-    } catch {}
-  };
-
-  const handleEditComment = () => {
-    setEditText(comment.content);
-    setIsEditing(true);
-    setShowMenu(false);
-  };
-
-  const handleSaveEditedComment = async () => {
-    const nextContent = editText.trim();
-    if (!nextContent) return;
-
-    const token = getAuthToken();
-    try {
-      const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: nextContent }),
-      });
-
-      if (!res.ok) return;
-
-      setIsEditing(false);
-      onRefresh?.();
-    } catch {}
-  };
-
-  const handleCancelEditComment = () => {
-    setEditText(comment.content);
-    setIsEditing(false);
-  };
-
-  const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("comment", comment.id, reason.trim());
-      setShowMenu(false);
-      window.alert("Comment reported successfully.");
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "Failed to report comment."
-      );
-    }
+    } catch { }
   };
 
   return (
@@ -601,27 +550,18 @@ function CommentItem({
                 style={{ backgroundColor: "#FFF8E2" }}
               >
                 {isOwner ? (
-                  <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                      onClick={handleEditComment}
-                    >
-                      Edit comment
-                    </button>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                      onClick={handleDeleteComment}
-                    >
-                      Delete comment
-                    </button>
-                  </>
+                  <button
+                    className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                    onClick={handleDeleteComment}
+                  >
+                    Delete comment
+                  </button>
                 ) : (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={handleReportComment}
+                    onClick={() => setShowMenu(false)}
                   >
                     Report comment
                   </button>
@@ -631,44 +571,12 @@ function CommentItem({
           </div>
         </div>
 
-        {isEditing ? (
-          <div className="mt-1">
-            <textarea
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none"
-              rows={3}
-              style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E0D5C5",
-                color: "#432817",
-              }}
-            />
-            <div className="flex items-center gap-2 mt-2">
-              <button
-                className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
-                onClick={handleSaveEditedComment}
-              >
-                Save
-              </button>
-              <button
-                className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
-                onClick={handleCancelEditComment}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div
-            className="text-sm leading-relaxed prose prose-sm max-w-none"
-            style={{ color: "#432817" }}
-          >
-            {stripHtml(comment.content)}
-          </div>
-        )}
+        <div
+          className="text-sm leading-relaxed prose prose-sm max-w-none"
+          style={{ color: "#432817" }}
+        >
+          {stripHtml(comment.content)}
+        </div>
 
         <div className="flex items-center gap-3 mt-1.5">
           <button
@@ -736,7 +644,6 @@ function AnnotationItem({
   onDelete,
   onAccept,
   onReject,
-  onRefresh,
 }: {
   annotation: Annotation;
   postId: string;
@@ -744,11 +651,8 @@ function AnnotationItem({
   onDelete: (id: string) => void;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
-  onRefresh?: () => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(annotation.text ?? "");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const currentUserId = String(getAuthUser()?.id ?? "");
@@ -779,7 +683,7 @@ function AnnotationItem({
         onDelete(annotation.id);
         setShowMenu(false);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleAccept = async () => {
@@ -796,7 +700,7 @@ function AnnotationItem({
         onAccept(annotation.id);
         setShowMenu(false);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleReject = async () => {
@@ -813,47 +717,7 @@ function AnnotationItem({
         onReject(annotation.id);
         setShowMenu(false);
       }
-    } catch {}
-  };
-
-  const handleEditAnnotation = () => {
-    setEditText(annotation.text ?? "");
-    setIsEditing(true);
-    setShowMenu(false);
-  };
-
-  const handleSaveEditedAnnotation = async () => {
-    const token = getAuthToken();
-    try {
-      const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: editText }),
-      });
-      if (!res.ok) return;
-      setIsEditing(false);
-      onRefresh?.();
-    } catch {}
-  };
-
-  const handleCancelEditAnnotation = () => {
-    setEditText(annotation.text ?? "");
-    setIsEditing(false);
-  };
-
-  const handleReportAnnotation = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
-    if (!reason || !reason.trim()) return;
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert("Annotation reported successfully.");
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to report annotation.");
-    }
+    } catch { }
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
@@ -910,29 +774,20 @@ function AnnotationItem({
                 style={{ backgroundColor: "#FFF8E2" }}
               >
                 {isOwner && (
-                  <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817" }}
-                      onClick={handleEditAnnotation}
-                    >
-                      Edit annotation
-                    </button>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
-                      style={{ color: "#432817" }}
-                      onClick={handleDelete}
-                    >
-                      Delete annotation
-                    </button>
-                  </>
+                  <button
+                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
+                    style={{ color: "#432817" }}
+                    onClick={handleDelete}
+                  >
+                    Delete annotation
+                  </button>
                 )}
 
                 {!isOwner && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
                     style={{ color: "#432817" }}
-                    onClick={handleReportAnnotation}
+                    onClick={() => setShowMenu(false)}
                   >
                     Report annotation
                   </button>
@@ -962,41 +817,11 @@ function AnnotationItem({
           </div>
         </div>
 
-        {isEditing ? (
-          <div className="mt-1">
-            <textarea
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none"
-              rows={3}
-              style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E0D5C5",
-                color: "#432817",
-              }}
-            />
-            <div className="flex items-center gap-2 mt-2">
-              <button
-                className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
-                onClick={handleSaveEditedAnnotation}
-              >
-                Save
-              </button>
-              <button
-                className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
-                onClick={handleCancelEditAnnotation}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : annotation.text ? (
+        {annotation.text && (
           <p className="text-xs" style={{ color: "#432817" }}>
             {annotation.text}
           </p>
-        ) : null}
+        )}
 
         {imageUrl ? (
           <img
@@ -1017,100 +842,50 @@ function AnnotationItem({
 
 /* ─────────────────── LEFT SIDEBAR ─────────────────── */
 
-function LeftSidebar() {
-  const [activeIdx, setActiveIdx] = useState(3);
-  const [loggedInUsername, setLoggedInUsername] = useState("");
+/* ───────────────── FILTER SECTION ───────────────── */
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchLoggedInUser = async () => {
-      try {
-        const token = getAuthToken();
-        if (!token) return;
-
-        const endpoint = `${API_URL}/api/users/me/`;
-        const res = await apiFetch(endpoint);
-
-        if (!res.ok) return;
-        const data = await res.json();
-        const realUser = data.data ?? data;
-
-        if (!cancelled) {
-          setLoggedInUsername(realUser.username || "");
-        }
-      } catch (err) {
-        console.error("Error fetching logged-in user:", err);
-      }
-    };
-
-    fetchLoggedInUser();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const navIcons = [
-    { label: "Home", href: "/home-page", path: (<><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></>) },
-    { label: "Guilds", href: null, path: (<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>) },
-    { label: "Monuments in Danger", href: null, path: (<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>) },
-    { label: "Events", href: "/events", path: (<><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>) },
-    { label: "Notifications", href: null, hasBadge: true, path: (<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>) },
-    { label: "Profile", href: loggedInUsername ? `/user/${loggedInUsername}` : "#", path: (<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>) },
-  ];
-
-  return (
-    <aside className="fixed left-4 top-4 w-[56px] flex flex-col items-center py-6 z-50 rounded-2xl" style={{ backgroundColor: "#FFF8E2", boxShadow: "0 4px 24px rgba(67,40,23,0.12)" }}>
-      <div className="mb-6 px-1"><img src="/kunuz-icon.svg" alt="Kunuz" width={42} height={42} /></div>
-      <nav className="flex flex-col items-center gap-5">
-        {navIcons.map((item, i) => {
-          const iconContent = (
-            <>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={activeIdx === i ? "#FFF8E2" : "none"} stroke={activeIdx === i ? "#FFF8E2" : "#432817"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="transition-colors">{item.path}</svg>
-              {item.hasBadge && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
-            </>
-          );
-          return (
-            <div key={i} className="relative group">
-              {item.href ? (
-                <Link href={item.href} className={`relative p-2.5 rounded-xl transition-all duration-200 block ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}>{iconContent}</Link>
-              ) : (
-                <button onClick={() => setActiveIdx(i)} className={`relative p-2.5 rounded-xl transition-all duration-200 ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}>{iconContent}</button>
-              )}
-              <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}>{item.label}</span>
-            </div>
-          );
-        })}
-        <div className="h-40" />
-        <div className="relative group">
-          <button className="p-2.5 rounded-xl transition-all duration-200 hover:bg-[#F0E8CC]">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-          </button>
-          <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}>Help</span>
-        </div>
-      </nav>
-    </aside>
-  );
-}
-
-/* ─────────────────── FILTER SECTION ─────────────────── */
-
-function FilterSection({
-  isVisible,
-  onClose,
-}: {
-  isVisible: boolean;
-  onClose: () => void;
-}) {
+function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; onClose: () => void; onApply: (filters: any) => void }) {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState({
+    region: "All",
+    historical_period: "All",
+    monument_type: "All",
+    status: "All",
+  });
 
   useEffect(() => {
     if (isVisible) setIsAnimating(true);
     else setTimeout(() => setIsAnimating(false), 300);
   }, [isVisible]);
-
   if (!isAnimating && !isVisible) return null;
+
+  const filters = [
+    { key: "region", label: "Geographical Regions", options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer"] },
+    { key: "historical_period", label: "Historical Periods", options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"] },
+    { key: "monument_type", label: "Heritage Type", options: ["All", "Civil", "Religious", "Military", "Funerary"] },
+    { key: "status", label: "Event Status", options: ["All", "Upcoming", "Ongoing", "Past"] },
+  ];
+
+  const handleSelectChange = (key: string, value: string) => {
+    setSelectedFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const handleReset = () => {
+    const reset = {
+      region: "All",
+      historical_period: "All",
+      monument_type: "All",
+      status: "All"
+    };
+    setSelectedFilters(reset);
+    onApply(reset);
+    onClose();
+  };
+
+  const handleApply = () => {
+    onApply(selectedFilters);
+    onClose();
+  };
 
   return (
     <div
@@ -1128,8 +903,167 @@ function FilterSection({
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       </div>
-      <div className="px-6 py-5 text-sm" style={{ color: "var(--brown)" }}>
-        Event filters
+      <div className="flex flex-col max-h-[50vh]">
+        <div className="flex-1 overflow-y-auto px-6 py-5 feed-scroll">
+          <div className="flex flex-col gap-5">
+            {filters.map((filter) => (
+              <div key={filter.label} className="flex flex-col gap-2">
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--brown)" }}>{filter.label}</label>
+                <div className="relative group w-full">
+                  <select
+                    value={selectedFilters[filter.key as keyof typeof selectedFilters]}
+                    onChange={(e) => handleSelectChange(filter.key, e.target.value)}
+                    className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
+                    style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--brown)", fontWeight: "700" }}
+                  >
+                    {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
+        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>Reset</button>
+        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>Apply</button>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────── RIGHT SIDEBAR ─────────────────── */
+
+const UPCOMING_EVENTS_MOCKS = Array(5).fill({
+  id: 1,
+  user_name: "user 85258",
+  event_image: "/timgad 1.jpg",
+  user_avatar: "/kunuz-icon.svg",
+  title: "Timgad Visit",
+  location: "Batna",
+  start_date: "20/09/2026",
+  end_date: "21/09/2026",
+}).map((item, index) => ({ ...item, id: index + 1 }));
+
+/* ─────────────────── MOBILE EVENTS STRIP ─────────────────── */
+
+function MobileEventsStrip() {
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUpcoming() {
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`${API_URL}/api/posts/upcoming-events/`, {
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const results = Array.isArray(data.results) ? data.results : data;
+          if (Array.isArray(results) && results.length > 0) {
+            setUpcomingEvents(results.slice(0, 5).map((event: any) => {
+              const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
+              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "/timgad 1.jpg";
+              const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
+              const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
+              return {
+                id: event.id,
+                user_name: event.user_display_name || event.user_username || "Unknown",
+                event_image: imageUrl,
+                title: event.title,
+                location: event.location || event.region || "Algeria",
+                start_date: sDate,
+                end_date: eDate,
+              };
+            }));
+          } else {
+            setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+          }
+        } else {
+          setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+        }
+      } catch (e) {
+        console.error("Failed to fetch upcoming events", e);
+        setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUpcoming();
+  }, []);
+
+  return (
+    <div className="lg:hidden px-4 py-4">
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Upcoming Events</h3>
+      <div 
+        className="flex gap-3 overflow-x-auto pb-2" 
+        style={{ 
+          scrollbarWidth: "none", 
+          msOverflowStyle: "none",
+          WebkitOverflowScrolling: "touch"
+        }}
+      >
+        {loading ? (
+          <div className="flex justify-center py-4 w-full">
+            <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+          </div>
+        ) : (
+          upcomingEvents.map((eventItem, i) => (
+            <div 
+              key={i} 
+              className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
+              style={{ width: "140px" }}
+            >
+              <div className="flex flex-col">
+                <img 
+                  src={eventItem.event_image} 
+                  alt="event" 
+                  className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm" 
+                />
+                <span 
+                  className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1" 
+                  style={{ 
+                    color: "#432817", 
+                    fontFamily: "var(--font-lato)",
+                    maxWidth: "120px",
+                    wordBreak: "break-word",
+                    hyphens: "auto"
+                  }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(eventItem.title) }}
+                />
+                <span 
+                  className="text-[8px] text-center leading-tight line-clamp-1 mb-1" 
+                  style={{ 
+                    color: "#8B7355", 
+                    fontFamily: "var(--font-lato)"
+                  }}
+                >
+                  {eventItem.user_name}
+                </span>
+                <div className="flex flex-col gap-1 text-center">
+                  <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    {eventItem.location}
+                  </span>
+                  <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                    {eventItem.start_date} {eventItem.end_date ? `- ${eventItem.end_date}` : ""}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -1138,21 +1072,93 @@ function FilterSection({
 /* ─────────────────── RIGHT SIDEBAR ─────────────────── */
 
 function RightSidebar() {
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUpcoming() {
+      try {
+        const token = getAuthToken();
+        const res = await fetch(`${API_URL}/api/posts/upcoming-events/`, {
+          headers: { Authorization: token ? `Bearer ${token}` : "" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const results = Array.isArray(data.results) ? data.results : data;
+          if (Array.isArray(results) && results.length > 0) {
+            setUpcomingEvents(results.slice(0, 5).map((event: any) => {
+              const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
+              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "/timgad 1.jpg";
+              const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
+              const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
+              return {
+                id: event.id,
+                user_name: event.user_display_name || event.user_username || "Unknown",
+                event_image: imageUrl,
+                title: event.title,
+                location: event.location || event.region || "Algeria",
+                start_date: sDate,
+                end_date: eDate,
+              };
+            }));
+          } else {
+            setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+          }
+        } else {
+          setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+        }
+      } catch (e) {
+        console.error("Failed to fetch upcoming events", e);
+        setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUpcoming();
+  }, []);
+
   return (
-    <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
+    <aside className="w-[320px] xl:w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Popular Guilds</h2>
+        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Upcoming Events</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
-          {GUILDS.slice(0, 5).map((guild, i) => (
-            <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 2px 10px rgba(67,40,23,0.05)", backgroundColor: "rgba(255,255,255,0.4)" }}>
-              <img src={guild.image} alt={guild.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm" />
-              <div className="flex flex-col justify-center min-w-0">
-                <span className="font-bold text-sm truncate" style={{ color: "#432817" }}>{guild.name}</span>
-                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "#8B7355" }}>{guild.desc}</span>
-                <span className="flex items-center gap-1 text-[11px] mt-1.5 font-medium" style={{ color: "#8B6914" }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                  {guild.members} Members
-                </span>
+          {loading ? (
+            <div className="flex justify-center py-4"><div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} /></div>
+          ) : upcomingEvents.map((eventItem, i) => (
+            <div key={i} className="flex p-4 mb-2 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
+              {/* Event Image: square 75x75, 20px radius */}
+              <div className="w-[75px] h-[75px] flex-shrink-0 mr-4">
+                <img src={eventItem.event_image} alt="event" className="w-full h-full object-cover rounded-[20px]" />
+              </div>
+
+              {/* Content on the right */}
+              <div className="flex flex-col justify-between flex-1 min-w-0">
+                <div>
+                  {/* Line 1: User name and icon */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#E0D5C5", color: "#8B7355" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      </svg>
+                    </div>
+                    <span className="text-[11px] font-bold truncate" style={{ color: "#8B7355" }}>{eventItem.user_name}</span>
+                  </div>
+
+                  {/* Line 2: Title */}
+                  <span className="font-bold text-[14px] leading-snug line-clamp-2 mb-1.5" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(eventItem.title) }}></span>
+                </div>
+
+                {/* Line 3: Location and Time */}
+                <div className="flex items-center justify-between mt-auto">
+                  <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: "#8B6914" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                    {eventItem.location}
+                  </span>
+                  <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: "#8B6914" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                    {eventItem.start_date} {eventItem.end_date ? `- ${eventItem.end_date}` : ""}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -1207,7 +1213,7 @@ function PostModal({
       const normalized = raw.map(normalizeComment);
       setComments(normalized);
       onInteractionChange({ commentsCount: normalized.length });
-    } catch {}
+    } catch { }
   };
 
   const fetchAnnotations = async (postId: string) => {
@@ -1223,7 +1229,7 @@ function PostModal({
       onInteractionChange({
         annotationsCount: getAcceptedAnnotationsCount(items),
       });
-    } catch {} finally {
+    } catch { } finally {
       setAnnotationsLoading(false);
     }
   };
@@ -1284,7 +1290,7 @@ function PostModal({
       if (!res.ok) return;
       setNewComment("");
       await fetchComments(post.id);
-    } catch {}
+    } catch { }
   };
 
   const handleSubmitAnnotation = async () => {
@@ -1302,14 +1308,10 @@ function PostModal({
       if (!res.ok) return;
       setNewAnnotationText("");
       await fetchAnnotations(post.id);
-    } catch {}
+    } catch { }
   };
 
   const handleDeleteAnnotation = (id: string) => {
-    if (id === "__refresh__") {
-      fetchAnnotations(post.id);
-      return;
-    }
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
   };
 
@@ -1516,32 +1518,53 @@ function PostModal({
           </div>
         );
       })()}
-
-      <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
-
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-4">
-          {tags.map((tag, i) => (
-            <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>
-              #{tag.toLowerCase().replace(/\s+/g, "_")}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
+      <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+      {
+        tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-4">
+            {tags.map((tag, i) => (
+              <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>
+                #{tag.toLowerCase().replace(/\s+/g, "_")}
+              </span>
+            ))}
+          </div>
+        )
+      }
+    </div >
   );
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden"
-        style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {LeftPanel}
+      <div className="relative flex flex-col md:flex-row w-[900px] max-w-[95vw] max-h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+        {/* Left Panel: Image Gallery or Content */}
+        <div className="w-full md:w-1/2 h-64 md:h-auto flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
+          {imageList.length > 0 ? (
+            <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
+              {imageList.map((img) => {
+                const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
+                return (
+                  <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
+                    <div className="absolute inset-0" style={{ backgroundImage: `url("${imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
+                    <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
+                    <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="w-full h-full flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
+              <div className="flex items-center gap-1 mb-1">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+              </div>
+              <h3 className="text-xl font-bold mb-4" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+              <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+            </div>
+          )}
+        </div>
 
-        <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
+        {/* Right Panel: Comments/Annotations */}
+        <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
@@ -1651,7 +1674,6 @@ function PostModal({
                       onDelete={handleDeleteAnnotation}
                       onAccept={handleAcceptAnnotation}
                       onReject={handleRejectAnnotation}
-                      onRefresh={() => fetchAnnotations(post.id)}
                     />
                   ))
                 )}
@@ -1865,7 +1887,7 @@ function PostCard({
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
             </div>
           ) : (
-            <div className="relative w-full overflow-hidden rounded-lg" style={{ height: 460, boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
+            <div className="relative w-full overflow-hidden rounded-lg h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
               <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
                 {imageList.map((img) => {
                   const imageUrl = img?.image
@@ -1961,7 +1983,26 @@ export default function HomePageRoute() {
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
   const [showFilter, setShowFilter] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [nextUrl, setNextUrl] = useState<string | null>(API_URL ? `${API_URL}/api/posts/events/` : null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilters, setActiveFilters] = useState({
+    region: "All",
+    historical_period: "All",
+    monument_type: "All",
+    status: "All",
+  });
+
+  const constructUrl = (filters: typeof activeFilters, query: string) => {
+    const params = new URLSearchParams();
+    if (query) params.append("q", query);
+    if (filters.region !== "All") params.append("region", filters.region);
+    if (filters.historical_period !== "All") params.append("historical_period", filters.historical_period);
+    if (filters.monument_type !== "All") params.append("monument_type", filters.monument_type);
+    if (filters.status !== "All") params.append("status", filters.status.toLowerCase());
+
+    return `${API_URL}/api/posts/events/filter/?${params.toString()}`;
+  };
+
+  const [nextUrl, setNextUrl] = useState<string | null>(constructUrl({ region: "All", historical_period: "All", monument_type: "All", status: "All" }, ""));
 
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
 
@@ -1991,48 +2032,62 @@ export default function HomePageRoute() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
 
+  const fetchPosts = async (url: string, reset = false) => {
+    if (!url || loading) return;
+    const token = getAuthToken();
+    try {
+      setLoading(true);
+      const res = await fetch(url, {
+        headers: {
+          "Authorization": token ? `Bearer ${token}` : "",
+        },
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("authUser");
+          window.location.href = "/login";
+          return;
+        }
+        console.error(`HTTP error! status: ${res.status}`);
+        setNextUrl(null);
+        return;
+      }
+      const data = await res.json();
+      const formattedPosts: ApiPost[] = (data.results || data).map((post: any, i: number) => ({
+        id: String(post.id),
+        user_display_name: post.user_display_name ?? "",
+        user_username: post.user_username ?? "",
+        title: post.title ?? "",
+        content: post.content ?? "",
+        post_type: post.post_type ?? "",
+        region: post.region ?? "",
+        location: post.location ?? "",
+        gems_count: post.gems_count ?? 0,
+        comments_count: post.comments_count ?? 0,
+        images: Array.isArray(post.images) ? post.images : [],
+        tags: Array.isArray(post.tags) ? post.tags : [],
+        historical_period: post.historical_period ?? "",
+        monument_type: post.monument_type ?? "",
+        created_at: post.created_at ?? "",
+        alert_details: post.alert_details ?? null,
+        event_details: post.event_details ?? null,
+        _key: (reset ? 0 : posts.length) + i,
+      }));
+      setPosts(prev => reset ? formattedPosts : [...prev, ...formattedPosts]);
+      setNextUrl(data.next ?? null);
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const observer = new IntersectionObserver(
-      async (entries) => {
-        if (!entries[0].isIntersecting || loading || !nextUrl) return;
-        try {
-          setLoading(true);
-          const res = await apiFetch(nextUrl);
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-          const data = await res.json();
-          const previousLength = posts.length;
-          const results = Array.isArray(data.results) ? data.results : [];
-          const formattedPosts: ApiPost[] = results.map((post: any, i: number) => ({
-            id: String(post.id),
-            user_id: post.user_id ?? "",
-            user_display_name: post.user_display_name ?? "",
-            user_username: post.user_username ?? "",
-            title: post.title ?? "",
-            content: post.content ?? "",
-            post_type: post.post_type ?? "",
-            region: post.region ?? "",
-            location: post.location ?? "",
-            gems_count: post.gems_count ?? 0,
-            comments_count: post.comments_count ?? 0,
-            accepted_annotations_count: post.accepted_annotations_count ?? 0,
-            is_gemmed: post.is_gemmed ?? false,
-            is_saved: post.is_saved ?? false,
-            images: Array.isArray(post.images) ? post.images : [],
-            tags: Array.isArray(post.tags) ? post.tags : [],
-            historical_period: post.historical_period ?? "",
-            monument_type: post.monument_type ?? "",
-            created_at: post.created_at ?? "",
-            alert_details: post.alert_details ?? null,
-            event_details: post.event_details ?? null,
-            _key: previousLength + i,
-          }));
-          setPosts((prev) => [...prev, ...formattedPosts]);
-          setNextUrl(data.next ?? null);
-          if (formattedPosts.length > 0) setNewPostStart(previousLength);
-        } catch (err) {
-          console.error("Error fetching posts:", err);
-        } finally {
-          setLoading(false);
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && nextUrl) {
+          fetchPosts(nextUrl);
         }
       },
       { threshold: 1.0 }
@@ -2041,6 +2096,20 @@ export default function HomePageRoute() {
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [nextUrl, loading, posts.length]);
+
+  const handleApplyFilters = (filters: typeof activeFilters) => {
+    setActiveFilters(filters);
+    const url = constructUrl(filters, searchQuery);
+    setNextUrl(url);
+    fetchPosts(url, true);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const url = constructUrl(activeFilters, searchQuery);
+    setNextUrl(url);
+    fetchPosts(url, true);
+  };
 
   useEffect(() => {
     const feedElement = feedRef.current;
@@ -2052,55 +2121,73 @@ export default function HomePageRoute() {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden justify-center" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
-        <LeftSidebar />
-        <div className="flex h-full" style={{ width: "1116px", maxWidth: "100%", marginLeft: "80px" }}>
+      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
+        <LeftSidebar activePage="events" />
+        <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
             <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
-              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
+              <form onSubmit={handleSearch} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                <input type="text" placeholder="Search..." onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} className="flex-1 ml-3 outline-none bg-transparent text-sm" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }} />
-                <button className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors" onClick={() => setShowFilter(!showFilter)}>
+                <input
+                  type="text"
+                  placeholder="Search events..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  className="flex-1 ml-3 outline-none bg-transparent text-sm"
+                  style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}
+                />
+                <button type="button" className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors" onClick={() => setShowFilter(!showFilter)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
                     <circle cx="8" cy="6" r="1.5" fill="#432817" /><circle cx="16" cy="12" r="1.5" fill="#432817" /><circle cx="10" cy="18" r="1.5" fill="#432817" />
                   </svg>
                 </button>
-              </div>
-              <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} />
+              </form>
+              <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} onApply={handleApplyFilters} />
             </div>
 
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                {posts.map((post, index) => (
-                  <PostCard
-                    key={post._key ?? Number(post.id) ?? index}
-                    post={post}
-                    isNew={index >= newPostStart && newPostStart !== -1}
-                    interaction={getInteraction(post)}
-                    onInteractionChange={(update) => updateInteraction(post.id, update)}
-                    onCommentClick={() => {
-                      setSelectedPost(post);
-                      setSelectedPostTab("comments");
-                    }}
-                    onAnnotationClick={() => {
-                      setSelectedPost(post);
-                      setSelectedPostTab("annotations");
-                    }}
-                  />
-                ))}
+                <MobileEventsStrip />
+                {posts.length === 0 && !loading ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4"><circle cx="12" cy="12" r="10" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
+                    <p className="text-sm font-bold" style={{ color: "var(--brown)" }}>No events found matching your criteria.</p>
+                  </div>
+                ) : (
+                  posts.map((post, index) => (
+                    <React.Fragment key={post._key ?? post.id ?? index}>
+                      <PostCard
+                        post={post}
+                        isNew={index >= newPostStart && newPostStart !== -1}
+                        interaction={getInteraction(post)}
+                        onInteractionChange={(update) => updateInteraction(post.id, update)}
+                        onCommentClick={() => {
+                          setSelectedPost(post);
+                          setSelectedPostTab("comments");
+                        }}
+                        onAnnotationClick={() => {
+                          setSelectedPost(post);
+                          setSelectedPostTab("annotations");
+                        }}
+                      />
+                    </React.Fragment>
+                  ))
+                )}
                 {loading && (
                   <div className="flex justify-center py-6">
                     <div className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
                   </div>
                 )}
                 <div ref={sentinelRef} className="h-4" />
-              </main>
+              </main >
               <RightSidebar />
-            </div>
-          </div>
-        </div>
-      </div>
+            </div >
+          </div >
+        </div >
+      </div >
 
       {selectedPost && (
         <PostModal
@@ -2110,7 +2197,8 @@ export default function HomePageRoute() {
           onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
           onClose={() => setSelectedPost(null)}
         />
-      )}
+      )
+      }
     </>
   );
 }

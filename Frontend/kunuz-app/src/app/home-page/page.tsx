@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
+import LeftSidebar from "@/components/LeftSidebar";
 
 //const API_URL =
 //  process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
@@ -514,7 +515,7 @@ function CommentItem({
         setShowMenu(false);
         onDelete?.(comment.id);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleSubmitReply = async () => {
@@ -536,7 +537,7 @@ function CommentItem({
       setReplyText("");
       setShowReplyInput(false);
       onRefresh?.();
-    } catch {}
+    } catch { }
   };
 
   const handleEditComment = () => {
@@ -564,7 +565,7 @@ function CommentItem({
 
       setIsEditing(false);
       onRefresh?.();
-    } catch {}
+    } catch { }
   };
 
   const handleCancelEditComment = () => {
@@ -809,7 +810,7 @@ function AnnotationItem({
         onDelete(annotation.id);
         setShowMenu(false);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleAccept = async () => {
@@ -826,7 +827,7 @@ function AnnotationItem({
         onAccept(annotation.id);
         setShowMenu(false);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleReject = async () => {
@@ -843,7 +844,7 @@ function AnnotationItem({
         onReject(annotation.id);
         setShowMenu(false);
       }
-    } catch {}
+    } catch { }
   };
 
   const handleEditAnnotation = () => {
@@ -869,7 +870,7 @@ function AnnotationItem({
       if (!res.ok) return;
       setIsEditing(false);
       onRefresh?.();
-    } catch {}
+    } catch { }
   };
 
   const handleCancelEditAnnotation = () => {
@@ -1051,84 +1052,7 @@ function AnnotationItem({
 
 /* ─────────────────── LEFT SIDEBAR ─────────────────── */
 
-function LeftSidebar() {
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [loggedInUsername, setLoggedInUsername] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchLoggedInUser = async () => {
-      try {
-        const token = getAuthToken();
-        if (!token) return;
-
-        const endpoint = `${API_URL}/api/users/me/`;
-        const res = await apiFetch(endpoint);
-
-        if (!res.ok) return;
-        const data = await res.json();
-        const realUser = data.data ?? data;
-
-        if (!cancelled) {
-          setLoggedInUsername(realUser.username || "");
-        }
-      } catch (err) {
-        console.error("Error fetching logged-in user:", err);
-      }
-    };
-
-    fetchLoggedInUser();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const navIcons = [
-    { label: "Home", href: "/home-page", path: (<><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></>) },
-    { label: "Guilds", href: null, path: (<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>) },
-    { label: "Monuments in Danger", href: null, path: (<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>) },
-    { label: "Events", href: "/events", path: (<><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>) },
-    { label: "Notifications", href: null, hasBadge: true, path: (<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>) },
-    { label: "Profile", href: loggedInUsername ? `/user/${loggedInUsername}` : "#", path: (<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>) },
-  ];
-
-  return (
-    <aside className="fixed left-4 top-4 w-[56px] flex flex-col items-center py-6 z-50 rounded-2xl" style={{ backgroundColor: "#FFF8E2", boxShadow: "0 4px 24px rgba(67,40,23,0.12)" }}>
-      <div className="mb-6 px-1"><img src="/kunuz-icon.svg" alt="Kunuz" width={42} height={42} /></div>
-      <nav className="flex flex-col items-center gap-5">
-        {navIcons.map((item, i) => {
-          const iconContent = (
-            <>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={activeIdx === i ? "#FFF8E2" : "none"} stroke={activeIdx === i ? "#FFF8E2" : "#432817"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="transition-colors">{item.path}</svg>
-              {item.hasBadge && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
-            </>
-          );
-          return (
-            <div key={i} className="relative group">
-              {item.href ? (
-                <Link href={item.href} className={`relative p-2.5 rounded-xl transition-all duration-200 block ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}>{iconContent}</Link>
-              ) : (
-                <button onClick={() => setActiveIdx(i)} className={`relative p-2.5 rounded-xl transition-all duration-200 ${activeIdx === i ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}>{iconContent}</button>
-              )}
-              <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}>{item.label}</span>
-            </div>
-          );
-        })}
-        <div className="h-40" />
-        <div className="relative group">
-          <button className="p-2.5 rounded-xl transition-all duration-200 hover:bg-[#F0E8CC]">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-          </button>
-          <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2", boxShadow: "0 2px 8px rgba(67,40,23,0.2)" }}>Help</span>
-        </div>
-      </nav>
-    </aside>
-  );
-}
-
-/* ─────────────────── FILTER SECTION ─────────────────── */
+/* ───────────────── FILTER SECTION ───────────────── */
 
 function FilterSection({
   isVisible,
@@ -1166,7 +1090,7 @@ function FilterSection({
       .then((data) => {
         if (data.data) setChoices(data.data);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   if (!isAnimating && !isVisible) return null;
@@ -1290,7 +1214,7 @@ function PostModal({
       const normalized = raw.map(normalizeComment);
       setComments(normalized);
       onInteractionChange({ commentsCount: normalized.length });
-    } catch {}
+    } catch { }
   };
 
   const fetchAnnotations = async (postId: string) => {
@@ -1306,7 +1230,7 @@ function PostModal({
       onInteractionChange({
         annotationsCount: getAcceptedAnnotationsCount(items),
       });
-    } catch {} finally {
+    } catch { } finally {
       setAnnotationsLoading(false);
     }
   };
@@ -1367,7 +1291,7 @@ function PostModal({
       if (!res.ok) return;
       setNewComment("");
       await fetchComments(post.id);
-    } catch {}
+    } catch { }
   };
 
   const handleSubmitAnnotation = async () => {
@@ -1385,7 +1309,7 @@ function PostModal({
       if (!res.ok) return;
       setNewAnnotationText("");
       await fetchAnnotations(post.id);
-    } catch {}
+    } catch { }
   };
 
   const handleDeleteAnnotation = (id: string) => {
@@ -1500,7 +1424,47 @@ function PostModal({
             {replies.map((reply) => renderCommentThread(reply, level + 1))}
           </div>
         )}
-      </div>
+        {
+          post.post_type === "event" && post.event_details && (
+            <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
+                <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
+              </div>
+            </div>
+          )
+        }
+        {
+          post.post_type === "alert" && post.alert_details && (() => {
+            const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
+            const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
+            return (
+              <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
+                </div>
+              </div>
+            );
+          })()
+        }
+        <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+        {
+          tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-4">
+              {tags.map((tag, i) => (
+                <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
+              ))}
+            </div>
+          )
+        }
+      </div >
     );
   };
 
@@ -1617,14 +1581,36 @@ function PostModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div
-        className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden"
-        style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {LeftPanel}
+      <div className="relative flex flex-col md:flex-row w-[900px] max-w-[95vw] max-h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+        {/* Left Panel: Image Gallery or Content */}
+        <div className="w-full md:w-1/2 h-64 md:h-auto flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
+          {imageList.length > 0 ? (
+            <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
+              {imageList.map((img) => {
+                const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
+                return (
+                  <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
+                    <div className="absolute inset-0" style={{ backgroundImage: `url("${imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
+                    <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
+                    <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="w-full h-full flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
+              <div className="flex items-center gap-1 mb-1">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+              </div>
+              <h3 className="text-xl font-bold mb-4" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+              <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+            </div>
+          )}
+        </div>
 
-        <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
+        {/* Right Panel: Comments/Annotations */}
+        <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
@@ -1831,6 +1817,72 @@ function PostModal({
   );
 }
 
+/* ─────────────────── MOBILE GUILDS STRIP ─────────────────── */
+
+function MobileGuildsStrip() {
+  return (
+    <div className="lg:hidden px-4 py-4">
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Popular Guilds</h3>
+      <div 
+        className="flex gap-3 overflow-x-auto pb-2" 
+        style={{ 
+          scrollbarWidth: "none", 
+          msOverflowStyle: "none",
+          WebkitOverflowScrolling: "touch"
+        }}
+      >
+        {GUILDS.slice(0, 5).map((guild, i) => (
+          <div 
+            key={i} 
+            className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
+            style={{ width: "120px" }}
+          >
+            <div className="flex flex-col items-center">
+              <img 
+                src={guild.image} 
+                alt={guild.name} 
+                className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2" 
+              />
+              <span 
+                className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1" 
+                style={{ 
+                  color: "#432817", 
+                  fontFamily: "var(--font-lato)",
+                  maxWidth: "120px",
+                  wordBreak: "break-word",
+                  hyphens: "auto"
+                }}
+              >
+                {guild.name}
+              </span>
+              <span 
+                className="text-[8px] text-center leading-tight line-clamp-2 mb-2" 
+                style={{ 
+                  color: "#8B7355", 
+                  fontFamily: "var(--font-lato)",
+                  maxWidth: "120px",
+                  lineHeight: "1.2"
+                }}
+              >
+                {guild.desc}
+              </span>
+              <span className="flex items-center gap-1 text-[9px] font-medium" style={{ color: "#8B6914" }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                {guild.members}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────── RIGHT SIDEBAR ─────────────────── */
 
 function RightSidebar() {
@@ -1936,8 +1988,12 @@ function PostCard({
 
   return (
     <div
-      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
-      style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
+      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""
+        }`}
+      style={{
+        boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
+        backgroundColor: "var(--light)",
+      }}
       onClick={onCommentClick}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
@@ -1991,7 +2047,7 @@ function PostCard({
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
             </div>
           ) : (
-            <div className="relative w-full overflow-hidden rounded-lg" style={{ height: 460, boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
+            <div className="relative w-full overflow-hidden rounded-lg h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
               <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
                 {imageList.map((img) => {
                   const imageUrl = img?.image
@@ -2118,10 +2174,15 @@ export default function HomePageRoute() {
         [postId]: {
           ...existing,
           ...update,
+          gemsCount: Math.max(
+            0,
+            update.gemsCount ?? existing.gemsCount ?? 0
+          ),
         },
       };
     });
   };
+  // ─────────────────────────────────────────────────────────────────────────
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
@@ -2140,7 +2201,7 @@ export default function HomePageRoute() {
         });
         const data = await res.json();
         setSearchResults(data.data || { users: [], posts: [] });
-      } catch {} finally {
+      } catch { } finally {
         setSearchLoading(false);
       }
     }, 400);
@@ -2192,7 +2253,7 @@ export default function HomePageRoute() {
       }));
       setPosts(formatted);
       setNextUrl(null);
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
@@ -2206,7 +2267,17 @@ export default function HomePageRoute() {
               ? nextUrl
               : `${API_URL}${nextUrl.startsWith("/") ? "" : "/"}${nextUrl}`;
           const res = await apiFetch(resolvedNextUrl);
-          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          if (!res.ok) {
+            if (res.status === 401) {
+              localStorage.removeItem("accessToken");
+              localStorage.removeItem("authUser");
+              window.location.href = "/login";
+              return;
+            }
+            console.error(`HTTP error! status: ${res.status}`);
+            setNextUrl(null);
+            return;
+          }
           const data = await res.json();
           const previousLength = posts.length;
           const results = Array.isArray(data.results) ? data.results : [];
@@ -2261,9 +2332,9 @@ export default function HomePageRoute() {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden justify-center" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
-        <LeftSidebar />
-        <div className="flex h-full" style={{ width: "1116px", maxWidth: "100%", marginLeft: "80px" }}>
+      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
+        <LeftSidebar activePage="home" />
+        <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
             <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
               <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
@@ -2347,22 +2418,24 @@ export default function HomePageRoute() {
 
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                <MobileGuildsStrip />
                 {posts.map((post, index) => (
-                  <PostCard
-                    key={post._key ?? Number(post.id) ?? index}
-                    post={post}
-                    isNew={index >= newPostStart && newPostStart !== -1}
-                    interaction={getInteraction(post)}
-                    onInteractionChange={(update) => updateInteraction(post.id, update)}
-                    onCommentClick={() => {
-                      setSelectedPost(post);
-                      setSelectedPostTab("comments");
-                    }}
-                    onAnnotationClick={() => {
-                      setSelectedPost(post);
-                      setSelectedPostTab("annotations");
-                    }}
-                  />
+                  <React.Fragment key={post._key ?? Number(post.id) ?? index}>
+                    <PostCard
+                      post={post}
+                      isNew={index >= newPostStart && newPostStart !== -1}
+                      interaction={getInteraction(post)}
+                      onInteractionChange={(update) => updateInteraction(post.id, update)}
+                      onCommentClick={() => {
+                        setSelectedPost(post);
+                        setSelectedPostTab("comments");
+                      }}
+                      onAnnotationClick={() => {
+                        setSelectedPost(post);
+                        setSelectedPostTab("annotations");
+                      }}
+                    />
+                  </React.Fragment>
                 ))}
                 {loading && (
                   <div className="flex justify-center py-6">

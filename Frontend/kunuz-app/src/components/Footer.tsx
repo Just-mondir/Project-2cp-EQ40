@@ -9,6 +9,7 @@ export default function Footer() {
   if (
     pathname === "/home-page" ||
     pathname === "/events" ||
+    pathname === "/monuments-in-danger" ||
     pathname === "/login" ||
     pathname === "/sign-up" ||
     pathname === "/set-profile" ||
@@ -17,10 +18,12 @@ export default function Footer() {
     pathname.startsWith("/help") ||
     pathname.startsWith("/user") ||
     pathname.startsWith("/add-post") ||
+    pathname.startsWith("/add-event") ||
     pathname.startsWith("/edit-post")
   ) {
     return null;
   }
+
 
   const linkClass =
     "text-[#e8d9c0] hover:text-[#BB9557] relative w-fit after:absolute after:bottom-0 after:left-0 after:w-0 after:h-[1px] after:bg-[#BB9557] after:transition-all after:duration-300 hover:after:w-full cursor-pointer";
