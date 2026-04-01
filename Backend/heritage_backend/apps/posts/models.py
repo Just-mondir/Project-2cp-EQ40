@@ -194,3 +194,17 @@ class Annotation(me.Document):
     validated_at = me.DateTimeField(null=True)
 
     meta = {"collection": "annotations"}
+
+
+class MobilizationEvent(me.Document):
+    post = me.ReferenceField(Post, required=True)
+    author_id = me.StringField(required=True)
+    description = me.StringField(required=True)
+    previous_status = me.StringField(required=True)
+    current_status = me.StringField(required=True)
+    created_at = me.DateTimeField(default=timezone.now)
+
+    meta = {
+        "collection": "mobilization_events",
+        "ordering": ["-created_at"],
+    }

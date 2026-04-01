@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
 import DOMPurify from "dompurify";
+import LeftSidebar from "@/components/LeftSidebar";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -520,7 +521,7 @@ function CommentItem({
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
       if (res.ok || res.status === 204) { setShowMenu(false); onDelete?.(comment.id); }
-    } catch {}
+    } catch { }
   };
 
   const handleEditComment = () => { setEditText(comment.content); setIsEditing(true); setShowMenu(false); };
@@ -537,7 +538,7 @@ function CommentItem({
       if (!res.ok) return;
       setIsEditing(false);
       onRefresh?.();
-    } catch {}
+    } catch { }
   };
 
   const handleCancelEditComment = () => { setEditText(comment.content); setIsEditing(false); };
@@ -554,7 +555,7 @@ function CommentItem({
       setReplyText("");
       setShowReplyInput(false);
       onRefresh?.();
-    } catch {}
+    } catch { }
   };
 
   const handleReportComment = async () => {
@@ -660,21 +661,21 @@ function AnnotationItem({
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/`, { method: "DELETE", headers: { Authorization: `Bearer ${getAuthToken()}` } });
       if (res.ok || res.status === 204) { onDelete(annotation.id); setShowMenu(false); }
-    } catch {}
+    } catch { }
   };
 
   const handleAccept = async () => {
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/accept/`, { method: "POST", headers: { Authorization: `Bearer ${getAuthToken()}` } });
       if (res.ok) { onAccept(annotation.id); setShowMenu(false); }
-    } catch {}
+    } catch { }
   };
 
   const handleReject = async () => {
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/reject/`, { method: "POST", headers: { Authorization: `Bearer ${getAuthToken()}` } });
       if (res.ok) { onReject(annotation.id); setShowMenu(false); }
-    } catch {}
+    } catch { }
   };
 
   const handleEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(true); setShowMenu(false); };
@@ -689,7 +690,7 @@ function AnnotationItem({
       if (!res.ok) return;
       setIsEditing(false);
       onRefresh();
-    } catch {}
+    } catch { }
   };
 
   const handleCancelEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(false); };
@@ -837,7 +838,7 @@ function PostModal({
       const normalized = raw.map(normalizeComment);
       setComments(normalized);
       onInteractionChange({ commentsCount: normalized.length });
-    } catch {}
+    } catch { }
   };
 
   const fetchAnnotations = async (postId: string) => {
@@ -848,7 +849,7 @@ function PostModal({
       const items = Array.isArray(data.data) ? data.data : [];
       setAnnotations(items);
       onInteractionChange({ annotationsCount: getAcceptedAnnotationsCount(items) });
-    } catch {} finally {
+    } catch { } finally {
       setAnnotationsLoading(false);
     }
   };
@@ -893,7 +894,7 @@ function PostModal({
       if (!res.ok) return;
       setNewComment("");
       await fetchComments(post.id);
-    } catch {}
+    } catch { }
   };
 
   const handleSubmitAnnotation = async () => {
@@ -907,7 +908,7 @@ function PostModal({
       if (!res.ok) return;
       setNewAnnotationText("");
       await fetchAnnotations(post.id);
-    } catch {}
+    } catch { }
   };
 
   const handleDeletePost = () => { setShowPostMenu(false); setShowDeleteModal(true); };
@@ -1178,51 +1179,6 @@ function PostModal({
   );
 }
 
-/* ───────────────── LEFT SIDEBAR ───────────────── */
-
-function LeftSidebar() {
-  const navIcons = [
-    { label: "Home", href: "/home-page", path: (<><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></>) },
-    { label: "Communities", href: "#", path: (<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>) },
-    { label: "Monuments in Danger", href: "#", path: (<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>) },
-    { label: "Events", href: "/events", path: (<><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>) },
-    { label: "Notifications", href: "#", hasBadge: true, path: (<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></>) },
-    { label: "Profile", href: "/profile", isActive: true, path: (<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>) },
-  ];
-
-  return (
-    <aside className="fixed left-4 top-4 w-[56px] flex flex-col items-center py-6 z-50 rounded-2xl" style={{ backgroundColor: "#FFF8E2", boxShadow: "0 4px 24px rgba(67,40,23,0.12)" }}>
-      <Link href="/home-page" className="mb-6 px-1">
-        <img src="/kunuz-icon.svg" alt="Kunuz" width={42} height={42} />
-      </Link>
-      <nav className="flex flex-col items-center gap-5">
-        {navIcons.map((item, i) => (
-          <div key={i} className="relative group">
-            <Link href={item.href} className={`relative p-2.5 rounded-xl transition-all duration-200 block ${item.isActive ? "bg-[#432817]" : "hover:bg-[#F0E8CC]"}`}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={item.isActive ? "#FFF8E2" : "none"} stroke={item.isActive ? "#FFF8E2" : "#432817"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                {item.path}
-              </svg>
-              {item.hasBadge && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />}
-            </Link>
-            <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2" }}>
-              {item.label}
-            </span>
-          </div>
-        ))}
-        <div className="h-40" />
-        <div className="relative group">
-          <button className="p-2.5 rounded-xl hover:bg-[#F0E8CC]">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </button>
-          <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 z-50" style={{ backgroundColor: "#432817", color: "#FFF8E2" }}>Help</span>
-        </div>
-      </nav>
-    </aside>
-  );
-}
-
 /* ───────────────── PROFILE HEADER ───────────────── */
 
 function ProfileHeader() {
@@ -1332,10 +1288,10 @@ function PostGridCard({
   return (
     <div className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group" style={{ boxShadow: "0 2px 12px rgba(67,40,23,0.1)" }} onClick={onClick}>
       {imageUrl ? (
-        <img src={imageUrl} alt={post.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+        <img src={imageUrl} alt={stripHtml(post.title)} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center px-3" style={{ background: "linear-gradient(135deg, #e8d9bb, #ded2bc)" }}>
-          <p className="text-center text-xs font-semibold leading-snug line-clamp-3" style={{ color: "rgba(0,0,0,0.78)" }}>{post.title}</p>
+          <p className="text-center text-xs font-semibold leading-snug line-clamp-3" style={{ color: "rgba(0,0,0,0.78)" }}>{stripHtml(post.title)}</p>
         </div>
       )}
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-6">
@@ -1566,7 +1522,7 @@ export default function ProfilePage() {
         />
       )}
 
-      <LeftSidebar />
+      <LeftSidebar activePage="profile" />
 
       <main className="pl-[80px] pr-4">
         <div className="max-w-4xl mx-auto">
@@ -1575,28 +1531,28 @@ export default function ProfilePage() {
 
           {activeTab === "grid" && (
             loadingPosts ? <Spinner /> :
-            allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message="No Posts yet" /> :
-            <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+              allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message="No Posts yet" /> :
+                <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && activeTab === "gems" && (
             loadingGemmed ? <Spinner /> :
-            gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" /> :
-            <PostsGrid posts={gemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+              gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" /> :
+                <PostsGrid posts={gemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && activeTab === "saved" && (
             loadingSaved ? <Spinner /> :
-            savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" /> :
-            <PostsGrid posts={savedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+              savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" /> :
+                <PostsGrid posts={savedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {activeTab === "events" && (
             loadingEvents ? <Spinner /> :
-            eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message="No Events yet" /> :
-            <PostsGrid posts={eventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+              eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message="No Events yet" /> :
+                <PostsGrid posts={eventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {activeTab === "alerts" && (
             loadingAlerts ? <Spinner /> :
-            alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message="No Monuments in Danger yet" /> :
-            <PostsGrid posts={alertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+              alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message="No Monuments in Danger yet" /> :
+                <PostsGrid posts={alertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
         </div>
       </main>

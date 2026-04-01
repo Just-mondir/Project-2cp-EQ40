@@ -14,7 +14,7 @@ from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 from apps.users.models import User
-from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails, Annotation
+from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails, Annotation, MobilizationEvent
 from .serializers import (
     CommentSerializer,
     GemSerializer,
@@ -24,6 +24,7 @@ from .serializers import (
     PostListSerializer,
     SaveSerializer,
     AnnotationSerializer,
+    MobilizationEventSerializer,
 )
 
 
@@ -796,6 +797,9 @@ class MonumentsInDangerView(APIView):
                     "historical_period": post.historical_period,
                     "monument_type": post.monument_type,
                     "created_at": post.created_at.isoformat() if post.created_at else None,
+                    "gems_count": post.gems_count,
+                    "comments_count": post.comments_count,
+                    "images": PostImageSerializer(PostImage.objects(post=post), many=True, context={"request": request}).data,
                     "alert_details": {
                         "id": str(alert_detail.id),
                         "urgence_level": alert_detail.urgence_level,
@@ -808,25 +812,29 @@ class MonumentsInDangerView(APIView):
 
         return api_success("Monuments in danger retrieved.", data)
 
+
 class MobilizationEventCreateView(APIView):
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
     permission_classes = [IsAuthenticated]
+
     def post(self, request: Request) -> Response:
-        data = request.data.copy()
-        data["post_type"] = "event"
-        serializer = PostDetailSerializer(data=data, context={"request": request})
+        serializer = MobilizationEventSerializer(data=request.data)
         if not serializer.is_valid():
-            return api_error(
-                "Validation failed.",
-                serializer.errors,
-                status.HTTP_400_BAD_REQUEST,
-            )
-        post = serializer.save(author_id=str(request.user.id))
-        image_files = request.FILES.getlist("uploaded_images")
-        if image_files:
-            _save_post_images(post, image_files)
+            return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
+
+        # Update the monument's status if provided
+        monument_post = serializer.validated_data["post"]
+        current_status = serializer.validated_data.get("current_status")
+        if current_status:
+            try:
+                alert_details = AlertDetails.objects.get(post=monument_post)
+                alert_details.current_status = current_status
+                alert_details.save()
+            except AlertDetails.DoesNotExist:
+                pass
+
+        mobilization_event = serializer.save(author_id=str(request.user.id))
         return api_success(
             "Mobilization event created successfully.",
-            PostDetailSerializer(post, context={"request": request}).data,
+            MobilizationEventSerializer(mobilization_event).data,
             status.HTTP_201_CREATED,
         )

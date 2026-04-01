@@ -33,8 +33,19 @@ const fallbackImages: HeritageImage[] = [
   { id: "6", src: "/Picture 6.jpg", alt: "Heritage", title: "Islamic Corridor" },
 ];
 
+function stripHtml(html: string): string {
+  if (!html) return "";
+  let result = html;
+  let prev: string;
+  do {
+    prev = result;
+    result = prev.replace(/<[^>]*>/g, "");
+  } while (result !== prev);
+  return result;
+}
+
 async function getHeritageImages(): Promise<HeritageImage[]> {
-try {
+  try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/posts/`, {
       next: { revalidate: 60 },
     });
@@ -48,11 +59,13 @@ try {
         const imageUrl = post.images[0].image.startsWith("http")
           ? post.images[0].image
           : `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`;
+
+        const cleanTitle = stripHtml(post.title);
         return {
           id: post.id,
           src: imageUrl,
-          alt: post.title,
-          title: post.title,
+          alt: cleanTitle,
+          title: cleanTitle,
         };
       });
     return postsWithImages.length > 0 ? postsWithImages : fallbackImages;

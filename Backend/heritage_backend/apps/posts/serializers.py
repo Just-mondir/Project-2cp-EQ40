@@ -15,6 +15,7 @@ from .models import (
     Post,
     PostImage,
     Save,
+    MobilizationEvent,
 )
 
 
@@ -355,3 +356,24 @@ class AnnotationSerializer(serializers.Serializer):
         if not attrs.get("text") and not attrs.get("image"):
             raise serializers.ValidationError("Annotation must contain text or image.")
         return attrs
+
+
+class MobilizationEventSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    post = serializers.CharField()
+    author_id = serializers.CharField(read_only=True)
+    description = serializers.CharField()
+    previous_status = serializers.CharField()
+    current_status = serializers.CharField()
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def validate_post(self, value):
+        try:
+            return Post.objects.get(id=value)
+        except Post.DoesNotExist:
+            raise serializers.ValidationError("Post not found.")
+
+    def create(self, validated_data):
+        event = MobilizationEvent(**validated_data)
+        event.save()
+        return event
