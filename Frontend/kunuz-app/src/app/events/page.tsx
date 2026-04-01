@@ -1654,7 +1654,18 @@ function PostModal({
           <div className="flex-1 overflow-y-auto feed-scroll">
             {activeTab === "comments" && (
               <div className="px-5 py-3 flex flex-col gap-3">
-                {topLevelComments.map((comment) => renderCommentThread(comment))}
+                {topLevelComments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2">
+                    <CommentIcon size={28} className="opacity-30" />
+                    <p className="text-xs" style={{ color: "#8B7355" }}>
+                      No comments yet. Be the first to comment!
+                    </p>
+                  </div>
+                ) : (
+                  topLevelComments.map((comment) =>
+                    renderCommentThread(comment)
+                  )
+                )}
               </div>
             )}
 
@@ -1663,6 +1674,11 @@ function PostModal({
                 {annotationsLoading ? (
                   <div className="flex justify-center py-6">
                     <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+                  </div>
+                ) : annotations.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2">
+                    <AnnotationIcon size={28} className="opacity-30" />
+                    <p className="text-xs" style={{ color: "#8B7355" }}>No annotations yet. Be the first to annotate!</p>
                   </div>
                 ) : (
                   annotations.map((annotation) => (
@@ -1674,6 +1690,7 @@ function PostModal({
                       onDelete={handleDeleteAnnotation}
                       onAccept={handleAcceptAnnotation}
                       onReject={handleRejectAnnotation}
+                      onRefresh={() => fetchAnnotations(post.id)}
                     />
                   ))
                 )}
