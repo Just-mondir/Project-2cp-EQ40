@@ -4,11 +4,20 @@ import { useRef, useState } from "react";
 
 interface AddDocumentsModalProps {
   onClose: () => void;
+  onDraftSave?: (draft: BadgeRequestDraft | null) => void;
+  initialDraft?: BadgeRequestDraft | null;
 }
 
-export default function AddDocumentsModal({ onClose }: AddDocumentsModalProps) {
+export type BadgeRequestDraft = {
+  document: File;
+  message: string;
+};
+
+export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }: AddDocumentsModalProps) {
   const [dragOver, setDragOver] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>(initialDraft?.document ? [initialDraft.document] : []);
+  const [message, setMessage] = useState(initialDraft?.message ?? "");
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -22,6 +31,17 @@ export default function AddDocumentsModal({ onClose }: AddDocumentsModalProps) {
     if (e.target.files) {
       setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
     }
+  };
+
+  const handleSaveDraft = () => {
+    if (files.length === 0) {
+      setError("Please select at least one document.");
+      return;
+    }
+
+    setError(null);
+    onDraftSave?.({ document: files[0], message: message.trim() });
+    onClose();
   };
 
   return (
@@ -95,10 +115,40 @@ export default function AddDocumentsModal({ onClose }: AddDocumentsModalProps) {
           />
         </div>
 
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Optional message to moderators"
+          className="w-full"
+          style={{
+            minHeight: "90px",
+            marginBottom: "16px",
+            borderRadius: "10px",
+            border: "1px solid #9E9E9E",
+            padding: "10px 12px",
+            fontFamily: "var(--font-lato)",
+            color: "#432817",
+            backgroundColor: "#F9F9F9",
+            resize: "vertical",
+          }}
+        />
+
+        {files.length > 1 && (
+          <p className="text-xs mb-2" style={{ color: "#79747E", fontFamily: "var(--font-lato)" }}>
+            Only the first selected document will be uploaded.
+          </p>
+        )}
+
+        {error && (
+          <p className="text-sm mb-3" style={{ color: "#B3261E", fontFamily: "var(--font-lato)" }}>
+            {error}
+          </p>
+        )}
+
         {/* Done Button */}
         <div className="flex justify-center">
           <button
-            onClick={onClose}
+            onClick={handleSaveDraft}
             className="font-black text-white transition-opacity hover:opacity-90 active:opacity-80"
             style={{
               backgroundColor: "#432817",

@@ -166,6 +166,7 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=False)
 EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
 EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / ".test_emails"))
+BACKEND_PUBLIC_URL = env("BACKEND_PUBLIC_URL", default="http://127.0.0.1:8000")
 DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL",
     default="Heritage Community Algeria <noreply@heritage-algeria.com>",

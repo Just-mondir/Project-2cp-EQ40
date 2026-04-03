@@ -3,6 +3,7 @@ import { Lato, Aclonica, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
 import GoogleProvider from "@/components/GoogleProvider";
+import AuthGate from "@/components/AuthGate";
 
 const lato = Lato({
   weight: ["400", "700"],
@@ -38,7 +39,7 @@ export default function RootLayout({
         className={`${lato.variable} ${aclonica.variable} ${playfair.variable} font-sans antialiased`}
       >
         <GoogleProvider>
-          {children}
+          <AuthGate>{children}</AuthGate>
         </GoogleProvider>
         <Footer />
       </body>
