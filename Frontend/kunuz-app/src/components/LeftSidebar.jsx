@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bell } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
 
 /**
  * LeftSidebar — floating pill sidebar, identical style to home/profile pages.
@@ -64,6 +67,52 @@ export default function LeftSidebar({
   const sidebarBg = isSpecialBg ? "#F7F5EF" : "#FFF8E2";
   const iconDefault = "#432817";
   const iconHover = isSpecialBg ? "#ede9df" : "#F0E8CC";
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const notifContainerRef = useRef(null);
+
+  const fetchMiniNotifications = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      setNotifications([]);
+      return;
+    }
+
+    setNotifLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/notifications/?page_size=4`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        setNotifications([]);
+        return;
+      }
+      const data = await response.json();
+      setNotifications(data?.data?.results ?? []);
+    } catch {
+      setNotifications([]);
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isNotifOpen) {
+      fetchMiniNotifications();
+    }
+  }, [isNotifOpen]);
+
+  useEffect(() => {
+    if (!isNotifOpen) return;
+    const handleOutsideClick = (event) => {
+      if (notifContainerRef.current && !notifContainerRef.current.contains(event.target)) {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [isNotifOpen]);
 
   const navItems = useMemo(
     () => [
@@ -184,6 +233,87 @@ export default function LeftSidebar({
                 )}
               </>
             );
+
+            if (item.key === "notifications") {
+              return (
+                <div key={item.key} className="relative group" ref={notifContainerRef}>
+                  <button
+                    type="button"
+                    className={`relative p-2.5 rounded-xl transition-all duration-200 block ${bgClass}`}
+                    onMouseEnter={(e) => {
+                      if (!isActive)
+                        e.currentTarget.style.backgroundColor = iconHover;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive)
+                        e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                    onClick={() => setIsNotifOpen((prev) => !prev)}
+                  >
+                    {iconEl}
+                  </button>
+
+                  <span
+                    className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
+                    style={{
+                      backgroundColor: "#432817",
+                      color: "#FFF8E2",
+                      boxShadow: "0 2px 8px rgba(67,40,23,0.2)",
+                      fontFamily: "var(--font-lato)",
+                    }}
+                  >
+                    {item.label}
+                  </span>
+
+                  {isNotifOpen && (
+                    <div
+                      className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-[320px] rounded-2xl border p-4 z-[70]"
+                      style={{
+                        backgroundColor: "#FFF8E2",
+                        borderColor: "#D7C6AF",
+                        boxShadow: "0 16px 36px rgba(46, 25, 11, 0.22)",
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm font-bold" style={{ color: "#432817" }}>
+                          Notifications
+                        </p>
+                        <Bell size={14} color="#8B7355" />
+                      </div>
+
+                      {notifLoading ? (
+                        <p className="text-xs" style={{ color: "#8B7355" }}>Loading...</p>
+                      ) : notifications.length === 0 ? (
+                        <p className="text-xs leading-5" style={{ color: "#8B7355" }}>
+                          No notifications yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {notifications.map((notification) => (
+                            <div key={notification.id} className="rounded-xl p-2.5" style={{ backgroundColor: "#FFFDF8" }}>
+                              <p className="text-[12px] font-semibold leading-5" style={{ color: "#432817" }}>
+                                {notification.actor_display_name || "Someone"} {notification.event_label || notification.message}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-3 pt-3 border-t" style={{ borderColor: "#E5D8C8" }}>
+                        <Link
+                          href="/notifications"
+                          className="inline-flex items-center justify-center text-xs font-semibold rounded-lg px-3 py-2"
+                          style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
+                          onClick={() => setIsNotifOpen(false)}
+                        >
+                          View all
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <div key={item.key} className="relative group">

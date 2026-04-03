@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
+import { logoutClient } from "@/lib/session";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -1198,6 +1199,12 @@ function ProfileHeader() {
 
   const menuItems = ["Change mail", "Change password", "Delete account", "Logout"];
 
+  const handleLogout = async () => {
+    await logoutClient();
+    setShowLogoutModal(false);
+    router.push("/");
+  };
+
   return (
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
       <div className="absolute top-4 right-6" ref={menuRef}>
@@ -1215,7 +1222,7 @@ function ProfileHeader() {
         )}
       </div>
 
-      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, you will be redirected to the landing page. You can always log back in anytime." primaryAction={{ label: "Log out", onClick: () => { window.location.href = "/"; } }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
+      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, your token will be cleared and you will be redirected to the landing page." primaryAction={{ label: "Log out", onClick: handleLogout }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
       <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
 
       <div className="flex items-start gap-8">

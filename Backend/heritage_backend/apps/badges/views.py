@@ -9,6 +9,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from django.conf import settings
 from django.utils import timezone
+from django.utils.html import escape
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -23,7 +24,7 @@ from apps.users.models import User
 from .models import BadgeRequest
 from .permissions import IsModeratorOrAdmin
 from .serializers import BadgeRequestReviewSerializer, BadgeRequestSerializer
-from .services import send_badge_request_email
+from .services import decode_badge_review_token, send_badge_request_email
 
 
 def _badge_file_path(filename: str) -> str:
@@ -125,3 +126,36 @@ class BadgeRequestReviewView(APIView):
         badge_request.save()
 
         return api_success("Badge request reviewed successfully.", BadgeRequestSerializer(badge_request).data)
+
+
+class BadgeRequestEmailReviewView(APIView):
+    authentication_classes: list = []
+    permission_classes: list = []
+
+    def get(self, request: Request, token: str) -> Response:
+        try:
+            request_id, action = decode_badge_review_token(token)
+        except Exception:
+            return api_error("Invalid or expired review link.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        if action not in {"approved", "rejected"}:
+            return api_error("Invalid review action.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            badge_request = BadgeRequest.objects.get(id=ObjectId(request_id))
+        except (BadgeRequest.DoesNotExist, InvalidId):
+            return api_error("Badge request not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        badge_request.status = action
+        badge_request.moderator_note = f"Reviewed via email link: {action}"
+        badge_request.reviewed_by_id = "email-link"
+        badge_request.reviewed_at = timezone.now()
+        badge_request.save()
+
+        return Response(
+            {
+                "success": True,
+                "message": f"Badge request {escape(action)} successfully.",
+                "data": BadgeRequestSerializer(badge_request).data,
+            }
+        )

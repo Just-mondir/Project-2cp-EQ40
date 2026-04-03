@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import AddDocuments from "@/components/AddDocuments";
+import AddDocuments, { type BadgeRequestDraft } from "@/components/AddDocuments";
 
 const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide", "Architect"];
 const MAX_USERNAME_ATTEMPTS = 5;
@@ -16,6 +16,15 @@ const slugifyForUsername = (value: string): string =>
     .replace(/^-+|-+$/g, "");
 
 const randomSuffix = () => Math.random().toString(36).substring(2, 6);
+
+type ApiResponseBody = {
+  message?: string;
+  errors?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
 const pickFirstErrorMessage = (errors: unknown): string | null => {
   if (!errors) return null;
@@ -43,22 +52,29 @@ const pickFirstErrorMessage = (errors: unknown): string | null => {
   return null;
 };
 
-const extractBackendErrorMessage = (body: any, fallback: string): string => {
-  if (body?.errors?.detail && typeof body.errors.detail === "string") {
-    return body.errors.detail;
+const extractBackendErrorMessage = (body: unknown, fallback: string): string => {
+  if (!isRecord(body)) {
+    return fallback;
   }
-  const nested = pickFirstErrorMessage(body?.errors);
+  const errors = body.errors;
+  if (isRecord(errors) && typeof errors.detail === "string") {
+    return errors.detail;
+  }
+  const nested = pickFirstErrorMessage(errors);
   if (nested) {
     return nested;
   }
-  if (typeof body?.message === "string" && body.message.trim()) {
+  if (typeof body.message === "string" && body.message.trim()) {
     return body.message;
   }
   return fallback;
 };
 
-const isUsernameConflictResponse = (body: any): boolean => {
-  const usernameError = pickFirstErrorMessage(body?.errors?.username);
+const isUsernameConflictResponse = (body: unknown): boolean => {
+  if (!isRecord(body)) {
+    return false;
+  }
+  const usernameError = pickFirstErrorMessage(body.errors?.username);
   if (!usernameError) {
     return false;
   }
@@ -66,7 +82,7 @@ const isUsernameConflictResponse = (body: any): boolean => {
   return normalized.includes("username") || normalized.includes("exists");
 };
 
-const persistAuthUser = (payload: any) => {
+const persistAuthUser = (payload: unknown) => {
   if (!payload) {
     return;
   }
@@ -85,6 +101,7 @@ export default function SetProfilePage() {
   const [speciality, setSpeciality] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileFile, setProfileFile] = useState<File | null>(null);
+  const [badgeDraft, setBadgeDraft] = useState<BadgeRequestDraft | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,6 +117,7 @@ export default function SetProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [badgeRequestNotice, setBadgeRequestNotice] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,16 +169,16 @@ export default function SetProfilePage() {
           },
           body: JSON.stringify(payload),
         });
-        let body: any = {};
+        let body: ApiResponseBody = {};
         try {
-          body = await response.json();
+          body = (await response.json()) as ApiResponseBody;
         } catch {
           body = {};
         }
         return { ok: response.ok, body };
       };
 
-      let profileBody: any | null = null;
+      let profileBody: ApiResponseBody | null = null;
 
       if (displayName) {
         const baseSlug = slugifyForUsername(displayName) || `member-${randomSuffix()}`;
@@ -210,9 +228,9 @@ export default function SetProfilePage() {
           body: formData,
         });
 
-        let picData: any = {};
+        let picData: ApiResponseBody = {};
         try {
-          picData = await picResponse.json();
+          picData = (await picResponse.json()) as ApiResponseBody;
         } catch {
           picData = {};
         }
@@ -227,10 +245,48 @@ export default function SetProfilePage() {
         persistAuthUser(updatedFromPicture);
       }
 
+      if (badgeDraft) {
+        const badgeFormData = new FormData();
+        badgeFormData.append("document", badgeDraft.document);
+        badgeFormData.append("message", badgeDraft.message);
+
+        const requestName =
+          (profileBody?.data?.display_name as string | undefined)?.trim() ||
+          displayName ||
+          (profileBody?.data?.username as string | undefined) ||
+          "someone";
+
+        const badgeResponse = await fetch(`${API_BASE_URL}/badge-requests/`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: badgeFormData,
+        });
+
+        let badgeBody: ApiResponseBody = {};
+        try {
+          badgeBody = (await badgeResponse.json()) as ApiResponseBody;
+        } catch {
+          badgeBody = {};
+        }
+
+        if (!badgeResponse.ok || !badgeBody?.success) {
+          throw new Error(
+            extractBackendErrorMessage(badgeBody, "Failed to submit badge request"),
+          );
+        }
+
+        setBadgeRequestNotice(
+          `Badge request submitted for ${requestName}. Moderators were notified by email.`,
+        );
+        setBadgeDraft(null);
+      }
+
       router.push("/home-page");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "An error occurred");
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -516,7 +572,10 @@ export default function SetProfilePage() {
                 <div className="flex justify-center" style={{ marginTop: "7px" }}>
                   <button
                     type="button"
-                    onClick={() => setShowModal(true)}
+                    onClick={() => {
+                      setBadgeRequestNotice(null);
+                      setShowModal(true);
+                    }}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -568,6 +627,15 @@ export default function SetProfilePage() {
                   </button>
                 </div>
 
+                {badgeRequestNotice && (
+                  <div
+                    className="text-sm text-center font-medium"
+                    style={{ color: "#2E7D32", fontFamily: "var(--font-lato)" }}
+                  >
+                    {badgeRequestNotice}
+                  </div>
+                )}
+
                 {/* Error Message */}
                 {error && (
                   <div className="text-red-500 text-sm text-center font-medium mt-2" style={{ fontFamily: "var(--font-lato)" }}>
@@ -602,7 +670,13 @@ export default function SetProfilePage() {
 
         </div>
       </div>
-      {showModal && <AddDocuments onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <AddDocuments
+          onClose={() => setShowModal(false)}
+          initialDraft={badgeDraft}
+          onDraftSave={(draft) => setBadgeDraft(draft)}
+        />
+      )}
     </div>
   );
 }
