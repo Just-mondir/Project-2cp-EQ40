@@ -12,6 +12,12 @@ EVENT_REGISTRY = {
     "comment_on_post": "{actor} commented on your post \"{post_title}\"",
     "reply_to_comment": "{actor} replied to your comment",
     "gem_on_comment": "{actor} liked your comment",
+    "group_invite_received": "{actor} invited you to join {group_name}",
+    "group_join_request_approved": "Your request to join {group_name} was approved",
+    "group_join_request_rejected": "Your request to join {group_name} was rejected",
+    "badge_request_reviewed": "Your badge request was reviewed",
+    "user_banned": "A moderator banned your account",
+    "user_suspended": "A moderator suspended your account",
 }
 
 def notify(

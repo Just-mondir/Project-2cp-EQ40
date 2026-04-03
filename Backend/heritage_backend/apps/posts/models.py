@@ -62,6 +62,8 @@ class Post(me.Document):
     title = me.StringField(max_length=300, required=True)
     content = me.StringField(required=True)
     post_type = me.StringField(choices=POST_TYPE_CHOICES, required=True)
+    group_id = me.StringField(null=True, default=None)
+    group_visibility = me.StringField(choices=("public", "group_only"), default="public")
     historical_period = me.StringField(choices=HISTORICAL_PERIOD_CHOICES, default="")
     monument_type = me.StringField(choices=MONUMENT_TYPE_CHOICES, default="")
     region = me.StringField(choices=REGION_CHOICES, default="")

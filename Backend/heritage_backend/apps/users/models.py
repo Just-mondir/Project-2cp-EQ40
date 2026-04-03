@@ -30,6 +30,12 @@ ROLE_CHOICES = (
     ("admin", "Admin"),
 )
 
+MODERATION_STATUS_CHOICES = (
+    ("active", "Active"),
+    ("suspended", "Suspended"),
+    ("banned", "Banned"),
+)
+
 OTP_PURPOSE_CHOICES = (
     ("email_verification", "Email Verification"),
     ("login", "Login"),
@@ -86,6 +92,12 @@ class User(me.Document):
     role = me.StringField(
         choices=[c[0] for c in ROLE_CHOICES], default=RoleChoices.USER
     )
+    moderation_status = me.StringField(
+        choices=[c[0] for c in MODERATION_STATUS_CHOICES],
+        default="active",
+    )
+    moderation_reason = me.StringField(default="")
+    suspended_until = me.DateTimeField(null=True, default=None)
     created_at = me.DateTimeField(default=timezone.now)
     updated_at = me.DateTimeField(default=timezone.now)
 
@@ -128,6 +140,10 @@ class User(me.Document):
 
     def has_module_perms(self, app_label) -> bool:
         return self.is_active
+
+    @property
+    def is_moderated_out(self) -> bool:
+        return self.moderation_status in {"suspended", "banned"}
 
     def save(self, *args, **kwargs):
         self.updated_at = timezone.now()

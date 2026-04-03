@@ -11,6 +11,8 @@ urlpatterns = [
     path("api/", include("apps.posts.urls")),
     path("api/", include("apps.reports.urls")),
     path("api/", include("apps.notifications.urls")),
+    path("api/", include("apps.thematic_groups.urls")),
+    path("api/", include("apps.badges.urls")),
     path('api/moderator/', include('apps.moderator.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.utils import timezone
+
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import AuthenticationFailed, InvalidToken
 from rest_framework_simplejwt.settings import api_settings
@@ -47,6 +49,13 @@ class MongoEngineJWTAuthentication(JWTAuthentication):
 
         if not user.is_active:
             raise AuthenticationFailed("User is inactive", code="user_inactive")
+
+        if getattr(user, "moderation_status", "active") in {"suspended", "banned"}:
+            raise AuthenticationFailed("User is moderated out", code="user_moderated_out")
+
+        suspended_until = getattr(user, "suspended_until", None)
+        if suspended_until and suspended_until > timezone.now():
+            raise AuthenticationFailed("User is suspended", code="user_suspended")
 
         return user
 
