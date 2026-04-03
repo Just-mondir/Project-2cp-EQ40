@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
+from apps.thematic_groups.services import user_can_access_group
 from apps.users.models import User
 from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails, Annotation, MobilizationEvent
 from .serializers import (
@@ -57,7 +58,7 @@ class PostListCreateView(APIView):
         return []
 
     def get(self, request: Request) -> Response:
-        posts = Post.objects(is_deleted=False)
+        posts = Post.objects(is_deleted=False, visibility="public")
         post_type = request.query_params.get("post_type")
         if post_type:
             posts = posts.filter(post_type=post_type)
@@ -82,11 +83,17 @@ class PostDetailView(APIView):
 
     def _get_post(self, pk: str) -> Post | None:
         try:
-            return Post.objects.get(id=pk, is_deleted=False)
+            post = Post.objects.get(id=pk, is_deleted=False)
+            if getattr(post, "group_id", None) and getattr(post, "group_visibility", "public") == "group_only":
+                user = getattr(self, "request_user", None)
+                if not user or not user_can_access_group(str(user.id), post.group_id):
+                    return None
+            return post
         except Post.DoesNotExist:
             return None
 
     def get(self, request: Request, pk: str) -> Response:
+        self.request_user = request.user
         post = self._get_post(pk)
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
@@ -94,6 +101,7 @@ class PostDetailView(APIView):
         return api_success("Post retrieved.", serializer.data)
 
     def patch(self, request: Request, pk: str) -> Response:
+        self.request_user = request.user
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
         post = self._get_post(pk)
@@ -114,6 +122,7 @@ class PostDetailView(APIView):
         return api_success("Post updated.", PostDetailSerializer(post, context={"request": request}).data)
 
     def delete(self, request: Request, pk: str) -> Response:
+        self.request_user = request.user
         if not request.user.is_authenticated:
             return api_error("Authentication required.", status_code=status.HTTP_401_UNAUTHORIZED)
         post = self._get_post(pk)
@@ -184,6 +193,8 @@ class GemToggleView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if getattr(post, "group_id", None) and getattr(post, "group_visibility", "public") == "group_only" and not user_can_access_group(str(request.user.id), post.group_id):
+            return api_error("You do not have access to this post.", status_code=status.HTTP_403_FORBIDDEN)
         gem = Gem.objects(post=post, user_id=str(request.user.id)).first()
         if gem:
             gem.delete()
@@ -220,6 +231,8 @@ class SaveToggleView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if getattr(post, "group_id", None) and getattr(post, "group_visibility", "public") == "group_only" and not user_can_access_group(str(request.user.id), post.group_id):
+            return api_error("You do not have access to this post.", status_code=status.HTTP_403_FORBIDDEN)
         save = Save.objects(post=post, user_id=str(request.user.id)).first()
         if save:
             save.delete()
@@ -234,6 +247,8 @@ class CommentListCreateView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if getattr(post, "group_id", None) and getattr(post, "group_visibility", "public") == "group_only" and not user_can_access_group(str(request.user.id), post.group_id):
+            return api_error("You do not have access to this post.", status_code=status.HTTP_403_FORBIDDEN)
 
         comments = Comment.objects(post=post).order_by("created_at")
         serializer = CommentSerializer(
@@ -251,6 +266,8 @@ class CommentListCreateView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if getattr(post, "group_id", None) and getattr(post, "group_visibility", "public") == "group_only" and not user_can_access_group(str(request.user.id), post.group_id):
+            return api_error("You do not have access to this post.", status_code=status.HTTP_403_FORBIDDEN)
 
         serializer = CommentSerializer(
             data=request.data,

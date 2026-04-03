@@ -7,8 +7,10 @@ from rest_framework import status
 from apps.core.responses import api_error, api_success
 from apps.users.models import User
 from apps.posts.models import Post
+from apps.notifications.registry import notify
 from .models import Visitor
-from .serializers import ModeratorUserSerializer
+from .permissions import IsModeratorOrAdmin
+from .serializers import ModeratorActionSerializer, ModeratorRoleUpdateSerializer, ModeratorUserSerializer
 from django.utils import timezone
 
 class PlatformStatsView(APIView):
@@ -53,7 +55,7 @@ class UserPagination(PageNumberPagination):
 
 
 class UserListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsModeratorOrAdmin]
     def get(self, request: Request) -> Response:
         query = request.query_params.get("q", "").strip()
         users = User.objects(is_active=True)
@@ -78,6 +80,9 @@ class UserListView(APIView):
                 "expertise": user.expertise,
                 "profile_picture": user.profile_picture,
                 "role": user.role,
+                "moderation_status": getattr(user, "moderation_status", "active"),
+                "moderation_reason": getattr(user, "moderation_reason", ""),
+                "suspended_until": getattr(user, "suspended_until", None),
                 "created_at": user.created_at,
                 "post_count": post_count,
             })
@@ -85,3 +90,76 @@ class UserListView(APIView):
             users_data, many=True, context={"request": request}
         )
         return paginator.get_paginated_response(serializer.data)
+
+
+class UserRoleUpdateView(APIView):
+    permission_classes = [IsModeratorOrAdmin]
+
+    def patch(self, request: Request, user_id: str) -> Response:
+        user = User.objects(id=user_id).first()
+        if not user:
+            return api_error("User not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        serializer = ModeratorRoleUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return api_error("Validation failed.", serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+
+        user.role = serializer.validated_data["role"]
+        user.is_staff = user.role in ("moderator", "admin")
+        if user.role == "user":
+            user.is_staff = False
+        user.save()
+        return api_success("User role updated successfully.", {"id": str(user.id), "role": user.role, "is_staff": user.is_staff})
+
+
+class UserModerationView(APIView):
+    permission_classes = [IsModeratorOrAdmin]
+
+    def patch(self, request: Request, user_id: str) -> Response:
+        user = User.objects(id=user_id).first()
+        if not user:
+            return api_error("User not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        serializer = ModeratorActionSerializer(data=request.data)
+        if not serializer.is_valid():
+            return api_error("Validation failed.", serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+
+        action = serializer.validated_data["action"]
+        reason = serializer.validated_data.get("reason", "")
+        suspended_until = serializer.validated_data.get("suspended_until")
+
+        if action == "ban":
+            user.moderation_status = "banned"
+            user.is_active = False
+            user.suspended_until = None
+        elif action == "suspend":
+            user.moderation_status = "suspended"
+            user.is_active = False
+            user.suspended_until = suspended_until
+        else:
+            user.moderation_status = "active"
+            user.is_active = True
+            user.suspended_until = None
+
+        user.moderation_reason = reason
+        user.save()
+
+        notify(
+            event_type=f"user_{action}",
+            actor_id=str(request.user.id),
+            actor_name=getattr(request.user, "display_name", "Moderator"),
+            recipient_id=str(user.id),
+            target_type="user",
+            target_id=str(user.id),
+        )
+
+        return api_success(
+            "User moderation updated successfully.",
+            {
+                "id": str(user.id),
+                "moderation_status": user.moderation_status,
+                "moderation_reason": user.moderation_reason,
+                "is_active": user.is_active,
+                "suspended_until": user.suspended_until,
+            },
+        )

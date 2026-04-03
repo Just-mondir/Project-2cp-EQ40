@@ -1,297 +1,286 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CircleX } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck } from "lucide-react";
 
-interface Notification {
-  id: number;
-  type: "user" | "system";
-  image?: string;
-  avatar?: string;
-  username?: string;
-  action: string;
-  time: string;
+type NotificationItem = {
+  id: string;
+  recipient_id: string;
+  actor_id: string;
+  actor_display_name: string;
+  actor_username: string;
+  actor_profile_picture: string;
+  event_type: string;
+  event_label: string;
+  target_type: string;
+  target_id: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+};
+
+type NotificationResponse = {
+  success: boolean;
+  data?: {
+    results?: NotificationItem[];
+    unread_count?: number;
+  };
+};
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
+
+function getAuthToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("accessToken") || "";
 }
 
-const STATIC_NOTIFICATIONS: Notification[] = [
-  { id: 9, type: "user",   username: "User498783887838", action: "gemed your post",               time: "3 min ago",   avatar: "/Camera man.jpg"  },
-  { id: 8, type: "system", action: "Your monument report was verified",       time: "1 hour ago",        image: "/timgad.jpg"                              },
-  { id: 7, type: "user",   username: "User498783887838", action: "commented on your post",        time: "4 hours ago", avatar: "/Canon camera.jpg" },
-  { id: 6, type: "system", action: "Your monument report was verified", time: "1 hour ago",        image: "/download 2.jpg"                          },
-  { id: 5, type: "user",   username: "User498783887838", action: "gemed your post",               time: "1 day",       avatar: "/Camera man.jpg"   },
-  { id: 4, type: "system", action: "Your monument report was verified",       time: "3 days",            image: "/timgad.jpg"                              },
-  { id: 3, type: "user",   username: "User498783887838", action: "commented on your post",        time: "11 days",     avatar: "/Canon camera.jpg" },
-  { id: 2, type: "user",   username: "User498783887838", action: "gemed your post",               time: "01/01/2026",  avatar: "/Camera man.jpg"   },
-  { id: 1, type: "user",   username: "User498783887838", action: "commented on your post",        time: "11/11/2025",  avatar: "/Canon camera.jpg" },
-  { id: 0, type: "user",   username: "User498783887838", action: "commented on your post",        time: "11/12/2025",  avatar: "/Camera man.jpg" },
-];
+function groupByRecency(items: NotificationItem[]) {
+  const today: NotificationItem[] = [];
+  const thisWeek: NotificationItem[] = [];
+  const older: NotificationItem[] = [];
 
-function groupNotifications(list: Notification[]) {
-  const today: Notification[]     = [];
-  const thisMonth: Notification[] = [];
-  const earlier: Notification[]   = [];
-
-  list.forEach((n) => {
-    if (n.time.includes("min") || n.time.includes("hour")) today.push(n);
-    else if (n.time.includes("day"))                        thisMonth.push(n);
-    else                                                    earlier.push(n);
+  const now = Date.now();
+  items.forEach((item) => {
+    const createdAt = new Date(item.created_at).getTime();
+    const diffDays = Math.max(0, Math.floor((now - createdAt) / (1000 * 60 * 60 * 24)));
+    if (diffDays === 0) today.push(item);
+    else if (diffDays < 7) thisWeek.push(item);
+    else older.push(item);
   });
 
-  return { today, thisMonth, earlier };
+  return { today, thisWeek, older };
 }
 
-/* ── User avatar ── */
-function UserAvatar({ avatar }: { avatar?: string }) {
+function formatRelativeTime(isoDate: string): string {
+  const date = new Date(isoDate);
+  const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSeconds < 60) return "Just now";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} d ago`;
+}
+
+function Avatar({ item }: { item: NotificationItem }) {
+  const initials = (item.actor_display_name || item.actor_username || "S").slice(0, 1).toUpperCase();
   return (
-    <div
-      style={{
-        width: "50px",
-        height: "50px",
-        borderRadius: "50%",
-        border: "0px solid #432817",
-        boxShadow: "0px 4px 4px 0px #00000059",
-        flexShrink: 0,
-        overflow: "hidden",
-        backgroundColor: "#E0D5C5",
-      }}
-    >
-      {avatar ? (
-        <img src={avatar} alt="profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    <div className="relative h-12 w-12 overflow-hidden rounded-full border border-[#D4C4AE] bg-[#EFE4D2] shadow-sm">
+      {item.actor_profile_picture ? (
+        <img src={item.actor_profile_picture} alt={item.actor_display_name} className="h-full w-full object-cover" />
       ) : (
-        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" fill="#8B7355" />
-            <circle cx="12" cy="7" r="4" fill="#8B7355" />
-          </svg>
+        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#5E432C]">{initials}</div>
+      )}
+      {!item.is_read && <span className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-[#FFF8E2] bg-[#C76B2E]" />}
+    </div>
+  );
+}
+
+function SectionTitle({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="flex items-center justify-between pt-4">
+      <p className="m-0 text-[12px] font-bold uppercase tracking-[0.18em] text-[#8A6A4B]">{title}</p>
+      <span className="text-[11px] text-[#A88767]">{count}</span>
+    </div>
+  );
+}
+
+function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onRead(item.id)}
+      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${item.is_read ? "border-[#E4D8C8] bg-white/70" : "border-[#D8C1A3] bg-[#FFF8E2] shadow-[0_6px_18px_rgba(67,40,23,0.06)]"}`}
+    >
+      <Avatar item={item} />
+      <div className="min-w-0 flex-1">
+        <p className="m-0 text-[14px] leading-6 text-[#2F2319]">
+          <span className="font-bold text-[#432817]">{item.actor_display_name || item.actor_username || "Someone"}</span>{" "}
+          <span>{item.event_label || item.message}</span>
+        </p>
+        <div className="mt-1 flex items-center gap-2 text-[12px] text-[#8A6A4B]">
+          <span className="rounded-full bg-[#F3E6D3] px-2 py-0.5 font-medium">{item.event_type.replaceAll("_", " ")}</span>
+          <span>{formatRelativeTime(item.created_at)}</span>
         </div>
-      )}
-    </div>
-  );
-}
-
-/* ── System thumbnail ── */
-function SystemImage({ image }: { image?: string }) {
-  return (
-    <div
-      style={{
-        width: "50px",
-        height: "48px",
-        borderRadius: "7px",
-        overflow: "hidden",
-        flexShrink: 0,
-        backgroundColor: "#C8B89A",
-      }}
-    >
-      {image ? (
-        <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-      ) : (
-        <div style={{ width: "100%", height: "100%", backgroundColor: "#432817", opacity: 0.4 }} />
-      )}
-    </div>
-  );
-}
-
-/* ── Single notification row ── */
-function NotificationItem({ notification }: { notification: Notification }) {
-  const isUser = notification.type === "user";
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: "16px",
-        minHeight: "52px",
-        cursor: "pointer",
-        borderRadius: "8px",
-        padding: "6px 8px",
-        backgroundColor: hovered ? "rgba(67, 40, 23, 0.12)" : "transparent",
-        transition: "background 0.15s",
-      }}
-    >
-      {isUser ? <UserAvatar avatar={notification.avatar} /> : <SystemImage image={notification.image} />}
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, color: "#000000", fontFamily: "'Lato', bold", fontSize: "16px", lineHeight: "1.8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {isUser && <span style={{ fontWeight: 700 }}>{notification.username} </span>}
-          <span style={{ fontWeight: 400 }}>{notification.action}</span>
-        </p>
-        <p style={{ margin: 0, marginTop: "2px", color: "#432817", fontFamily: "'Lato', sans-serif", fontSize: "13px", lineHeight: "1.2" }}>
-          {notification.time}
-        </p>
       </div>
-    </div>
+    </button>
   );
 }
 
-/* ── Section divider — brown line + label + top padding ── */
-function SectionDivider({ title }: { title: string }) {
-  return (
-    <div style={{ paddingTop: "16px" }}>
-      <div style={{ borderBottom: "1px solid #432817" }} />
-      <p style={{ margin: 0, paddingTop: "8px", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 500, fontSize: "22px", lineHeight: "43px" }}>
-        {title}
-      </p>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════
-   Main panel
-══════════════════════════════════════════════ */
 export default function NotificationPanel({ onClose }: { onClose: () => void }) {
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const [notifications, setNotifications] = useState<Notification[]>(STATIC_NOTIFICATIONS);
-  const [loading, setLoading]             = useState(false);
+  const buildHeaders = () => {
+    const token = getAuthToken();
+    const nextHeaders = new Headers();
+    if (token) {
+      nextHeaders.set("Authorization", `Bearer ${token}`);
+    }
+    return nextHeaders;
+  };
 
-  /*
-  useEffect(() => {
-    setLoading(true);
-    fetch(`${API_BASE_URL}/api/notifications`, {
-      headers: { Authorization: `Bearer ${yourAuthToken}` },
-    })
-      .then((res) => res.json())
-      .then((data: Notification[]) => {
-        setNotifications(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+  const fetchNotifications = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
+
+    setRefreshing(true);
+    try {
+      const [listRes, unreadRes] = await Promise.all([
+        fetch(`${API_URL}/api/notifications/`, { headers: buildHeaders() }),
+        fetch(`${API_URL}/api/notifications/unread-count/`, { headers: buildHeaders() }),
+      ]);
+
+      const listJson = (await listRes.json().catch(() => null)) as NotificationResponse | null;
+      const unreadJson = (await unreadRes.json().catch(() => null)) as NotificationResponse | null;
+
+      const nextItems = listJson?.data?.results ?? [];
+      setNotifications(nextItems);
+      setUnreadCount(Number(unreadJson?.data?.unread_count ?? 0));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
-  */
 
-  /*
   useEffect(() => {
-    if (!WS_URL) return;
-    const ws = new WebSocket(`${WS_URL}/ws/notifications`);
-    ws.onmessage = (event) => {
-      const newNotif: Notification = JSON.parse(event.data);
-      setNotifications((prev) => [newNotif, ...prev]);
+    fetchNotifications();
+    const timer = window.setInterval(fetchNotifications, 30000);
+    return () => window.clearInterval(timer);
+  }, [fetchNotifications]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
     };
-    ws.onerror = (err) => console.error("WebSocket error:", err);
-    return () => ws.close();
-  }, []);
-  */
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const { today, thisMonth, earlier } = groupNotifications(notifications);
-  const SIDEBAR_LEFT = 16;   // left-4
-const SIDEBAR_WIDTH = 56;  // w-[56px]
-const GAP = 16;
+  const markAsRead = async (id: string) => {
+    const token = getAuthToken();
+    if (!token) return;
 
-const PANEL_LEFT = SIDEBAR_LEFT + SIDEBAR_WIDTH + GAP; // = 88
+    setNotifications((current) => current.map((item) => (item.id === id ? { ...item, is_read: true } : item)));
+    try {
+      await fetch(`${API_URL}/api/notifications/${id}/read/`, {
+        method: "PATCH",
+        headers: buildHeaders(),
+      });
+      await fetchNotifications();
+    } catch {
+      await fetchNotifications();
+    }
+  };
+
+  const markAllRead = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    await fetch(`${API_URL}/api/notifications/read-all/`, {
+      method: "PATCH",
+      headers: buildHeaders(),
+    });
+    await fetchNotifications();
+  };
+
+  const { today, thisWeek, older } = groupByRecency(notifications);
+
   return (
-    <>
-      {/* Dark overlay */}
-      <div
-  onClick={onClose}
-  style={{
-    position: "fixed",
-    top: 0,
-    left: `${PANEL_LEFT}px`,
-    right: 0,
-    bottom: 0,
-    zIndex: 30,
-    backgroundColor: "rgba(0,0,0,0.8)",
-  }}
-/>
-
-      {/* Sliding panel */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: `${PANEL_LEFT}px`,
-          height: "100vh",
-          width: "650px",
-          backgroundColor: "#FFF8E2",
-          boxShadow: "1.4px 2.8px 4.2px 0px #000000",
-          zIndex: 40,
-          display: "flex",
-          flexDirection: "column",
-          animation: "slideInLeft 0.25s ease",
-        }}
-      >
-        {/* CircleX close button — lucide, #432817 at 50% opacity */}
-        <div style={{ display: "flex", justifyContent: "flex-end", padding: "12px 16px 4px 16px", flexShrink: 0 }}>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{ background: "none", border: "none", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center", opacity: 0.5 }}
-          >
-            <CircleX size={24} color="#432817" strokeWidth={1.5} />
-          </button>
-        </div>
-
-        {/* "Notifications" heading — NO bottom border line */}
-        <div style={{ padding: "0 24px", flexShrink: 0 }}>
-          <h2 style={{ margin: 0, paddingBottom: "20px", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "27px", lineHeight: "43px" }}>
-            Notifications
-          </h2>
-        </div>
-
-        {/* Loading state */}
-        {loading && (
-          <p style={{ padding: "16px 24px", color: "#8B7355", fontFamily: "'Lato', sans-serif", fontSize: "14px" }}>
-            Loading...
-          </p>
-        )}
-
-        {/* Scrollable list */}
-        {!loading && (
-          <div style={{ flex: 1, overflowY: "auto", padding: "0 24px", scrollbarWidth: "none" }}>
-
-            {/* TODAY — top padding on the label */}
-            {today.length > 0 && (
-              <div style={{ paddingBottom: "20px" }}>
-                <p style={{ margin: 0, paddingTop: "12px", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 500, fontSize: "22px", lineHeight: "43px" }}>
-                  Today
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  {today.map((n) => <NotificationItem key={n.id} notification={n} />)}
-                </div>
-              </div>
-            )}
-
-            {/* THIS MONTH */}
-            {thisMonth.length > 0 && (
-              <div style={{ paddingBottom: "20px" }}>
-                <SectionDivider title="This month" />
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", paddingTop: "6px" }}>
-                  {thisMonth.map((n) => <NotificationItem key={n.id} notification={n} />)}
-                </div>
-              </div>
-            )}
-
-            {/* EARLIER */}
-            {earlier.length > 0 && (
-              <div style={{ paddingBottom: "20px" }}>
-                <SectionDivider title="Earlier" />
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", paddingTop: "6px" }}>
-                  {earlier.map((n) => <NotificationItem key={n.id} notification={n} />)}
-                </div>
-              </div>
-            )}
-
+    <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-[2px]">
+      <div className="flex h-full w-full max-w-[760px] flex-col border-l border-[#D8C8B1] bg-[#FFF8E2] shadow-[0_0_60px_rgba(40,22,9,0.2)]">
+        <div className="flex items-start justify-between border-b border-[#E1D3BF] px-6 py-5">
+          <div>
+            <p className="m-0 text-[12px] font-bold uppercase tracking-[0.22em] text-[#8B6A4B]">Inbox</p>
+            <h2 className="m-0 mt-1 text-[28px] font-bold text-[#432817]">Notifications</h2>
+            <p className="mt-1 text-[13px] text-[#8B7355]">{unreadCount} unread notifications</p>
           </div>
-        )}
-      </div>
 
-      <style>{`
-        @keyframes slideInLeft {
-          from { transform: translateX(-100%); opacity: 0; }
-          to   { transform: translateX(0);     opacity: 1; }
-        }
-        ::-webkit-scrollbar { display: none; }
-      `}</style>
-    </>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={fetchNotifications}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-white px-4 text-[13px] font-semibold text-[#432817] transition hover:bg-[#FAF1DC]"
+            >
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-[#432817] px-4 text-[13px] font-semibold text-[#FFF8E2] transition hover:bg-[#5A3720]"
+            >
+              <CheckCheck className="h-4 w-4" />
+              Mark all read
+            </button>
+            <button
+              onClick={onClose}
+              aria-label="Close notifications"
+              className="rounded-full p-2 text-[#432817] transition hover:bg-white/80"
+            >
+              <CircleX className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <div className="flex h-full items-center justify-center text-[#8B7355]">
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading notifications...
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-[#D7C6AF] bg-white/50 px-8 py-16 text-center text-[#7F654B]">
+              <Bell className="mb-3 h-10 w-10 text-[#C7A981]" />
+              <p className="m-0 text-lg font-semibold text-[#432817]">No notifications yet</p>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[#84694E]">
+                Likes, comments, group invites, badge reviews, and moderation updates will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {today.length > 0 && (
+                <section className="space-y-3">
+                  <SectionTitle title="Today" count={today.length} />
+                  <div className="space-y-3">
+                    {today.map((item) => (
+                      <NotificationRow key={item.id} item={item} onRead={markAsRead} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {thisWeek.length > 0 && (
+                <section className="space-y-3">
+                  <SectionTitle title="This week" count={thisWeek.length} />
+                  <div className="space-y-3">
+                    {thisWeek.map((item) => (
+                      <NotificationRow key={item.id} item={item} onRead={markAsRead} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {older.length > 0 && (
+                <section className="space-y-3 pb-6">
+                  <SectionTitle title="Earlier" count={older.length} />
+                  <div className="space-y-3">
+                    {older.map((item) => (
+                      <NotificationRow key={item.id} item={item} onRead={markAsRead} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     "apps.reports",
     "apps.notifications",
     "apps.moderator",
+    "apps.thematic_groups",
+    "apps.badges",
     'cloudinary',
     'cloudinary_storage',
 ]

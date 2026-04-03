@@ -15,30 +15,25 @@ export default function LeftSidebar({
   activePage = "home",
   variant = "default",
 }) {
-  const [username, setUsername] = useState("");
-
-  useEffect(() => {
-    let localUsername = "";
+  const [username, setUsername] = useState(() => {
+    if (typeof window === "undefined") return "";
     try {
-      localUsername =
+      const direct =
         localStorage.getItem("username") ||
         localStorage.getItem("user_username") ||
         "";
-
-      if (!localUsername) {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          localUsername = parsed?.username || parsed?.user_username || "";
-        }
-      }
-    } catch (err) {
-      console.error("Failed to read username from localStorage:", err);
+      if (direct) return direct;
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) return "";
+      const parsed = JSON.parse(storedUser);
+      return parsed?.username || parsed?.user_username || "";
+    } catch {
+      return "";
     }
+  });
 
-    if (localUsername) {
-      setUsername(localUsername);
-    } else {
+  useEffect(() => {
+    if (!username) {
       // Fetch if not in localStorage
       const fetchUser = async () => {
         try {
@@ -62,7 +57,7 @@ export default function LeftSidebar({
       };
       fetchUser();
     }
-  }, []);
+  }, [username]);
 
   // Colours based on variant — add-post uses page-matching bg
   const isSpecialBg = activePage === "add-post" || variant === "add-post";
@@ -124,7 +119,7 @@ export default function LeftSidebar({
       {
         key: "notifications",
         label: "Notifications",
-        href: "#",
+        href: "/notifications",
         hasBadge: true,
         path: (
           <>
