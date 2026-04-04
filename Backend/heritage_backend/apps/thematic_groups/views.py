@@ -289,3 +289,40 @@ class GroupPostListCreateView(APIView):
         if image_files:
             self._save_post_images(post, image_files)
         return api_success("Group post created successfully.", PostDetailSerializer(post, context={"request": request}).data, status_code=status.HTTP_201_CREATED)
+
+class PublicGroupsPostsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        posts = Post.objects.filter(group__visibility="public",is_deleted=False).order_by("-created_at")
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+    
+class MyGroupsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request: Request) -> Response:
+        memberships = GroupMembership.objects.filter(user_id=request.user.id)
+        group_ids = [membership.group_id for membership in memberships]
+        groups = ThematicGroup.objects.filter(id__in=group_ids)
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(groups, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+    
+class SuggestedGroupsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        memberships = GroupMembership.objects.filter(user_id=request.user.id)
+        group_ids = [membership.group_id for membership in memberships]
+        groups = ThematicGroup.objects.filter(id__in=group_ids)
+        categories = set(group.category for group in groups)
+        suggested_groups = ThematicGroup.objects.filter(category__in=categories).exclude(id__in=group_ids)
+        suggested_groups = suggested_groups.order_by('-members_count')
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(suggested_groups, request)
+        serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
+        return api_success("Suggested groups retrieved successfully.", serializer.data)    

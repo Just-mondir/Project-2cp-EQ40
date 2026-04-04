@@ -14,6 +14,9 @@ from .views import (
     LeaveGroupView,
     ThematicGroupDetailView,
     ThematicGroupListCreateView,
+    PublicGroupsPostsView,
+    MyGroupsView,
+    SuggestedGroupsView
 )
 
 urlpatterns = [
@@ -26,4 +29,7 @@ urlpatterns = [
     path("groups/<str:group_id>/invite/", GroupInvitationCreateView.as_view(), name="groups-invite"),
     path("groups/invitations/<str:invitation_id>/respond/", GroupInvitationResponseView.as_view(), name="groups-invitation-respond"),
     path("groups/<str:group_id>/leave/", LeaveGroupView.as_view(), name="groups-leave"),
+    path("groups/public-posts/", PublicGroupsPostsView.as_view(), name="public-groups-posts"),
+    path("groups/my-groups/", MyGroupsView.as_view(), name="my-groups"),
+    path("groups/suggested-groups/", SuggestedGroupsView.as_view(), name="suggested-groups"),
 ]
