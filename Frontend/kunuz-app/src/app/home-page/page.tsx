@@ -1424,47 +1424,7 @@ function PostModal({
             {replies.map((reply) => renderCommentThread(reply, level + 1))}
           </div>
         )}
-        {
-          post.post_type === "event" && post.event_details && (
-            <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-              </div>
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
-                <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
-              </div>
-            </div>
-          )
-        }
-        {
-          post.post_type === "alert" && post.alert_details && (() => {
-            const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
-            const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
-            return (
-              <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
-                </div>
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
-                </div>
-              </div>
-            );
-          })()
-        }
-        <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-        {
-          tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {tags.map((tag, i) => (
-                <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
-              ))}
-            </div>
-          )
-        }
-      </div >
+      </div>
     );
   };
 
@@ -1581,7 +1541,7 @@ function PostModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-[900px] max-w-[95vw] max-h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {/* Left Panel: Image Gallery or Content */}
         <div className="w-full md:w-1/2 h-64 md:h-auto flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
           {imageList.length > 0 ? (
@@ -1662,13 +1622,7 @@ function PostModal({
                 <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
               )}
 
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {tags.map((tag, i) => (
-                    <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
-                  ))}
-                </div>
-              )}
+
             </div>
           )}
 
@@ -1823,30 +1777,30 @@ function MobileGuildsStrip() {
   return (
     <div className="lg:hidden px-4 py-4">
       <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Popular Guilds</h3>
-      <div 
-        className="flex gap-3 overflow-x-auto pb-2" 
-        style={{ 
-          scrollbarWidth: "none", 
+      <div
+        className="flex gap-3 overflow-x-auto pb-2"
+        style={{
+          scrollbarWidth: "none",
           msOverflowStyle: "none",
           WebkitOverflowScrolling: "touch"
         }}
       >
         {GUILDS.slice(0, 5).map((guild, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
             style={{ width: "120px" }}
           >
             <div className="flex flex-col items-center">
-              <img 
-                src={guild.image} 
-                alt={guild.name} 
-                className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2" 
+              <img
+                src={guild.image}
+                alt={guild.name}
+                className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2"
               />
-              <span 
-                className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1" 
-                style={{ 
-                  color: "#432817", 
+              <span
+                className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
+                style={{
+                  color: "#432817",
                   fontFamily: "var(--font-lato)",
                   maxWidth: "120px",
                   wordBreak: "break-word",
@@ -1855,10 +1809,10 @@ function MobileGuildsStrip() {
               >
                 {guild.name}
               </span>
-              <span 
-                className="text-[8px] text-center leading-tight line-clamp-2 mb-2" 
-                style={{ 
-                  color: "#8B7355", 
+              <span
+                className="text-[8px] text-center leading-tight line-clamp-2 mb-2"
+                style={{
+                  color: "#8B7355",
                   fontFamily: "var(--font-lato)",
                   maxWidth: "120px",
                   lineHeight: "1.2"

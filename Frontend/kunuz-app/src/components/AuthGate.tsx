@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 const PUBLIC_PATHS = new Set([
@@ -16,7 +16,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const token = typeof window === "undefined" ? "" : localStorage.getItem("accessToken") || "";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const token = mounted ? localStorage.getItem("accessToken") || "" : "";
   const isAuthenticated = Boolean(token);
 
   const isPublicRoute = useMemo(() => {
@@ -25,13 +30,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
-    if (!isAuthenticated && !isPublicRoute) {
+    if (mounted && !isAuthenticated && !isPublicRoute) {
       router.replace("/");
     }
-  }, [isAuthenticated, isPublicRoute, router]);
+  }, [mounted, isAuthenticated, isPublicRoute, router]);
 
-  if (!isPublicRoute && !isAuthenticated) {
-    return null;
+  // Hide protected content during initial SSR and hydration to prevent flash
+  if (!mounted && !isPublicRoute) {
+    return <div style={{ minHeight: "100vh", backgroundColor: "#FFF8E2" }} />;
   }
 
   return <>{children}</>;

@@ -69,6 +69,8 @@ class Post(me.Document):
     region = me.StringField(choices=REGION_CHOICES, default="")
     visibility = me.StringField(choices=VISIBILITY_CHOICES, default="public")
     location = me.StringField(max_length=255, default="")
+    group_id = me.StringField(default="")
+    group_visibility = me.StringField(default="")
     is_deleted = me.BooleanField(default=False)
     created_at = me.DateTimeField(default=timezone.now)
     updated_at = me.DateTimeField(default=timezone.now)
@@ -199,11 +201,12 @@ class Annotation(me.Document):
 
 
 class MobilizationEvent(me.Document):
-    post = me.ReferenceField(Post, required=True)
+    post = me.ReferenceField(Post, required=False, null=True)
     author_id = me.StringField(required=True)
-    description = me.StringField(required=True)
-    previous_status = me.StringField(required=True)
-    current_status = me.StringField(required=True)
+    description = me.StringField(default="")
+    previous_status = me.StringField(default="")
+    current_status = me.StringField(default="")
+    images = me.ListField(me.StringField(), default=list)
     created_at = me.DateTimeField(default=timezone.now)
 
     meta = {

@@ -1030,7 +1030,7 @@ function PostModal({
       <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title="Delete this post?" message="This action is permanent and cannot be undone. The post and all its images will be removed." primaryAction={{ label: "Delete", onClick: confirmDeletePost }} secondaryAction={{ label: "Cancel", onClick: () => setShowDeleteModal(false) }} />
       <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative flex w-[900px] max-w-[95vw] max-h-[85vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
           {LeftPanel}
 
           <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
@@ -1077,7 +1077,7 @@ function PostModal({
                   <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
                 </div>
                 <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-                <PostDetailBadge post={post} />
+
                 {isContentLong && !contentExpanded ? (
                   <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
                     {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
@@ -1089,11 +1089,7 @@ function PostModal({
                 {isContentLong && contentExpanded && (
                   <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
                 )}
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {tags.map((tag, i) => <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>)}
-                  </div>
-                )}
+
               </div>
             )}
 

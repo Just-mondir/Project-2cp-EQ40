@@ -148,39 +148,46 @@ export default function UpcomingEvents() {
   useEffect(() => {
     async function fetchEvents() {
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/posts/?post_type=event`
+          `${process.env.NEXT_PUBLIC_API_URL}/api/posts/?post_type=event`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
         );
         if (!res.ok) return;
 
         const data = await res.json();
+        const results = data.results || data;
 
-        const fetched: EventItem[] = (data.results || [])
-          .filter((post: any) => post.images?.[0]?.image)
+        const fetched: EventItem[] = (results || [])
+          .filter((post: any) => Array.isArray(post.images) && post.images.length > 0)
           .slice(0, 6)
           .map((post: any) => {
             const stripHtml = (html: string) => {
               if (!html) return "";
-              let result = html;
-              let prev: string;
-              do {
-                prev = result;
-                result = prev.replace(/<[^>]*>/g, "");
-              } while (result !== prev);
-              return result;
+              return html.replace(/<[^>]*>/g, "");
             };
+
+            const imgPath = post.images[0].image;
+            const imageUrl = imgPath.startsWith("http")
+              ? imgPath
+              : `${process.env.NEXT_PUBLIC_API_URL}${imgPath}`;
+
             return {
               title: stripHtml(post.title),
               description: stripHtml(post.content ?? ""),
-              location: post.location || post.region || "",
-              date: formatDate(post.event_details?.starts_at ?? ""),
-              imageUrl: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
+              location: post.location || post.region || "Algeria",
+              date: post.event_details?.starts_at
+                ? new Date(post.event_details.starts_at).toLocaleDateString("fr-FR")
+                : "TBD",
+              imageUrl: imageUrl,
             };
           });
 
         if (fetched.length > 0) setEvents(fetched);
-      } catch {
-        // silently keep fallback
+      } catch (err) {
+        console.error("Failed to fetch events:", err);
       }
     }
 

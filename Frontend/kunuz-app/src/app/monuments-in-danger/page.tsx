@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
+import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -1340,7 +1341,7 @@ function PostModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-[900px] max-w-[95vw] max-h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {/* Left Panel: Image Gallery or Content */}
         <div className="w-full md:w-1/2 h-64 md:h-auto flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
           {/* ... existing gallery logic ... */}
@@ -1639,6 +1640,7 @@ function MobilizationModal({
   const [selectedPrev, setSelectedPrev] = useState("Alert");
   const [selectedReq, setSelectedReq] = useState("Under intervention");
   const [description, setDescription] = useState("");
+  const [images, setImages] = useState<ImageItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const options = ["Destroyed", "Under intervention", "Restored", "Alert"];
 
@@ -1649,18 +1651,24 @@ function MobilizationModal({
 
     setSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append("post", post.id);
+      formData.append("description", description);
+      formData.append("previous_status", selectedPrev.toLowerCase().replace(/\s+/g, "_"));
+      formData.append("current_status", selectedReq.toLowerCase().replace(/\s+/g, "_"));
+
+      images.forEach((img) => {
+        if (!img.isRemote && img.file) {
+          formData.append("uploaded_images", img.file);
+        }
+      });
+
       const res = await fetch(`${API_URL}/api/posts/mobilization-event/`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({
-          post: post.id,
-          description: description,
-          previous_status: selectedPrev.toLowerCase().replace(/\s+/g, "_"),
-          current_status: selectedReq.toLowerCase().replace(/\s+/g, "_"),
-        }),
+        body: formData,
       });
 
       if (!res.ok) throw new Error("Failed to submit report");
@@ -1697,25 +1705,13 @@ function MobilizationModal({
         </div>
 
         <div className="flex-1 min-h-0 px-4 md:px-8 flex flex-col md:flex-row gap-6 md:gap-8 overflow-y-auto md:overflow-visible">
-          {/* Left: Image Upload Preview (Placeholder Style) */}
+          {/* Left: Image Upload Preview */}
           <div className="flex-[0.7] flex flex-col gap-4 min-h-0 overflow-y-auto pr-2 feed-scroll">
-            <label className="text-sm font-bold text-[#432817] flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>
+            <label className="text-sm font-bold text-[#432817]">
               Documentation photos
             </label>
-            <div className="grid grid-cols-2 gap-3 pb-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="aspect-square rounded-2xl bg-white border-2 border-dashed border-[#C4A882]/30 flex items-center justify-center group hover:border-[#C4A882] transition-colors relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[#C4A882]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="text-[#C4A882] text-[10px] font-bold uppercase tracking-wider opacity-60">Photo evidence</span>
-                </div>
-              ))}
-              <div className="aspect-square rounded-2xl bg-white border-2 border-dashed border-[#8B7355] flex flex-col items-center justify-center cursor-pointer hover:bg-white/80 transition-all hover:scale-[1.02] active:scale-[0.98]">
-                <div className="w-12 h-12 rounded-full bg-[#F7F5EF] flex items-center justify-center mb-3 text-[#432817]">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                </div>
-                <span className="text-xs font-bold text-[#432817]">Upload Images</span>
-              </div>
+            <div className="flex-1 overflow-hidden" style={{ minHeight: "400px" }}>
+              <ImageUploadPanel initialImages={[]} onImagesChange={setImages} />
             </div>
           </div>
 
@@ -1723,8 +1719,7 @@ function MobilizationModal({
           <div className="flex-1 flex flex-col gap-6 bg-white p-8 rounded-[40px] shadow-sm border border-[#432817]/5 overflow-y-auto feed-scroll">
             {/* Description */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[#432817] flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+              <label className="text-sm font-bold text-[#432817]">
                 Report Description
               </label>
               <textarea
@@ -1738,8 +1733,7 @@ function MobilizationModal({
 
             {/* Previous Status */}
             <div className="flex flex-col gap-3">
-              <label className="text-sm font-bold text-[#432817] flex items-center gap-2">
-                <HistoryIcon size={16} />
+              <label className="text-sm font-bold text-[#432817]">
                 Previous Status
               </label>
               <div className="flex flex-wrap gap-2">
@@ -1760,8 +1754,7 @@ function MobilizationModal({
 
             {/* Current Status */}
             <div className="flex flex-col gap-3">
-              <label className="text-sm font-bold text-[#432817] flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+              <label className="text-sm font-bold text-[#432817]">
                 New Status
               </label>
               <div className="flex flex-wrap gap-2">
@@ -1770,8 +1763,8 @@ function MobilizationModal({
                     key={opt}
                     onClick={() => setSelectedReq(opt)}
                     className={`px-5 py-2 text-[11px] font-bold rounded-full transition-all border-2 ${selectedReq === opt
-                      ? 'bg-[#8B6914] border-[#8B6914] text-white shadow-md'
-                      : 'bg-transparent border-[#8B6914]/10 text-[#8B6914] hover:border-[#8B6914]/30'
+                      ? 'bg-[#432817] border-[#432817] text-white shadow-md'
+                      : 'bg-transparent border-[#432817]/10 text-[#432817] hover:border-[#432817]/30'
                       }`}
                   >
                     {opt}
@@ -1821,8 +1814,8 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
   const imageList = post.images ?? [];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] rounded-2xl overflow-hidden bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
+      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden bg-[#FFF8E2] shadow-2xl border border-white/20" onClick={(e) => e.stopPropagation()}>
         {/* Left Side: Large image mirror */}
         <div className="w-full md:w-1/2 h-48 md:h-auto bg-black relative flex items-center justify-center overflow-hidden">
           {imageList.length > 0 ? (
@@ -1837,7 +1830,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
         </div>
 
         {/* Right Side: History list */}
-        <div className="w-full md:w-1/2 flex flex-col bg-[#FFF8E2] overflow-hidden">
+        <div className="w-full md:w-1/2 flex flex-col bg-[#FFF8E2] rounded-r-2xl overflow-hidden shadow-[-4px_0_15px_rgba(0,0,0,0.05)]">
           {/* Header row */}
           <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
             <div className="w-9 h-9 rounded-full bg-[#432817] flex items-center justify-center flex-shrink-0">
@@ -1855,6 +1848,15 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
+          </div>
+
+          <div className="px-5 py-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+            <div className="flex items-center gap-1 mb-1">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+              <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+            </div>
+            <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+            <ExpandableContent content={post.content} className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }} />
           </div>
 
           {/* List area */}
@@ -1922,10 +1924,10 @@ function MobileMonumentsStrip() {
   return (
     <div className="lg:hidden px-4 py-4">
       <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Monuments in critical danger</h3>
-      <div 
-        className="flex gap-3 overflow-x-auto pb-2" 
-        style={{ 
-          scrollbarWidth: "none", 
+      <div
+        className="flex gap-3 overflow-x-auto pb-2"
+        style={{
+          scrollbarWidth: "none",
           msOverflowStyle: "none",
           WebkitOverflowScrolling: "touch"
         }}
@@ -1933,21 +1935,21 @@ function MobileMonumentsStrip() {
         {RIGHT_PANEL_CARDS.map((card) => {
           const level = URGENCY_COLORS[card.urgence_level] ?? URGENCY_COLORS.medium;
           return (
-            <div 
-              key={card.id} 
+            <div
+              key={card.id}
               className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
               style={{ width: "140px" }}
             >
               <div className="flex flex-col">
-                <img 
-                  src={card.image} 
-                  alt={card.monument_name} 
-                  className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm" 
+                <img
+                  src={card.image}
+                  alt={card.monument_name}
+                  className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm"
                 />
-                <span 
-                  className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1" 
-                  style={{ 
-                    color: "#432817", 
+                <span
+                  className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
+                  style={{
+                    color: "#432817",
                     fontFamily: "var(--font-lato)",
                     maxWidth: "120px",
                     wordBreak: "break-word",
@@ -1962,10 +1964,10 @@ function MobileMonumentsStrip() {
                       <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                     </svg>
                   </div>
-                  <span 
-                    className="text-[8px] font-medium" 
-                    style={{ 
-                      color: "#432817", 
+                  <span
+                    className="text-[8px] font-medium"
+                    style={{
+                      color: "#432817",
                       fontFamily: "var(--font-lato)"
                     }}
                   >
@@ -1977,10 +1979,10 @@ function MobileMonumentsStrip() {
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
-                  <span 
-                    className="text-[8px] font-medium" 
-                    style={{ 
-                      color: "#9E9E9E", 
+                  <span
+                    className="text-[8px] font-medium"
+                    style={{
+                      color: "#9E9E9E",
                       fontFamily: "var(--font-lato)"
                     }}
                   >

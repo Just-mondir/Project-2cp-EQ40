@@ -446,7 +446,13 @@ class UpcomingEventsView(APIView):
 
     def get(self, request: Request) -> Response:
         upcoming_event_details = EventDetails.objects(starts_at__gt=timezone.now())
-        post_ids = [ed.post.id for ed in upcoming_event_details]
+        post_ids = []
+        for ed in upcoming_event_details:
+            try:
+                post_ids.append(ed.post.id)
+            except Exception:
+                continue
+
         posts = Post.objects(id__in=post_ids, post_type="event", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
@@ -839,9 +845,9 @@ class MobilizationEventCreateView(APIView):
             return api_error("Validation failed.", serializer.errors, status.HTTP_400_BAD_REQUEST)
 
         # Update the monument's status if provided
-        monument_post = serializer.validated_data["post"]
+        monument_post = serializer.validated_data.get("post")
         current_status = serializer.validated_data.get("current_status")
-        if current_status:
+        if monument_post and current_status:
             try:
                 alert_details = AlertDetails.objects.get(post=monument_post)
                 alert_details.current_status = current_status
@@ -850,6 +856,23 @@ class MobilizationEventCreateView(APIView):
                 pass
 
         mobilization_event = serializer.save(author_id=str(request.user.id))
+
+        image_files = request.FILES.getlist("uploaded_images")
+        if image_files:
+            import os
+            from django.conf import settings
+            images_list = []
+            for i, img in enumerate(list(image_files)[:5]):
+                safe_name = f"mob_{mobilization_event.id}_{i}_{img.name}"
+                file_path = os.path.join(settings.MEDIA_ROOT, "mobilization_images", safe_name)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, "wb+") as f:
+                    for chunk in img.chunks():
+                        f.write(chunk)
+                images_list.append(f"{settings.MEDIA_URL}mobilization_images/{safe_name}")
+            mobilization_event.images = images_list
+            mobilization_event.save()
+
         return api_success(
             "Mobilization event created successfully.",
             MobilizationEventSerializer(mobilization_event).data,

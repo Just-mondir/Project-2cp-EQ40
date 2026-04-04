@@ -18,22 +18,27 @@ export default function LeftSidebar({
   activePage = "home",
   variant = "default",
 }) {
-  const [username, setUsername] = useState(() => {
-    if (typeof window === "undefined") return "";
+  const [username, setUsername] = useState("");
+
+  useEffect(() => {
     try {
       const direct =
         localStorage.getItem("username") ||
         localStorage.getItem("user_username") ||
         "";
-      if (direct) return direct;
+      if (direct) {
+        setUsername(direct);
+        return;
+      }
       const storedUser = localStorage.getItem("user");
-      if (!storedUser) return "";
-      const parsed = JSON.parse(storedUser);
-      return parsed?.username || parsed?.user_username || "";
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        setUsername(parsed?.username || parsed?.user_username || "");
+      }
     } catch {
-      return "";
+      setUsername("");
     }
-  });
+  }, []);
 
   useEffect(() => {
     if (!username) {

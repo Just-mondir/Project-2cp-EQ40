@@ -460,14 +460,17 @@ class AnnotationSerializer(serializers.Serializer):
 
 class MobilizationEventSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
-    post = serializers.CharField()
+    post = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     author_id = serializers.CharField(read_only=True)
-    description = serializers.CharField()
-    previous_status = serializers.CharField()
-    current_status = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+    previous_status = serializers.CharField(required=False, allow_blank=True, default="")
+    current_status = serializers.CharField(required=False, allow_blank=True, default="")
+    images = serializers.ListField(child=serializers.CharField(), read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
 
     def validate_post(self, value):
+        if not value:
+            return None
         try:
             return Post.objects.get(id=value)
         except Post.DoesNotExist:
