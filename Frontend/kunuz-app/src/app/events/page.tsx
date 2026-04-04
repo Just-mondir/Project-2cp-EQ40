@@ -453,10 +453,19 @@ function CommentItem({
     setGemsCount((prev) => (nextGemmed ? prev + 1 : Math.max(prev - 1, 0)));
 
     try {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/gem/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
+
+      if (res.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
 
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error("Failed to toggle comment gem");
@@ -472,10 +481,19 @@ function CommentItem({
   const handleDeleteComment = async () => {
     const token = getAuthToken();
     try {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
+
+      if (res.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
 
       if (res.ok || res.status === 204) {
         setShowMenu(false);
@@ -489,15 +507,20 @@ function CommentItem({
 
     const token = getAuthToken();
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/posts/${postId}/comments/`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ content: replyText, parent_id: comment.id }),
       });
 
+      if (res.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
       if (!res.ok) return;
 
       setReplyText("");
@@ -644,6 +667,7 @@ function AnnotationItem({
   onDelete,
   onAccept,
   onReject,
+  onRefresh,
 }: {
   annotation: Annotation;
   postId: string;
@@ -651,6 +675,7 @@ function AnnotationItem({
   onDelete: (id: string) => void;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
+  onRefresh?: () => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -672,13 +697,21 @@ function AnnotationItem({
   const handleDelete = async () => {
     const token = getAuthToken();
     try {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(
         `${API_URL}/api/posts/${postId}/annotations/${annotation.id}/`,
         {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
         }
       );
+      if (res.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
       if (res.ok || res.status === 204) {
         onDelete(annotation.id);
         setShowMenu(false);
@@ -981,14 +1014,14 @@ function MobileEventsStrip() {
               };
             }));
           } else {
-            setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+            setUpcomingEvents([]);
           }
         } else {
-          setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+          setUpcomingEvents([]);
         }
       } catch (e) {
         console.error("Failed to fetch upcoming events", e);
-        setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+        setUpcomingEvents([]);
       } finally {
         setLoading(false);
       }
@@ -999,10 +1032,10 @@ function MobileEventsStrip() {
   return (
     <div className="lg:hidden px-4 py-4">
       <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Upcoming Events</h3>
-      <div 
-        className="flex gap-3 overflow-x-auto pb-2" 
-        style={{ 
-          scrollbarWidth: "none", 
+      <div
+        className="flex gap-3 overflow-x-auto pb-2"
+        style={{
+          scrollbarWidth: "none",
           msOverflowStyle: "none",
           WebkitOverflowScrolling: "touch"
         }}
@@ -1012,57 +1045,62 @@ function MobileEventsStrip() {
             <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
           </div>
         ) : (
-          upcomingEvents.map((eventItem, i) => (
-            <div 
-              key={i} 
-              className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
-              style={{ width: "140px" }}
-            >
-              <div className="flex flex-col">
-                <img 
-                  src={eventItem.event_image} 
-                  alt="event" 
-                  className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm" 
-                />
-                <span 
-                  className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1" 
-                  style={{ 
-                    color: "#432817", 
-                    fontFamily: "var(--font-lato)",
-                    maxWidth: "120px",
-                    wordBreak: "break-word",
-                    hyphens: "auto"
-                  }}
-                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(eventItem.title) }}
-                />
-                <span 
-                  className="text-[8px] text-center leading-tight line-clamp-1 mb-1" 
-                  style={{ 
-                    color: "#8B7355", 
-                    fontFamily: "var(--font-lato)"
-                  }}
-                >
-                  {eventItem.user_name}
-                </span>
-                <div className="flex flex-col gap-1 text-center">
-                  <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
-                    {eventItem.location}
+          upcomingEvents.length === 0 ? (
+            <div className="flex w-full justify-center text-xs font-bold py-4 opacity-50" style={{ color: "var(--brown)" }}>
+              no upcoming event
+            </div>
+          ) : (
+            upcomingEvents.map((eventItem, i) => (
+              <div
+                key={i}
+                className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
+                style={{ width: "140px" }}
+              >
+                <div className="flex flex-col">
+                  <img
+                    src={eventItem.event_image}
+                    alt="event"
+                    className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm"
+                  />
+                  <span
+                    className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
+                    style={{
+                      color: "#432817",
+                      fontFamily: "var(--font-lato)",
+                      maxWidth: "120px",
+                      wordBreak: "break-word",
+                      hyphens: "auto"
+                    }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(eventItem.title) }}
+                  />
+                  <span
+                    className="text-[8px] text-center leading-tight line-clamp-1 mb-1"
+                    style={{
+                      color: "#8B7355",
+                      fontFamily: "var(--font-lato)"
+                    }}
+                  >
+                    {eventItem.user_name}
                   </span>
-                  <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 6v6l4 2" />
-                    </svg>
-                    {eventItem.start_date} {eventItem.end_date ? `- ${eventItem.end_date}` : ""}
-                  </span>
+                  <div className="flex flex-col gap-1 text-center">
+                    <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                      {eventItem.location}
+                    </span>
+                    <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 6v6l4 2" />
+                      </svg>
+                      {eventItem.start_date} {eventItem.end_date ? `- ${eventItem.end_date}` : ""}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            )))
         )}
       </div>
     </div>
@@ -1102,14 +1140,14 @@ function RightSidebar() {
               };
             }));
           } else {
-            setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+            setUpcomingEvents([]);
           }
         } else {
-          setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+          setUpcomingEvents([]);
         }
       } catch (e) {
         console.error("Failed to fetch upcoming events", e);
-        setUpcomingEvents(UPCOMING_EVENTS_MOCKS);
+        setUpcomingEvents([]);
       } finally {
         setLoading(false);
       }
@@ -1124,6 +1162,10 @@ function RightSidebar() {
         <div className="flex flex-col gap-3 flex-shrink-0">
           {loading ? (
             <div className="flex justify-center py-4"><div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} /></div>
+          ) : upcomingEvents.length === 0 ? (
+            <div className="flex w-full justify-center text-sm font-bold py-8 opacity-50" style={{ color: "var(--brown)" }}>
+              no upcoming event
+            </div>
           ) : upcomingEvents.map((eventItem, i) => (
             <div key={i} className="flex p-4 mb-2 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
               {/* Event Image: square 75x75, 20px radius */}
@@ -1205,9 +1247,13 @@ function PostModal({
   const fetchComments = async (postId: string) => {
     const token = getAuthToken();
     try {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/posts/${postId}/comments/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
+      if (res.status === 401) return;
       const data = await res.json();
       const raw = Array.isArray(data.data) ? data.data : [];
       const normalized = raw.map(normalizeComment);
@@ -1220,9 +1266,13 @@ function PostModal({
     setAnnotationsLoading(true);
     const token = getAuthToken();
     try {
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
       });
+      if (res.status === 401) return;
       const data = await res.json();
       const items = Array.isArray(data.data) ? data.data : [];
       setAnnotations(items);
@@ -1279,14 +1329,19 @@ function PostModal({
     if (!newComment.trim()) return;
     const token = getAuthToken();
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/posts/${post.id}/comments/`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ content: newComment }),
       });
+      if (res.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
       if (!res.ok) return;
       setNewComment("");
       await fetchComments(post.id);
@@ -1297,14 +1352,19 @@ function PostModal({
     if (!newAnnotationText.trim()) return;
     const token = getAuthToken();
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/posts/${post.id}/annotations/`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ text: newAnnotationText }),
       });
+      if (res.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
       if (!res.ok) return;
       setNewAnnotationText("");
       await fetchAnnotations(post.id);
@@ -1535,7 +1595,7 @@ function PostModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-[900px] max-w-[95vw] max-h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {/* Left Panel: Image Gallery or Content */}
         <div className="w-full md:w-1/2 h-64 md:h-auto flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
           {imageList.length > 0 ? (
@@ -1616,13 +1676,7 @@ function PostModal({
                 <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
               )}
 
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {tags.map((tag, i) => (
-                    <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>
-                  ))}
-                </div>
-              )}
+
             </div>
           )}
 

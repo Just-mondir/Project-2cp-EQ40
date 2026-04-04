@@ -516,71 +516,6 @@ export default function PostForm({
           </div>
         </SectionBlock>
 
-        {/* Mobilization Event Specific Fields */}
-        {initialValues.postType === "Event" && (
-          <SectionBlock>
-            <SectionLabel>Mobilization Information</SectionLabel>
-            
-            <div style={{ marginBottom: "18px" }}>
-              <FieldLabel>
-                Select Monument <span style={{ color: "red" }}>*</span>
-              </FieldLabel>
-              <select
-                value={selectedMonument || ""}
-                onChange={(e) => setSelectedMonument(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  width: "100%",
-                  cursor: "pointer"
-                }}
-              >
-                <option value="">Choose a monument...</option>
-                <option value="507f1f77bcf86cd799439011">Fort Santa Cruz</option>
-                <option value="507f1f77bcf86cd799439012">Ketchaoua Mosque</option>
-                <option value="507f1f77bcf86cd799439013">Casbah of Algiers</option>
-                <option value="507f1f77bcf86cd799439014">Martyrs' Memorial</option>
-                <option value="507f1f77bcf86cd799439015">Museum of Fine Arts</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: "18px" }}>
-              <FieldLabel>Previous Status</FieldLabel>
-              <select
-                value={previousStatus || "alert"}
-                onChange={(e) => setPreviousStatus(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  width: "100%",
-                  cursor: "pointer"
-                }}
-              >
-                <option value="alert">Alert</option>
-                <option value="destroyed">Destroyed</option>
-                <option value="under_intervention">Under Intervention</option>
-                <option value="restored">Restored</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: "18px" }}>
-              <FieldLabel>Current Status</FieldLabel>
-              <select
-                value={currentStatus || "under_intervention"}
-                onChange={(e) => setCurrentStatus(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  width: "100%",
-                  cursor: "pointer"
-                }}
-              >
-                <option value="alert">Alert</option>
-                <option value="destroyed">Destroyed</option>
-                <option value="under_intervention">Under Intervention</option>
-                <option value="restored">Restored</option>
-              </select>
-            </div>
-          </SectionBlock>
-        )}
-
         <SectionBlock>
           <SectionLabel>Labels</SectionLabel>
 
@@ -657,7 +592,7 @@ export default function PostForm({
 
           {postType === "Event" && (
             <div style={{ marginTop: "24px" }}>
-              <FieldLabel>Event Time</FieldLabel>
+              <FieldLabel>Event Time <span style={{ color: "red" }}>*</span></FieldLabel>
               <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>Start time</div>

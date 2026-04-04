@@ -45,20 +45,61 @@ export default function AddEventPage() {
             setSaving(true);
 
             // Validation
-            if (!formValues.selectedMonument) {
-                alert("Please select a monument for the mobilization event.");
+            if (!formValues.title || formValues.title.trim() === "") {
+                alert("Please provide a title for the event.");
                 return;
             }
 
-            if (!formValues.description || formValues.description.trim() === "") {
-                alert("Please provide a description for the mobilization event.");
+            if (!formValues.startTime) {
+                alert("Please provide a start time for the event.");
                 return;
             }
 
-            // First, create the mobilization event
+            // 1. Create the Post with images using FormData
+            const postFormData = new FormData();
+            postFormData.append("title", formValues.title);
+            postFormData.append("content", formValues.description || "");
+            postFormData.append("location", formValues.location || "");
+            postFormData.append("post_type", "event");
+            postFormData.append("visibility", formValues.visibility.toLowerCase());
+
+            if (formValues.historicalPeriod) postFormData.append("historical_period", formValues.historicalPeriod);
+            if (formValues.region) postFormData.append("region", formValues.region);
+            if (formValues.monumentType) postFormData.append("monument_type", formValues.monumentType);
+
+            postFormData.append("starts_at", new Date(formValues.startTime).toISOString());
+            if (formValues.endTime) {
+                postFormData.append("ends_at", new Date(formValues.endTime).toISOString());
+            }
+
+            images.forEach((img) => {
+                if (!img.isRemote && img.file) {
+                    postFormData.append("uploaded_images", img.file);
+                }
+            });
+
+            const postRes = await fetch(`${API_URL}/api/posts/`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${getAuthToken()}`,
+                },
+                body: postFormData,
+            });
+
+            if (!postRes.ok) {
+                const errorData = await postRes.json();
+                console.error("Post creation error:", errorData);
+                alert(`Failed to create event post: ${errorData?.message || "Unknown error"}`);
+                return;
+            }
+
+            const postResult = await postRes.json();
+            const newPostId = postResult.data?.id;
+
+            // 2. Create the Mobilization Event linked to the newly created Post
             const mobilizationData = {
-                post: formValues.selectedMonument, // The monument post ID
-                description: formValues.description.trim(),
+                post: newPostId,
+                description: formValues.description || "",
                 previous_status: formValues.previousStatus || "alert",
                 current_status: formValues.currentStatus || "under_intervention"
             };
@@ -73,76 +114,15 @@ export default function AddEventPage() {
             });
 
             if (!mobilizationRes.ok) {
-                const errorData = await mobilizationRes.json();
-                console.error("Mobilization event error:", errorData);
-                alert(`Failed to create mobilization event: ${JSON.stringify(errorData)}`);
-                return;
-            }
-
-            const mobilizationResult = await mobilizationRes.json();
-            console.log("Mobilization event created:", mobilizationResult);
-
-            // If images are provided, create a post with images
-            if (images.length > 0) {
-                const formData = new FormData();
-                formData.append("title", formValues.title);
-                formData.append("content", formValues.description || "");
-                formData.append("location", formValues.location);
-                formData.append("post_type", "event");
-                formData.append("visibility", formValues.visibility.toLowerCase());
-
-                if (formValues.historicalPeriod) {
-                    formData.append("historical_period", formValues.historicalPeriod);
-                }
-
-                if (formValues.region) {
-                    formData.append("region", formValues.region);
-                }
-
-                if (formValues.monumentType) {
-                    formData.append("monument_type", formValues.monumentType);
-                }
-
-                if (formValues.startTime) {
-                    formData.append("starts_at", new Date(formValues.startTime).toISOString());
-                } else {
-                    formData.append("starts_at", new Date().toISOString());
-                }
-
-                if (formValues.endTime) {
-                    formData.append("ends_at", new Date(formValues.endTime).toISOString());
-                }
-
-                images.forEach((img) => {
-                    if (!img.isRemote && img.file) {
-                        formData.append("uploaded_images", img.file);
-                    }
-                });
-
-                const postRes = await fetch(`${API_URL}/api/posts/`, {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${getAuthToken()}`,
-                    },
-                    body: formData,
-                });
-
-                if (!postRes.ok) {
-                    console.warn("Post creation failed, but mobilization event was created");
-                }
+                console.warn("Mobilization event creation failed, but post was created");
+            } else {
+                console.log("Mobilization event created successfully!");
             }
 
             // Show success message and redirect
             alert("Mobilization event created successfully!");
-            
-            const meRes = await fetch(`${API_URL}/api/users/me/`, {
-                headers: {
-                    Authorization: `Bearer ${getAuthToken()}`,
-                },
-            });
 
-            const me = await meRes.json();
-            router.push(`/user/${me.data?.username ?? me.username}`);
+            router.push("/events");
         } catch (err) {
             console.error("Error creating mobilization event:", err);
             alert("Failed to create mobilization event. Please try again.");
