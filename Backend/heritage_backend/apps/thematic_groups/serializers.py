@@ -29,7 +29,7 @@ class ThematicGroupSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
     name = serializers.CharField()
     category = serializers.CharField()
-    description = serializers.CharField(allow_blank=True)
+    description = serializers.CharField()
     profile_picture = serializers.CharField(allow_blank=True)
     banner_image = serializers.CharField(allow_blank=True)
     admin_id = serializers.CharField()
@@ -39,6 +39,10 @@ class ThematicGroupSerializer(serializers.Serializer):
     is_admin = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
+    historical_period = serializers.CharField(allow_blank=True)
+    region = serializers.CharField(allow_blank=True)
+    visibility = serializers.CharField(required=False, default="public")
+    rules = serializers.CharField(allow_blank=True)
 
     def get_id(self, obj) -> str:
         return str(obj.id)
@@ -48,7 +52,6 @@ class ThematicGroupSerializer(serializers.Serializer):
 
     def get_post_count(self, obj) -> int:
         from apps.posts.models import Post
-
         return Post.objects(group_id=str(obj.id), is_deleted=False).count()
 
     def get_is_member(self, obj) -> bool:
@@ -63,13 +66,16 @@ class ThematicGroupSerializer(serializers.Serializer):
             return False
         return user_is_group_admin(str(request.user.id), obj)
 
-
 class ThematicGroupWriteSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=160)
-    category = serializers.CharField(max_length=120)
-    description = serializers.CharField(required=False, allow_blank=True, default="")
+    category = serializers.ChoiceField(choices=ThematicGroup.CATEGORY_CHOICES)
+    description = serializers.CharField()
     profile_picture = serializers.CharField(required=False, allow_blank=True, default="")
     banner_image = serializers.CharField(required=False, allow_blank=True, default="")
+    historical_period = serializers.ChoiceField(choices=ThematicGroup.HISTORICAL_PERIOD_CHOICES, required=False, allow_blank=True)
+    region = serializers.ChoiceField(choices=ThematicGroup.REGION_CHOICES, required=False, allow_blank=True)
+    visibility = serializers.ChoiceField(choices=ThematicGroup.VISIBILITY_CHOICES, default="public")
+    rules = serializers.CharField(required=False, allow_blank=True, default="")
 
     def create(self, validated_data):
         request = self.context["request"]
@@ -86,8 +92,7 @@ class ThematicGroupWriteSerializer(serializers.Serializer):
             setattr(instance, key, value)
         instance.save()
         return instance
-
-
+    
 class GroupJoinRequestSerializer(serializers.Serializer):
     id = serializers.SerializerMethodField()
     group_id = serializers.SerializerMethodField()
