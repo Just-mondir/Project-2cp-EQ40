@@ -537,7 +537,7 @@ export default function PostForm({
               <div
                 style={{ marginBottom: "18px", animation: "fadeIn 0.2s ease" }}
               >
-                <FieldLabel>Danger Level</FieldLabel>
+                <FieldLabel>Danger Level <span style={{ color: "red" }}>*</span></FieldLabel>
                 <PillGroup
                   options={DANGER_LEVELS}
                   value={dangerLevel}

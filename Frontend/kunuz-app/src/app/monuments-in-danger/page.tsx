@@ -1720,11 +1720,11 @@ function MobilizationModal({
             {/* Description */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-[#432817]">
-                Report Description
+                Description
               </label>
               <textarea
                 className="w-full h-32 p-4 bg-[#F7F5EF]/50 border-2 border-transparent rounded-[24px] resize-none text-sm outline-none focus:border-[#C4A882] focus:bg-white transition-all shadow-inner"
-                placeholder="Provide details about recent changes, intervention progress, or the current state of the monument..."
+                placeholder="Entrez le contenu de votre post ici..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 style={{ fontFamily: 'var(--font-lato)' }}
@@ -1734,7 +1734,7 @@ function MobilizationModal({
             {/* Previous Status */}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-bold text-[#432817]">
-                Previous Status
+                Previous Status<span style={{ color: "red" }}>*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {options.map(opt => (
@@ -1755,7 +1755,7 @@ function MobilizationModal({
             {/* Current Status */}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-bold text-[#432817]">
-                New Status
+                New Status <span style={{ color: "red" }}>*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {options.map(opt => (
