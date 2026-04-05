@@ -2,8 +2,8 @@
 from __future__ import annotations
 from datetime import datetime, time
 from rest_framework import status
-import cloudinary.uploader
-from .utils import upload_to_cloudinary
+import os
+from django.conf import settings
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
@@ -39,8 +39,14 @@ def _save_post_images(post: Post, image_files) -> None:
     existing_count = PostImage.objects(post=post).count()
     allowed = 5 - existing_count
     for img in list(image_files)[:allowed]:
-        url = upload_to_cloudinary(img, folder="posts")
-        PostImage(post=post, image=url).save()
+        safe_name = f"{post.id}_{img.name}"
+        file_path = os.path.join(settings.MEDIA_ROOT, "post_images", safe_name)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "wb+") as f:
+            for chunk in img.chunks():
+                f.write(chunk)
+        image_url = f"{settings.MEDIA_URL}post_images/{safe_name}"
+        PostImage(post=post, image=image_url).save()
 
 
 class PostListCreateView(APIView):
@@ -148,8 +154,13 @@ class PostImageUploadView(APIView):
             return api_error(f"A post can have at most 5 images. This post already has {existing_count}.", status_code=status.HTTP_400_BAD_REQUEST)
         created = []
         for img in images:
-            url = upload_to_cloudinary(img, folder="posts")
-            post_image = PostImage(post=post, image=url)
+            file_path = os.path.join(settings.MEDIA_ROOT, "post_images", img.name)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, "wb+") as f:
+                for chunk in img.chunks():
+                    f.write(chunk)
+            image_url = f"{settings.MEDIA_URL}post_images/{img.name}"
+            post_image = PostImage(post=post, image=image_url)
             post_image.save()
             created.append(post_image)
         serializer = PostImageSerializer(created, many=True, context={"request": request})
@@ -167,11 +178,9 @@ class PostImageDeleteView(APIView):
         post = image.post
         if post.author_id != str(request.user.id):
             return api_error("You can only delete images from your own posts.", status_code=status.HTTP_403_FORBIDDEN)
-        try:
-            public_id = "/".join(image.image.split("/")[-2:]).rsplit(".", 1)[0]
-            cloudinary.uploader.destroy(public_id)
-        except Exception:
-            pass
+        file_path = os.path.join(settings.MEDIA_ROOT, image.image.lstrip(settings.MEDIA_URL))
+        if os.path.exists(file_path):
+            os.remove(file_path)
         image.delete()
         return api_success("Image deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
@@ -850,10 +859,17 @@ class MobilizationEventCreateView(APIView):
 
         image_files = request.FILES.getlist("uploaded_images")
         if image_files:
-            images_list = [
-                upload_to_cloudinary(img, folder="mobilization")
-                for img in list(image_files)[:5]
-            ]
+            import os
+            from django.conf import settings
+            images_list = []
+            for i, img in enumerate(list(image_files)[:5]):
+                safe_name = f"mob_{mobilization_event.id}_{i}_{img.name}"
+                file_path = os.path.join(settings.MEDIA_ROOT, "mobilization_images", safe_name)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                with open(file_path, "wb+") as f:
+                    for chunk in img.chunks():
+                        f.write(chunk)
+                images_list.append(f"{settings.MEDIA_URL}mobilization_images/{safe_name}")
             mobilization_event.images = images_list
             mobilization_event.save()
 
