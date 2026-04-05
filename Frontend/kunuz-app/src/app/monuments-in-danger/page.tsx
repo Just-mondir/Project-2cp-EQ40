@@ -1421,18 +1421,43 @@ function PostModal({
           </div>
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-            <button className={`flex-1 py-3 text-xs font-bold transition-colors ${activeTab === "comments" ? "border-b-2" : "opacity-60"}`} style={{ borderColor: "#432817", color: "#432817" }} onClick={() => setActiveTab("comments")}>Comments ({comments.length})</button>
-            <button className={`flex-1 py-3 text-xs font-bold transition-colors ${activeTab === "annotations" ? "border-b-2" : "opacity-60"}`} style={{ borderColor: "#432817", color: "#432817" }} onClick={() => setActiveTab("annotations")}>Annotations ({annotations.length})</button>
+            <button
+              className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              style={{
+                color: activeTab === "comments" ? "#432817" : "#8B7355",
+                borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent",
+              }}
+              onClick={() => setActiveTab("comments")}
+            >
+              <CommentIcon size={13} />
+              Comments ({comments.length})
+            </button>
+            <button
+              className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              style={{
+                color: activeTab === "annotations" ? "#432817" : "#8B7355",
+                borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent",
+              }}
+              onClick={() => setActiveTab("annotations")}
+            >
+              <AnnotationIcon size={13} />
+              Annotations ({getAcceptedAnnotationsCount(annotations)})
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto feed-scroll">
+          <div className="flex-1 overflow-y-auto hide-scrollbar">
             <div className="px-5 py-4">
               {activeTab === "comments" ? (
                 <div className="flex flex-col gap-4">
                   {topLevelComments.length > 0 ? (
                     topLevelComments.map((c) => renderCommentThread(c))
                   ) : (
-                    <div className="py-10 text-center opacity-40 text-xs font-medium" style={{ color: "#432817" }}>No comments yet.</div>
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <CommentIcon size={28} className="opacity-30" />
+                      <p className="text-xs" style={{ color: "#8B7355" }}>
+                        No comments yet. Be the first to comment!
+                      </p>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1442,48 +1467,76 @@ function PostModal({
                       <AnnotationItem key={a.id} annotation={a} postId={post.id} postAuthorId={post.user_id} onDelete={(id) => setAnnotations(prev => prev.filter(x => x.id !== id))} onAccept={(id) => setAnnotations(prev => prev.map(x => x.id === id ? { ...x, status: "accepted" } : x))} onReject={(id) => setAnnotations(prev => prev.map(x => x.id === id ? { ...x, status: "rejected" } : x))} onRefresh={() => fetchAnnotations(post.id)} />
                     ))
                   ) : (
-                    <div className="py-10 text-center opacity-40 text-xs font-medium" style={{ color: "#432817" }}>No annotations yet.</div>
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <AnnotationIcon size={28} className="opacity-30" />
+                      <p className="text-xs" style={{ color: "#8B7355" }}>
+                        No annotations yet. Be the first to annotate!
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* input */}
-          <div className="px-5 py-3 border-t flex items-center gap-3 flex-shrink-0" style={{ borderColor: "#E0D5C5", backgroundColor: "#FFF" }}>
-            <div className="w-[32px] h-[32px] rounded-full bg-[#E0D5C5] flex-shrink-0 flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
+            <div className="flex items-center gap-4">
+              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+                <GemIcon size={14} filled={gemmed} active={gemmed} />
+                {formatCount(gemsCount)}
+              </button>
+              <button
+                className="flex items-center gap-1 text-xs transition-all"
+                style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }}
+                onClick={() => setActiveTab("comments")}
+              >
+                <CommentIcon size={14} /> {formatCount(comments.length)}
+              </button>
+              <button
+                className="flex items-center gap-1 text-xs transition-all"
+                style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355" }}
+                onClick={() => setActiveTab("annotations")}
+              >
+                <AnnotationIcon size={14} /> {formatCount(getAcceptedAnnotationsCount(annotations))}
+              </button>
             </div>
+            <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
+              <BookmarkIcon size={18} filled={saved} active={saved} />
+            </button>
+          </div>
+
+          {/* input */}
+          <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
             {activeTab === "comments" ? (
-              <div className="flex-1 flex items-center gap-2">
+              <>
                 <input
                   type="text"
-                  placeholder="Write a comment..."
-                  className="flex-1 py-1.5 text-xs outline-none bg-transparent"
-                  style={{ color: "#432817" }}
+                  placeholder="Add a comment"
+                  className="flex-1 py-2.5 px-4 text-xs rounded-xl outline-none border bg-white"
+                  style={{ color: "#432817", borderColor: "#E0D5C5" }}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }}
                 />
-                <button onClick={handleSubmitComment} className="w-7 h-7 rounded-lg bg-[#432817] flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105 active:scale-95">
+                <button onClick={handleSubmitComment} className="w-9 h-9 rounded-xl bg-[#432817] flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105 active:scale-95">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
-              </div>
+              </>
             ) : (
-              <div className="flex-1 flex items-center gap-2">
+              <>
                 <input
                   type="text"
-                  placeholder="Add an annotation..."
-                  className="flex-1 py-1.5 text-xs outline-none bg-transparent"
-                  style={{ color: "#432817" }}
+                  placeholder="Add an annotation"
+                  className="flex-1 py-2.5 px-4 text-xs rounded-xl outline-none border bg-white"
+                  style={{ color: "#432817", borderColor: "#E0D5C5" }}
                   value={newAnnotationText}
                   onChange={(e) => setNewAnnotationText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }}
                 />
-                <button onClick={handleSubmitAnnotation} className="w-7 h-7 rounded-lg bg-[#432817] flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105 active:scale-95">
+                <button onClick={handleSubmitAnnotation} className="w-9 h-9 rounded-xl bg-[#432817] flex items-center justify-center flex-shrink-0 transition-transform hover:scale-105 active:scale-95">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -2043,60 +2096,53 @@ function RightSidebar({ onAction }: { onAction: () => void }) {
         </h2>
 
         {/* Scrollable list of cards */}
-        <div className="w-full flex flex-col gap-6 overflow-y-auto pr-2 pb-10 feed-scroll">
+        <div className="w-full flex flex-col gap-4 overflow-y-auto pr-2 pb-10" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
           {RIGHT_PANEL_CARDS.map((card) => {
             const level = URGENCY_COLORS[card.urgence_level] ?? URGENCY_COLORS.medium;
             return (
               <div
                 key={card.id}
-                className="flex p-4 rounded-3xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm"
-                style={{
-                  border: "1px solid rgba(67, 40, 23, 0.05)",
-                  backgroundColor: "rgba(255, 255, 255, 0.6)",
-                  boxShadow: "0 4px 16px rgba(67, 40, 23, 0.06)"
-                }}
+                className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
               >
-
                 {/* Thumbnail on left */}
-                <div className="w-[80px] h-[80px] flex-shrink-0 mr-4">
-                  <img src={card.image} alt={card.monument_name} className="w-full h-full object-cover rounded-2xl shadow-sm" />
+                <div className="flex-shrink-0">
+                  <img src={card.image} alt={card.monument_name} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-sm" />
                 </div>
 
                 {/* Info on right */}
-                <div className="flex flex-col justify-center min-w-0">
-                  {/* User row */}
-                  <div className="flex items-center gap-2 mb-1.5 opacity-80">
-                    <div className="w-6 h-6 rounded-full bg-[#432817] flex items-center justify-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      </svg>
-                    </div>
-                    <span className="text-xs font-bold" style={{ color: "#432817" }}>{card.user}</span>
-                  </div>
-
+                <div className="flex flex-col gap-1 min-w-0 justify-center mt-0.5">
                   {/* Monument Title */}
-                  <span className="font-bold text-base mb-2" style={{ color: "#432817" }}>{card.monument_name}</span>
+                  <h3 className="font-bold text-sm text-[#2C1A0E]" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>
+                    {card.monument_name}
+                  </h3>
 
                   {/* Attributes line */}
-                  <div className="flex items-center gap-3 text-xs font-bold whitespace-nowrap" style={{ color: "#9E9E9E" }}>
-                    {/* Location */}
+                  <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-[#5a4a3a]">
                     <div className="flex items-center gap-1">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "rgba(67, 40, 23, 0.5)" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#7a5a3a" }}>
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                       </svg>
-                      <span style={{ color: "#9E9E9E" }}>{card.location}</span>
+                      <span>{card.location}</span>
                     </div>
 
-                    {/* Urgency Dot */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
-                      <span style={{ color: "#9E9E9E" }}>Critical</span>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
+                      <span>Critical</span>
                     </div>
 
                     <span className="opacity-40">|</span>
 
-                    {/* Status */}
-                    <span style={{ color: "#9E9E9E" }}>Alert</span>
+                    <span>Alert</span>
+                  </div>
+
+                  {/* User row */}
+                  <div className="flex flex-row items-center gap-1.5 mt-0.5 text-[#7a5a3a]">
+                    <div className="w-4 h-4 rounded-full bg-[#432817] flex items-center justify-center">
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                      </svg>
+                    </div>
+                    <span className="font-bold text-[10px]" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>{card.user}</span>
                   </div>
                 </div>
               </div>
