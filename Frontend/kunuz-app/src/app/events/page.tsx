@@ -1000,7 +1000,7 @@ function MobileEventsStrip() {
           if (Array.isArray(results) && results.length > 0) {
             setUpcomingEvents(results.slice(0, 5).map((event: any) => {
               const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
-              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "/timgad 1.jpg";
+              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "";
               const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
               const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
               return {
@@ -1057,11 +1057,13 @@ function MobileEventsStrip() {
                 style={{ width: "140px" }}
               >
                 <div className="flex flex-col">
-                  <img
-                    src={eventItem.event_image}
-                    alt="event"
-                    className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm"
-                  />
+                  {eventItem.event_image && (
+                    <img
+                      src={eventItem.event_image}
+                      alt="event"
+                      className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm"
+                    />
+                  )}
                   <span
                     className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
                     style={{
@@ -1126,7 +1128,7 @@ function RightSidebar() {
           if (Array.isArray(results) && results.length > 0) {
             setUpcomingEvents(results.slice(0, 5).map((event: any) => {
               const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
-              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "/timgad 1.jpg";
+              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "";
               const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
               const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
               return {
@@ -1169,9 +1171,11 @@ function RightSidebar() {
           ) : upcomingEvents.map((eventItem, i) => (
             <div key={i} className="flex p-4 mb-2 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
               {/* Event Image: square 75x75, 20px radius */}
-              <div className="w-[75px] h-[75px] flex-shrink-0 mr-4">
-                <img src={eventItem.event_image} alt="event" className="w-full h-full object-cover rounded-[20px]" />
-              </div>
+              {eventItem.event_image && (
+                <div className="w-[75px] h-[75px] flex-shrink-0 mr-4">
+                  <img src={eventItem.event_image} alt="event" className="w-full h-full object-cover rounded-[20px]" />
+                </div>
+              )}
 
               {/* Content on the right */}
               <div className="flex flex-col justify-between flex-1 min-w-0">

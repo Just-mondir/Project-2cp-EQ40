@@ -97,17 +97,21 @@ function formatDate(dateStr: string): string {
 }
 
 function EventCard({ item }: { item: EventItem }) {
+  const hasImage = !!item.imageUrl;
+
   return (
     <div className="bg-white rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2]">
-      <div className="relative h-full shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
-        <img
-          src={item.imageUrl}
-          alt={item.title}
-          className="w-full h-full object-cover rounded-l-2xl"
-        />
-      </div>
+      {hasImage && (
+        <div className="relative h-full shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
+          <img
+            src={item.imageUrl}
+            alt={item.title}
+            className="w-full h-full object-cover rounded-l-2xl"
+          />
+        </div>
+      )}
 
-      <div className={`${lato.className} flex-1 px-5 lg:px-6 py-4 flex flex-col justify-between`}>
+      <div className={`${lato.className} flex-1 px-5 lg:px-6 py-4 flex flex-col justify-between ${!hasImage ? 'border-l-4 border-[#2C1A0E]/10' : ''}`}>
         <div>
           <h3 className="font-bold text-base lg:text-lg text-[#2C1A0E] mb-1">
             {item.title}
@@ -161,7 +165,6 @@ export default function UpcomingEvents() {
         const results = data.results || data;
 
         const fetched: EventItem[] = (results || [])
-          .filter((post: any) => Array.isArray(post.images) && post.images.length > 0)
           .slice(0, 6)
           .map((post: any) => {
             const stripHtml = (html: string) => {
@@ -169,10 +172,14 @@ export default function UpcomingEvents() {
               return html.replace(/<[^>]*>/g, "");
             };
 
-            const imgPath = post.images[0].image;
-            const imageUrl = imgPath.startsWith("http")
-              ? imgPath
-              : `${process.env.NEXT_PUBLIC_API_URL}${imgPath}`;
+            const images = post.images || [];
+            let imageUrl = "";
+            if (images.length > 0) {
+              const imgPath = images[0].image;
+              imageUrl = imgPath.startsWith("http")
+                ? imgPath
+                : `${process.env.NEXT_PUBLIC_API_URL}${imgPath}`;
+            }
 
             return {
               title: stripHtml(post.title),

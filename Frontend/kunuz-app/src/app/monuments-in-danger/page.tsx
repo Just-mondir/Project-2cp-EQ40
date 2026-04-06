@@ -1705,10 +1705,16 @@ function MobilizationModal({
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append("post", post.id);
-      formData.append("description", description);
-      formData.append("previous_status", selectedPrev.toLowerCase().replace(/\s+/g, "_"));
-      formData.append("current_status", selectedReq.toLowerCase().replace(/\s+/g, "_"));
+      // On envoie les champs attendus par PostDetailSerializer
+      formData.append("title", `Mobilization: ${post.title}`);
+      formData.append("content", description);
+      formData.append("location", post.location || "");
+      formData.append("region", post.region || "");
+      formData.append("historical_period", post.historical_period || "");
+      formData.append("monument_type", post.monument_type || "");
+      formData.append("visibility", "public");
+      // Le backend de Tin exige starts_at pour le type "event"
+      formData.append("starts_at", new Date().toISOString());
 
       images.forEach((img) => {
         if (!img.isRemote && img.file) {
