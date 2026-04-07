@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 
 type Monument = {
@@ -41,6 +40,7 @@ const fallbackMonuments: Monument[] = [
 export default function MonumentsInDanger() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [monuments, setMonuments] = useState<Monument[]>(fallbackMonuments);
+
   useEffect(() => {
     async function fetchMonuments() {
       try {
@@ -49,6 +49,7 @@ export default function MonumentsInDanger() {
         );
         if (!res.ok) return;
         const data = await res.json();
+
         const fetched: Monument[] = (data.results || [])
           .filter((post: any) => post.images?.[0]?.image)
           .slice(0, 3)
@@ -64,22 +65,33 @@ export default function MonumentsInDanger() {
               return result;
             };
             const cleanTitle = stripHtml(post.title);
+
+            // Handle image URL correctly:
+            const imgPath = post.images?.[0]?.image || "";
+            const imageUrl = imgPath.startsWith("http")
+              ? imgPath
+              : `https://res.cloudinary.com/dq3jtxkp/image/upload/${imgPath}`;
+
             return {
-              src: `${process.env.NEXT_PUBLIC_API_URL}${post.images[0].image}`,
+              src: imageUrl || "/fallback-image.jpg",  // Fallback image if URL is not found
               alt: cleanTitle,
               name: cleanTitle,
-              boldLocation: post.region || post.location || "",
-              urgenceLevel: post.alert_details?.urgence_level ?? "unknown",
-              currentStatus: post.alert_details?.current_status ?? "unknown",
+              boldLocation: post.region || post.location || "Unknown",
+              urgenceLevel: post.alert_details?.urgence_level || "unknown",
+              currentStatus: post.alert_details?.current_status || "unknown",
             };
           });
+
         if (fetched.length > 0) setMonuments(fetched);
       } catch {
+        console.error("Failed to fetch monuments.");
       }
     }
     fetchMonuments();
   }, []);
+
   const active = monuments[activeIndex];
+
   return (
     <section
       id="at-risk"
@@ -143,9 +155,13 @@ export default function MonumentsInDanger() {
                 Algeria
               </p>
               <p className="mt-3 text-base md:text-lg lg:text-xl text-[#2C1A0E]">
-                <span className="font-bold capitalize">Urgence Level: {active.urgenceLevel}</span>
+                <span className="font-bold capitalize">
+                  Urgence Level: {active.urgenceLevel}
+                </span>
                 <br />
-                <span className="font-bold capitalize">Current Status: {active.currentStatus}</span>
+                <span className="font-bold capitalize">
+                  Current Status: {active.currentStatus}
+                </span>
               </p>
             </div>
             <div
