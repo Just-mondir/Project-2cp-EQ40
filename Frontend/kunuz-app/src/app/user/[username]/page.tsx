@@ -30,11 +30,26 @@ function stripHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
   return doc.body.textContent || "";
 }
+
 const getAuthToken = () => {
   if (typeof window !== "undefined") {
     return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
   }
   return process.env.NEXT_PUBLIC_TOKEN || "";
+};
+
+// ← ADDED: Type for profile info based on exact backend field names
+type ProfileInfo = {
+  username: string;
+  display_name: string;
+  bio: string;
+  expertise: string;
+  speciality: string;
+  profile_picture: string | null;
+  badge: string | null;
+  is_verified: boolean;
+  role: string;
+  posts_count: number;
 };
 
 /* ───────────────── TYPES ───────────────── */
@@ -164,10 +179,6 @@ const MOCK_COMMENTS = [
   { id: 5, user: "SarahExplorer", text: "Does anyone know the best time of year to visit?" },
   { id: 6, user: "MohamedDZ", text: "The triumphal arches are stunning. Great photo!" },
 ];
-
-const PROFILE_DATA = {
-  bio: "Passionate about preserving Algeria's rich architectural heritage. Exploring the stories behind every stone, arch, and tile. Join me on this journey through time.",
-};
 
 /* ───────────────── ICONS ───────────────── */
 
@@ -649,13 +660,7 @@ function PostModal({
                 <div className="flex items-center gap-2">
                   <button
                     className="font-bold text-base hover:underline text-left"
-                    style={{
-                      color: "#432817",
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      cursor: "pointer",
-                    }}
+                    style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
                     onClick={() => {
                       if (!post.user_username) return;
                       onClose();
@@ -678,46 +683,18 @@ function PostModal({
                 </button>
 
                 {showPostMenu && (
-                  <div
-                    className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50"
-                    style={{ backgroundColor: "#FFF8E2" }}
-                  >
+                  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
                     {isOwner ? (
                       <>
-                        <button
-                          className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
-                          style={{ color: "#432817" }}
-                          onClick={() => {
-                            setShowPostMenu(false);
-                            router.push(`/edit-post?id=${post.id}`);
-                          }}
-                        >
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>
                           Edit
                         </button>
-
-                        <button
-                          className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
-                          style={{ color: "#C0392B" }}
-                          onClick={handleDeletePost}
-                        >
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>
                           Delete
                         </button>
                       </>
                     ) : (
-                      <button
-                        className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
-                        style={{ color: "#C0392B" }}
-                        onClick={() => {
-                          setShowPostMenu(false);
-
-                          if (!isLoggedIn) {
-                            router.push("/login");
-                            return;
-                          }
-
-                          console.log("Report post:", post.id);
-                        }}
-                      >
+                      <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={() => { setShowPostMenu(false); if (!isLoggedIn) { router.push("/login"); return; } console.log("Report post:", post.id); }}>
                         Report post
                       </button>
                     )}
@@ -745,7 +722,6 @@ function PostModal({
                       <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
                     </div>
                     <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-
                   </div>
 
                   <PostDetailBadge post={post} />
@@ -863,7 +839,14 @@ function LeftSidebar() {
 
 /* ───────────────── PROFILE HEADER ───────────────── */
 
-function ProfileHeader() {
+// ← ADDED: accepts profileInfo and isOwnProfile as props from ProfilePage
+function ProfileHeader({
+  profileInfo,
+  isOwnProfile,
+}: {
+  profileInfo: ProfileInfo;
+  isOwnProfile: boolean;
+}) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -895,7 +878,12 @@ function ProfileHeader() {
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
             {menuItems.map((item, i) => (
-              <button key={i} className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Logout") setShowLogoutModal(true); if (item === "Delete account") setShowDeleteAccountModal(true); }}>
+              <button key={i} className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                onClick={() => {
+                  setShowMenu(false);
+                  if (item === "Logout") setShowLogoutModal(true);
+                  if (item === "Delete account") setShowDeleteAccountModal(true);
+                }}>
                 {item}
               </button>
             ))}
@@ -903,38 +891,120 @@ function ProfileHeader() {
         )}
       </div>
 
-      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, you will be redirected to the landing page. You can always log back in anytime." primaryAction={{ label: "Log out", onClick: () => { window.location.href = "/"; } }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
-      <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: () => { setShowDeleteAccountModal(false); } }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
+      {/* ← ADDED: real logout using POST /api/auth/logout/ */}
+      <NotificationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        type="info"
+        title="Are you sure you want to log out?"
+        message="If you continue, you will be redirected to the landing page. You can always log back in anytime."
+        primaryAction={{
+          label: "Log out",
+          onClick: async () => {
+            try {
+              const token = getAuthToken();
+              // 🔌 BACKEND: POST /api/auth/logout/ to invalidate token
+              await fetch(`${API_URL}/api/auth/logout/`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+            } catch (err) {
+              console.error("Logout error:", err);
+            } finally {
+              // Remove token from localStorage and redirect
+              localStorage.removeItem("accessToken");
+              window.location.href = "/";
+            }
+          }
+        }}
+        secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }}
+      />
+
+      <NotificationModal
+        isOpen={showDeleteAccountModal}
+        onClose={() => setShowDeleteAccountModal(false)}
+        type="error"
+        title="Delete your account?"
+        message="This action is permanent and cannot be undone. All your data and posts will be removed."
+        primaryAction={{ label: "Delete Account", onClick: () => { setShowDeleteAccountModal(false); } }}
+        secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }}
+      />
 
       <div className="flex items-start gap-8">
+
+        {/* ← ADDED: show real profile picture from backend field: profile_picture */}
         <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
-          <img src="/Ellipse 34.jpg" alt="Profile" className="w-full h-full object-cover" />
+          {profileInfo.profile_picture ? (
+            // If picture path starts with /media/ prepend API_URL (backend serves from there)
+            <img
+              src={profileInfo.profile_picture.startsWith("/media/")
+                ? `${API_URL}${profileInfo.profile_picture}`
+                : profileInfo.profile_picture}
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            // Fallback to default image if no profile picture
+            <img src="/Ellipse 34.jpg" alt="Profile" className="w-full h-full object-cover" />
+          )}
         </div>
+
         <div className="flex flex-col items-start">
-          <h1 className="text-2xl font-bold mb-1" style={{ color: "#432817" }}>User4987838</h1>
-          <p className="text-sm mb-4" style={{ color: "#8B7355" }}>@User4987838</p>
+
+          {/* ← ADDED: real display_name from backend */}
+          <h1 className="text-2xl font-bold mb-1" style={{ color: "#432817" }}>
+            {profileInfo.display_name || profileInfo.username || "User"}
+          </h1>
+
+          {/* ← ADDED: real username from backend */}
+          <p className="text-sm mb-4" style={{ color: "#8B7355" }}>
+            @{profileInfo.username}
+          </p>
+
+          {/* ← ADDED: real posts_count from backend, likes/events kept as mock until backend adds them */}
           <div className="flex items-center gap-6 mb-4">
-            <div className="flex items-center gap-1.5"><span className="font-bold" style={{ color: "#432817" }}>1.6k</span><span className="text-sm" style={{ color: "#8B7355" }}>Posts</span></div>
-            <div className="flex items-center gap-1.5"><span className="font-bold" style={{ color: "#432817" }}>1.6k</span><span className="text-sm" style={{ color: "#8B7355" }}>Likes</span></div>
-            <div className="flex items-center gap-1.5"><span className="font-bold" style={{ color: "#432817" }}>3</span><span className="text-sm" style={{ color: "#8B7355" }}>Events</span></div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.posts_count}</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>Posts</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>0</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>Likes</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>0</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>Events</span>
+            </div>
           </div>
+
+          {/* ← ADDED: real expertise and speciality as tags from backend */}
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-sm" style={{ color: "#432817" }}>#Student</span>
-            <span className="text-sm" style={{ color: "#432817" }}>#History</span>
-            <span className="text-sm" style={{ color: "#432817" }}>#Architecture</span>
+            {profileInfo.expertise && (
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.expertise}</span>
+            )}
+            {profileInfo.speciality && (
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.speciality}</span>
+            )}
           </div>
-          <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>{PROFILE_DATA.bio}</p>
+
+          {/* ← ADDED: real bio from backend */}
+          <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>
+            {profileInfo.bio}
+          </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 mt-6">
-        <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>
-          Add post
-        </button>
-        <button className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>
-          Edit profile
-        </button>
-      </div>
+      {/* ← ADDED: show Add post and Edit profile buttons only if own profile */}
+      {isOwnProfile && (
+        <div className="flex items-center justify-center gap-3 mt-6">
+          <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>
+            Add post
+          </button>
+          <button onClick={() => router.push("/edit-profile")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>
+            Edit profile
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1039,6 +1109,20 @@ export default function ProfilePage() {
   const [alertPosts, setAlertPosts] = useState<ApiPost[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
 
+  // ← ADDED: state for real profile info from backend
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
+    username: "",
+    display_name: "",
+    bio: "",
+    expertise: "",
+    speciality: "",
+    profile_picture: null,
+    badge: null,
+    is_verified: false,
+    role: "",
+    posts_count: 0,
+  });
+
   const params = useParams();
 
   const viewedUsername =
@@ -1050,6 +1134,7 @@ export default function ProfilePage() {
     !!loggedInUsername &&
     !!viewedUsername &&
     loggedInUsername === viewedUsername;
+
   const updatePostInLists = (postId: string, updater: (post: ApiPost) => ApiPost) => {
     setAllPosts((prev) => prev.map((p) => (p.id === postId ? updater(p) : p)));
     setGemmedPosts((prev) => prev.map((p) => (p.id === postId ? updater(p) : p)));
@@ -1071,6 +1156,7 @@ export default function ProfilePage() {
     const fetchMe = async () => {
       try {
         const token = getAuthToken();
+        // 🔌 BACKEND: GET /api/users/me/ — get logged in user's username
         const res = await fetch(`${API_URL}/api/users/me/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -1085,11 +1171,48 @@ export default function ProfilePage() {
     fetchMe();
   }, []);
 
+  // ← ADDED: fetch real profile info when viewedUsername is known
   useEffect(() => {
     if (!viewedUsername) return;
+    const fetchProfile = async () => {
+      try {
+        const token = getAuthToken();
+        // 🔌 BACKEND: GET /api/users/me/ for own profile OR /api/users/{username}/ for others
+        const endpoint = isOwnProfile
+          ? `${API_URL}/api/users/me/`
+          : `${API_URL}/api/users/${viewedUsername}/`;
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          // backend wraps response in data:{} or returns directly
+          const data = json.data ?? json;
+          setProfileInfo({
+            username: data.username ?? "",
+            display_name: data.display_name ?? data.username ?? "",
+            bio: data.bio ?? "",
+            expertise: data.expertise ?? "",
+            speciality: data.speciality ?? "",
+            profile_picture: data.profile_picture ?? null,
+            badge: data.badge ?? null,
+            is_verified: data.is_verified ?? false,
+            role: data.role ?? "",
+            posts_count: data.posts_count ?? 0,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
+    fetchProfile();
+  }, [viewedUsername, isOwnProfile]);
 
+  useEffect(() => {
+    if (!viewedUsername) return;
     const fetchAllPosts = async () => {
       setLoadingPosts(true);
+      // 🔌 BACKEND: GET /api/posts/user/{username}/ — get user's posts
       let url: string | null = `${API_URL}/api/posts/user/${viewedUsername}/`;
       const collected: ApiPost[] = [];
       try {
@@ -1119,6 +1242,7 @@ export default function ProfilePage() {
       setLoadingGemmed(true);
       try {
         const token = getAuthToken();
+        // 🔌 BACKEND: GET /api/posts/gemed/ — get posts the user gemmed
         const res = await fetch(`${API_URL}/api/posts/gemed/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -1131,17 +1255,16 @@ export default function ProfilePage() {
         setLoadingGemmed(false);
       }
     };
-
     fetch_();
   }, [activeTab, isOwnProfile]);
 
   useEffect(() => {
     if (!isOwnProfile || activeTab !== "saved") return;
-
     const fetch_ = async () => {
       setLoadingSaved(true);
       try {
         const token = getAuthToken();
+        // 🔌 BACKEND: GET /api/posts/saved/ — get posts the user saved
         const res = await fetch(`${API_URL}/api/posts/saved/`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -1159,11 +1282,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (activeTab !== "events" || !viewedUsername) return;
-
     const fetch_ = async () => {
       setLoadingEvents(true);
       try {
         const token = getAuthToken();
+        // 🔌 BACKEND: GET /api/posts/user/{username}/events/
         const res = await fetch(
           `${API_URL}/api/posts/user/${viewedUsername}/events/`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -1186,6 +1309,7 @@ export default function ProfilePage() {
       setLoadingAlerts(true);
       try {
         const token = getAuthToken();
+        // 🔌 BACKEND: GET /api/posts/user/{username}/alerts/
         const res = await fetch(
           `${API_URL}/api/posts/user/${viewedUsername}/alerts/`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -1224,28 +1348,16 @@ export default function ProfilePage() {
 
       <main className="pl-[80px] pr-4">
         <div className="max-w-4xl mx-auto">
-          <ProfileHeader />
+          {/* ← ADDED: pass profileInfo and isOwnProfile to ProfileHeader */}
+          <ProfileHeader profileInfo={profileInfo} isOwnProfile={isOwnProfile} />
           <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
           {activeTab === "grid" && (loadingPosts ? <Spinner /> : allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message="No Posts yet" /> : <PostsGrid posts={allPosts} onPostClick={setSelectedPost} />)}
           {isOwnProfile && activeTab === "gems" && (
-            loadingGemmed ? (
-              <Spinner />
-            ) : gemmedPosts.length === 0 ? (
-              <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" />
-            ) : (
-              <PostsGrid posts={gemmedPosts} onPostClick={setSelectedPost} />
-            )
+            loadingGemmed ? <Spinner /> : gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" /> : <PostsGrid posts={gemmedPosts} onPostClick={setSelectedPost} />
           )}
-
           {isOwnProfile && activeTab === "saved" && (
-            loadingSaved ? (
-              <Spinner />
-            ) : savedPosts.length === 0 ? (
-              <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" />
-            ) : (
-              <PostsGrid posts={savedPosts} onPostClick={setSelectedPost} />
-            )
+            loadingSaved ? <Spinner /> : savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" /> : <PostsGrid posts={savedPosts} onPostClick={setSelectedPost} />
           )}
           {activeTab === "events" && (loadingEvents ? <Spinner /> : eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message="No Events yet" /> : <PostsGrid posts={eventPosts} onPostClick={setSelectedPost} />)}
           {activeTab === "alerts" && (loadingAlerts ? <Spinner /> : alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message="No Monuments in Danger yet" /> : <PostsGrid posts={alertPosts} onPostClick={setSelectedPost} />)}
