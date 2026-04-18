@@ -92,7 +92,6 @@ type ApiPost = {
   _key?: number;
 };
 
-// ← Same PostInteraction type as home/events
 type PostInteraction = {
   gemmed: boolean;
   gemsCount: number;
@@ -139,6 +138,20 @@ type CommentNode = {
 };
 
 type ReportTargetType = "post" | "comment" | "annotation";
+
+// ← ADDED: Type matching exact backend field names from User model
+type ProfileInfo = {
+  username: string;
+  display_name: string;
+  bio: string;
+  expertise: string;
+  speciality: string;
+  profile_picture: string | null;
+  badge: string | null;
+  is_verified: boolean;
+  role: string;
+  posts_count: number;
+};
 
 /* ───────────────── HELPERS ───────────────── */
 
@@ -264,10 +277,6 @@ const STATUS_LABELS: Record<string, string> = {
   under_intervention: "Under Intervention",
   destroyed: "Destroyed",
   alert: "Alert",
-};
-
-const PROFILE_DATA = {
-  bio: "Passionate about preserving Algeria's rich architectural heritage. Exploring the stories behind every stone, arch, and tile. Join me on this journey through time.",
 };
 
 /* ───────────────── ICONS ───────────────── */
@@ -765,7 +774,7 @@ function AnnotationItem({
   );
 }
 
-/* ───────────────── POST MODAL (aligned with home/events) ───────────────── */
+/* ───────────────── POST MODAL ───────────────── */
 
 function PostModal({
   post, onClose, interaction, onInteractionChange, onDeletePost, loggedInUsername, initialTab = "comments",
@@ -819,7 +828,6 @@ function PostModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Keep interaction counts in sync
   useEffect(() => { onInteractionChange({ commentsCount: comments.length }); }, [comments]);
   useEffect(() => { onInteractionChange({ annotationsCount: getAcceptedAnnotationsCount(annotations) }); }, [annotations]);
 
@@ -1032,9 +1040,7 @@ function PostModal({
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
           {LeftPanel}
-
           <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
-            {/* Header */}
             <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
               <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
@@ -1068,8 +1074,6 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-
-            {/* Post info (when image present) */}
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
                 <div className="flex items-center gap-1 mb-1">
@@ -1077,7 +1081,6 @@ function PostModal({
                   <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
                 </div>
                 <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-
                 {isContentLong && !contentExpanded ? (
                   <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
                     {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
@@ -1089,11 +1092,8 @@ function PostModal({
                 {isContentLong && contentExpanded && (
                   <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
                 )}
-
               </div>
             )}
-
-            {/* Tabs */}
             <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
               <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
                 <CommentIcon size={13} /> Comments ({comments.length})
@@ -1102,8 +1102,6 @@ function PostModal({
                 <AnnotationIcon size={13} /> Annotations ({acceptedAnnotationsCount})
               </button>
             </div>
-
-            {/* Tab content */}
             <div className="flex-1 overflow-y-auto feed-scroll">
               {activeTab === "comments" && (
                 <div className="px-5 py-3 flex flex-col gap-3">
@@ -1132,8 +1130,6 @@ function PostModal({
                 </div>
               )}
             </div>
-
-            {/* Action bar */}
             <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
               <div className="flex items-center gap-4">
                 <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
@@ -1150,8 +1146,6 @@ function PostModal({
                 <BookmarkIcon size={18} filled={saved} active={saved} />
               </button>
             </div>
-
-            {/* Input */}
             <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
               {activeTab === "comments" ? (
                 <>
@@ -1178,7 +1172,14 @@ function PostModal({
 
 /* ───────────────── PROFILE HEADER ───────────────── */
 
-function ProfileHeader() {
+// ← ADDED: accepts profileInfo and isOwnProfile from ProfilePage
+function ProfileHeader({
+  profileInfo,
+  isOwnProfile,
+}: {
+  profileInfo: ProfileInfo;
+  isOwnProfile: boolean;
+}) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -1222,30 +1223,70 @@ function ProfileHeader() {
       <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
 
       <div className="flex items-start gap-8">
+        {/* ← ADDED: show real profile_picture from backend, fallback to default */}
         <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
-          <img src="/Ellipse 34.jpg" alt="Profile" className="w-full h-full object-cover" />
+          {profileInfo.profile_picture ? (
+            <img
+              src={profileInfo.profile_picture.startsWith("/media/")
+                ? `${API_URL}${profileInfo.profile_picture}`
+                : profileInfo.profile_picture}
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <img src="/Ellipse 34.jpg" alt="Profile" className="w-full h-full object-cover" />
+          )}
         </div>
+
         <div className="flex flex-col items-start">
-          <h1 className="text-2xl font-bold mb-1" style={{ color: "#432817" }}>User4987838</h1>
-          <p className="text-sm mb-4" style={{ color: "#8B7355" }}>@User4987838</p>
+          {/* ← ADDED: real display_name and username from backend */}
+          <h1 className="text-2xl font-bold mb-1" style={{ color: "#432817" }}>
+            {profileInfo.display_name || profileInfo.username || "User"}
+          </h1>
+          <p className="text-sm mb-4" style={{ color: "#8B7355" }}>
+            @{profileInfo.username}
+          </p>
+
+          {/* ← ADDED: real posts_count from backend, likes/events = 0 until backend adds them */}
           <div className="flex items-center gap-6 mb-4">
-            <div className="flex items-center gap-1.5"><span className="font-bold" style={{ color: "#432817" }}>1.6k</span><span className="text-sm" style={{ color: "#8B7355" }}>Posts</span></div>
-            <div className="flex items-center gap-1.5"><span className="font-bold" style={{ color: "#432817" }}>1.6k</span><span className="text-sm" style={{ color: "#8B7355" }}>Likes</span></div>
-            <div className="flex items-center gap-1.5"><span className="font-bold" style={{ color: "#432817" }}>3</span><span className="text-sm" style={{ color: "#8B7355" }}>Events</span></div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.posts_count}</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>Posts</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>0</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>Likes</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>0</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>Events</span>
+            </div>
           </div>
+
+          {/* ← ADDED: real expertise and speciality as tags from backend */}
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-sm" style={{ color: "#432817" }}>#Student</span>
-            <span className="text-sm" style={{ color: "#432817" }}>#History</span>
-            <span className="text-sm" style={{ color: "#432817" }}>#Architecture</span>
+            {profileInfo.expertise && (
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.expertise}</span>
+            )}
+            {profileInfo.speciality && (
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.speciality}</span>
+            )}
           </div>
-          <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>{PROFILE_DATA.bio}</p>
+
+          {/* ← ADDED: real bio from backend */}
+          <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>
+            {profileInfo.bio}
+          </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 mt-6">
-        <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>Add post</button>
-        <button className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>Edit profile</button>
-      </div>
+      {/* ← ADDED: show buttons only if own profile */}
+      {isOwnProfile && (
+        <div className="flex items-center justify-center gap-3 mt-6">
+          <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>Add post</button>
+          <button onClick={() => router.push("/edit-profile")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>Edit profile</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1353,7 +1394,6 @@ export default function ProfilePage() {
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
 
-  // Post lists
   const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [gemmedPosts, setGemmedPosts] = useState<ApiPost[]>([]);
@@ -1365,14 +1405,25 @@ export default function ProfilePage() {
   const [alertPosts, setAlertPosts] = useState<ApiPost[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
 
-  // ← Same PostInteraction map as home/events pages
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+
+  // ← ADDED: state for real profile info from backend
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
+    username: "",
+    display_name: "",
+    bio: "",
+    expertise: "",
+    speciality: "",
+    profile_picture: null,
+    badge: null,
+    is_verified: false,
+    role: "",
+    posts_count: 0,
+  });
 
   const params = useParams();
   const viewedUsername = typeof params?.username === "string" ? params.username : loggedInUsername;
   const isOwnProfile = !!loggedInUsername && !!viewedUsername && loggedInUsername === viewedUsername;
-
-  /* ── Interaction helpers (same API as home/events) ── */
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -1406,8 +1457,7 @@ export default function ProfilePage() {
     setAlertPosts((prev) => prev.filter((p) => p.id !== postId));
   };
 
-  /* ── Data fetching ── */
-
+  /* ── Fetch logged in user ── */
   useEffect(() => {
     const fetchMe = async () => {
       try {
@@ -1421,6 +1471,43 @@ export default function ProfilePage() {
     fetchMe();
   }, []);
 
+  // ← ADDED: fetch real profile info when viewedUsername is known
+  // Uses GET /api/users/me/ for own profile OR /api/users/{username}/ for others
+  useEffect(() => {
+    if (!viewedUsername) return;
+    const fetchProfile = async () => {
+      try {
+        const endpoint = isOwnProfile
+          ? `${API_URL}/api/users/me/`
+          : `${API_URL}/api/users/${viewedUsername}/`;
+        const res = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          // backend wraps in data:{} or returns directly
+          const data = json.data ?? json;
+          setProfileInfo({
+            username: data.username ?? "",
+            display_name: data.display_name ?? data.username ?? "",
+            bio: data.bio ?? "",
+            expertise: data.expertise ?? "",
+            speciality: data.speciality ?? "",
+            profile_picture: data.profile_picture ?? null,
+            badge: data.badge ?? null,
+            is_verified: data.is_verified ?? false,
+            role: data.role ?? "",
+            posts_count: data.posts_count ?? 0,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
+    fetchProfile();
+  }, [viewedUsername, isOwnProfile]);
+
+  /* ── Fetch posts ── */
   useEffect(() => {
     if (!viewedUsername) return;
     const fetchAllPosts = async () => {
@@ -1529,7 +1616,8 @@ export default function ProfilePage() {
 
       <main className="pl-[80px] pr-4">
         <div className="max-w-4xl mx-auto">
-          <ProfileHeader />
+          {/* ← ADDED: pass real profile data and ownership flag */}
+          <ProfileHeader profileInfo={profileInfo} isOwnProfile={isOwnProfile} />
           <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
           {activeTab === "grid" && (
