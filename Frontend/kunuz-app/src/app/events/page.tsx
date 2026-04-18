@@ -1158,7 +1158,7 @@ function RightSidebar() {
   }, []);
 
   return (
-    <aside className="w-[320px] xl:w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
+    <aside className="w-[380px] xl:w-[500px] flex-shrink-0 pl-6 pr-5 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
         <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Upcoming Events</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
@@ -1169,10 +1169,10 @@ function RightSidebar() {
               no upcoming event
             </div>
           ) : upcomingEvents.map((eventItem, i) => (
-            <div key={i} className="flex p-4 mb-2 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
-              {/* Event Image: square 75x75, 20px radius */}
+            <div key={i} className="flex px-5 py-3 mb-2.5 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
+              {/* Event Image: square 80x80, 20px radius */}
               {eventItem.event_image && (
-                <div className="w-[75px] h-[75px] flex-shrink-0 mr-4">
+                <div className="w-[85px] h-[85px] flex-shrink-0 mr-4">
                   <img src={eventItem.event_image} alt="event" className="w-full h-full object-cover rounded-[20px]" />
                 </div>
               )}
@@ -1195,13 +1195,13 @@ function RightSidebar() {
                 </div>
 
                 {/* Line 3: Location and Time */}
-                <div className="flex items-center justify-between mt-auto">
-                  <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: "#8B6914" }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                    {eventItem.location}
+                <div className="flex items-center justify-between mt-auto overflow-hidden whitespace-nowrap">
+                  <span className="flex items-center gap-1 text-[10px] font-bold truncate pr-3 flex-1" style={{ color: "#8B6914" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                    <span className="truncate">{eventItem.location}</span>
                   </span>
-                  <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: "#8B6914" }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                  <span className="flex items-center gap-1 text-[10px] font-bold flex-shrink-0" style={{ color: "#8B6914" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
                     {eventItem.start_date} {eventItem.end_date ? `- ${eventItem.end_date}` : ""}
                   </span>
                 </div>
@@ -2198,7 +2198,7 @@ export default function HomePageRoute() {
     <>
       <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
         <LeftSidebar activePage="events" />
-        <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
+        <div className="flex h-full w-full max-w-[1300px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
             <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
               <form onSubmit={handleSearch} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>

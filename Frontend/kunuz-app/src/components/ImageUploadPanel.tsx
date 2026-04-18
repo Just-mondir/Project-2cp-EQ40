@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 
 const MAX_IMAGES = 5;
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB limit for Cloudinary
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const getAuthToken = () => {
@@ -49,7 +50,15 @@ export default function ImageUploadPanel({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
 
-    const toAdd: ImageItem[] = files.map((file) => ({
+    const validFiles = files.filter(file => {
+      if (file.size > MAX_FILE_BYTES) {
+        alert(`File "${file.name}" is too large. Maximum size is 10 MB.`);
+        return false;
+      }
+      return true;
+    });
+
+    const toAdd: ImageItem[] = validFiles.map((file) => ({
       file,
       url: URL.createObjectURL(file),
       name: file.name,
