@@ -1979,7 +1979,8 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
 
 /* ─────────────────── MOBILE MONUMENTS STRIP ─────────────────── */
 
-function MobileMonumentsStrip() {
+function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
+  if (!posts || posts.length === 0) return null;
   return (
     <div className="lg:hidden px-4 py-4">
       <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Monuments in critical danger</h3>
@@ -1991,18 +1992,23 @@ function MobileMonumentsStrip() {
           WebkitOverflowScrolling: "touch"
         }}
       >
-        {RIGHT_PANEL_CARDS.map((card) => {
-          const level = URGENCY_COLORS[card.urgence_level] ?? URGENCY_COLORS.medium;
+        {posts.map((post) => {
+          const image = post.images?.[0]?.image;
+          const imageUrl = image ? (image.startsWith("/media/") ? `${API_URL}${image}` : image) : "/about-5.jpg";
+          const userName = post.user_display_name || post.user_username || "Unknown";
+          const alertStatus = post.alert_details?.current_status || "Alert";
+          const capitalizedStatus = alertStatus.charAt(0).toUpperCase() + alertStatus.slice(1).replace("_", " ");
+
           return (
             <div
-              key={card.id}
+              key={post.id}
               className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
               style={{ width: "140px" }}
             >
               <div className="flex flex-col">
                 <img
-                  src={card.image}
-                  alt={card.monument_name}
+                  src={imageUrl}
+                  alt={stripHtml(post.title)}
                   className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm"
                 />
                 <span
@@ -2015,37 +2021,39 @@ function MobileMonumentsStrip() {
                     hyphens: "auto"
                   }}
                 >
-                  {card.monument_name}
+                  {stripHtml(post.title)}
                 </span>
                 <div className="flex items-center gap-1 mb-1">
-                  <div className="w-4 h-4 rounded-full bg-[#432817] flex items-center justify-center">
+                  <div className="w-4 h-4 rounded-full bg-[#432817] flex items-center justify-center flex-shrink-0">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
                       <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                     </svg>
                   </div>
                   <span
-                    className="text-[8px] font-medium"
+                    className="text-[8px] font-medium truncate"
                     style={{
                       color: "#432817",
-                      fontFamily: "var(--font-lato)"
+                      fontFamily: "var(--font-lato)",
+                      maxWidth: "90px"
                     }}
                   >
-                    {card.user}
+                    {userName}
                   </span>
                 </div>
                 <div className="flex items-center gap-1 mb-2">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#9E9E9E" }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#9E9E9E", flexShrink: 0 }}>
                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
                   <span
-                    className="text-[8px] font-medium"
+                    className="text-[8px] font-medium truncate"
                     style={{
                       color: "#9E9E9E",
-                      fontFamily: "var(--font-lato)"
+                      fontFamily: "var(--font-lato)",
+                      maxWidth: "90px"
                     }}
                   >
-                    {card.location}
+                    {post.location || post.region || "Algeria"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -2053,7 +2061,7 @@ function MobileMonumentsStrip() {
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
                     <span className="text-[8px] font-medium" style={{ color: "#E53935" }}>Critical</span>
                   </div>
-                  <span className="text-[8px] font-medium" style={{ color: "#9E9E9E" }}>Alert</span>
+                  <span className="text-[8px] font-medium" style={{ color: "#9E9E9E" }}>{capitalizedStatus}</span>
                 </div>
               </div>
             </div>
@@ -2066,21 +2074,36 @@ function MobileMonumentsStrip() {
 
 /* ───────────────── RIGHT SIDEBAR ───────────────── */
 
-const RIGHT_PANEL_CARDS = Array(5).fill({
-  id: "1",
-  monument_name: "Fort Santa Cruz",
-  location: "Oran",
-  urgence_level: "critical",
-  image: "/about-5.jpg",
-  user: "User4987838",
-  status: "Alert",
-}).map((card, idx) => ({
-  ...card,
-  id: String(idx + 1),
-}));
+function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPost[] }) {
+  if (!posts || posts.length === 0) {
+    return (
+      <aside className="w-[320px] xl:w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
+        <div className="sticky top-0 h-full flex flex-col items-center">
+          {/* Button on top */}
+          <button
+            onClick={onAction}
+            className="px-8 py-2.5 mb-6 bg-[#432817] text-white text-base font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
+            style={{ fontFamily: "var(--font-lato), sans-serif" }}
+          >
+            + Add Mobilization Event
+          </button>
 
+          {/* Centered Title */}
+          <h2
+            className="text-2xl font-bold mb-8 text-center"
+            style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+          >
+            View Monuments in critical danger
+          </h2>
 
-function RightSidebar({ onAction }: { onAction: () => void }) {
+          <div className="flex items-center justify-center h-48">
+            <span className="text-sm opacity-50" style={{ color: "#432817" }}>No critical monuments found.</span>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className="w-[320px] xl:w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
       <div className="sticky top-0 h-full flex flex-col items-center">
@@ -2103,52 +2126,57 @@ function RightSidebar({ onAction }: { onAction: () => void }) {
 
         {/* Scrollable list of cards */}
         <div className="w-full flex flex-col gap-4 overflow-y-auto pr-2 pb-10" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-          {RIGHT_PANEL_CARDS.map((card) => {
-            const level = URGENCY_COLORS[card.urgence_level] ?? URGENCY_COLORS.medium;
+          {posts.map((post) => {
+            const image = post.images?.[0]?.image;
+            const imageUrl = image ? (image.startsWith("/media/") ? `${API_URL}${image}` : image) : "/about-5.jpg";
+            const userName = post.user_display_name || post.user_username || "Unknown";
+            const alertStatus = post.alert_details?.current_status || "Alert";
+            const capitalizedStatus = alertStatus.charAt(0).toUpperCase() + alertStatus.slice(1).replace("_", " ");
+
             return (
               <div
-                key={card.id}
+                key={post.id}
                 className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
               >
                 {/* Thumbnail on left */}
                 <div className="flex-shrink-0">
-                  <img src={card.image} alt={card.monument_name} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-sm" />
+                  <img src={imageUrl} alt={stripHtml(post.title)} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-sm" />
                 </div>
 
                 {/* Info on right */}
                 <div className="flex flex-col gap-1 min-w-0 justify-center mt-0.5">
                   {/* Monument Title */}
-                  <h3 className="font-bold text-sm text-[#2C1A0E]" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>
-                    {card.monument_name}
+                  <h3 className="font-bold text-sm text-[#2C1A0E] truncate" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>
+                    {stripHtml(post.title)}
                   </h3>
 
                   {/* Attributes line */}
                   <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-[#5a4a3a]">
-                    <div className="flex items-center gap-1">
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#7a5a3a" }}>
+                    <div className="flex items-center gap-1 truncate max-w-[120px]">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#7a5a3a", flexShrink: 0 }}>
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                       </svg>
-                      <span>{card.location}</span>
+                      <span className="truncate">{post.location || post.region || "Algeria"}</span>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
                       <span>Critical</span>
                     </div>
 
-                    <span className="opacity-40">|</span>
+                    <span className="opacity-40 flex-shrink-0">|</span>
 
-                    <span>Alert</span>
+                    <span className="flex-shrink-0">{capitalizedStatus}</span>
                   </div>
 
                   {/* User row */}
                   <div className="flex flex-row items-center gap-1.5 mt-0.5 text-[#7a5a3a]">
-                    <div className="w-4 h-4 rounded-full bg-[#432817] flex items-center justify-center">
+                    <div className="w-4 h-4 rounded-full bg-[#432817] flex items-center justify-center flex-shrink-0">
                       <svg width="8" height="8" viewBox="0 0 24 24" fill="white">
                         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                       </svg>
                     </div>
-                    <span className="font-bold text-[10px]" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>{card.user}</span>
+                    <span className="font-bold text-[10px] truncate" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>{userName}</span>
                   </div>
                 </div>
               </div>
@@ -2168,6 +2196,7 @@ function RightSidebar({ onAction }: { onAction: () => void }) {
 export default function MonumentsInDangerPage() {
   const router = useRouter();
   const [posts, setPosts] = useState<ApiPost[]>([]);
+  const [criticalPosts, setCriticalPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [showFilter, setShowFilter] = useState(false);
@@ -2300,6 +2329,30 @@ export default function MonumentsInDangerPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  useEffect(() => {
+    const fetchCriticalAlerts = async () => {
+      const token = getAuthToken();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${API_URL}/api/posts/critical/`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const results = (data.results || data.data || data).map((p: any) => ({
+            ...p,
+            id: String(p.id)
+          }));
+          setCriticalPosts(results);
+        }
+      } catch (err) {
+        console.error("Fetch critical alerts error:", err);
+      }
+    };
+    fetchCriticalAlerts();
+  }, []);
+
   const handleApplyFilters = (filters: typeof activeFilters) => {
     setActiveFilters(filters);
   };
@@ -2351,7 +2404,7 @@ export default function MonumentsInDangerPage() {
 
             <div className="flex flex-1 overflow-hidden">
               <main className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                <MobileMonumentsStrip />
+                <MobileMonumentsStrip posts={criticalPosts} />
                 {posts.length > 0 ? (
                   posts.map((post) => (
                     <PostCard
@@ -2388,7 +2441,7 @@ export default function MonumentsInDangerPage() {
                   )
                 }
               </main>
-              <RightSidebar onAction={() => router.push("/add-event")} />
+              <RightSidebar onAction={() => router.push("/add-event")} posts={criticalPosts} />
             </div>
 
           </div>

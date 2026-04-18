@@ -538,7 +538,13 @@ class CriticalView(APIView):
 
     def get(self, request: Request) -> Response:
         critical_details = AlertDetails.objects(urgence_level="critical")
-        post_ids = [ed.post.id for ed in critical_details]
+        post_ids = []
+        for ed in critical_details:
+            try:
+                if ed.post:
+                    post_ids.append(ed.post.id)
+            except Exception:
+                continue
         posts = Post.objects(id__in=post_ids, post_type="alert", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
