@@ -813,9 +813,14 @@ class MonumentsInDangerView(APIView):
             if alert_detail is None:
                 alert_detail = AlertDetails.objects(post=post).first()
 
+            user_obj = User.objects(id=post.author_id).first() if post.author_id else None
+
             data.append(
                 {
                     "id": str(post.id),
+                    "user_id": str(post.author_id) if post.author_id else "",
+                    "user_username": user_obj.username if user_obj else "unknown",
+                    "user_display_name": user_obj.display_name if user_obj else "Unknown User",
                     "title": post.title,
                     "content": post.content,
                     "post_type": post.post_type,
