@@ -139,7 +139,7 @@ type CommentNode = {
 
 type ReportTargetType = "post" | "comment" | "annotation";
 
-// ← ADDED: Type matching exact backend field names from User model
+// ← Type matching exact backend field names from User model
 type ProfileInfo = {
   username: string;
   display_name: string;
@@ -151,6 +151,8 @@ type ProfileInfo = {
   is_verified: boolean;
   role: string;
   posts_count: number;
+  likes_count: number;
+  events_count: number;
 };
 
 /* ───────────────── HELPERS ───────────────── */
@@ -1172,7 +1174,6 @@ function PostModal({
 
 /* ───────────────── PROFILE HEADER ───────────────── */
 
-// ← ADDED: accepts profileInfo and isOwnProfile from ProfilePage
 function ProfileHeader({
   profileInfo,
   isOwnProfile,
@@ -1223,7 +1224,6 @@ function ProfileHeader({
       <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
 
       <div className="flex items-start gap-8">
-        {/* ← ADDED: show real profile_picture from backend, fallback to default */}
         <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
           {profileInfo.profile_picture ? (
             <img
@@ -1239,7 +1239,6 @@ function ProfileHeader({
         </div>
 
         <div className="flex flex-col items-start">
-          {/* ← ADDED: real display_name and username from backend */}
           <h1 className="text-2xl font-bold mb-1" style={{ color: "#432817" }}>
             {profileInfo.display_name || profileInfo.username || "User"}
           </h1>
@@ -1247,23 +1246,21 @@ function ProfileHeader({
             @{profileInfo.username}
           </p>
 
-          {/* ← ADDED: real posts_count from backend, likes/events = 0 until backend adds them */}
           <div className="flex items-center gap-6 mb-4">
             <div className="flex items-center gap-1.5">
               <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.posts_count}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>Posts</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>0</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.likes_count}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>Likes</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>0</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.events_count}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>Events</span>
             </div>
           </div>
 
-          {/* ← ADDED: real expertise and speciality as tags from backend */}
           <div className="flex items-center gap-3 mb-4">
             {profileInfo.expertise && (
               <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.expertise}</span>
@@ -1273,14 +1270,12 @@ function ProfileHeader({
             )}
           </div>
 
-          {/* ← ADDED: real bio from backend */}
           <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>
             {profileInfo.bio}
           </p>
         </div>
       </div>
 
-      {/* ← ADDED: show buttons only if own profile */}
       {isOwnProfile && (
         <div className="flex items-center justify-center gap-3 mt-6">
           <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>Add post</button>
@@ -1407,7 +1402,7 @@ export default function ProfilePage() {
 
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
 
-  // ← ADDED: state for real profile info from backend
+  // ← state for real profile info from backend
   const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
     username: "",
     display_name: "",
@@ -1419,6 +1414,8 @@ export default function ProfilePage() {
     is_verified: false,
     role: "",
     posts_count: 0,
+    likes_count: 0,
+    events_count: 0,
   });
 
   const params = useParams();
@@ -1471,8 +1468,7 @@ export default function ProfilePage() {
     fetchMe();
   }, []);
 
-  // ← ADDED: fetch real profile info when viewedUsername is known
-  // Uses GET /api/users/me/ for own profile OR /api/users/{username}/ for others
+  // ← fetch real profile info + likes + events + posts counts
   useEffect(() => {
     if (!viewedUsername) return;
     const fetchProfile = async () => {
@@ -1485,8 +1481,41 @@ export default function ProfilePage() {
         });
         if (res.ok) {
           const json = await res.json();
-          // backend wraps in data:{} or returns directly
           const data = json.data ?? json;
+
+          // ← fetch events count
+          let eventsCount = 0;
+          try {
+            const eventsRes = await fetch(
+              `${API_URL}/api/posts/user/${viewedUsername}/events/`,
+              { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+            );
+            if (eventsRes.ok) {
+              const eventsData = await eventsRes.json();
+              eventsCount = eventsData.count ?? (eventsData.results ?? eventsData).length;
+            }
+          } catch {}
+
+          // ← fetch likes count (sum of gems_count) and posts count — reuse same request
+          let likesCount = 0;
+          let allPostsCount = 0;
+          try {
+            const postsRes = await fetch(
+              `${API_URL}/api/posts/user/${viewedUsername}/`,
+              { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+            );
+            if (postsRes.ok) {
+              const postsData = await postsRes.json();
+              const posts = postsData.results ?? postsData;
+              likesCount = posts.reduce(
+                (sum: number, p: any) => sum + (p.gems_count ?? 0),
+                0
+              );
+              // ← fetch real posts count from same response
+              allPostsCount = postsData.count ?? posts.length;
+            }
+          } catch {}
+
           setProfileInfo({
             username: data.username ?? "",
             display_name: data.display_name ?? data.username ?? "",
@@ -1497,7 +1526,10 @@ export default function ProfilePage() {
             badge: data.badge ?? null,
             is_verified: data.is_verified ?? false,
             role: data.role ?? "",
-            posts_count: data.posts_count ?? 0,
+            // ← use real fetched count instead of data.posts_count
+            posts_count: allPostsCount,
+            likes_count: likesCount,
+            events_count: eventsCount,
           });
         }
       } catch (err) {
@@ -1616,7 +1648,6 @@ export default function ProfilePage() {
 
       <main className="pl-[80px] pr-4">
         <div className="max-w-4xl mx-auto">
-          {/* ← ADDED: pass real profile data and ownership flag */}
           <ProfileHeader profileInfo={profileInfo} isOwnProfile={isOwnProfile} />
           <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
