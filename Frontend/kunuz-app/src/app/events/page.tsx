@@ -1160,7 +1160,7 @@ function RightSidebar() {
   return (
     <aside className="w-[380px] xl:w-[500px] flex-shrink-0 pl-6 pr-5 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Upcoming Events</h2>
+        <h2 className="text-xl font-bold mb-5 flex-shrink-0 text-center" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Upcoming Events</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
           {loading ? (
             <div className="flex justify-center py-4"><div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} /></div>

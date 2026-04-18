@@ -1562,7 +1562,10 @@ function PostCard({
   onHistoryClick: () => void;
   onMobilizationClick: () => void;
 }) {
+  const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -1578,6 +1581,19 @@ function PostCard({
   const imageList = post.images ?? [];
   const tags = buildTags(post);
 
+  const scrollToImage = (index: number) => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: el.clientWidth * index, behavior: "smooth" });
+    setCurrentImageIndex(index);
+  };
+
+  const handleImageScroll = () => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    setCurrentImageIndex(Math.round(el.scrollLeft / el.clientWidth));
+  };
+
   return (
     <div
       className="rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
@@ -1589,42 +1605,40 @@ function PostCard({
           <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
         </div>
         <div className="ml-3 flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-base" style={{ color: "#432817" }}>{post.user_display_name || post.user_username}</span>
-              <span className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="p-1 rounded hover:bg-[#E0D5C5] transition-colors"
-                style={{ color: "#8B7355" }}
-                onClick={(e) => { e.stopPropagation(); onHistoryClick(); }}
-              >
-                <HistoryIcon size={18} />
-              </button>
-
-              <div className="relative" ref={menuRef}>
+          <div className="flex items-center gap-2">
+            <button
+              className="font-bold text-base hover:underline text-left"
+              style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+              onClick={(e) => { e.stopPropagation(); if (!post.user_username) return; router.push(`/user/${post.user_username}`); }}
+            >
+              {post.user_display_name || post.user_username || "Anonymous"}
+            </button>
+            <p className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+          </div>
+        </div>
+        <div className="relative flex items-center gap-2">
+          <button
+            className="p-1 rounded hover:bg-[#FFF8E2] transition-colors"
+            style={{ color: "#8B7355" }}
+            onClick={(e) => { e.stopPropagation(); onHistoryClick(); }}
+          >
+            <HistoryIcon size={18} />
+          </button>
+          <div className="relative" ref={menuRef}>
+            <button className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50 w-40" style={{ backgroundColor: "#FFF8E2" }}>
                 <button
-                  className="p-1 rounded hover:bg-[#E0D5C5] transition-colors"
-                  style={{ color: "#8B7355" }}
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                  className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
+                  style={{ color: "#432817" }}
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onMobilizationClick(); }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+                  Report post
                 </button>
-                {showMenu && (
-                  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50 w-40" style={{ backgroundColor: "#FFF8E2", border: "1px solid rgba(67, 40, 23, 0.1)" }}>
-                    <button
-                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817" }}
-                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); onMobilizationClick(); }}
-                    >
-                      Report post
-                    </button>
-                  </div>
-                )}
               </div>
-
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -1637,15 +1651,67 @@ function PostCard({
 
       <PostDetailBadge post={post} />
 
-      <h3 className="px-5 pb-2 text-xl font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
+        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+      </h3>
       <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
       <PostTags tags={tags} />
 
       {imageList.length > 0 && (
-        <div className="px-4 pb-3">
-          <div className="relative w-full h-[300px] sm:h-[400px] overflow-hidden rounded-lg bg-black">
-            <img src={imageList[0].image.startsWith("/media/") ? `${API_URL}${imageList[0].image}` : imageList[0].image} className="w-full h-full object-cover opacity-90" />
-          </div>
+        <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
+          {imgError ? (
+            <div className="w-full rounded-lg flex items-center justify-center" style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+            </div>
+          ) : (
+            <div className="relative w-full overflow-hidden rounded-lg h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
+              <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
+                {imageList.map((img) => {
+                  const imageUrl = img?.image
+                    ? img.image.startsWith("/media/")
+                      ? `${API_URL}${img.image}`
+                      : img.image
+                    : "";
+                  const bgImageUrl = imageUrl ? encodeURI(imageUrl) : "";
+                  return (
+                    <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
+                      {bgImageUrl ? (
+                        <>
+                          <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
+                          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
+                        </>
+                      ) : null}
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              {imageList.length > 1 && currentImageIndex > 0 && (
+                <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+              )}
+              {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
+                <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                </button>
+              )}
+              {imageList.length > 1 && (
+                <>
+                  <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
+                    {imageList.map((_, index) => (
+                      <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)" }} />
+                    ))}
+                  </div>
+                  <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    {currentImageIndex + 1}/{imageList.length}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -2077,7 +2143,7 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
 function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPost[] }) {
   if (!posts || posts.length === 0) {
     return (
-      <aside className="w-[320px] xl:w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
+      <aside className="w-[320px] xl:w-[380px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
         <div className="sticky top-0 h-full flex flex-col items-center">
           {/* Button on top */}
           <button
@@ -2105,7 +2171,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
   }
 
   return (
-    <aside className="w-[320px] xl:w-[420px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
+    <aside className="w-[320px] xl:w-[380px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
       <div className="sticky top-0 h-full flex flex-col items-center">
         {/* Button on top */}
         <button
@@ -2366,20 +2432,20 @@ export default function MonumentsInDangerPage() {
     <>
       <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
         <LeftSidebar activePage="monuments" />
-        <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
+        <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4 bg-[#FFF8E2]">
-              <form onSubmit={handleSearchSubmit} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200 bg-white" style={{ border: isFocused ? "1px solid #432817" : "1px solid #C4A882", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
+              <form onSubmit={handleSearchSubmit} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
                   placeholder="Search alerts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  className="flex-1 ml-3 outline-none bg-transparent text-sm text-[#432817]"
-                  style={{ fontFamily: "var(--font-lato)" }}
+                  onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                  className="flex-1 ml-3 outline-none bg-transparent text-sm"
+                  style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}
                 />
                 <button type="button" className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors" onClick={() => setShowFilter(!showFilter)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
