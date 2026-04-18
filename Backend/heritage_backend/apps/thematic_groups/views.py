@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+
 from bson import ObjectId
 from bson.errors import InvalidId
 from django.utils import timezone
@@ -16,6 +18,7 @@ from apps.core.pagination import StandardResultsSetPagination
 from apps.core.responses import api_error, api_success
 from apps.posts.models import Post, PostImage
 from apps.posts.serializers import PostDetailSerializer, PostListSerializer
+from apps.posts.utils import upload_to_cloudinary
 from apps.notifications.registry import notify
 from apps.users.models import User
 from django.conf import settings
@@ -50,6 +53,32 @@ def _paginate(queryset, request: Request, serializer_cls):
             "data": {"count": total, "next": None, "previous": None, "results": serializer.data},
         }
     )
+
+
+def _group_member_counts() -> dict[str, int]:
+    """Return a mapping of group id to membership count."""
+    counts = defaultdict(int)
+    pipeline = [
+        {"$group": {"_id": "$group", "count": {"$sum": 1}}},
+    ]
+    for row in GroupMembership.objects.aggregate(pipeline):
+        group_id = row.get("_id")
+        if group_id is not None:
+            counts[str(group_id)] = row.get("count", 0)
+    return dict(counts)
+
+
+def _filter_public_group_posts(posts):
+    """Return only publicly visible group posts."""
+    return posts.filter(group_visibility__ne="group_only")
+
+
+def _save_group_section_post_images(post: Post, image_files) -> None:
+    existing_count = PostImage.objects(post=post).count()
+    allowed = 5 - existing_count
+    for image in list(image_files)[:allowed]:
+        url = upload_to_cloudinary(image, folder="posts")
+        PostImage(post=post, image=url).save()
 
 
 class ThematicGroupListCreateView(APIView):
@@ -260,25 +289,37 @@ class GroupPostListCreateView(APIView):
         group = self._get_group(group_id)
         if not group:
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
-        if not user_can_access_group(str(request.user.id), group):
-            return api_error("You do not have access to this group.", status_code=status.HTTP_403_FORBIDDEN)
-        posts = Post.objects(group_id=str(group.id), is_deleted=False).order_by("-created_at")
+        posts = Post.objects(group_id=str(group.id), is_deleted=False)
+        posts = _filter_public_group_posts(posts).order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
+
+class GroupSectionPostCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
     def post(self, request: Request, group_id: str) -> Response:
-        group = self._get_group(group_id)
+        group = get_group_by_id(group_id)
         if not group:
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
         if not user_can_access_group(str(request.user.id), group):
             return api_error("You do not have access to this group.", status_code=status.HTTP_403_FORBIDDEN)
 
         payload = request.data.copy()
+        requested_visibility = str(payload.get("visibility", "public")).strip().lower()
+        if requested_visibility not in {"public", "private_to_group"}:
+            return api_error(
+                "Validation failed.",
+                {"visibility": "Visibility must be either 'public' or 'private_to_group'."},
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
         payload["group_id"] = str(group.id)
-        payload.setdefault("visibility", "groups")
-        payload.setdefault("group_visibility", "group_only")
+        payload["visibility"] = "groups"
+        payload["group_visibility"] = "group_only" if requested_visibility == "private_to_group" else "public"
 
         serializer = PostDetailSerializer(data=payload, context={"request": request})
         if not serializer.is_valid():
@@ -287,42 +328,134 @@ class GroupPostListCreateView(APIView):
         post = serializer.save(author_id=str(request.user.id))
         image_files = request.FILES.getlist("uploaded_images")
         if image_files:
-            self._save_post_images(post, image_files)
-        return api_success("Group post created successfully.", PostDetailSerializer(post, context={"request": request}).data, status_code=status.HTTP_201_CREATED)
+            _save_group_section_post_images(post, image_files)
 
-class PublicGroupsPostsView(APIView):
-    permission_classes = [AllowAny]
+        response_data = PostDetailSerializer(post, context={"request": request}).data
+        response_data["visibility"] = requested_visibility
+        return api_success("Group section post created successfully.", response_data, status_code=status.HTTP_201_CREATED)
 
-    def get(self, request: Request) -> Response:
-        posts = Post.objects.filter(group__visibility="public",is_deleted=False).order_by("-created_at")
+
+class GroupQuestionPostListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        posts = Post.objects(
+            group_id=str(group.id),
+            post_type="question",
+            is_deleted=False,
+        )
+        posts = _filter_public_group_posts(posts).order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
-    
+
+
+class GroupUserPostListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        posts = Post.objects(
+            group_id=str(group.id),
+            author_id=str(request.user.id),
+            is_deleted=False,
+        ).order_by("-created_at")
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class PublicGroupsPostsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        posts = Post.objects(group_id__ne="", is_deleted=False)
+        posts = _filter_public_group_posts(posts).order_by("-created_at")
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class PopularGroupsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        groups = list(ThematicGroup.objects.all())
+        member_counts = _group_member_counts()
+        groups.sort(
+            key=lambda group: (
+                -member_counts.get(str(group.id), 0),
+                -(group.created_at.timestamp() if getattr(group, "created_at", None) else 0),
+            )
+        )
+
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(groups, request)
+        serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
 class MyGroupsView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request: Request) -> Response:
-        memberships = GroupMembership.objects.filter(user_id=request.user.id)
-        group_ids = [membership.group_id for membership in memberships]
-        groups = ThematicGroup.objects.filter(id__in=group_ids)
+        memberships = GroupMembership.objects(user_id=str(request.user.id))
+        group_ids = []
+        for membership in memberships:
+            try:
+                group = membership.group
+            except Exception:
+                continue
+            if group is not None:
+                group_ids.append(group.id)
+        groups = ThematicGroup.objects(id__in=group_ids).order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(groups, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
     
 class SuggestedGroupsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        memberships = GroupMembership.objects.filter(user_id=request.user.id)
-        group_ids = [membership.group_id for membership in memberships]
-        groups = ThematicGroup.objects.filter(id__in=group_ids)
-        categories = set(group.category for group in groups)
-        suggested_groups = ThematicGroup.objects.filter(category__in=categories).exclude(id__in=group_ids)
-        suggested_groups = suggested_groups.order_by('-members_count')
+        memberships = GroupMembership.objects(user_id=str(request.user.id))
+        joined_group_ids = []
+        joined_groups = []
+        for membership in memberships:
+            try:
+                group = membership.group
+            except Exception:
+                continue
+            if group is None:
+                continue
+            joined_group_ids.append(group.id)
+            joined_groups.append(group)
+
+        categories = {group.category for group in joined_groups if getattr(group, "category", "")}
+        if not categories:
+            return api_success("Suggested groups retrieved successfully.", [])
+
+        suggested_groups = ThematicGroup.objects(category__in=list(categories), id__nin=joined_group_ids)
+        suggested_groups = list(suggested_groups)
+        member_counts = _group_member_counts()
+        suggested_groups.sort(
+            key=lambda group: (
+                -member_counts.get(str(group.id), 0),
+                -(group.created_at.timestamp() if getattr(group, "created_at", None) else 0),
+            )
+        )
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(suggested_groups, request)
         serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
-        return api_success("Suggested groups retrieved successfully.", serializer.data)    
+        return paginator.get_paginated_response(serializer.data)
+
