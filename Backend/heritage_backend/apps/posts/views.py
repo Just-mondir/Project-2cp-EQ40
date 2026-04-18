@@ -52,10 +52,18 @@ class PostListCreateView(APIView):
         return []
 
     def get(self, request: Request) -> Response:
-        posts = Post.objects(is_deleted=False, visibility="public")
         post_type = request.query_params.get("post_type")
+        public_posts = Post.objects(is_deleted=False, visibility="public")
+        public_group_posts = Post.objects(
+            is_deleted=False,
+            visibility="groups",
+            group_visibility="public",
+        )
         if post_type:
-            posts = posts.filter(post_type=post_type)
+            public_posts = public_posts.filter(post_type=post_type)
+            public_group_posts = public_group_posts.filter(post_type=post_type)
+        posts = list(public_posts) + list(public_group_posts)
+        posts.sort(key=lambda post: post.created_at, reverse=True)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -358,7 +366,7 @@ class UserPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(author_id=str(user.id), is_deleted=False)
+        posts = Post.objects(author_id=str(user.id), group_id__in=["", None], is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -399,7 +407,7 @@ class UserEventsPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(author_id=str(user.id), post_type="event", is_deleted=False)
+        posts = Post.objects(author_id=str(user.id), post_type="event", group_id__in=["", None], is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -414,7 +422,7 @@ class UserAlertsPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(author_id=str(user.id), post_type="alert", is_deleted=False)
+        posts = Post.objects(author_id=str(user.id), post_type="alert", group_id__in=["", None], is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -423,7 +431,6 @@ class UserAlertsPostsView(APIView):
 
 class EventsView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request: Request) -> Response:
         posts = Post.objects(post_type="event", is_deleted=False)
         paginator = PostPagination()
@@ -858,7 +865,6 @@ class MobilizationEventCreateView(APIView):
             mobilization_event.save()
 
         return api_success(
-            "Mobilization event created successfully.",
             MobilizationEventSerializer(mobilization_event).data,
             status.HTTP_201_CREATED,
         )

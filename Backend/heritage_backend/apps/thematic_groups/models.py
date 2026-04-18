@@ -73,11 +73,6 @@ class ThematicGroup(me.Document):
     "Cultural Experience",
     "Local History",
     )
-    VISIBILITY_CHOICES = (
-    "",
-    "public",
-    "private",
-    )
     name = me.StringField(required=True, max_length=160)
     description = me.StringField(required=True,default="")
     profile_picture = me.StringField(default="")
@@ -85,7 +80,6 @@ class ThematicGroup(me.Document):
     category = me.StringField(choices=CATEGORY_CHOICES, required=True)
     historical_period = me.StringField(choices=HISTORICAL_PERIOD_CHOICES,default="")
     region = me.StringField(choices=REGION_CHOICES,default="")
-    visibility = me.StringField(choices=VISIBILITY_CHOICES, default="public")
     rules = me.StringField(default="")
     admin_id = me.StringField(required=True)
     created_at = me.DateTimeField(default=timezone.now)

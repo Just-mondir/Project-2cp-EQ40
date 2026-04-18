@@ -25,6 +25,7 @@ New app: `apps.thematic_groups`
 
 Implemented endpoints:
 - `GET /api/groups/`
+- `GET /api/groups/popular/`
 - `POST /api/groups/`
 - `GET /api/groups/{group_id}/`
 - `PATCH /api/groups/{group_id}/`

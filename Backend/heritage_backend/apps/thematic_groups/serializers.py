@@ -41,7 +41,6 @@ class ThematicGroupSerializer(serializers.Serializer):
     updated_at = serializers.DateTimeField()
     historical_period = serializers.CharField(allow_blank=True)
     region = serializers.CharField(allow_blank=True)
-    visibility = serializers.CharField(required=False, default="public")
     rules = serializers.CharField(allow_blank=True)
 
     def get_id(self, obj) -> str:
@@ -74,7 +73,6 @@ class ThematicGroupWriteSerializer(serializers.Serializer):
     banner_image = serializers.CharField(required=False, allow_blank=True, default="")
     historical_period = serializers.ChoiceField(choices=ThematicGroup.HISTORICAL_PERIOD_CHOICES, required=False, allow_blank=True)
     region = serializers.ChoiceField(choices=ThematicGroup.REGION_CHOICES, required=False, allow_blank=True)
-    visibility = serializers.ChoiceField(choices=ThematicGroup.VISIBILITY_CHOICES, default="public")
     rules = serializers.CharField(required=False, allow_blank=True, default="")
 
     def create(self, validated_data):
