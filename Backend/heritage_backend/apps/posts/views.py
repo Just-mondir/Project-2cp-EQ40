@@ -1,6 +1,7 @@
 """DRF views for the posts app."""
 from __future__ import annotations
 from datetime import datetime, time
+from django.conf import settings
 from rest_framework import status
 import cloudinary.uploader
 from .utils import upload_to_cloudinary
@@ -14,6 +15,7 @@ from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 from apps.users.models import User
+from .ai import GeminiServiceError, generate_post_insight
 from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails, Annotation, MobilizationEvent
 from .serializers import (
     CommentSerializer,
@@ -126,6 +128,34 @@ class PostDetailView(APIView):
         post.is_deleted = True
         post.save()
         return api_success("Post deleted.", status_code=status.HTTP_204_NO_CONTENT)
+
+
+class PostAiSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def post(self, request: Request, pk: str) -> Response:
+        try:
+            post = Post.objects.get(id=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        question = str(request.data.get("question", "")).strip()
+
+        try:
+            answer = generate_post_insight(post, question=question)
+        except GeminiServiceError as exc:
+            return api_error(str(exc), status_code=status.HTTP_502_BAD_GATEWAY)
+
+        return api_success(
+            "AI monument insight generated.",
+            {
+                "post_id": str(post.id),
+                "question": question,
+                "answer": answer,
+                "model": getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash"),
+            },
+        )
 
 
 class PostImageUploadView(APIView):

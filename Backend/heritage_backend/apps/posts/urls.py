@@ -27,6 +27,7 @@ from .views import (
     FilterChoicesView,
     PostFilterView,
     MonumentsView,
+    PostAiSearchView,
     CriticalView,
     MonumentsInDangerView,
     MobilizationEventCreateView
@@ -64,6 +65,7 @@ urlpatterns = [
     path("posts/<str:pk>/images/", PostImageUploadView.as_view(), name="post-images"),
     path("posts/<str:pk>/gem/", GemToggleView.as_view(), name="post-gem"),
     path("posts/<str:pk>/save/", SaveToggleView.as_view(), name="post-save"),
+    path("posts/<str:pk>/ai-search/", PostAiSearchView.as_view(), name="post-ai-search"),
     path("posts/<str:pk>/comments/", CommentListCreateView.as_view(), name="post-comments"),
 
     path("posts/<str:post_id>/annotations/", AnnotationListCreateView.as_view(), name="post-annotations"),

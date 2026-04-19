@@ -352,6 +352,14 @@ const AnnotationIcon = ({ className = "", size = 18 }) => (
   </svg>
 );
 
+const AiInsightIcon = ({ className = "", size = 18 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3l1.9 4.8L19 9.7l-4 3.2 1.2 5.1L12 15.4 7.8 18l1.2-5.1-4-3.2 5.1-1.9L12 3z" />
+    <path d="M19 3v4" />
+    <path d="M21 5h-4" />
+  </svg>
+);
+
 /* ─────────────────── TAGS ─────────────────── */
 
 function PostTags({ tags }: { tags: string[] }) {
@@ -363,6 +371,105 @@ function PostTags({ tags }: { tags: string[] }) {
           #{tag.toLowerCase().replace(/\s+/g, "_")}
         </span>
       ))}
+    </div>
+  );
+}
+
+type AiInsightState = {
+  open: boolean;
+  loading: boolean;
+  error: string;
+  answer: string;
+};
+
+function createDefaultAiInsightState(): AiInsightState {
+  return {
+    open: false,
+    loading: false,
+    error: "",
+    answer: "",
+  };
+}
+
+async function fetchPostAiInsight(postId: string): Promise<string> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_URL}/api/posts/${postId}/ai-search/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+
+  const payload = await res.json().catch(() => null);
+
+  if (res.status === 401) {
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  if (!res.ok) {
+    throw new Error(
+      payload?.message || payload?.errors?.detail || "Unable to load AI insight."
+    );
+  }
+
+  return String(payload?.data?.answer ?? "").trim();
+}
+
+function AiInsightPanel({
+  loading,
+  error,
+  answer,
+}: {
+  loading: boolean;
+  error: string;
+  answer: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl border px-4 py-3"
+      style={{
+        backgroundColor: "#FFFDF7",
+        borderColor: "#E7D8BA",
+        boxShadow: "0 6px 18px rgba(160,120,80,0.08)",
+      }}
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <div
+          className="flex h-8 w-8 items-center justify-center rounded-full"
+          style={{ backgroundColor: "#F4E7C8", color: "#8B6914" }}
+        >
+          <AiInsightIcon size={14} />
+        </div>
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: "#8B6914" }}>
+            AI Monument Insight
+          </p>
+          <p className="text-[11px]" style={{ color: "#8B7355" }}>
+            Generated from this post&apos;s monument details
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 py-2 text-xs" style={{ color: "#8B7355" }}>
+          <div className="h-4 w-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#D9C29A", borderTopColor: "#8B6914" }} />
+          Thinking about this monument...
+        </div>
+      ) : null}
+
+      {error ? (
+        <p className="text-xs leading-relaxed" style={{ color: "#B45309" }}>
+          {error}
+        </p>
+      ) : null}
+
+      {!loading && !error && answer ? (
+        <div className="prose prose-sm max-w-none text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#432817" }}>
+          {answer}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1281,6 +1388,7 @@ function PostModal({
   const [showPostMenu, setShowPostMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
+  const [aiInsight, setAiInsight] = useState<AiInsightState>(createDefaultAiInsightState);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -1334,6 +1442,7 @@ function PostModal({
       setActiveTab(initialTab);
       setAnnotations([]);
       setComments([]);
+      setAiInsight(createDefaultAiInsightState());
     }
   }, [post, initialTab]);
 
@@ -1465,6 +1574,30 @@ function PostModal({
     } catch {
       onInteractionChange({ saved });
       toggleStoredItem("saved_posts", post.id, saved);
+    }
+  };
+
+  const handleAiInsight = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAiInsight((prev) => {
+      if (prev.open && (prev.answer || prev.error) && !prev.loading) {
+        return { ...prev, open: false };
+      }
+      return { ...prev, open: true, loading: !prev.answer, error: prev.error && prev.answer ? "" : prev.error };
+    });
+
+    if (aiInsight.answer && !aiInsight.error) {
+      return;
+    }
+
+    setAiInsight({ open: true, loading: true, error: "", answer: "" });
+
+    try {
+      const answer = await fetchPostAiInsight(post.id);
+      setAiInsight({ open: true, loading: false, error: "", answer });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to load AI insight.";
+      setAiInsight({ open: true, loading: false, error: message, answer: "" });
     }
   };
 
@@ -1700,8 +1833,12 @@ function PostModal({
               {isContentLong && contentExpanded && (
                 <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
               )}
+            </div>
+          )}
 
-
+          {aiInsight.open && (
+            <div className="px-5 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+              <AiInsightPanel loading={aiInsight.loading} error={aiInsight.error} answer={aiInsight.answer} />
             </div>
           )}
 
@@ -1797,6 +1934,13 @@ function PostModal({
               >
                 <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
               </button>
+              <button
+                className="flex items-center gap-1 text-xs transition-all"
+                style={{ color: aiInsight.open ? "#8B6914" : "#432817" }}
+                onClick={handleAiInsight}
+              >
+                <AiInsightIcon size={14} /> AI
+              </button>
             </div>
             <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
               <BookmarkIcon size={18} filled={saved} active={saved} />
@@ -1870,6 +2014,7 @@ function PostCard({
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [aiInsight, setAiInsight] = useState<AiInsightState>(createDefaultAiInsightState);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const { gemmed, gemsCount, saved, commentsCount, annotationsCount } = interaction;
@@ -1910,6 +2055,30 @@ function PostCard({
     } catch {
       onInteractionChange({ saved });
       toggleStoredItem("saved_posts", post.id, saved);
+    }
+  };
+
+  const handleAiInsight = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (aiInsight.open && (aiInsight.answer || aiInsight.error) && !aiInsight.loading) {
+      setAiInsight((prev) => ({ ...prev, open: false }));
+      return;
+    }
+
+    if (aiInsight.answer && !aiInsight.error) {
+      setAiInsight((prev) => ({ ...prev, open: true }));
+      return;
+    }
+
+    setAiInsight({ open: true, loading: true, error: "", answer: "" });
+
+    try {
+      const answer = await fetchPostAiInsight(post.id);
+      setAiInsight({ open: true, loading: false, error: "", answer });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to load AI insight.";
+      setAiInsight({ open: true, loading: false, error: message, answer: "" });
     }
   };
 
@@ -1978,6 +2147,12 @@ function PostCard({
 
       <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
       <PostTags tags={tags} />
+
+      {aiInsight.open && (
+        <div className="px-5 pb-3">
+          <AiInsightPanel loading={aiInsight.loading} error={aiInsight.error} answer={aiInsight.answer} />
+        </div>
+      )}
 
       {imageList.length > 0 && (
         <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
@@ -2062,6 +2237,14 @@ function PostCard({
           >
             <AnnotationIcon />
             <span>{formatCount(annotationsCount)}</span>
+          </button>
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
+            style={{ color: aiInsight.open ? "#8B6914" : "#432817" }}
+            onClick={handleAiInsight}
+          >
+            <AiInsightIcon />
+            <span>AI</span>
           </button>
         </div>
         <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>

@@ -209,3 +209,5 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 # Google OAuth
 # ---------------------------------------------------------------------------
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-2.5-flash")
