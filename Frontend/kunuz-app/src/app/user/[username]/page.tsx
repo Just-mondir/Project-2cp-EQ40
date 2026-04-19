@@ -1343,7 +1343,7 @@ function ProfileHeader({
           </div>
 
           <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>
-            {profileInfo.bio}
+           {stripHtml(profileInfo.bio)}
           </p>
         </div>
       </div>

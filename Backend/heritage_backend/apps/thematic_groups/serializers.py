@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from apps.posts.serializers import PostDetailSerializer, PostListSerializer
 from apps.users.models import User
 
 from .models import GroupInvitation, GroupJoinRequest, GroupMembership, ThematicGroup
@@ -26,6 +27,30 @@ class GroupMemberSerializer(serializers.Serializer):
     is_admin = serializers.BooleanField(default=False)
     role = serializers.CharField(default="member")
     can_remove = serializers.BooleanField(default=False)
+
+
+class GroupPostListSerializer(PostListSerializer):
+    """Group post serializer that hides internal visibility fields."""
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop("visibility", None)
+        data.pop("group_visibility", None)
+        return data
+
+
+class GroupPostDetailSerializer(PostDetailSerializer):
+    """Group post serializer for public group posts."""
+
+    def validate(self, attrs):
+        attrs["visibility"] = "groups"
+        return super().validate(attrs)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data.pop("visibility", None)
+        data.pop("group_visibility", None)
+        return data
 
 
 class ThematicGroupSerializer(serializers.Serializer):
