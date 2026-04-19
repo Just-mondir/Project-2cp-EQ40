@@ -69,9 +69,11 @@ export default function LeftSidebar({
 
   // Colours based on variant — add-post uses page-matching bg
   const isSpecialBg = activePage === "add-post" || variant === "add-post"|| activePage === "edit-profile" || variant === "edit-profile" ||activePage === "create-group" || variant === "create-group"||activePage === "edit-group" || variant === "edit-group";
-  const sidebarBg = isSpecialBg ? "#F7F5EF" : "#FFF8E2";
-  const iconDefault = "#432817";
-  const iconHover = isSpecialBg ? "#ede9df" : "#F0E8CC";
+  const sidebarBg = isSpecialBg ? "var(--panel-bg)" : "var(--sidebar-bg)";
+  const iconDefault = "var(--foreground)";
+  const iconHover = isSpecialBg ? "var(--panel-hover)" : "var(--sidebar-hover)";
+  const navActiveBg = "var(--nav-active-bg)";
+  const navActiveIcon = "var(--nav-active-icon)";
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -214,9 +216,8 @@ export default function LeftSidebar({
         <nav className="flex flex-col items-center gap-5">
           {navItems.map((item) => {
             const isActive = activePage === item.key;
-            const strokeCol = isActive ? "#FFF8E2" : iconDefault;
-            const fillCol = isActive ? "#FFF8E2" : "none";
-            const bgClass = isActive ? "bg-[#432817]" : "";
+            const strokeCol = isActive ? navActiveIcon : iconDefault;
+            const fillCol = isActive ? navActiveIcon : "none";
 
             const iconEl = (
               <>
@@ -244,7 +245,10 @@ export default function LeftSidebar({
                 <div key={item.key} className="relative group" ref={notifContainerRef}>
                   <button
                     type="button"
-                    className={`relative p-2.5 rounded-xl transition-all duration-200 block ${bgClass}`}
+                    className="relative p-2.5 rounded-xl transition-all duration-200 block"
+                    style={{
+                      backgroundColor: isActive ? navActiveBg : "transparent",
+                    }}
                     onMouseEnter={(e) => {
                       if (!isActive)
                         e.currentTarget.style.backgroundColor = iconHover;
@@ -261,8 +265,8 @@ export default function LeftSidebar({
                   <span
                     className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
                     style={{
-                      backgroundColor: "#432817",
-                      color: "#FFF8E2",
+                      backgroundColor: navActiveBg,
+                      color: navActiveIcon,
                       boxShadow: "0 2px 8px rgba(67,40,23,0.2)",
                       fontFamily: "var(--font-lato)",
                     }}
@@ -274,29 +278,29 @@ export default function LeftSidebar({
                     <div
                       className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-[320px] rounded-2xl border p-4 z-[70]"
                       style={{
-                        backgroundColor: "#FFF8E2",
-                        borderColor: "#D7C6AF",
+                        backgroundColor: "var(--overlay-bg)",
+                        borderColor: "var(--border-soft)",
                         boxShadow: "0 16px 36px rgba(46, 25, 11, 0.22)",
                       }}
                     >
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-sm font-bold" style={{ color: "#432817" }}>
+                        <p className="text-sm font-bold" style={{ color: "var(--foreground)" }}>
                           Notifications
                         </p>
-                        <Bell size={14} color="#8B7355" />
+                        <Bell size={14} color="var(--text-muted)" />
                       </div>
 
                       {notifLoading ? (
-                        <p className="text-xs" style={{ color: "#8B7355" }}>Loading...</p>
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>Loading...</p>
                       ) : notifications.length === 0 ? (
-                        <p className="text-xs leading-5" style={{ color: "#8B7355" }}>
+                        <p className="text-xs leading-5" style={{ color: "var(--text-muted)" }}>
                           No notifications yet.
                         </p>
                       ) : (
                         <div className="space-y-2">
                           {notifications.map((notification) => (
-                            <div key={notification.id} className="rounded-xl p-2.5" style={{ backgroundColor: "#FFFDF8" }}>
-                              <p className="text-[12px] font-semibold leading-5" style={{ color: "#432817" }}>
+                            <div key={notification.id} className="rounded-xl p-2.5" style={{ backgroundColor: "var(--overlay-item)" }}>
+                              <p className="text-[12px] font-semibold leading-5" style={{ color: "var(--foreground)" }}>
                                 {notification.actor_display_name || "Someone"} {notification.event_label || notification.message}
                               </p>
                             </div>
@@ -304,11 +308,11 @@ export default function LeftSidebar({
                         </div>
                       )}
 
-                      <div className="mt-3 pt-3 border-t" style={{ borderColor: "#E5D8C8" }}>
+                      <div className="mt-3 pt-3 border-t" style={{ borderColor: "var(--border-soft)" }}>
                         <Link
                           href="/notifications"
                           className="inline-flex items-center justify-center text-xs font-semibold rounded-lg px-3 py-2"
-                          style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
+                          style={{ backgroundColor: navActiveBg, color: navActiveIcon }}
                           onClick={() => setIsNotifOpen(false)}
                         >
                           View all
@@ -324,7 +328,10 @@ export default function LeftSidebar({
               <div key={item.key} className="relative group">
                 <Link
                   href={item.href}
-                  className={`relative p-2.5 rounded-xl transition-all duration-200 block ${bgClass}`}
+                  className="relative p-2.5 rounded-xl transition-all duration-200 block"
+                  style={{
+                    backgroundColor: isActive ? navActiveBg : "transparent",
+                  }}
                   onMouseEnter={(e) => {
                     if (!isActive)
                       e.currentTarget.style.backgroundColor = iconHover;
@@ -340,8 +347,8 @@ export default function LeftSidebar({
                 <span
                   className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
                   style={{
-                    backgroundColor: "#432817",
-                    color: "#FFF8E2",
+                    backgroundColor: navActiveBg,
+                    color: navActiveIcon,
                     boxShadow: "0 2px 8px rgba(67,40,23,0.2)",
                     fontFamily: "var(--font-lato)",
                   }}
@@ -382,8 +389,8 @@ export default function LeftSidebar({
             <span
               className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
               style={{
-                backgroundColor: "#432817",
-                color: "#FFF8E2",
+                backgroundColor: navActiveBg,
+                color: navActiveIcon,
               }}
             >
               Help
@@ -397,21 +404,25 @@ export default function LeftSidebar({
         className="fixed bottom-0 left-0 right-0 h-16 md:hidden flex items-center justify-around z-[100] px-4 border-t"
         style={{
           backgroundColor: sidebarBg,
-          borderColor: "rgba(67,40,23,0.1)",
+          borderColor: "var(--border-soft)",
           boxShadow: "0 -2px 10px rgba(0,0,0,0.05)",
         }}
       >
         {navItems.map((item) => {
           const isActive = activePage === item.key;
-          const strokeCol = isActive ? "#FFF8E2" : iconDefault;
-          const fillCol = isActive ? "#FFF8E2" : "none";
-          const bgClass = isActive ? "bg-[#432817] scale-110 shadow-md" : "";
+          const strokeCol = isActive ? navActiveIcon : iconDefault;
+          const fillCol = isActive ? navActiveIcon : "none";
 
           return (
             <Link
               key={item.key}
               href={item.href}
-              className={`relative p-2.5 rounded-xl transition-all duration-300 ${bgClass}`}
+              className="relative p-2.5 rounded-xl transition-all duration-300"
+              style={{
+                backgroundColor: isActive ? navActiveBg : "transparent",
+                transform: isActive ? "scale(1.1)" : "scale(1)",
+                boxShadow: isActive ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
+              }}
             >
               <svg
                 width="20"
@@ -426,7 +437,7 @@ export default function LeftSidebar({
                 {item.path}
               </svg>
               {item.hasBadge && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border" style={{ borderColor: navActiveIcon }} />
               )}
             </Link>
           );

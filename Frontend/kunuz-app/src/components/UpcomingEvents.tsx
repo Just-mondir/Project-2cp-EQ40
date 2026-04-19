@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { Lato } from "next/font/google";
 
 const lato = Lato({
@@ -100,7 +99,10 @@ function EventCard({ item }: { item: EventItem }) {
   const hasImage = !!item.imageUrl;
 
   return (
-    <div className="bg-white rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2]">
+    <div
+      className="rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)]"
+      style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}
+    >
       {hasImage && (
         <div className="relative h-full shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
           <img
@@ -111,14 +113,18 @@ function EventCard({ item }: { item: EventItem }) {
         </div>
       )}
 
-      <div className={`${lato.className} flex-1 px-5 lg:px-6 py-4 flex flex-col justify-between ${!hasImage ? 'border-l-4 border-[#2C1A0E]/10' : ''}`}>
+      <div
+        className={`${lato.className} flex-1 px-5 lg:px-6 py-4 flex flex-col justify-between`}
+        style={!hasImage ? { borderLeft: "4px solid var(--border-soft)" } : undefined}
+      >
         <div>
-          <h3 className="font-bold text-base lg:text-lg text-[#2C1A0E] mb-1">
+          <h3 className="font-bold text-base lg:text-lg mb-1" style={{ color: "var(--foreground)" }}>
             {item.title}
           </h3>
           <p
-            className="font-normal text-xs lg:text-sm text-[#5a4a3a] leading-relaxed overflow-hidden"
+            className="font-normal text-xs lg:text-sm leading-relaxed overflow-hidden"
             style={{
+              color: "var(--text-soft)",
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
@@ -129,17 +135,17 @@ function EventCard({ item }: { item: EventItem }) {
         </div>
 
         <div className="flex flex-row items-center justify-between">
-          <div className="flex flex-row items-center gap-4 text-[#7a5a3a]">
+          <div className="flex flex-row items-center gap-4" style={{ color: "var(--text-muted)" }}>
             <span className="flex items-center gap-1.5 text-xs lg:text-sm">
-              <PinIcon className="w-3.5 h-3.5 text-[#7a5a3a]" />
+              <PinIcon className="w-3.5 h-3.5" />
               {item.location}
             </span>
             <span className="flex items-center gap-1.5 text-xs lg:text-sm">
-              <ClockIcon className="w-3.5 h-3.5 text-[#7a5a3a]" />
+              <ClockIcon className="w-3.5 h-3.5" />
               {item.date}
             </span>
           </div>
-          <CalendarIcon className="w-9 h-9 lg:w-10 lg:h-10 text-[#2C1A0E]" />
+          <CalendarIcon className="w-9 h-9 lg:w-10 lg:h-10 text-[var(--foreground)]" />
         </div>
       </div>
     </div>
@@ -205,11 +211,11 @@ export default function UpcomingEvents() {
     <section
       id="events"
       className="w-full py-24 md:py-28 lg:py-32 px-8 lg:px-24 xl:px-32 scroll-mt-24"
-      style={{ backgroundColor: "#FFF8E2", minHeight: "80vh" }}
+      style={{ backgroundColor: "var(--background)", minHeight: "80vh" }}
     >
       <h2
-        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-14 lg:mb-20"
-        style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}
+        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-center mb-14 lg:mb-20"
+        style={{ fontFamily: "var(--font-lato), system-ui, sans-serif", color: "var(--foreground)" }}
       >
         Upcoming Events
       </h2>

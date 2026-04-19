@@ -134,7 +134,7 @@ export default function AddEventPage() {
     return (
         <div
             className="flex h-screen overflow-hidden"
-            style={{ backgroundColor: "#F7F5EF" }}
+            style={{ backgroundColor: "var(--background)" }}
         >
             <LeftSidebar activePage="monuments" variant="add-post" />
 

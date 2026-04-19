@@ -297,7 +297,7 @@ export default function SetProfilePage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center py-10 px-6"
-      style={{ backgroundColor: "#FFF8E2" }}
+      style={{ backgroundColor: "var(--background)" }}
     >
       <div className="w-full max-w-[1050px] bg-white rounded-[30px] overflow-hidden shadow-sm">
         <div className="flex flex-col md:flex-row min-h-[520px]">
