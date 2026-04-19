@@ -2205,15 +2205,15 @@ export default function HomePageRoute() {
     searchTimeoutRef.current = setTimeout(async () => {
       setSearchLoading(true);
       const token = getAuthToken();
-      try {
-        const res = await fetch(`${API_URL}/api/posts/search/?q=${encodeURIComponent(q)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setSearchResults(data.data || { users: [], posts: [] });
-      } catch { } finally {
-        setSearchLoading(false);
-      }
+        try {
+          const res = await fetch(`${API_URL}/api/posts/search/?q=${encodeURIComponent(q)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          setSearchResults(data.data || { users: [], posts: [] });
+        } catch { } finally {
+          setSearchLoading(false);
+        }
     }, 400);
   };
 
@@ -2269,10 +2269,11 @@ export default function HomePageRoute() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      const formatted: ApiPost[] = (data.data || []).map((post: any, i: number) => ({
-        ...normalizeApiPost(post),
-        _key: i,
-      }));
+      const formatted: ApiPost[] = (Array.isArray(data.data) ? data.data : [])
+        .map((post: any, i: number) => ({
+          ...normalizeApiPost(post),
+          _key: i,
+        }));
       setPosts(formatted);
       setNextUrl(null);
     } catch { }
