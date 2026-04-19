@@ -293,7 +293,7 @@ function EditPostInner() {
     return (
       <div
         className="flex h-screen items-center justify-center"
-        style={{ backgroundColor: "#F7F5EF" }}
+        style={{ backgroundColor: "var(--background)" }}
       >
         <p style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
           Loading...
@@ -306,7 +306,7 @@ function EditPostInner() {
     return (
       <div
         className="flex h-screen items-center justify-center"
-        style={{ backgroundColor: "#F7F5EF" }}
+        style={{ backgroundColor: "var(--background)" }}
       >
         <p style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
           Post not found
@@ -318,7 +318,7 @@ function EditPostInner() {
   return (
     <div
       className="flex h-screen overflow-hidden"
-      style={{ backgroundColor: "#F7F5EF" }}
+      style={{ backgroundColor: "var(--background)" }}
     >
       <LeftSidebar activePage="add-post" />
 

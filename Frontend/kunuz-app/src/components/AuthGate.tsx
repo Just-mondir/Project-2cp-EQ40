@@ -37,7 +37,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   // Hide protected content during initial SSR and hydration to prevent flash
   if (!mounted && !isPublicRoute) {
-    return <div style={{ minHeight: "100vh", backgroundColor: "#FFF8E2" }} />;
+    return <div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }} />;
   }
 
   return <>{children}</>;

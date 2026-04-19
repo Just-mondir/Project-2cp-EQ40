@@ -1703,7 +1703,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FFF8E2", fontFamily: "var(--font-lato)" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "var(--background)", fontFamily: "var(--font-lato)" }}>
       {selectedPost && (
         <PostModal
           post={selectedPost}

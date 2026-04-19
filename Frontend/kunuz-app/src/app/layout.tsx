@@ -4,6 +4,7 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 import GoogleProvider from "@/components/GoogleProvider";
 import AuthGate from "@/components/AuthGate";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const lato = Lato({
   weight: ["400", "700"],
@@ -34,12 +35,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                try {
+                  var stored = localStorage.getItem("theme-mode");
+                  var theme = stored === "dark" ? "dark" : "light";
+                  document.documentElement.dataset.theme = theme;
+                  document.documentElement.style.colorScheme = theme;
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${lato.variable} ${aclonica.variable} ${playfair.variable} font-sans antialiased`}
       >
         <GoogleProvider>
-          <AuthGate>{children}</AuthGate>
+          <AuthGate>
+            <ThemeToggle />
+            {children}
+          </AuthGate>
         </GoogleProvider>
         <Footer />
       </body>

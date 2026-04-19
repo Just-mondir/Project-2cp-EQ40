@@ -57,7 +57,7 @@ export default function CreateGuildPage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#F7F5EF" }}>
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
       <LeftSidebar activePage="create-group" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">

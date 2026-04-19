@@ -52,7 +52,10 @@ function UnescoAvatar() {
 
 function GuildCard({ guild }: { guild: Guild }) {
   return (
-    <div className="bg-white rounded-xl p-6 lg:p-8 flex flex-row items-start gap-4 lg:gap-5 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2]">
+    <div
+      className="rounded-xl p-6 lg:p-8 flex flex-row items-start gap-4 lg:gap-5 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)]"
+      style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}
+    >
       {guild.avatar.kind === "unesco" ? (
         <UnescoAvatar />
       ) : (
@@ -61,22 +64,25 @@ function GuildCard({ guild }: { guild: Guild }) {
           alt={guild.avatar.alt}
           width={80}
           height={80}
-          className="w-16 h-16 lg:w-20 lg:h-20 rounded-full object-cover shrink-0"
+          className="w-16 h-16 lg:w-20 lg:h-20 rounded-full object-cover shrink-0 border-2"
+          style={{ borderColor: "var(--panel-elevated)" }}
         />
       )}
 
       <div className="flex flex-col gap-1.5">
         <h3
-          className={`${lato.className} font-bold text-base lg:text-lg text-[#2C1A0E] mb-1`}
+          className={`${lato.className} font-bold text-base lg:text-lg mb-1`}
+          style={{ color: "var(--foreground)" }}
         >
           {guild.name}
         </h3>
         <p
-          className={`${lato.className} font-normal text-xs lg:text-sm leading-relaxed text-[#5a4a3a]`}
+          className={`${lato.className} font-normal text-xs lg:text-sm leading-relaxed`}
+          style={{ color: "var(--text-soft)" }}
         >
           {guild.description}
         </p>
-        <div className="flex flex-row items-center gap-2 mt-2 text-[#7a5a3a]">
+        <div className="flex flex-row items-center gap-2 mt-2" style={{ color: "var(--accent-gold)" }}>
           <PeopleIcon className="w-4 h-4 lg:w-5 lg:h-5" />
           <span className={`${lato.className} font-normal text-xs lg:text-sm`}>
             {guild.membersLabel}
@@ -127,11 +133,11 @@ export default function PopularGuilds() {
     <section
       id="guilds"
       className="w-full py-20 lg:py-28 px-8 lg:px-24 xl:px-32 scroll-mt-24"
-      style={{ backgroundColor: "#FFF8E2" }}
+      style={{ backgroundColor: "var(--background)" }}
     >
       <h2
-        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-12 lg:mb-16"
-        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
+        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-center mb-12 lg:mb-16"
+        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif', color: "var(--foreground)" }}
       >
         Popular Guilds
       </h2>

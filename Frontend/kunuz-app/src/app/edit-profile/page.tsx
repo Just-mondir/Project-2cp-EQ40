@@ -30,7 +30,7 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#F7F5EF" }}>
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
 
       {/* Sidebar */}
       <LeftSidebar activePage="edit-profile" />

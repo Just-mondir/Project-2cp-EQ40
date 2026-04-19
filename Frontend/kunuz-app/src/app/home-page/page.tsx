@@ -271,9 +271,9 @@ function UserAvatar({
   return (
     <div
       className="rounded-full flex-shrink-0 flex items-center justify-center"
-      style={{ width: size, height: size, backgroundColor: "#E0D5C5" }}
+      style={{ width: size, height: size, backgroundColor: "var(--avatar-surface)" }}
     >
-      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#8B7355" stroke="none">
+      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
         <circle cx="12" cy="7" r="4" />
       </svg>
@@ -1164,17 +1164,17 @@ function FilterSection({
   return (
     <div
       className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
-      style={{ backgroundColor: "var(--background)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--brown)" }}
+      style={{ backgroundColor: "var(--overlay-bg)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--border-soft)" }}
     >
-      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
+      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "var(--border-soft)" }}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+          <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--nav-active-bg)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nav-active-icon)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>Filters</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Filters</h3>
         </div>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       </div>
       <div className="flex flex-col max-h-[50vh]">
@@ -1182,18 +1182,18 @@ function FilterSection({
           <div className="flex flex-col gap-5">
             {filters.map((filter) => (
               <div key={filter.label} className="flex flex-col gap-2">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--brown)" }}>{filter.label}</label>
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--text-muted)" }}>{filter.label}</label>
                 <div className="relative group w-full">
                   <select
                     value={filter.value}
                     onChange={(e) => filter.onChange(e.target.value)}
                     className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
-                    style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--brown)", fontWeight: "700" }}
+                    style={{ backgroundColor: "var(--panel-bg)", border: "1.5px solid var(--border-soft)", borderRadius: "14px", color: "var(--foreground)", fontWeight: "700" }}
                   >
                     {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
                   </div>
                 </div>
               </div>
@@ -1201,9 +1201,9 @@ function FilterSection({
           </div>
         </div>
       </div>
-      <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
-        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>Reset</button>
-        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>Apply</button>
+      <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--panel-elevated)", borderColor: "var(--border-soft)" }}>
+        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--border-soft)", color: "var(--foreground)" }}>Reset</button>
+        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg border border-transparent" style={{ backgroundColor: "var(--nav-active-bg)", color: "var(--nav-active-icon)" }}>Apply</button>
       </div>
     </div>
   );
@@ -1802,7 +1802,7 @@ function PostModal({
 function MobileGuildsStrip() {
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Popular Guilds</h3>
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>Popular Guilds</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -1814,19 +1814,20 @@ function MobileGuildsStrip() {
         {GUILDS.slice(0, 5).map((guild, i) => (
           <div
             key={i}
-            className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
-            style={{ width: "120px" }}
+            className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105 rounded-2xl border"
+            style={{ width: "136px", backgroundColor: "var(--panel-bg)", borderColor: "var(--border-soft)", boxShadow: "0 8px 22px rgba(44,26,14,0.08)" }}
           >
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center px-3 py-4">
               <img
                 src={guild.image}
                 alt={guild.name}
-                className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2"
+                className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 shadow-sm mb-2"
+                style={{ borderColor: "var(--panel-elevated)" }}
               />
               <span
                 className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
                 style={{
-                  color: "#432817",
+                  color: "var(--foreground)",
                   fontFamily: "var(--font-lato)",
                   maxWidth: "120px",
                   wordBreak: "break-word",
@@ -1838,7 +1839,7 @@ function MobileGuildsStrip() {
               <span
                 className="text-[8px] text-center leading-tight line-clamp-2 mb-2"
                 style={{
-                  color: "#8B7355",
+                  color: "var(--text-muted)",
                   fontFamily: "var(--font-lato)",
                   maxWidth: "120px",
                   lineHeight: "1.2"
@@ -1846,7 +1847,7 @@ function MobileGuildsStrip() {
               >
                 {guild.desc}
               </span>
-              <span className="flex items-center gap-1 text-[9px] font-medium" style={{ color: "#8B6914" }}>
+              <span className="flex items-center gap-1 text-[9px] font-medium" style={{ color: "var(--accent-gold)" }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
@@ -1869,15 +1870,15 @@ function RightSidebar() {
   return (
     <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Popular Guilds</h2>
+        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Popular Guilds</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
           {GUILDS.slice(0, 5).map((guild, i) => (
-            <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:bg-[#F0EAD8] hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 2px 10px rgba(67,40,23,0.05)", backgroundColor: "rgba(255,255,255,0.4)" }}>
-              <img src={guild.image} alt={guild.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm" />
+            <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 8px 22px rgba(67,40,23,0.08)", backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
+              <img src={guild.image} alt={guild.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 shadow-sm" style={{ borderColor: "var(--panel-elevated)" }} />
               <div className="flex flex-col justify-center min-w-0">
-                <span className="font-bold text-sm truncate" style={{ color: "#432817" }}>{guild.name}</span>
-                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "#8B7355" }}>{guild.desc}</span>
-                <span className="flex items-center gap-1 text-[11px] mt-1.5 font-medium" style={{ color: "#8B6914" }}>
+                <span className="font-bold text-sm truncate" style={{ color: "var(--foreground)" }}>{guild.name}</span>
+                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{guild.desc}</span>
+                <span className="flex items-center gap-1 text-[11px] mt-1.5 font-medium" style={{ color: "var(--accent-gold)" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                   {guild.members} Members
                 </span>
@@ -2334,12 +2335,12 @@ export default function HomePageRoute() {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "#FFF8E2" }}>
+      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
         <LeftSidebar activePage="home" />
         <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--cream)" }}>
-              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid #432817" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
+            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
+              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--border-soft)", boxShadow: isFocused ? "0 0 0 3px rgba(213,172,85,0.18)" : "0 8px 20px rgba(20,12,6,0.1)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
@@ -2349,39 +2350,39 @@ export default function HomePageRoute() {
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setTimeout(() => setIsFocused(false), 200)}
                   className="flex-1 ml-3 outline-none bg-transparent text-sm"
-                  style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}
+                  style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                 />
-                <button className="flex-shrink-0 p-1 rounded hover:bg-[#F0E8CC] transition-colors" onClick={() => setShowFilter(!showFilter)}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <button className="flex-shrink-0 p-1 rounded hover:bg-[var(--panel-hover)] transition-colors" onClick={() => setShowFilter(!showFilter)}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
-                    <circle cx="8" cy="6" r="1.5" fill="#432817" /><circle cx="16" cy="12" r="1.5" fill="#432817" /><circle cx="10" cy="18" r="1.5" fill="#432817" />
+                    <circle cx="8" cy="6" r="1.5" fill="var(--foreground)" /><circle cx="16" cy="12" r="1.5" fill="var(--foreground)" /><circle cx="10" cy="18" r="1.5" fill="var(--foreground)" />
                   </svg>
                 </button>
               </div>
               <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} onApply={handleApplyFilter} />
               {searchQuery && isFocused && (
-                <div className="absolute top-[60px] left-6 right-6 z-[70] rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5" }}>
+                <div className="absolute top-[60px] left-6 right-6 z-[70] rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: "var(--overlay-bg)", border: "1px solid var(--border-soft)" }}>
                   {searchLoading ? (
                     <div className="flex justify-center py-4">
-                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "var(--accent-gold)" }} />
                     </div>
                   ) : (
                     <div className="max-h-[400px] overflow-y-auto feed-scroll">
                       {searchResults?.users && searchResults.users.length > 0 && (
                         <div className="px-4 pt-3 pb-1">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "#8B7355" }}>Users</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Users</p>
                           {searchResults.users.map((user) => (
                             <button
                               key={user.id}
-                              className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[#F0EAD8] transition-colors text-left"
+                              className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
                               onMouseDown={() => { window.location.href = `/user/${user.username}`; }}
                             >
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#E0D5C5" }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--avatar-surface)" }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                               </div>
                               <div>
-                                <p className="text-xs font-bold" style={{ color: "#432817" }}>{user.display_name}</p>
-                                <p className="text-[10px]" style={{ color: "#8B7355" }}>@{user.username}</p>
+                                <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{user.display_name}</p>
+                                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>@{user.username}</p>
                               </div>
                             </button>
                           ))}
@@ -2389,19 +2390,19 @@ export default function HomePageRoute() {
                       )}
                       {searchResults?.posts && searchResults.posts.length > 0 && (
                         <div className="px-4 pt-2 pb-3">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "#8B7355" }}>Posts</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Posts</p>
                           {searchResults.posts.map((post) => (
                             <button
                               key={post.id}
-                              className="w-full flex items-start gap-3 px-2 py-2 rounded-xl hover:bg-[#F0EAD8] transition-colors text-left"
+                              className="w-full flex items-start gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
                               onMouseDown={() => setSelectedPost(post as any)}
                             >
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "#E0D5C5" }}>
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "var(--avatar-surface)" }}>
                                 <CommentIcon size={12} />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold truncate" style={{ color: "#432817" }}>{post.title?.replace(/<[^>]*>/g, "")}</p>
-                                <p className="text-[10px] truncate" style={{ color: "#8B7355" }}>{post.content?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
+                                <p className="text-xs font-bold truncate" style={{ color: "var(--foreground)" }}>{post.title?.replace(/<[^>]*>/g, "")}</p>
+                                <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{post.content?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
                               </div>
                             </button>
                           ))}
@@ -2409,7 +2410,7 @@ export default function HomePageRoute() {
                       )}
                       {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (
                         <div className="flex flex-col items-center py-6 gap-1">
-                          <p className="text-xs font-bold" style={{ color: "#8B7355" }}>No results for "{searchQuery}"</p>
+                          <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>No results for "{searchQuery}"</p>
                         </div>
                       )}
                     </div>
@@ -2439,7 +2440,7 @@ export default function HomePageRoute() {
                 ))}
                 {loading && (
                   <div className="flex justify-center py-6">
-                    <div className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+                    <div className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "var(--accent-gold)" }} />
                   </div>
                 )}
                 <div ref={sentinelRef} className="h-4" />

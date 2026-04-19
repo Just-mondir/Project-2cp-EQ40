@@ -49,7 +49,7 @@ export default function Header() {
     <header
       className="fixed inset-x-0 top-0 z-50 transition-colors duration-300"
       style={{
-        backgroundColor: scrolled ? "#FFF8E2" : "transparent",
+        backgroundColor: scrolled ? "var(--background)" : "transparent",
         boxShadow: scrolled ? "0 4px 18px rgba(44,26,14,0.07)" : "none",
       }}
     >
@@ -154,8 +154,9 @@ export default function Header() {
 
           {/* Dropdown */}
           <div
-            className="absolute right-0 top-full overflow-hidden transition-all duration-300 bg-[#FFF8E2] rounded-2xl"
+            className="absolute right-0 top-full overflow-hidden transition-all duration-300 rounded-2xl"
             style={{
+              backgroundColor: "var(--panel-bg)",
               maxHeight: mobileOpen ? "320px" : "0px",
               boxShadow: mobileOpen ? "0 8px 24px rgba(0,0,0,0.10)" : "none",
               minWidth: "200px",
