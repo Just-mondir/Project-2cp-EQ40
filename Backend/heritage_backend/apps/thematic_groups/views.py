@@ -17,7 +17,6 @@ from rest_framework.views import APIView
 from apps.core.pagination import StandardResultsSetPagination
 from apps.core.responses import api_error, api_success
 from apps.posts.models import Post, PostImage
-from apps.posts.serializers import PostDetailSerializer, PostListSerializer
 from apps.posts.utils import upload_to_cloudinary
 from apps.notifications.registry import notify
 from apps.users.models import User
@@ -31,6 +30,8 @@ from .serializers import (
     GroupInvitationSerializer,
     GroupJoinRequestSerializer,
     GroupMemberSerializer,
+    GroupPostDetailSerializer,
+    GroupPostListSerializer,
     ThematicGroupSerializer,
     ThematicGroupWriteSerializer,
 )
@@ -66,11 +67,6 @@ def _group_member_counts() -> dict[str, int]:
         if group_id is not None:
             counts[str(group_id)] = row.get("count", 0)
     return dict(counts)
-
-
-def _filter_public_group_posts(posts):
-    """Return only publicly visible group posts."""
-    return posts.filter(group_visibility__ne="group_only")
 
 
 def _search_query(query: str, fields: list[str]) -> dict:
@@ -359,19 +355,6 @@ class GroupPostListCreateView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
-    def _save_post_images(self, post: Post, image_files) -> None:
-        existing_count = PostImage.objects(post=post).count()
-        allowed = 5 - existing_count
-        for image in list(image_files)[:allowed]:
-            safe_name = f"{post.id}_{image.name}"
-            file_path = os.path.join(settings.MEDIA_ROOT, "post_images", safe_name)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, "wb+") as output_file:
-                for chunk in image.chunks():
-                    output_file.write(chunk)
-            image_url = f"{settings.MEDIA_URL}post_images/{safe_name}"
-            PostImage(post=post, image=image_url).save()
-
     def _get_group(self, group_id: str):
         return get_group_by_id(group_id)
 
@@ -380,11 +363,33 @@ class GroupPostListCreateView(APIView):
         if not group:
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
         posts = Post.objects(group_id=str(group.id), is_deleted=False)
-        posts = _filter_public_group_posts(posts).order_by("-created_at")
+        posts = posts.order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = GroupPostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request: Request, group_id: str) -> Response:
+        group = self._get_group(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("You do not have access to this group.", status_code=status.HTTP_403_FORBIDDEN)
+
+        payload = request.data.copy()
+        payload["group_id"] = str(group.id)
+
+        serializer = GroupPostDetailSerializer(data=payload, context={"request": request})
+        if not serializer.is_valid():
+            return api_error("Validation failed.", serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+
+        post = serializer.save(author_id=str(request.user.id))
+        image_files = request.FILES.getlist("uploaded_images")
+        if image_files:
+            _save_group_section_post_images(post, image_files)
+
+        response_data = GroupPostDetailSerializer(post, context={"request": request}).data
+        return api_success("Group section post created successfully.", response_data, status_code=status.HTTP_201_CREATED)
 
 
 class GroupPostSearchView(APIView):
@@ -398,55 +403,14 @@ class GroupPostSearchView(APIView):
         query = request.query_params.get("q", "").strip()
         posts = Post.objects(group_id=str(group.id), is_deleted=False)
 
-        if not user_can_access_group(str(request.user.id), group):
-            posts = _filter_public_group_posts(posts)
-
         if query:
             posts = posts.filter(__raw__=_search_query(query, ["title", "content"]))
 
         posts = posts.order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = GroupPostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
-
-
-class GroupSectionPostCreateView(APIView):
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
-
-    def post(self, request: Request, group_id: str) -> Response:
-        group = get_group_by_id(group_id)
-        if not group:
-            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
-        if not user_can_access_group(str(request.user.id), group):
-            return api_error("You do not have access to this group.", status_code=status.HTTP_403_FORBIDDEN)
-
-        payload = request.data.copy()
-        requested_visibility = str(payload.get("visibility", "public")).strip().lower()
-        if requested_visibility not in {"public", "private_to_group"}:
-            return api_error(
-                "Validation failed.",
-                {"visibility": "Visibility must be either 'public' or 'private_to_group'."},
-                status_code=status.HTTP_400_BAD_REQUEST,
-            )
-
-        payload["group_id"] = str(group.id)
-        payload["visibility"] = "groups"
-        payload["group_visibility"] = "group_only" if requested_visibility == "private_to_group" else "public"
-
-        serializer = PostDetailSerializer(data=payload, context={"request": request})
-        if not serializer.is_valid():
-            return api_error("Validation failed.", serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
-
-        post = serializer.save(author_id=str(request.user.id))
-        image_files = request.FILES.getlist("uploaded_images")
-        if image_files:
-            _save_group_section_post_images(post, image_files)
-
-        response_data = PostDetailSerializer(post, context={"request": request}).data
-        response_data["visibility"] = requested_visibility
-        return api_success("Group section post created successfully.", response_data, status_code=status.HTTP_201_CREATED)
 
 
 class GroupQuestionPostListView(APIView):
@@ -462,10 +426,10 @@ class GroupQuestionPostListView(APIView):
             post_type="question",
             is_deleted=False,
         )
-        posts = _filter_public_group_posts(posts).order_by("-created_at")
+        posts = posts.order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = GroupPostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -484,19 +448,19 @@ class GroupUserPostListView(APIView):
         ).order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = GroupPostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
 
-class PublicGroupsPostsView(APIView):
+class GroupsPostsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
         posts = Post.objects(group_id__ne="", is_deleted=False)
-        posts = _filter_public_group_posts(posts).order_by("-created_at")
+        posts = posts.order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = GroupPostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -575,7 +539,7 @@ class SuggestedGroupsView(APIView):
 
 
 class GroupAboutView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request: Request, group_id: str) -> Response:
         group = get_group_by_id(group_id)
