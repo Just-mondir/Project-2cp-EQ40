@@ -73,6 +73,16 @@ def _filter_public_group_posts(posts):
     return posts.filter(group_visibility__ne="group_only")
 
 
+def _search_query(query: str, fields: list[str]) -> dict:
+    """Build a case-insensitive Mongo regex OR query."""
+    return {
+        "$or": [
+            {field: {"$regex": query, "$options": "i"}}
+            for field in fields
+        ]
+    }
+
+
 def _save_group_section_post_images(post: Post, image_files) -> None:
     existing_count = PostImage.objects(post=post).count()
     allowed = 5 - existing_count
@@ -99,6 +109,52 @@ class ThematicGroupListCreateView(APIView):
             return api_error("Validation failed.", serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
         group = serializer.save()
         return api_success("Group created successfully.", ThematicGroupSerializer(group, context={"request": request}).data, status_code=status.HTTP_201_CREATED)
+
+
+class GroupSearchView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        query = request.query_params.get("q", "").strip()
+        groups = ThematicGroup.objects.all()
+        if query:
+            groups = groups.filter(
+                __raw__=_search_query(
+                    query,
+                    ["name", "description", "historical_period", "region", "category"],
+                )
+            )
+        groups = groups.order_by("-created_at")
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(groups, request)
+        serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class GroupUserSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        query = request.query_params.get("q", "").strip()
+        users = User.objects(is_active=True)
+        if query:
+            users = users.filter(
+                __raw__=_search_query(query, ["username", "display_name"])
+            )
+        users = users.order_by("display_name", "username")
+
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(users, request)
+        data = [
+            {
+                "id": str(user.id),
+                "username": user.username,
+                "display_name": getattr(user, "display_name", user.username),
+                "profile_picture": getattr(user, "profile_picture", ""),
+            }
+            for user in page
+        ]
+        return paginator.get_paginated_response(data)
 
 
 class ThematicGroupDetailView(APIView):
@@ -136,6 +192,9 @@ class GroupMembersView(APIView):
         group = get_group_by_id(group_id)
         if not group:
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        requester_is_admin = bool(
+            request.user.is_authenticated and user_is_group_admin(str(request.user.id), group)
+        )
         members = GroupMembership.objects(group=group)
         users = []
         for membership in members:
@@ -143,15 +202,46 @@ class GroupMembersView(APIView):
                 user = User.objects.get(id=membership.user_id)
             except Exception:
                 continue
+            is_admin = str(user.id) == str(group.admin_id)
             users.append({
                 "id": str(user.id),
                 "username": user.username,
-                "display_name": user.display_name,
-                "profile_picture": user.profile_picture,
-                "badge": user.badge,
+                "display_name": getattr(user, "display_name", user.username),
+                "profile_picture": getattr(user, "profile_picture", ""),
+                "badge": getattr(user, "badge", ""),
+                "is_admin": is_admin,
+                "role": "admin" if is_admin else "member",
+                "can_remove": requester_is_admin and not is_admin,
             })
+        users.sort(
+            key=lambda user: (
+                not user["is_admin"],
+                user["display_name"].strip().lower(),
+                user["username"].strip().lower(),
+            )
+        )
         serializer = GroupMemberSerializer(users, many=True)
         return api_success("Members retrieved successfully.", serializer.data)
+
+
+class GroupMemberRemoveView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request: Request, group_id: str, member_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_is_group_admin(str(request.user.id), group):
+            return api_error("Only the group admin can remove members.", status_code=status.HTTP_403_FORBIDDEN)
+        if str(member_id) == str(group.admin_id):
+            return api_error("The group admin cannot be removed.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        membership = GroupMembership.objects(group=group, user_id=str(member_id)).first()
+        if not membership:
+            return api_error("Member not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        membership.delete()
+        return api_success("Member removed successfully.", data=None)
 
 
 class GroupJoinRequestView(APIView):
@@ -291,6 +381,30 @@ class GroupPostListCreateView(APIView):
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
         posts = Post.objects(group_id=str(group.id), is_deleted=False)
         posts = _filter_public_group_posts(posts).order_by("-created_at")
+        paginator = StandardResultsSetPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class GroupPostSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        query = request.query_params.get("q", "").strip()
+        posts = Post.objects(group_id=str(group.id), is_deleted=False)
+
+        if not user_can_access_group(str(request.user.id), group):
+            posts = _filter_public_group_posts(posts)
+
+        if query:
+            posts = posts.filter(__raw__=_search_query(query, ["title", "content"]))
+
+        posts = posts.order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})
@@ -459,3 +573,14 @@ class SuggestedGroupsView(APIView):
         serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
 
+
+class GroupAboutView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        from .serializers import GroupAboutSerializer
+        data = GroupAboutSerializer(group, context={"request": request}).data
+        return api_success("Group about retrieved successfully.", data)
