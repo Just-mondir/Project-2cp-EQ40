@@ -81,6 +81,8 @@ class ThematicGroup(me.Document):
     historical_period = me.StringField(choices=HISTORICAL_PERIOD_CHOICES,default="")
     region = me.StringField(choices=REGION_CHOICES,default="")
     rules = me.StringField(default="")
+    tags       = me.ListField(me.StringField(), default=list)
+    visibility = me.StringField(choices=("public", "private"), default="public")
     admin_id = me.StringField(required=True)
     created_at = me.DateTimeField(default=timezone.now)
     updated_at = me.DateTimeField(default=timezone.now)
@@ -93,6 +95,7 @@ class ThematicGroup(me.Document):
 
     def save(self, *args, **kwargs):
         self.updated_at = timezone.now()
+        self.visibility = "public"
         return super().save(*args, **kwargs)
 
 

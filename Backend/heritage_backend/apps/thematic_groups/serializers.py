@@ -23,6 +23,9 @@ class GroupMemberSerializer(serializers.Serializer):
     display_name = serializers.CharField()
     profile_picture = serializers.CharField()
     badge = serializers.CharField()
+    is_admin = serializers.BooleanField(default=False)
+    role = serializers.CharField(default="member")
+    can_remove = serializers.BooleanField(default=False)
 
 
 class ThematicGroupSerializer(serializers.Serializer):
@@ -41,8 +44,8 @@ class ThematicGroupSerializer(serializers.Serializer):
     updated_at = serializers.DateTimeField()
     historical_period = serializers.CharField(allow_blank=True)
     region = serializers.CharField(allow_blank=True)
-    rules = serializers.CharField(allow_blank=True)
-
+    rules = serializers.SerializerMethodField()
+    visibility = serializers.SerializerMethodField()
     def get_id(self, obj) -> str:
         return str(obj.id)
 
@@ -65,6 +68,15 @@ class ThematicGroupSerializer(serializers.Serializer):
             return False
         return user_is_group_admin(str(request.user.id), obj)
 
+    def get_rules(self, obj) -> str:
+        rules = getattr(obj, "rules", "")
+        if isinstance(rules, list):
+            return "\n".join(rule for rule in rules if rule).strip()
+        return rules or ""
+
+    def get_visibility(self, obj) -> str:
+        return "public"
+
 class ThematicGroupWriteSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=160)
     category = serializers.ChoiceField(choices=ThematicGroup.CATEGORY_CHOICES)
@@ -75,8 +87,10 @@ class ThematicGroupWriteSerializer(serializers.Serializer):
     region = serializers.ChoiceField(choices=ThematicGroup.REGION_CHOICES, required=False, allow_blank=True)
     rules = serializers.CharField(required=False, allow_blank=True, default="")
 
+
     def create(self, validated_data):
         request = self.context["request"]
+        validated_data["visibility"] = "public"
         group = ThematicGroup(
             admin_id=str(request.user.id),
             **validated_data,
@@ -86,6 +100,7 @@ class ThematicGroupWriteSerializer(serializers.Serializer):
         return group
 
     def update(self, instance, validated_data):
+        validated_data["visibility"] = "public"
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
@@ -130,3 +145,57 @@ class GroupActionSerializer(serializers.Serializer):
 
 class GroupInvitationResponseSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=("accepted", "refused"))
+
+
+class GroupAboutSerializer(serializers.Serializer):
+    id                = serializers.SerializerMethodField()
+    name              = serializers.CharField()
+    description       = serializers.CharField(default="")
+    category          = serializers.CharField(default="")
+    historical_period = serializers.CharField(allow_blank=True)
+    region            = serializers.CharField(allow_blank=True)
+    profile_picture   = serializers.CharField(allow_blank=True)
+    banner_image      = serializers.CharField(allow_blank=True)
+    rules             = serializers.SerializerMethodField()
+    visibility        = serializers.SerializerMethodField()
+    member_count      = serializers.SerializerMethodField()
+    post_count        = serializers.SerializerMethodField()
+    managed_by        = serializers.SerializerMethodField()
+    active_since      = serializers.SerializerMethodField()
+
+    def get_id(self, obj) -> str:
+        return str(obj.id)
+
+    def get_member_count(self, obj) -> int:
+        return GroupMembership.objects(group=obj).count()
+
+    def get_post_count(self, obj) -> int:
+        from apps.posts.models import Post
+        return Post.objects(group_id=str(obj.id), is_deleted=False).count()
+
+    def get_rules(self, obj) -> str:
+        rules = getattr(obj, "rules", "")
+        if isinstance(rules, list):
+            return "\n".join(rule for rule in rules if rule).strip()
+        return rules or ""
+
+    def get_visibility(self, obj) -> str:
+        return "public"
+
+    def get_managed_by(self, obj) -> dict | None:
+        try:
+            user = User.objects.get(id=obj.admin_id)
+            return {
+                "id":              str(user.id),
+                "username":        user.username,
+                "display_name":    getattr(user, "display_name", user.username),
+                "profile_picture": getattr(user, "profile_picture", None),
+            }
+        except Exception:
+            return None
+
+    def get_active_since(self, obj) -> str | None:
+        created_at = getattr(obj, "created_at", None)
+        if created_at:
+            return created_at.strftime("%d/%m/%Y")
+        return None
