@@ -52,6 +52,7 @@ class PostListSerializer(serializers.Serializer):
     user_id = serializers.CharField(source="author_id", read_only=True)
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
+    user_profile_picture = serializers.SerializerMethodField()
     title = serializers.SerializerMethodField()
     post_type = serializers.CharField()
     content = serializers.SerializerMethodField()
@@ -83,6 +84,10 @@ class PostListSerializer(serializers.Serializer):
     def get_user_username(self, obj):
         user = _get_user_by_id(obj.author_id)
         return user.username if user else ""
+
+    def get_user_profile_picture(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return user.profile_picture if user else ""
 
     def _is_available(self, obj) -> bool:
         request = self.context.get("request")
@@ -157,6 +162,7 @@ class PostDetailSerializer(serializers.Serializer):
     user_id = serializers.CharField(source="author_id", read_only=True)
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
+    user_profile_picture = serializers.SerializerMethodField()
     title = serializers.CharField()
     content = serializers.CharField(required=False, allow_blank=True)
     post_type = serializers.CharField()
@@ -213,6 +219,10 @@ class PostDetailSerializer(serializers.Serializer):
     def get_user_username(self, obj):
         user = _get_user_by_id(obj.author_id)
         return user.username if user else ""
+
+    def get_user_profile_picture(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return user.profile_picture if user else ""
 
     def _is_available(self, obj) -> bool:
         request = self.context.get("request")
@@ -360,6 +370,7 @@ class CommentSerializer(serializers.Serializer):
     parent_id = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
+    user_profile_picture = serializers.SerializerMethodField()
     content = serializers.CharField()
     gems_count = serializers.SerializerMethodField()
     is_gemmed = serializers.SerializerMethodField()
@@ -381,6 +392,10 @@ class CommentSerializer(serializers.Serializer):
     def get_user_username(self, obj):
         user = _get_user_by_id(obj.user_id)
         return user.username if user else ""
+
+    def get_user_profile_picture(self, obj):
+        user = _get_user_by_id(obj.user_id)
+        return user.profile_picture if user else ""
 
     def get_gems_count(self, obj):
         return CommentGem.objects(comment=obj).count()

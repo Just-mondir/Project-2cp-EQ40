@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
+import LocationWorldCard from "@/components/LocationWorldCard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -88,6 +89,7 @@ type ApiPost = {
   id: string;
   user_display_name?: string;
   user_username?: string;
+  user_profile_picture?: string;
   username?: string;
   date?: string;
   title: string;
@@ -133,6 +135,7 @@ type ApiCommentRaw = {
   id: string;
   user_id: string;
   user_username: string;
+  user_profile_picture?: string;
   content?: string;
   text?: string;
   created_at: string;
@@ -146,6 +149,7 @@ type CommentNode = {
   id: string;
   user_id: string;
   user_username: string;
+  user_profile_picture: string;
   content: string;
   created_at: string;
   parent: string | null;
@@ -202,12 +206,82 @@ function normalizeComment(raw: ApiCommentRaw): CommentNode {
     id: String(raw.id),
     user_id: String(raw.user_id ?? ""),
     user_username: String(raw.user_username ?? ""),
+    user_profile_picture: String(raw.user_profile_picture ?? ""),
     content: String(raw.content ?? raw.text ?? ""),
     created_at: String(raw.created_at ?? ""),
     parent: normalizeParent(raw.parent, raw.parent_id),
     gems_count: Number(raw.gems_count ?? 0),
     is_gemmed: Boolean(raw.is_gemmed ?? false),
   };
+}
+
+function normalizeApiPost(raw: any): ApiPost {
+  return {
+    id: String(raw?.id ?? ""),
+    user_id: String(raw?.user_id ?? ""),
+    user_display_name: String(raw?.user_display_name ?? ""),
+    user_username: String(raw?.user_username ?? ""),
+    user_profile_picture: String(raw?.user_profile_picture ?? ""),
+    username: String(raw?.username ?? ""),
+    date: String(raw?.date ?? ""),
+    title: String(raw?.title ?? ""),
+    content: String(raw?.content ?? ""),
+    post_type: String(raw?.post_type ?? ""),
+    region: String(raw?.region ?? ""),
+    location: String(raw?.location ?? ""),
+    gems_count: Number(raw?.gems_count ?? 0),
+    comments_count: Number(raw?.comments_count ?? 0),
+    images: Array.isArray(raw?.images) ? raw.images : [],
+    tags: Array.isArray(raw?.tags) ? raw.tags : [],
+    historical_period: String(raw?.historical_period ?? ""),
+    monument_type: String(raw?.monument_type ?? ""),
+    created_at: String(raw?.created_at ?? ""),
+    alert_details: raw?.alert_details ?? null,
+    event_details: raw?.event_details ?? null,
+  };
+}
+
+function resolveProfilePictureUrl(profilePicture?: string): string {
+  const value = String(profilePicture ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `${API_URL}${value}`;
+  return value;
+}
+
+function UserAvatar({
+  profilePicture,
+  size,
+  iconSize,
+}: {
+  profilePicture?: string;
+  size: number;
+  iconSize: number;
+}) {
+  const imageUrl = resolveProfilePictureUrl(profilePicture);
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt="Profile picture"
+        className="rounded-full object-cover flex-shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="rounded-full flex-shrink-0 flex items-center justify-center"
+      style={{ width: size, height: size, backgroundColor: "#E0D5C5" }}
+    >
+      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#8B7355" stroke="none">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    </div>
+  );
 }
 
 async function submitReport(
@@ -572,15 +646,7 @@ function CommentItem({
         borderLeft: isReply ? "2px solid #E0D5C5" : "none",
       }}
     >
-      <div
-        className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ backgroundColor: "#E0D5C5" }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-      </div>
+      <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
@@ -1310,22 +1376,38 @@ function PostModal({
         })}
       </div>
       {imageList.length > 1 && currentImageIndex > 0 && (
-        <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={() => scrollToImage(currentImageIndex - 1)}>
+        <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
         </button>
       )}
       {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
-        <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={() => scrollToImage(currentImageIndex + 1)}>
+        <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
         </button>
+      )}
+      {imageList.length > 1 && (
+        <>
+          <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
+            {imageList.map((_, index) => (
+              <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)" }} />
+            ))}
+          </div>
+          <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
+            {currentImageIndex + 1}/{imageList.length}
+          </div>
+        </>
       )}
     </div>
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
-      <div className="flex items-center gap-1 mb-1">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-      </div>
+      <LocationWorldCard
+        location={post.location}
+        region={post.region}
+        textStyle={{ color: "#8B7355" }}
+        iconColor="#8B7355"
+        iconSize={13}
+        buttonClassName="mb-1"
+      />
       <h3 className="text-xl font-bold mb-4" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
       {tags.length > 0 && (
@@ -1342,40 +1424,12 @@ function PostModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
-        {/* Left Panel: Image Gallery or Content */}
-        <div className="w-full md:w-1/2 h-64 md:h-auto flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
-          {/* ... existing gallery logic ... */}
-          {imageList.length > 0 ? (
-            <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
-              {imageList.map((img) => {
-                const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
-                return (
-                  <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
-                    <div className="absolute inset-0" style={{ backgroundImage: `url("${imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
-                    <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-                    <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="w-full h-full flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
-              <div className="flex items-center gap-1 mb-1">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-              </div>
-              <h3 className="text-xl font-bold mb-4" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-              <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-            </div>
-          )}
-        </div>
+        {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
         <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-            <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-            </div>
+            <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
             <div className="ml-3 flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <button
@@ -1404,10 +1458,14 @@ function PostModal({
           </div>
 
           <div className="px-5 py-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-            <div className="flex items-center gap-1 mb-1">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-              <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-            </div>
+            <LocationWorldCard
+              location={post.location}
+              region={post.region}
+              textStyle={{ color: "#8B7355" }}
+              iconColor="#8B7355"
+              iconSize={13}
+              buttonClassName="mb-1"
+            />
             <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
             {isContentLong && !contentExpanded ? (
               <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
@@ -1601,9 +1659,7 @@ function PostCard({
       onClick={onCommentClick}
     >
       <div className="flex items-center px-5 pt-4 pb-2">
-        <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-        </div>
+        <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <button
@@ -1644,9 +1700,14 @@ function PostCard({
       </div>
 
 
-      <div className="flex items-center gap-1 px-5 pb-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+      <div className="px-5 pb-2">
+        <LocationWorldCard
+          location={post.location}
+          region={post.region}
+          textStyle={{ color: "#8B7355" }}
+          iconColor="#8B7355"
+          iconSize={14}
+        />
       </div>
 
       <PostDetailBadge post={post} />
@@ -1958,9 +2019,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
         <div className="w-full md:w-1/2 flex flex-col bg-[#FFF8E2] rounded-r-2xl overflow-hidden shadow-[-4px_0_15px_rgba(0,0,0,0.05)]">
           {/* Header row */}
           <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-            <div className="w-9 h-9 rounded-full bg-[#432817] flex items-center justify-center flex-shrink-0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-            </div>
+            <UserAvatar profilePicture={post.user_profile_picture} size={36} iconSize={18} />
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm" style={{ color: "#432817" }}>{post.user_display_name || post.user_username}</span>
@@ -2090,11 +2149,7 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
                   {stripHtml(post.title)}
                 </span>
                 <div className="flex items-center gap-1 mb-1">
-                  <div className="w-4 h-4 rounded-full bg-[#432817] flex items-center justify-center flex-shrink-0">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
-                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                    </svg>
-                  </div>
+                  <UserAvatar profilePicture={post.user_profile_picture} size={16} iconSize={10} />
                   <span
                     className="text-[8px] font-medium truncate"
                     style={{
@@ -2237,11 +2292,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
 
                   {/* User row */}
                   <div className="flex flex-row items-center gap-1.5 mt-0.5 text-[#7a5a3a]">
-                    <div className="w-4 h-4 rounded-full bg-[#432817] flex items-center justify-center flex-shrink-0">
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="white">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      </svg>
-                    </div>
+                    <UserAvatar profilePicture={post.user_profile_picture} size={16} iconSize={8} />
                     <span className="font-bold text-[10px] truncate" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>{userName}</span>
                   </div>
                 </div>
@@ -2370,10 +2421,9 @@ export default function MonumentsInDangerPage() {
 
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
-      const results = (data.results || data.data || data).map((p: any) => ({
-        ...p,
-        id: String(p.id)
-      }));
+      const results = (data.results || data.data || data).map((p: any) =>
+        normalizeApiPost(p)
+      );
       setPosts(results);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -2406,10 +2456,9 @@ export default function MonumentsInDangerPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          const results = (data.results || data.data || data).map((p: any) => ({
-            ...p,
-            id: String(p.id)
-          }));
+          const results = (data.results || data.data || data).map((p: any) =>
+            normalizeApiPost(p)
+          );
           setCriticalPosts(results);
         }
       } catch (err) {

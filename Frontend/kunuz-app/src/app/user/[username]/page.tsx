@@ -7,6 +7,7 @@ import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-r
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
+import LocationWorldCard from "@/components/LocationWorldCard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -72,6 +73,7 @@ type ApiPost = {
   user_id?: string;
   user_display_name?: string;
   user_username?: string;
+  user_profile_picture?: string;
   title: string;
   content: string;
   post_type: string;
@@ -117,6 +119,7 @@ type ApiCommentRaw = {
   id: string;
   user_id: string;
   user_username: string;
+  user_profile_picture?: string;
   content?: string;
   text?: string;
   created_at: string;
@@ -130,6 +133,7 @@ type CommentNode = {
   id: string;
   user_id: string;
   user_username: string;
+  user_profile_picture: string;
   content: string;
   created_at: string;
   parent: string | null;
@@ -231,6 +235,7 @@ function normalizeComment(raw: ApiCommentRaw): CommentNode {
     id: String(raw.id),
     user_id: String(raw.user_id ?? ""),
     user_username: String(raw.user_username ?? ""),
+    user_profile_picture: String(raw.user_profile_picture ?? ""),
     content: String(raw.content ?? raw.text ?? ""),
     created_at: String(raw.created_at ?? ""),
     parent: normalizeParent(raw.parent, raw.parent_id),
@@ -239,12 +244,56 @@ function normalizeComment(raw: ApiCommentRaw): CommentNode {
   };
 }
 
+function resolveProfilePictureUrl(profilePicture?: string): string {
+  const value = String(profilePicture ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `${API_URL}${value}`;
+  return value;
+}
+
+function UserAvatar({
+  profilePicture,
+  size,
+  iconSize,
+}: {
+  profilePicture?: string;
+  size: number;
+  iconSize: number;
+}) {
+  const imageUrl = resolveProfilePictureUrl(profilePicture);
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt="Profile picture"
+        className="rounded-full object-cover flex-shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="rounded-full flex-shrink-0 flex items-center justify-center"
+      style={{ width: size, height: size, backgroundColor: "#E0D5C5" }}
+    >
+      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#8B7355" stroke="none">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    </div>
+  );
+}
+
 function mapPost(post: any): ApiPost {
   return {
     id: String(post.id),
     user_id: post.user_id ?? "",
     user_display_name: post.user_display_name ?? "",
     user_username: post.user_username ?? "",
+    user_profile_picture: post.user_profile_picture ?? "",
     title: post.title ?? "",
     content: post.content ?? "",
     post_type: post.post_type ?? "",
@@ -584,9 +633,7 @@ function CommentItem({
 
   return (
     <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)", borderLeft: isReply ? "2px solid #E0D5C5" : "none" }}>
-      <div className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-      </div>
+      <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <button className="text-sm font-bold hover:underline transition-all cursor-pointer" style={{ color: "#432817", background: "none", border: "none", padding: 0 }} onClick={() => router.push(`/user/${comment.user_username}`)}>
@@ -1019,10 +1066,14 @@ function PostModal({
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
       <div className="mb-1">
-        <div className="flex items-center gap-1 mb-1">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-          <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-        </div>
+      <LocationWorldCard
+        location={post.location}
+        region={post.region}
+        textStyle={{ color: "#8B7355" }}
+        iconColor="#8B7355"
+        iconSize={13}
+        buttonClassName="mb-1"
+      />
         <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </div>
       <PostDetailBadge post={post} />
@@ -1044,9 +1095,7 @@ function PostModal({
           {LeftPanel}
           <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
             <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-              <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-              </div>
+              <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
               <div className="ml-3 flex-1">
                 <div className="flex items-center gap-2">
                   <button className="font-bold text-base hover:underline text-left" style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }} onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}>
@@ -1078,10 +1127,14 @@ function PostModal({
             </div>
             {imageList.length > 0 && (
               <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-                <div className="flex items-center gap-1 mb-1">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                  <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-                </div>
+                <LocationWorldCard
+                  location={post.location}
+                  region={post.region}
+                  textStyle={{ color: "#8B7355" }}
+                  iconColor="#8B7355"
+                  iconSize={13}
+                  buttonClassName="mb-1"
+                />
                 <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
                 {isContentLong && !contentExpanded ? (
                   <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
