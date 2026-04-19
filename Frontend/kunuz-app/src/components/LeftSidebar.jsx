@@ -11,7 +11,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:800
  * Pass `activePage` to highlight the active icon:
  *   "home" | "communities" | "monuments" | "add-post" | "notifications" | "profile"
  *
- * For add-post: background #F7F5EF (matches page), icons/logo brown (#432817)
+ * For add-post&edit_profile: background #F7F5EF (matches page), icons/logo brown (#432817)
  * For all other uses: keep the original home/profile cream style.
  */
 export default function LeftSidebar({
@@ -68,7 +68,7 @@ export default function LeftSidebar({
   }, [username]);
 
   // Colours based on variant — add-post uses page-matching bg
-  const isSpecialBg = activePage === "add-post" || variant === "add-post";
+  const isSpecialBg = activePage === "add-post" || variant === "add-post"|| activePage === "edit-profile" || variant === "edit-profile" ||activePage === "create-group" || variant === "create-group"||activePage === "edit-group" || variant === "edit-group";
   const sidebarBg = isSpecialBg ? "#F7F5EF" : "#FFF8E2";
   const iconDefault = "#432817";
   const iconHover = isSpecialBg ? "#ede9df" : "#F0E8CC";
