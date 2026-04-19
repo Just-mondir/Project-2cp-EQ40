@@ -19,7 +19,10 @@ export default function Footer() {
     pathname.startsWith("/user") ||
     pathname.startsWith("/add-post") ||
     pathname.startsWith("/add-event") ||
-    pathname.startsWith("/edit-post")
+    pathname.startsWith("/edit-post") ||
+    pathname.startsWith("/edit-profile") ||
+    pathname.startsWith("/create-group") ||
+    pathname.startsWith("/edit-group") 
   ) {
     return null;
   }

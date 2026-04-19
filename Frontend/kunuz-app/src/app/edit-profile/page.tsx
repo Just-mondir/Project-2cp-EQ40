@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import LeftSidebar from "@/components/LeftSidebar";
 import BackButton from "@/components/BackButton";
-//import ProfileForm from "@/components/ProfileForm";
+import ProfileForm from "@/components/ProfileForm";
 
 export default function EditProfilePage() {
   const router = useRouter();
