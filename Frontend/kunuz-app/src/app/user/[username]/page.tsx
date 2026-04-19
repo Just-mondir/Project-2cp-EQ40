@@ -635,7 +635,7 @@ function CommentItem({
   };
 
   return (
-    <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)", borderLeft: isReply ? "2px solid #E0D5C5" : "none" }}>
+    <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)", border: isReply ? "2px solid #E0D5C5" : "none" }}>
       <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
