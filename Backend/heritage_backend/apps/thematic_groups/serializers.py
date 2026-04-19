@@ -45,7 +45,6 @@ class ThematicGroupSerializer(serializers.Serializer):
     historical_period = serializers.CharField(allow_blank=True)
     region = serializers.CharField(allow_blank=True)
     rules = serializers.SerializerMethodField()
-    visibility = serializers.SerializerMethodField()
     def get_id(self, obj) -> str:
         return str(obj.id)
 
@@ -74,9 +73,6 @@ class ThematicGroupSerializer(serializers.Serializer):
             return "\n".join(rule for rule in rules if rule).strip()
         return rules or ""
 
-    def get_visibility(self, obj) -> str:
-        return "public"
-
 class ThematicGroupWriteSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=160)
     category = serializers.ChoiceField(choices=ThematicGroup.CATEGORY_CHOICES)
@@ -90,7 +86,6 @@ class ThematicGroupWriteSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         request = self.context["request"]
-        validated_data["visibility"] = "public"
         group = ThematicGroup(
             admin_id=str(request.user.id),
             **validated_data,
@@ -100,7 +95,6 @@ class ThematicGroupWriteSerializer(serializers.Serializer):
         return group
 
     def update(self, instance, validated_data):
-        validated_data["visibility"] = "public"
         for key, value in validated_data.items():
             setattr(instance, key, value)
         instance.save()
@@ -157,7 +151,6 @@ class GroupAboutSerializer(serializers.Serializer):
     profile_picture   = serializers.CharField(allow_blank=True)
     banner_image      = serializers.CharField(allow_blank=True)
     rules             = serializers.SerializerMethodField()
-    visibility        = serializers.SerializerMethodField()
     member_count      = serializers.SerializerMethodField()
     post_count        = serializers.SerializerMethodField()
     managed_by        = serializers.SerializerMethodField()
@@ -178,9 +171,6 @@ class GroupAboutSerializer(serializers.Serializer):
         if isinstance(rules, list):
             return "\n".join(rule for rule in rules if rule).strip()
         return rules or ""
-
-    def get_visibility(self, obj) -> str:
-        return "public"
 
     def get_managed_by(self, obj) -> dict | None:
         try:
