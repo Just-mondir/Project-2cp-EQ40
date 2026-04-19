@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
+import { Eye, EyeOff } from "lucide-react";
 
 import {
   clearPendingAuthContext,
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,23 +153,34 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="password"
-                    className="text-base lg:text-[18px] font-normal"
-                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                  >
-                    Password
-                  </label>
+  <label
+    htmlFor="password"
+    className="text-base lg:text-[18px] font-normal"
+    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+  >
+    Password
+  </label>
 
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
-                  />
-                </div>
+  <div className="relative">
+    <input
+      id="password"
+      type={showPassword ? "text" : "password"}
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      required
+      className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 pr-11 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword((v) => !v)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center"
+      style={{ background: "none", border: "none", cursor: "pointer", color: "#8B7355" }}
+      tabIndex={-1}
+    >
+      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+  </div>
+</div>
 
                 <div className="flex items-center justify-between">
                   <label

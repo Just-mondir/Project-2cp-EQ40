@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGoogleLogin } from "@react-oauth/google";
+import { Eye, EyeOff } from "lucide-react";
 
 import { registerUser, savePendingAuthContext, saveAuthTokens, clearPendingAuthContext } from "@/lib/authApi";
 
@@ -16,6 +17,10 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // ── Eye toggle state — one per password field ──
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +78,6 @@ export default function SignUpPage() {
         saveAuthTokens(data.data);
         clearPendingAuthContext();
 
-        // Always go to set-profile after Google sign-up so user fills in their info
         router.push("/set-profile");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Google sign-up failed.";
@@ -89,11 +93,11 @@ export default function SignUpPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center py-10 px-6"
+      className="min-h-screen flex items-center justify-center py-8 px-6"
       style={{ backgroundColor: "rgba(255, 248, 226, 0.85)" }}
     >
       <div className="w-full max-w-[1050px] bg-white rounded-[30px] overflow-hidden shadow-sm">
-        <div className="flex flex-col md:flex-row min-h-[520px]">
+        <div className="flex flex-col md:flex-row min-h-[460px]">
           <div className="relative w-full md:w-[44%] min-h-[280px] md:min-h-full flex-shrink-0">
             <div className="absolute inset-4 md:inset-6 lg:inset-7 rounded-[32px] overflow-hidden">
               <Image
@@ -107,14 +111,13 @@ export default function SignUpPage() {
 
           <div className="flex-1 flex items-center justify-center px-6 py-10 md:px-10 lg:px-16">
             <div className="w-full max-w-[455px]">
-              <div className="text-center mb-8 lg:mb-10">
+              <div className="text-center mb-4 lg:mb-6">
                 <h1
                   className="font-black text-4xl lg:text-[53px] leading-tight mb-4 lg:mb-6"
                   style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                 >
                   Sign Up
                 </h1>
-
                 <p
                   className="text-base lg:text-[20px] leading-snug"
                   style={{ color: "#79747E", fontFamily: "var(--font-lato)" }}
@@ -123,7 +126,9 @@ export default function SignUpPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+
+                {/* Email */}
                 <div className="flex flex-col gap-2">
                   <label
                     htmlFor="email"
@@ -132,7 +137,6 @@ export default function SignUpPage() {
                   >
                     Email
                   </label>
-
                   <input
                     id="email"
                     type="email"
@@ -143,6 +147,7 @@ export default function SignUpPage() {
                   />
                 </div>
 
+                {/* Password */}
                 <div className="flex flex-col gap-2">
                   <label
                     htmlFor="password"
@@ -151,17 +156,28 @@ export default function SignUpPage() {
                   >
                     Password
                   </label>
-
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 pr-11 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#8B7355" }}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
+                {/* Confirm Password */}
                 <div className="flex flex-col gap-2">
                   <label
                     htmlFor="confirmPassword"
@@ -170,15 +186,25 @@ export default function SignUpPage() {
                   >
                     Confirm Password
                   </label>
-
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
-                  />
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 pr-11 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#8B7355" }}
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 {error ? (
@@ -245,6 +271,7 @@ export default function SignUpPage() {
                     )}
                   </button>
                 </div>
+
               </form>
             </div>
           </div>
@@ -253,3 +280,4 @@ export default function SignUpPage() {
     </div>
   );
 }
+

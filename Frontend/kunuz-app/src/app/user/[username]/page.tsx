@@ -7,7 +7,10 @@ import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-r
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
+
 import LocationWorldCard from "@/components/LocationWorldCard";
+
+import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -1238,6 +1241,9 @@ function ProfileHeader({
   const [showMenu, setShowMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [showDashboardModal, setShowDashboardModal] = useState(false);
+  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const menuRef = useRef<any>(null);
 
   useEffect(() => {
@@ -1248,7 +1254,7 @@ function ProfileHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const menuItems = ["Change mail", "Change password", "Delete account", "Logout"];
+  const menuItems = ["Dashboard"];
 
   const handleLogout = async () => {
     await logoutClient();
@@ -1265,7 +1271,7 @@ function ProfileHeader({
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
             {menuItems.map((item, i) => (
-              <button key={i} className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Logout") setShowLogoutModal(true); if (item === "Delete account") setShowDeleteAccountModal(true); }}>
+              <button key={i} className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); }}>
                 {item}
               </button>
             ))}
@@ -1273,6 +1279,19 @@ function ProfileHeader({
         )}
       </div>
 
+      {/* ── Popups ── */}
+      {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}
+      {showChangePasswordModal && <ChangePasswordPopup onClose={() => setShowChangePasswordModal(false)} />}
+      {showDashboardModal && (
+        <DashboardPopup
+          onClose={() => setShowDashboardModal(false)}
+          isModerator={false}
+          onChangeEmail={() => setShowChangeEmailModal(true)}
+          onChangePassword={() => setShowChangePasswordModal(true)}
+          onDeleteAccount={() => setShowDeleteAccountModal(true)}
+          onLogout={() => setShowLogoutModal(true)}
+        />
+      )}
       <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, your token will be cleared and you will be redirected to the landing page." primaryAction={{ label: "Log out", onClick: handleLogout }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
       <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
 
