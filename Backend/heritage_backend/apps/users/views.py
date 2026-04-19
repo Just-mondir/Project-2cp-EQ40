@@ -9,9 +9,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework_simplejwt.views import TokenRefreshView
-import os
-from django.conf import settings
-import uuid
 
 from apps.core.responses import (
     RESPONSE_CONFLICT_MESSAGE,
@@ -19,6 +16,7 @@ from apps.core.responses import (
     api_error,
     api_success,
 )
+from apps.posts.utils import upload_to_cloudinary
 from .models import User
 from .permissions import IsSelf
 from .serializers import (
@@ -179,19 +177,9 @@ class ProfilePictureUploadView(APIView):
         image_file = request.FILES.get("profile_picture")
         if not image_file:
             return api_error(message="No image provided.", status_code=400)
-        ext = os.path.splitext(image_file.name)[1]
-        safe_name = f"profile_{request.user.id}_{uuid.uuid4().hex[:8]}{ext}"
-        file_path = os.path.join(settings.MEDIA_ROOT, "profile_pictures", safe_name)
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, "wb+") as f:
-            for chunk in image_file.chunks():
-                f.write(chunk)
-        image_url = f"{settings.MEDIA_URL}profile_pictures/{safe_name}"
+
+        image_url = upload_to_cloudinary(image_file, folder="profile_pictures")
         user = User.objects.get(id=request.user.id)
-        if user.profile_picture and user.profile_picture.startswith(settings.MEDIA_URL):
-            old_path = os.path.join(settings.MEDIA_ROOT, user.profile_picture.lstrip(settings.MEDIA_URL))
-            if os.path.exists(old_path):
-                os.remove(old_path)
         user.profile_picture = image_url
         user.save()
         request.user.profile_picture = image_url

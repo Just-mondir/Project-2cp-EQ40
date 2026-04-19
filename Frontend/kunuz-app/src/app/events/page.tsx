@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
+import LocationWorldCard from "@/components/LocationWorldCard";
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -110,6 +111,7 @@ type ApiPost = {
   id: string;
   user_display_name?: string;
   user_username?: string;
+  user_profile_picture?: string;
   username?: string;
   date?: string;
   title: string;
@@ -158,6 +160,7 @@ type ApiCommentRaw = {
   id: string;
   user_id: string;
   user_username: string;
+  user_profile_picture?: string;
   content?: string;
   text?: string;
   created_at: string;
@@ -171,6 +174,7 @@ type CommentNode = {
   id: string;
   user_id: string;
   user_username: string;
+  user_profile_picture: string;
   content: string;
   created_at: string;
   parent: string | null;
@@ -195,12 +199,56 @@ function normalizeComment(raw: ApiCommentRaw): CommentNode {
     id: String(raw.id),
     user_id: String(raw.user_id ?? ""),
     user_username: String(raw.user_username ?? ""),
+    user_profile_picture: String(raw.user_profile_picture ?? ""),
     content: String(raw.content ?? raw.text ?? ""),
     created_at: String(raw.created_at ?? ""),
     parent: normalizeParent(raw.parent, raw.parent_id),
     gems_count: Number(raw.gems_count ?? 0),
     is_gemmed: Boolean(raw.is_gemmed ?? false),
   };
+}
+
+function resolveProfilePictureUrl(profilePicture?: string): string {
+  const value = String(profilePicture ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `${API_URL}${value}`;
+  return value;
+}
+
+function UserAvatar({
+  profilePicture,
+  size,
+  iconSize,
+}: {
+  profilePicture?: string;
+  size: number;
+  iconSize: number;
+}) {
+  const imageUrl = resolveProfilePictureUrl(profilePicture);
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt="Profile picture"
+        className="rounded-full object-cover flex-shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="rounded-full flex-shrink-0 flex items-center justify-center"
+      style={{ width: size, height: size, backgroundColor: "#E0D5C5" }}
+    >
+      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#8B7355" stroke="none">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    </div>
+  );
 }
 
 function formatDate(dateStr: string): string {
@@ -538,15 +586,7 @@ function CommentItem({
         borderLeft: isReply ? "2px solid #E0D5C5" : "none",
       }}
     >
-      <div
-        className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ backgroundColor: "#E0D5C5" }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="#8B7355" stroke="none">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-      </div>
+      <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
@@ -1548,10 +1588,14 @@ function PostModal({
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
       <div className="mb-1">
-        <div className="flex items-center gap-1 mb-1">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-          <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-        </div>
+        <LocationWorldCard
+          location={post.location}
+          region={post.region}
+          textStyle={{ color: "#8B7355" }}
+          iconColor="#8B7355"
+          iconSize={13}
+          buttonClassName="mb-1"
+        />
         <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </div>
 
@@ -1600,39 +1644,12 @@ function PostModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
-        {/* Left Panel: Image Gallery or Content */}
-        <div className="w-full md:w-1/2 h-64 md:h-auto flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
-          {imageList.length > 0 ? (
-            <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
-              {imageList.map((img) => {
-                const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
-                return (
-                  <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
-                    <div className="absolute inset-0" style={{ backgroundImage: `url("${imageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
-                    <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-                    <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="w-full h-full flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
-              <div className="flex items-center gap-1 mb-1">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-              </div>
-              <h3 className="text-xl font-bold mb-4" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-              <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-            </div>
-          )}
-        </div>
+        {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
         <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-            <div className="w-[38px] h-[38px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-            </div>
+            <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
                 <button
@@ -1662,10 +1679,14 @@ function PostModal({
 
           {imageList.length > 0 && (
             <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-              <div className="flex items-center gap-1 mb-1">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
-              </div>
+              <LocationWorldCard
+                location={post.location}
+                region={post.region}
+                textStyle={{ color: "#8B7355" }}
+                iconColor="#8B7355"
+                iconSize={13}
+                buttonClassName="mb-1"
+              />
               <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
               {isContentLong && !contentExpanded ? (
@@ -1914,9 +1935,7 @@ function PostCard({
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
     >
       <div className="flex items-center px-5 pt-4 pb-2">
-        <div className="w-[42px] h-[42px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-        </div>
+        <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <button
@@ -1941,9 +1960,14 @@ function PostCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 px-5 pb-2">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-        <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+      <div className="px-5 pb-2">
+        <LocationWorldCard
+          location={post.location}
+          region={post.region}
+          textStyle={{ color: "#8B7355" }}
+          iconColor="#8B7355"
+          iconSize={14}
+        />
       </div>
 
       <PostDetailBadge post={post} />
@@ -2133,6 +2157,7 @@ export default function HomePageRoute() {
         id: String(post.id),
         user_display_name: post.user_display_name ?? "",
         user_username: post.user_username ?? "",
+        user_profile_picture: post.user_profile_picture ?? "",
         title: post.title ?? "",
         content: post.content ?? "",
         post_type: post.post_type ?? "",

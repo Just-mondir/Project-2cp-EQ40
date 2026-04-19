@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.test import SimpleTestCase
 
 from apps.posts.serializers import PostDetailSerializer, PostListSerializer
+from apps.users.models import User
 
 
 class PostSerializerAccessTests(SimpleTestCase):
@@ -59,3 +60,20 @@ class PostSerializerAccessTests(SimpleTestCase):
             context={"request": self.request},
         )
         self.assertTrue(serializer.is_valid(), serializer.errors)
+
+    @patch("apps.posts.serializers._get_user_by_id")
+    def test_post_serializer_includes_user_profile_picture(self, mock_get_user):
+        mock_get_user.return_value = User(
+            id="user-1",
+            email="user@example.com",
+            username="amina",
+            display_name="Amina",
+            profile_picture="/media/profile_pictures/amina.jpg",
+        )
+
+        serializer = PostListSerializer(self.post, context={"request": self.request})
+
+        self.assertEqual(
+            serializer.get_user_profile_picture(self.post),
+            "/media/profile_pictures/amina.jpg",
+        )

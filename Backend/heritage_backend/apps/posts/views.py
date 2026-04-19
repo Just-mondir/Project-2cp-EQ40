@@ -821,6 +821,7 @@ class MonumentsInDangerView(APIView):
                     "user_id": str(post.author_id) if post.author_id else "",
                     "user_username": user_obj.username if user_obj else "unknown",
                     "user_display_name": user_obj.display_name if user_obj else "Unknown User",
+                    "user_profile_picture": user_obj.profile_picture if user_obj else "",
                     "title": post.title,
                     "content": post.content,
                     "post_type": post.post_type,
