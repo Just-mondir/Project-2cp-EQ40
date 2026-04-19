@@ -1,22 +1,76 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import LeftSidebar from "@/components/LeftSidebar";
 import BackButton from "@/components/BackButton";
 import ProfileForm from "@/components/ProfileForm";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+// ← ADDED: get auth token from localStorage
+function getAuthToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+}
+
 export default function EditProfilePage() {
   const router = useRouter();
 
-  // ← CHANGED: using object instead of separate state
   const [profileData, setProfileData] = useState({
     profileImage: null as string | null,
   });
 
+  // ← ADDED: state for initial values fetched from backend
+  const [initialValues, setInitialValues] = useState({
+    firstName: "",
+    lastName: "",
+    biography: "",
+    expertise: "",
+    speciality: "",
+  });
+
+  // ← ADDED: loading state while fetching profile
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ← CHANGED: updates the object
+  // ← ADDED: fetch current profile data on mount to prefill the form
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/users/me/`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const data = json.data ?? json;
+          setInitialValues({
+            firstName: data.first_name ?? data.display_name?.split(" ")[0] ?? "",
+            lastName: data.last_name ?? data.display_name?.split(" ")[1] ?? "",
+            biography: data.bio ?? "",
+            expertise: data.expertise ?? "",
+            speciality: data.speciality ?? "",
+          });
+          // ← ADDED: prefill existing profile picture
+          if (data.profile_picture) {
+            setProfileData(prev => ({
+              ...prev,
+              profileImage: data.profile_picture.startsWith("/media/")
+                ? `${API_URL}${data.profile_picture}`
+                : data.profile_picture,
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -26,6 +80,56 @@ export default function EditProfilePage() {
         profileImage: reader.result as string,
       }));
       reader.readAsDataURL(file);
+
+      // ← ADDED: upload profile picture to backend immediately after selection
+      const uploadImage = async () => {
+        try {
+          const formData = new FormData();
+          formData.append("profile_picture", file);
+          await fetch(`${API_URL}/api/users/me/profile-picture/`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${getAuthToken()}` },
+            body: formData,
+          });
+        } catch (err) {
+          console.error("Error uploading profile picture:", err);
+        }
+      };
+      uploadImage();
+    }
+  };
+
+  // ← ADDED: save profile data to backend via PATCH /api/users/me/
+  const handleDone = async (formValues: {
+    firstName: string;
+    lastName: string;
+    biography: string;
+    expertise: string;
+    speciality: string;
+  }) => {
+    try {
+      const res = await fetch(`${API_URL}/api/users/me/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          first_name: formValues.firstName,
+          last_name: formValues.lastName,
+          bio: formValues.biography,
+          expertise: formValues.expertise,
+          speciality: formValues.speciality,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        console.error("Error updating profile:", err);
+        return;
+      }
+      router.back();
+    } catch (err) {
+      console.error("Error updating profile:", err);
     }
   };
 
@@ -80,7 +184,6 @@ export default function EditProfilePage() {
                   backgroundColor: "#FFFFFF",
                 }}
               >
-                {/* ← CHANGED: using profileData.profileImage */}
                 {profileData.profileImage ? (
                   <img
                     src={profileData.profileImage}
@@ -140,10 +243,14 @@ export default function EditProfilePage() {
               border: "1px solid rgba(0, 0, 0, 0.1)",
             }}
           >
-            <ProfileForm
-              onCancel={() => router.back()}
-              onDone={() => router.back()}
-            />
+            {/* ← ADDED: pass initialValues and handleDone to ProfileForm */}
+            {!loadingProfile && (
+              <ProfileForm
+                onCancel={() => router.back()}
+                onDone={handleDone}
+                initialValues={initialValues}
+              />
+            )}
           </div>
 
         </div>

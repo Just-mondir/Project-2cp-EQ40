@@ -109,7 +109,7 @@ const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour
 
 export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
   onCancel: () => void;
-  onDone: () => void;
+  onDone: (values: { firstName: string; lastName: string; biography: string; expertise: string; speciality: string; }) => void;
   initialValues?: {
     firstName?: string;
     lastName?: string;
@@ -310,7 +310,7 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
 
         <button
           type="button"
-          onClick={onDone}
+          onClick={() => onDone({ firstName: formData.firstName, lastName: formData.lastName, biography: formData.biography, expertise: formData.expertise, speciality: formData.speciality })}
           style={{
             padding: "9px 24px",
             borderRadius: "8px",
