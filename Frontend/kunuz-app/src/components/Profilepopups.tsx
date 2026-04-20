@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, Lock, Eye, EyeOff, LayoutDashboard } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ function PopupCard({ children, onClick }: { children: React.ReactNode; onClick: 
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="profile-popup-card"
         style={{
           backgroundColor: "#FFF8E2",
           borderRadius: "20px",
@@ -64,6 +65,7 @@ function PopupCard({ children, onClick }: { children: React.ReactNode; onClick: 
 function IconBadge({ children }: { children: React.ReactNode }) {
   return (
     <div
+      className="profile-popup-icon-badge"
       style={{
         width: "64px", height: "64px", borderRadius: "50%",
         border: "1.5px solid #432817",
@@ -90,6 +92,7 @@ function Field({ placeholder, value, onChange, type = "text" }: {
   return (
     <div style={{ width: "100%", position: "relative", marginBottom: "10px" }}>
       <input
+        className="profile-popup-field"
         type={isPassword && !show ? "password" : "text"}
         placeholder={placeholder}
         value={value}
@@ -110,6 +113,7 @@ function Field({ placeholder, value, onChange, type = "text" }: {
         <button
           type="button"
           onClick={() => setShow((v) => !v)}
+          className="profile-popup-eye-toggle"
           style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#8B7355", display: "flex", alignItems: "center" }}
         >
           {show ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -125,6 +129,7 @@ function PrimaryBtn({ label, onClick, disabled = false }: { label: string; onCli
     <button
       onClick={onClick}
       disabled={disabled}
+      className="profile-popup-primary-btn"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -146,6 +151,7 @@ function CancelBtn({ label = "Cancel", onClick }: { label?: string; onClick: () 
   return (
     <button
       onClick={onClick}
+      className="profile-popup-cancel-btn"
       style={{ background: "none", border: "none", cursor: "pointer", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 600, fontSize: "15px", marginTop: "12px", opacity: 0.75 }}
     >
       {label}
@@ -154,11 +160,11 @@ function CancelBtn({ label = "Cancel", onClick }: { label?: string; onClick: () 
 }
 
 function PopupTitle({ text }: { text: string }) {
-  return <p style={{ margin: "0 0 6px", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>{text}</p>;
+  return <p className="profile-popup-title" style={{ margin: "0 0 6px", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>{text}</p>;
 }
 
 function PopupSubtitle({ text }: { text: string }) {
-  return <p style={{ margin: "0 0 20px", color: "#8B7355", fontFamily: "'Lato', sans-serif", fontWeight: 400, fontSize: "14px", textAlign: "center" }}>{text}</p>;
+  return <p className="profile-popup-subtitle" style={{ margin: "0 0 20px", color: "#8B7355", fontFamily: "'Lato', sans-serif", fontWeight: 400, fontSize: "14px", textAlign: "center" }}>{text}</p>;
 }
 
 function GlobalStyles() {
@@ -172,6 +178,33 @@ function GlobalStyles() {
   );
 }
 
+function useIsDarkHomeTheme() {
+  const [isDarkHomeTheme, setIsDarkHomeTheme] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const root = document.documentElement;
+    const syncTheme = () => {
+      setIsDarkHomeTheme(
+        root.dataset.theme === "dark" && root.dataset.themeScope === "home",
+      );
+    };
+
+    syncTheme();
+
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-theme", "data-theme-scope"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return isDarkHomeTheme;
+}
+
 // ═════════════════════════════════════════════════════════
 //  POPUP 1 — Change Email
 // ═════════════════════════════════════════════════════════
@@ -179,6 +212,8 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<ChangeEmailForm>({ newEmail: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isDarkHomeTheme = useIsDarkHomeTheme();
+  const popupIconColor = isDarkHomeTheme ? "#F6EAD2" : "#432817";
 
   const update = (key: keyof ChangeEmailForm) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -208,7 +243,7 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
     <>
       <Backdrop onClick={onClose} />
       <PopupCard onClick={onClose}>
-        <IconBadge><Mail size={26} color="#432817" strokeWidth={1.5} /></IconBadge>
+        <IconBadge><Mail size={26} color={popupIconColor} strokeWidth={1.5} /></IconBadge>
         <PopupTitle text="Change email" />
         <PopupSubtitle text="Enter your new email address below" />
         <div style={{ width: "100%" }}>
@@ -231,6 +266,8 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<ChangePasswordForm>({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isDarkHomeTheme = useIsDarkHomeTheme();
+  const popupIconColor = isDarkHomeTheme ? "#F6EAD2" : "#432817";
 
   const update = (key: keyof ChangePasswordForm) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -261,7 +298,7 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
     <>
       <Backdrop onClick={onClose} />
       <PopupCard onClick={onClose}>
-        <IconBadge><Lock size={26} color="#432817" strokeWidth={1.5} /></IconBadge>
+        <IconBadge><Lock size={26} color={popupIconColor} strokeWidth={1.5} /></IconBadge>
         <PopupTitle text="Change password" />
         <PopupSubtitle text="Choose a strong new password" />
         <div style={{ width: "100%" }}>
@@ -298,16 +335,21 @@ export function DashboardPopup({
   onLogout: () => void;
   onPlatformStatistics?: () => void;
 }) {
+  const isDarkDashboard = useIsDarkHomeTheme();
+
+  const neutralIconColor = isDarkDashboard ? "#F6EAD2" : "#432817";
+  const dangerIconColor = isDarkDashboard ? "#F6EAD2" : "#C0392B";
+
   const items = [
     {
       label: "Change email",
-      icon: <Mail size={18} color="#432817" strokeWidth={1.5} />,
+      icon: <Mail size={18} color={neutralIconColor} strokeWidth={1.5} />,
       onClick: () => { onClose(); onChangeEmail(); },
       danger: false,
     },
     {
       label: "Change password",
-      icon: <Lock size={18} color="#432817" strokeWidth={1.5} />,
+      icon: <Lock size={18} color={neutralIconColor} strokeWidth={1.5} />,
       onClick: () => { onClose(); onChangePassword(); },
       danger: false,
     },
@@ -315,7 +357,7 @@ export function DashboardPopup({
       ? [{
           label: "Platform statistics",
           icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={neutralIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="20" x2="18" y2="10" />
               <line x1="12" y1="20" x2="12" y2="4" />
               <line x1="6" y1="20" x2="6" y2="14" />
@@ -328,7 +370,7 @@ export function DashboardPopup({
     {
       label: "Delete account",
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dangerIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="3 6 5 6 21 6" />
           <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
           <path d="M10 11v6" /><path d="M14 11v6" />
@@ -341,7 +383,7 @@ export function DashboardPopup({
     {
       label: "Logout",
       icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={neutralIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
           <polyline points="16 17 21 12 16 7" />
           <line x1="21" y1="12" x2="9" y2="12" />
@@ -389,6 +431,7 @@ export function DashboardPopup({
               <button
                 key={i}
                 onClick={item.onClick}
+                className="profile-dashboard-action"
                 style={{
                   display: "flex", alignItems: "center", gap: "14px",
                   width: "100%", padding: "13px 14px",
@@ -399,8 +442,6 @@ export function DashboardPopup({
                   fontSize: "15px",
                   color: item.danger ? "#C0392B" : "#432817",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F0EAD8"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
               >
                 {item.icon}
                 {item.label}
