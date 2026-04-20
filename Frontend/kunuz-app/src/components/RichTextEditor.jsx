@@ -24,20 +24,25 @@ import { useState, useRef, useEffect } from "react";
 
 const ESPRESSO = "#432817";
 
-const ToolbarButton = ({ onClick, isActive, children, title, disabled = false }) => (
-    <button
-        type="button"
-        onClick={onClick}
-        disabled={disabled}
-        title={title}
-        className={`p-1.5 rounded-md transition-all h-[32px] w-[32px] flex items-center justify-center
+const ToolbarButton = ({ onClick, isActive, children, title, disabled = false }) => {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            title={title}
+            style={{ color: "#FFF8E2", opacity: disabled ? 0.3 : 1 }}
+            className={`p-1.5 rounded-md transition-all h-[32px] w-[32px] flex items-center justify-center
       ${disabled ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
-      ${isActive ? "bg-[#432817]/10 text-[#432817]" : "hover:bg-[#E0D5C5]/40 text-[#8B7355]"}
+      ${isActive ? "bg-[#FFF8E2]/10 text-[#FFF8E2]" : "hover:bg-[#FFF8E2]/10 text-[#FFF8E2]"}
     `}
-    >
-        {children}
-    </button>
-);
+        >
+            <span style={{ color: "#FFF8E2", display: "inline-flex", opacity: 1 }}>
+                {children}
+            </span>
+        </button>
+    );
+};
 
 const Divider = () => <div className="w-[1px] h-[24px] bg-[#E0D5C5]/60 mx-1" />;
 
@@ -55,7 +60,7 @@ export function TitleEditor({ value, onChange, placeholder = "Entrez le titre de
         },
         editorProps: {
             attributes: {
-                class: "prose prose-sm max-w-none focus:outline-none text-[#432817] px-3 py-2.5 text-[14px]",
+                class: "prose prose-sm max-w-none focus:outline-none rich-text-editor__content px-3 py-2.5 text-[14px]",
                 style: "font-family: var(--font-lato), sans-serif; min-height: 40px; max-height: 80px; overflow-y: auto;",
             },
         },
@@ -70,9 +75,9 @@ export function TitleEditor({ value, onChange, placeholder = "Entrez le titre de
     if (!editor) return null;
 
     return (
-        <div className="w-full border border-[#E0D5C5] rounded-[10.75px] overflow-hidden bg-white shadow-sm flex flex-col">
+        <div className="rich-text-editor__surface w-full border border-[#E0D5C5] rounded-[10.75px] overflow-hidden bg-white shadow-sm flex flex-col">
             {/* Mini toolbar */}
-            <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[#E0D5C5]/60 bg-[#FDFDFD]">
+            <div className="rich-text-editor__toolbar flex items-center gap-0.5 px-2 py-1.5 border-b border-[#E0D5C5]/60 bg-[#FDFDFD]">
                 <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} title="Bold"><Bold size={13} /></ToolbarButton>
                 <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} title="Italic"><Italic size={13} /></ToolbarButton>
                 <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} title="Underline"><UnderlineIcon size={13} /></ToolbarButton>
@@ -106,7 +111,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
         },
         editorProps: {
             attributes: {
-                class: "prose prose-sm max-w-none focus:outline-none text-[#432817] p-4 text-[14px]",
+                class: "prose prose-sm max-w-none focus:outline-none rich-text-editor__content p-4 text-[14px]",
                 style: `font-family: var(--font-lato), sans-serif; min-height: ${minHeight};`,
             },
         },
@@ -137,15 +142,15 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
                 : "Paragraphe";
 
     return (
-        <div className="w-full border border-[#E0D5C5] rounded-[10.75px] overflow-hidden bg-white shadow-sm flex flex-col">
+        <div className="rich-text-editor__surface w-full border border-[#E0D5C5] rounded-[10.75px] overflow-hidden bg-white shadow-sm flex flex-col">
             {/* ── TOOLBAR ── */}
-            <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-[#E0D5C5]/60 bg-[#FDFDFD]">
+            <div className="rich-text-editor__toolbar flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-[#E0D5C5]/60 bg-[#FDFDFD]">
                 {/* Paragraph Dropdown */}
                 <div className="relative" ref={headingMenuRef}>
                     <button
                         type="button"
                         onClick={() => setShowHeadingMenu(!showHeadingMenu)}
-                        className="flex items-center gap-2 px-3 h-[32px] rounded-md hover:bg-[#E0D5C5]/40 transition-colors text-[13px] text-[#432817] font-medium"
+                        className="rich-text-editor__select flex items-center gap-2 px-3 h-[32px] rounded-md hover:bg-[#E0D5C5]/40 transition-colors text-[13px] font-medium"
                     >
                         {currentType}
                         <ChevronDown size={14} className={`transition-transform ${showHeadingMenu ? "rotate-180" : ""}`} />
@@ -161,7 +166,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
                                         else editor.commands.toggleHeading({ level: parseInt(type.split(" ")[1]) });
                                         setShowHeadingMenu(false);
                                     }}
-                                    className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-[#432817]/5 ${currentType === type ? "text-[#8B6914] bg-[#432817]/5" : "text-[#432817]"}`}
+                                    className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-[#432817]/5 ${currentType === type ? "text-[#432817] bg-[#432817]/5" : "text-[#432817]"}`}
                                 >
                                     {type}
                                 </button>
@@ -223,7 +228,8 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
         .ProseMirror p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           float: left;
-          color: #A09080;
+          color: #FFF8E2;
+          opacity: 0.7;
           font-style: italic;
           pointer-events: none;
           height: 0;
@@ -244,9 +250,9 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
         .ProseMirror h2 { font-size: 1.5em; font-weight: bold; }
         .ProseMirror h3 { font-size: 1.25em; font-weight: bold; }
         .ProseMirror blockquote {
-          border-left: 3px solid #E0D5C5;
+          border-left: 3px solid rgba(255, 248, 226, 0.45);
           padding-left: 1em;
-          color: #8B7355;
+          color: #FFF8E2;
           font-style: italic;
         }
         .ProseMirror table {
@@ -255,11 +261,11 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
           width: 100%;
           margin: 0;
           overflow: hidden;
-          border: 1px solid #E0D5C5;
+          border: 1px solid rgba(255, 248, 226, 0.35);
         }
         .ProseMirror td, .ProseMirror th {
           min-width: 1em;
-          border: 1px solid #E0D5C5;
+          border: 1px solid rgba(255, 248, 226, 0.35);
           padding: 3px 5px;
           vertical-align: top;
           box-sizing: border-box;
@@ -268,7 +274,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
         .ProseMirror th {
           font-weight: bold;
           text-align: left;
-          background-color: #F7F5EF;
+          background-color: rgba(255, 248, 226, 0.12);
         }
         .ProseMirror img {
           max-width: 100%;

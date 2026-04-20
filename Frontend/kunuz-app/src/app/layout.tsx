@@ -44,8 +44,12 @@ export default function RootLayout({
                 try {
                   var stored = localStorage.getItem("theme-mode");
                   var theme = stored === "dark" ? "dark" : "light";
+                  var pathname = window.location.pathname;
+                  var publicRoutes = ["/", "/landingpage", "/login", "/sign-up", "/verify-email", "/forgot-password"];
+                  var isHomeTheme = publicRoutes.indexOf(pathname) === -1;
                   document.documentElement.dataset.theme = theme;
-                  document.documentElement.style.colorScheme = theme;
+                  document.documentElement.dataset.themeScope = isHomeTheme ? "home" : "default";
+                  document.documentElement.style.colorScheme = isHomeTheme ? theme : "light";
                 } catch (e) {}
               })();
             `,
