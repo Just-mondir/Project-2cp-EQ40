@@ -5,7 +5,18 @@ import { usePathname } from "next/navigation";
 
 type ThemeMode = "light" | "dark";
 
-const HIDDEN_ROUTES = new Set(["/", "/landingpage"]);
+const PUBLIC_ROUTES = new Set([
+  "/",
+  "/landingpage",
+  "/login",
+  "/sign-up",
+  "/verify-email",
+  "/forgot-password",
+]);
+
+function isPlatformThemeRoute(pathname: string) {
+  return !PUBLIC_ROUTES.has(pathname);
+}
 
 function SunIcon() {
   return (
@@ -54,8 +65,10 @@ function MoonIcon() {
 
 function applyTheme(theme: ThemeMode) {
   if (typeof document === "undefined") return;
+  const isHomeTheme = isPlatformThemeRoute(window.location.pathname);
   document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
+  document.documentElement.dataset.themeScope = isHomeTheme ? "home" : "default";
+  document.documentElement.style.colorScheme = isHomeTheme ? theme : "light";
 }
 
 export default function ThemeToggle() {
@@ -74,7 +87,12 @@ export default function ThemeToggle() {
     setMounted(true);
   }, []);
 
-  if (HIDDEN_ROUTES.has(pathname)) {
+  useEffect(() => {
+    if (!mounted) return;
+    applyTheme(theme);
+  }, [mounted, pathname, theme]);
+
+  if (!isPlatformThemeRoute(pathname)) {
     return null;
   }
 
