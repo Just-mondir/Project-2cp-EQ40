@@ -69,13 +69,18 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PillGroup({ options, value, onChange }: {
+function PillGroup({ options, value, onChange, variant = "default" }: {
   options: string[];
   value: string;
   onChange: (val: string) => void;
+  variant?: string;
 }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+    <div
+      className="post-form-pill-group"
+      data-variant={variant}
+      style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
+    >
       {options.map((opt) => {
         const active = value === opt;
         return (
@@ -83,7 +88,12 @@ function PillGroup({ options, value, onChange }: {
             key={opt}
             type="button"
             onClick={() => onChange(opt)}
+            className="post-form-pill"
+            data-option={opt}
+            data-active={active ? "true" : "false"}
             style={{
+              display: "inline-flex",
+              alignItems: "center",
               padding: "6px 16px",
               borderRadius: "9999px",
               fontSize: "13px",
@@ -226,7 +236,8 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
           <PillGroup
             options={expertiseOptions}
             value={formData.expertise}                 
-            onChange={handleExpertiseChange}            
+            onChange={handleExpertiseChange}
+            variant="expertise"
           />
         </SectionBlock>
 

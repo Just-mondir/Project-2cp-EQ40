@@ -72,9 +72,13 @@ function SectionLabel({ children }) {
   );
 }
 
-function PillGroup({ options, value, onChange }) {
+function PillGroup({ options, value, onChange, variant = "default" }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+    <div
+      className="post-form-pill-group"
+      data-variant={variant}
+      style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
+    >
       {options.map((opt) => {
         const active = value === opt;
         return (
@@ -82,7 +86,12 @@ function PillGroup({ options, value, onChange }) {
             key={opt}
             type="button"
             onClick={() => onChange(opt)}
+            className="post-form-pill"
+            data-option={opt}
+            data-active={active ? "true" : "false"}
             style={{
+              display: "inline-flex",
+              alignItems: "center",
               padding: "6px 16px",
               borderRadius: "9999px",
               fontSize: "13px",
@@ -96,7 +105,7 @@ function PillGroup({ options, value, onChange }) {
               boxShadow: active ? "none" : "0 1px 4px rgba(67,40,23,0.06)",
             }}
           >
-            {opt}
+            <span>{opt}</span>
           </button>
         );
       })}
@@ -139,6 +148,7 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        className="post-form-control post-form-dropdown-trigger"
         style={{
           ...inputStyle,
           display: "flex",
@@ -154,6 +164,7 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
         }}
       >
         <span
+          className="post-form-dropdown-value"
           style={{
             color: value ? ESPRESSO : "#A09080",
             fontSize: "14px",
@@ -168,6 +179,7 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
           {display}
         </span>
         <svg
+          className="post-form-dropdown-icon"
           width="13"
           height="13"
           viewBox="0 0 24 24"
@@ -190,6 +202,7 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
 
       {open && (
         <div
+          className="post-form-dropdown-menu"
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",
@@ -213,6 +226,8 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
               <button
                 key={opt}
                 type="button"
+                className="post-form-dropdown-option"
+                data-selected={isSelected ? "true" : "false"}
                 onClick={() => {
                   onChange(opt);
                   setOpen(false);
@@ -467,6 +482,7 @@ export default function PostForm({
           <SectionLabel>Location</SectionLabel>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <input
+              className="post-form-control"
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -477,6 +493,7 @@ export default function PostForm({
             <button
               type="button"
               onClick={() => setShowLocationPopup(true)}
+              className="post-form-circle-action"
               style={{
                 flexShrink: 0,
                 width: "36px",
@@ -528,6 +545,7 @@ export default function PostForm({
                 options={POST_TYPES}
                 value={postType}
                 onChange={setPostType}
+                variant="post-type"
               />
             </div>
           )}
@@ -587,6 +605,7 @@ export default function PostForm({
               options={MONUMENT_TYPES}
               value={monumentType}
               onChange={setMonumentType}
+              variant="monument-type"
             />
           </div>
 
