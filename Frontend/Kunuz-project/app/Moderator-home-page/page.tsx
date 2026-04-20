@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LeftSidebar from "@/app/components/LeftSidebar";
 
 type User = {
   id: number;
@@ -362,11 +363,14 @@ export default function ModeratorUsers() {
   };
 
   return (
-    <main
-      className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-8 lg:px-16 lg:py-10"
-      style={{ backgroundColor: "#E3D9C4" }}
-    >
-      <div className="w-[138.9%] origin-top-left scale-[0.72] sm:w-full sm:scale-100">
+    <>
+      <LeftSidebar activePage="home" />
+
+      <main
+        className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-8 md:pl-24 lg:px-16 lg:pl-28 lg:py-10"
+        style={{ backgroundColor: "#E3D9C4" }}
+      >
+        <div className="w-[138.9%] origin-top-left scale-[0.72] sm:w-full sm:scale-100">
         <div className="mb-8 flex items-center gap-6">
           <img src={moderatorProfile.avatar} alt="profile" className="h-20 w-20 rounded-full object-cover" />
           <div>
@@ -822,47 +826,48 @@ export default function ModeratorUsers() {
             </div>
           )}
         </div>
-      </div>
-
-      {confirmConfig && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 px-4">
-          <div
-            className="relative w-full max-w-[315px] overflow-hidden rounded-[21px] bg-white px-6 pb-6 pt-7 shadow-xl"
-          >
-            <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: "#111111" }} />
-
-            <div
-              className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full border-[3px] text-5xl font-black leading-none"
-              style={{ borderColor: "#111111", color: "#111111" }}
-            >
-              !
-            </div>
-
-            <p className="text-center text-[1.25rem] font-medium leading-tight" style={{ color: "#111111" }}>
-              {confirmConfig.title}
-            </p>
-            <p className="mt-4 text-center text-[0.95rem]" style={{ color: "#7A7A85" }}>
-              {confirmConfig.subtitle}
-            </p>
-
-            <button
-              onClick={runConfirm}
-              className="mx-auto mt-7 block w-full max-w-[214px] rounded-[11px] py-2.5 text-center text-xl font-medium text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "#111111" }}
-            >
-              {confirmConfig.confirmLabel}
-            </button>
-
-            <button
-              onClick={closeConfirm}
-              className="mt-4 w-full rounded-[11px] text-center text-xl font-medium transition-opacity hover:opacity-70"
-              style={{ color: "#111111" }}
-            >
-              Cancel
-            </button>
-          </div>
         </div>
-      )}
-    </main>
+
+        {confirmConfig && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 px-4">
+            <div
+              className="relative w-full max-w-[315px] overflow-hidden rounded-[21px] bg-white px-6 pb-6 pt-7 shadow-xl"
+            >
+              <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: "#111111" }} />
+
+              <div
+                className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full border-[3px] text-5xl font-black leading-none"
+                style={{ borderColor: "#111111", color: "#111111" }}
+              >
+                !
+              </div>
+
+              <p className="text-center text-[1.25rem] font-medium leading-tight" style={{ color: "#111111" }}>
+                {confirmConfig.title}
+              </p>
+              <p className="mt-4 text-center text-[0.95rem]" style={{ color: "#7A7A85" }}>
+                {confirmConfig.subtitle}
+              </p>
+
+              <button
+                onClick={runConfirm}
+                className="mx-auto mt-7 block w-full max-w-[214px] rounded-[11px] py-2.5 text-center text-xl font-medium text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "#111111" }}
+              >
+                {confirmConfig.confirmLabel}
+              </button>
+
+              <button
+                onClick={closeConfirm}
+                className="mt-4 w-full rounded-[11px] text-center text-xl font-medium transition-opacity hover:opacity-70"
+                style={{ color: "#111111" }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+    </>
   );
 }
