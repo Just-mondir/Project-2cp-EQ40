@@ -87,6 +87,27 @@ body {
   transition: background-color 0.28s ease, color 0.28s ease;
 }
 
+.legacy-theme-page-shell {
+  background-color: #F7F5EF;
+}
+
+.legacy-route-sidebar {
+  --legacy-route-sidebar-bg: #F7F5EF;
+  --legacy-route-sidebar-alt-bg: #FFF8E2;
+  --legacy-route-sidebar-icon: #432817;
+  --legacy-route-sidebar-hover: #ede9df;
+  --legacy-route-sidebar-alt-hover: #F0E8CC;
+  --legacy-route-sidebar-active-bg: #432817;
+  --legacy-route-sidebar-active-icon: #FFF8E2;
+  --legacy-route-overlay-bg: #FFF8E2;
+  --legacy-route-overlay-item-bg: #FFFDF8;
+  --legacy-route-overlay-border: #D7C6AF;
+  --legacy-route-overlay-divider: #E5D8C8;
+  --legacy-route-muted-text: #8B7355;
+  --legacy-route-foreground-text: #432817;
+  --legacy-route-mobile-border: rgba(67, 40, 23, 0.1);
+}
+
 a,
 button,
 input,
@@ -137,6 +158,27 @@ html[data-theme="dark"][data-theme-scope="home"] body {
   background-image:
     radial-gradient(circle at top left, rgba(190, 145, 86, 0.12), transparent 30%),
     radial-gradient(circle at top right, rgba(118, 97, 59, 0.12), transparent 24%);
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .legacy-theme-page-shell {
+  background-color: var(--background) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .legacy-route-sidebar {
+  --legacy-route-sidebar-bg: var(--panel-bg);
+  --legacy-route-sidebar-alt-bg: var(--sidebar-bg);
+  --legacy-route-sidebar-icon: var(--foreground);
+  --legacy-route-sidebar-hover: var(--panel-hover);
+  --legacy-route-sidebar-alt-hover: var(--sidebar-hover);
+  --legacy-route-sidebar-active-bg: var(--nav-active-bg);
+  --legacy-route-sidebar-active-icon: var(--nav-active-icon);
+  --legacy-route-overlay-bg: var(--overlay-bg);
+  --legacy-route-overlay-item-bg: var(--overlay-item);
+  --legacy-route-overlay-border: var(--border-soft);
+  --legacy-route-overlay-divider: var(--border-soft);
+  --legacy-route-muted-text: var(--text-muted);
+  --legacy-route-foreground-text: var(--foreground);
+  --legacy-route-mobile-border: var(--border-soft);
 }
 
 html[data-theme="dark"][data-theme-scope="home"] body,
@@ -628,55 +670,6 @@ html::-webkit-scrollbar {
   border-radius: 4px;
 }
 
-.rich-text-editor__surface {
-  background-color: #432817;
-  border-color: #e0d5c5 !important;
-}
-
-.rich-text-editor__toolbar {
-  background-color: #432817;
-  border-color: rgba(224, 213, 197, 0.45) !important;
-}
-
-.rich-text-editor__content,
-.rich-text-editor__content p,
-.rich-text-editor__content li,
-.rich-text-editor__content h1,
-.rich-text-editor__content h2,
-.rich-text-editor__content h3,
-.rich-text-editor__select,
-.rich-text-editor__toolbar button,
-.rich-text-editor__toolbar button svg,
-.rich-text-editor__toolbar button span,
-.rich-text-editor__toolbar .lucide {
-  color: #fff8e2;
-}
-
-.rich-text-editor__toolbar button,
-.rich-text-editor__toolbar button svg,
-.rich-text-editor__toolbar .lucide,
-.rich-text-editor__select,
-.rich-text-editor__select svg {
-  color: #fff8e2 !important;
-  stroke: currentColor;
-}
-
-.rich-text-editor__toolbar button svg,
-.rich-text-editor__toolbar button svg *,
-.rich-text-editor__toolbar button .lucide,
-.rich-text-editor__toolbar button .lucide * {
-  color: #fff8e2 !important;
-  stroke: #fff8e2 !important;
-  fill: none !important;
-  opacity: 1 !important;
-}
-
-.rich-text-editor__select,
-.rich-text-editor__toolbar button:hover,
-.rich-text-editor__select:hover {
-  background-color: rgba(255, 248, 226, 0.08) !important;
-}
-
 html[data-theme="dark"][data-theme-scope="home"] .rich-text-editor__surface,
 html[data-theme="dark"][data-theme-scope="home"] .rich-text-editor__toolbar {
   background-color: #432817 !important;
@@ -713,5 +706,11 @@ html[data-theme="dark"][data-theme-scope="home"] .rich-text-editor__toolbar butt
   stroke: #fff8e2 !important;
   fill: none !important;
   opacity: 1 !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .rich-text-editor__select,
+html[data-theme="dark"][data-theme-scope="home"] .rich-text-editor__toolbar button:hover,
+html[data-theme="dark"][data-theme-scope="home"] .rich-text-editor__select:hover {
+  background-color: rgba(255, 248, 226, 0.08) !important;
 }
 

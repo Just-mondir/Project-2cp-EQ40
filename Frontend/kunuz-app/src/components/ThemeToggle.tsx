@@ -2,21 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { isDarkThemeRoute } from "@/lib/themeRoutes";
 
 type ThemeMode = "light" | "dark";
-
-const PUBLIC_ROUTES = new Set([
-  "/",
-  "/landingpage",
-  "/login",
-  "/sign-up",
-  "/verify-email",
-  "/forgot-password",
-]);
-
-function isPlatformThemeRoute(pathname: string) {
-  return !PUBLIC_ROUTES.has(pathname);
-}
 
 function SunIcon() {
   return (
@@ -65,7 +53,7 @@ function MoonIcon() {
 
 function applyTheme(theme: ThemeMode) {
   if (typeof document === "undefined") return;
-  const isHomeTheme = isPlatformThemeRoute(window.location.pathname);
+  const isHomeTheme = isDarkThemeRoute(window.location.pathname);
   document.documentElement.dataset.theme = theme;
   document.documentElement.dataset.themeScope = isHomeTheme ? "home" : "default";
   document.documentElement.style.colorScheme = isHomeTheme ? theme : "light";
@@ -92,7 +80,7 @@ export default function ThemeToggle() {
     applyTheme(theme);
   }, [mounted, pathname, theme]);
 
-  if (!isPlatformThemeRoute(pathname)) {
+  if (!isDarkThemeRoute(pathname)) {
     return null;
   }
 
