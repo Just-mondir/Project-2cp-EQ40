@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { isDarkThemeRoute } from "@/lib/themeRoutes";
+import { isDarkThemeRoute, normalizeThemePathname } from "@/lib/themeRoutes";
 
 type ThemeMode = "light" | "dark";
 
@@ -63,6 +63,8 @@ export default function ThemeToggle() {
   const pathname = usePathname();
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [mounted, setMounted] = useState(false);
+  const normalizedPathname = normalizeThemePathname(pathname || "/");
+  const shouldShowToggle = normalizedPathname === "/home-page";
 
   useEffect(() => {
     const storedTheme =
@@ -80,7 +82,7 @@ export default function ThemeToggle() {
     applyTheme(theme);
   }, [mounted, pathname, theme]);
 
-  if (!isDarkThemeRoute(pathname)) {
+  if (!shouldShowToggle) {
     return null;
   }
 
