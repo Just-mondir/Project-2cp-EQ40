@@ -449,25 +449,25 @@ function NotificationModal({
   const config = STATUS_CONFIG[type] || STATUS_CONFIG.info;
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-[420px] overflow-hidden relative animate-in fade-in zoom-in duration-200">
+      <div className="profile-dashboard-modal bg-white rounded-xl shadow-2xl w-full max-w-[420px] overflow-hidden relative animate-in fade-in zoom-in duration-200">
         <div style={{ height: "6px", backgroundColor: config.color }} />
-        <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 transition-colors">
+        <button onClick={onClose} className="profile-dashboard-modal__close absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 transition-colors">
           <X size={20} className="text-gray-400" />
         </button>
         <div className="p-8 flex flex-col items-center text-center">
-          <div className="mb-6 flex items-center justify-center p-2 rounded-full border-2" style={{ borderColor: config.iconColor + "40", color: config.iconColor }}>
+          <div className="profile-dashboard-modal__icon mb-6 flex items-center justify-center p-2 rounded-full border-2" style={{ borderColor: config.iconColor + "40", color: config.iconColor }}>
             {config.icon}
           </div>
-          <h2 className="text-[20px] font-bold text-[#432817] mb-2 leading-tight">{title}</h2>
-          <p className="text-[14px] text-[#8B7355] mb-8 leading-relaxed max-w-[300px]">{message}</p>
+          <h2 className="profile-dashboard-modal__title text-[20px] font-bold text-[#432817] mb-2 leading-tight">{title}</h2>
+          <p className="profile-dashboard-modal__message text-[14px] text-[#8B7355] mb-8 leading-relaxed max-w-[300px]">{message}</p>
           <div className="flex flex-col gap-3 w-full max-w-[200px]">
             {primaryAction && (
-              <button onClick={primaryAction.onClick} className="w-full py-3 bg-black text-white text-[15px] font-bold rounded-lg hover:bg-black/90 transition-all active:scale-[0.98]">
+              <button onClick={primaryAction.onClick} className="profile-dashboard-modal__primary w-full py-3 bg-black text-white text-[15px] font-bold rounded-lg hover:bg-black/90 transition-all active:scale-[0.98]">
                 {primaryAction.label}
               </button>
             )}
             {secondaryAction && (
-              <button onClick={secondaryAction.onClick} className="w-full py-2 bg-transparent text-[#432817] text-[15px] font-semibold hover:opacity-70 transition-all">
+              <button onClick={secondaryAction.onClick} className="profile-dashboard-modal__secondary w-full py-2 bg-transparent text-[#432817] text-[15px] font-semibold hover:opacity-70 transition-all">
                 {secondaryAction.label}
               </button>
             )}
@@ -1265,13 +1265,13 @@ function ProfileHeader({
   return (
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
       <div className="absolute top-4 right-6" ref={menuRef}>
-        <button className="p-2 rounded hover:bg-[#F0EAD8]" onClick={() => setShowMenu(!showMenu)}>
+        <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowMenu(!showMenu)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
         </button>
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
             {menuItems.map((item, i) => (
-              <button key={i} className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); }}>
+              <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); }}>
                 {item}
               </button>
             ))}

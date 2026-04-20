@@ -245,6 +245,7 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
         <SectionBlock>
           <SectionLabel>Speciality</SectionLabel>
           <input
+            className="post-form-control"
             type="text"
             name="speciality"                          
             value={formData.speciality}                 
@@ -258,6 +259,7 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
         <SectionBlock isLast={true}>
           <SectionLabel>Badge</SectionLabel>
           <div
+            className="post-form-control profile-form-badge-trigger"
             onClick={() => badgeInputRef.current?.click()}
             style={{
               display: "flex",
@@ -271,11 +273,11 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
               cursor: "pointer",
             }}
           >
-            <span style={{ color: "#79747E", fontFamily: FONT, fontSize: "14px" }}>
+            <span className="profile-form-badge-text" style={{ color: "#79747E", fontFamily: FONT, fontSize: "14px" }}>
               {/* ← CHANGED */}
               {formData.badgeFiles.length > 0 ? `${formData.badgeFiles.length} file(s) selected` : "Request badge"}
             </span>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <svg className="profile-form-badge-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M12 5v14M5 12h14" stroke="#79747E" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>

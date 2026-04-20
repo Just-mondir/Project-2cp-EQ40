@@ -715,6 +715,103 @@ html[data-theme="dark"][data-theme-scope="home"] .post-form-control::placeholder
   color: var(--text-muted) !important;
 }
 
+html[data-theme="dark"][data-theme-scope="home"] .profile-form-badge-text {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-form-badge-icon,
+html[data-theme="dark"][data-theme-scope="home"] .profile-form-badge-icon * {
+  stroke: var(--text-muted) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-card,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal {
+  background-color: #34281f !important;
+  border: 1px solid rgba(224, 213, 197, 0.18) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.34) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-title,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__title {
+  color: var(--foreground) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-subtitle,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__message {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-icon-badge,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__icon {
+  border-color: rgba(124, 92, 67, 0.78) !important;
+  background-color: rgba(124, 92, 67, 0.12) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-icon-badge svg,
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-icon-badge svg *,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__icon svg,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__icon svg * {
+  color: #f6ead2 !important;
+  stroke: #f6ead2 !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-field {
+  background-color: #4a3528 !important;
+  border-color: rgba(224, 213, 197, 0.3) !important;
+  color: var(--foreground) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-field::placeholder {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-field:focus {
+  border-color: rgba(246, 234, 210, 0.42) !important;
+  box-shadow: 0 0 0 1px rgba(246, 234, 210, 0.12) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-eye-toggle {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-primary-btn,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__primary {
+  background-color: #7c5d46 !important;
+  color: #fff8e2 !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-primary-btn:hover,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__primary:hover {
+  background-color: #8d6a51 !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-popup-cancel-btn,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__secondary {
+  color: var(--foreground) !important;
+}
+
+.profile-dashboard-action:hover,
+.profile-dashboard-menu-trigger:hover,
+.profile-dashboard-menu-item:hover {
+  background-color: #F0EAD8;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-action:hover,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-menu-trigger:hover,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-menu-item:hover {
+  background-color: #7c5d46 !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__close:hover {
+  background-color: rgba(255, 248, 226, 0.08) !important;
+}
+
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__close svg,
+html[data-theme="dark"][data-theme-scope="home"] .profile-dashboard-modal__close svg * {
+  color: var(--text-muted) !important;
+  stroke: var(--text-muted) !important;
+}
+
 html[data-theme="dark"][data-theme-scope="home"] .post-form-dropdown-value,
 html[data-theme="dark"][data-theme-scope="home"] .post-form-dropdown-icon,
 html[data-theme="dark"][data-theme-scope="home"] .post-form-dropdown-icon * {
