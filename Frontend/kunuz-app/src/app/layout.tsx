@@ -5,6 +5,10 @@ import Footer from "@/components/Footer";
 import GoogleProvider from "@/components/GoogleProvider";
 import AuthGate from "@/components/AuthGate";
 import ThemeToggle from "@/components/ThemeToggle";
+import {
+  LIGHT_ONLY_PLATFORM_ROUTE_LIST,
+  PUBLIC_ROUTE_LIST,
+} from "@/lib/themeRoutes";
 
 const lato = Lato({
   weight: ["400", "700"],
@@ -34,25 +38,30 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const themeScopeResolverScript = `
+    (function () {
+      try {
+        var stored = localStorage.getItem("theme-mode");
+        var theme = stored === "dark" ? "dark" : "light";
+        var pathname = window.location.pathname.replace(/\\/+$/, "") || "/";
+        var publicRoutes = ${JSON.stringify(PUBLIC_ROUTE_LIST)};
+        var lightOnlyPlatformRoutes = ${JSON.stringify(LIGHT_ONLY_PLATFORM_ROUTE_LIST)};
+        var isHomeTheme =
+          publicRoutes.indexOf(pathname) === -1 &&
+          lightOnlyPlatformRoutes.indexOf(pathname) === -1;
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.themeScope = isHomeTheme ? "home" : "default";
+        document.documentElement.style.colorScheme = isHomeTheme ? theme : "light";
+      } catch (e) {}
+    })();
+  `;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                try {
-                  var stored = localStorage.getItem("theme-mode");
-                  var theme = stored === "dark" ? "dark" : "light";
-                  var pathname = window.location.pathname;
-                  var publicRoutes = ["/", "/landingpage", "/login", "/sign-up", "/verify-email", "/forgot-password"];
-                  var isHomeTheme = publicRoutes.indexOf(pathname) === -1;
-                  document.documentElement.dataset.theme = theme;
-                  document.documentElement.dataset.themeScope = isHomeTheme ? "home" : "default";
-                  document.documentElement.style.colorScheme = isHomeTheme ? theme : "light";
-                } catch (e) {}
-              })();
-            `,
+            __html: themeScopeResolverScript,
           }}
         />
       </head>

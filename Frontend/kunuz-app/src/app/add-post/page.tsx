@@ -136,10 +136,7 @@ export default function AddPostPage() {
   };
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ backgroundColor: "var(--background)" }}
-    >
+    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
       <LeftSidebar activePage="add-post" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
