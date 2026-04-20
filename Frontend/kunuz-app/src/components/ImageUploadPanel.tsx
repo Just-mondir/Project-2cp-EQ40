@@ -110,9 +110,12 @@ export default function ImageUploadPanel({
 
   return (
     <div
-      className="flex flex-col h-full overflow-y-auto hide-scrollbar"
+      className="image-upload-surface flex flex-col h-full overflow-y-auto hide-scrollbar"
       style={{
         backgroundColor: "#F7F5EF",
+        border: "1px solid rgba(0, 0, 0, 0.1)",
+        borderRadius: "10.75px",
+        boxShadow: "0 1px 4px rgba(67,40,23,0.06)",
         scrollbarWidth: "none",
         msOverflowStyle: "none",
       }}
@@ -127,8 +130,8 @@ export default function ImageUploadPanel({
             return (
               <div
                 key={idx}
-                className="relative rounded-xl overflow-hidden shadow-sm post-image-card"
-                style={{ backgroundColor: "#FFFFFF" }}
+                className="image-upload-card relative rounded-xl overflow-hidden shadow-sm post-image-card"
+                style={{ backgroundColor: "var(--panel-elevated)" }}
               >
                 <img
                   src={img.url}
@@ -165,10 +168,11 @@ export default function ImageUploadPanel({
               <button
                 key="upload"
                 onClick={() => inputRef.current?.click()}
-                className="rounded-xl flex flex-col items-center justify-center post-upload-slot cursor-pointer"
+                className="image-upload-slot rounded-xl flex flex-col items-center justify-center post-upload-slot cursor-pointer"
                 style={{
                   border: "1px dashed rgba(0, 0, 0, 0.2)",
                   backgroundColor: "transparent",
+                  color: "rgba(67, 40, 23, 0.45)",
                   height: "100%",
                 }}
                 title="Add photo"
@@ -178,7 +182,7 @@ export default function ImageUploadPanel({
                   height="24"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="rgba(0, 0, 0, 0.4)"
+                  stroke="currentColor"
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -192,7 +196,7 @@ export default function ImageUploadPanel({
             return (
               <div
                 key={`empty-${idx}`}
-                className="rounded-xl"
+                className="image-upload-empty rounded-xl"
                 style={{
                   border: "1px dashed rgba(0, 0, 0, 0.15)",
                   backgroundColor: "transparent",
