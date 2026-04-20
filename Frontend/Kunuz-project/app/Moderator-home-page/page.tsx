@@ -418,7 +418,7 @@ export default function ModeratorUsers() {
                   },
                 });
               }}
-              className="mt-2 rounded-[18px] px-6 py-2 font-semibold text-white shadow-sm transition-colors hover:opacity-90 hover:shadow-md md:mt-0"
+              className="mt-2 rounded-[11px] px-6 py-2 font-semibold text-white shadow-sm transition-colors hover:opacity-90 hover:shadow-md md:mt-0"
               style={{ backgroundColor: "#3b2314" }}
             >
               {isEditingRoles ? "< Back" : "Edit roles"}
@@ -439,7 +439,7 @@ export default function ModeratorUsers() {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as "Users" | "Groups")}
-                  className={`rounded-[18px] pb-2 text-base font-semibold transition-all ${
+                  className={`pb-2 text-base font-semibold transition-all ${
                     activeTab === tab ? "border-b-2 border-gray-800 text-gray-800" : "text-gray-400"
                   }`}
                 >
@@ -571,7 +571,7 @@ export default function ModeratorUsers() {
                       <div className="relative flex justify-end">
                         <button
                           onClick={() => setOpenRoleMenuId((value) => (value === item.id ? null : item.id))}
-                          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[18px] px-3 py-1.5 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+                          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[11px] px-3 py-1.5 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
                           style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
                         >
                           Edit role
@@ -590,7 +590,7 @@ export default function ModeratorUsers() {
                           <>
                             <button
                               aria-label="Close role menu"
-                              className="fixed inset-0 z-40 rounded-[18px] cursor-default"
+                              className="fixed inset-0 z-40 rounded-[11px] cursor-default"
                               onClick={() => setOpenRoleMenuId(null)}
                             />
                             <div
@@ -602,7 +602,7 @@ export default function ModeratorUsers() {
                                   setRole(item.id, "Admin");
                                   setOpenRoleMenuId(null);
                                 }}
-                                className="w-full rounded-[18px] px-5 py-4 text-left font-semibold transition-colors hover:opacity-90"
+                                className="w-full rounded-[11px] px-5 py-4 text-left font-semibold transition-colors hover:opacity-90"
                                 style={{ color: "#3b2314" }}
                               >
                                 Set as an admin
@@ -613,7 +613,7 @@ export default function ModeratorUsers() {
                                   setRole(item.id, "User");
                                   setOpenRoleMenuId(null);
                                 }}
-                                className="w-full rounded-[18px] px-5 py-4 text-left font-semibold transition-colors hover:opacity-90"
+                                className="w-full rounded-[11px] px-5 py-4 text-left font-semibold transition-colors hover:opacity-90"
                                 style={{ color: "#3b2314" }}
                               >
                                 Set as a user
@@ -636,7 +636,7 @@ export default function ModeratorUsers() {
                       </span>
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          className="whitespace-nowrap rounded-[18px] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:py-2 sm:text-sm"
+                          className="whitespace-nowrap rounded-[11px] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:py-2 sm:text-sm"
                           style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
                         >
                           See members
@@ -644,7 +644,7 @@ export default function ModeratorUsers() {
                       </div>
                       <div className="flex items-center justify-end">
                         <button
-                          className="rounded-[18px] whitespace-nowrap text-[10px] font-semibold transition-colors hover:opacity-90 sm:text-sm"
+                          className="rounded-[11px] whitespace-nowrap text-[10px] font-semibold transition-colors hover:opacity-90 sm:text-sm"
                           style={{ color: "#3b2314" }}
                           onClick={() =>
                             openConfirm({
@@ -682,7 +682,7 @@ export default function ModeratorUsers() {
                       {getModerationStatus(item.id) === "none" ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            className="whitespace-nowrap rounded-[18px] px-3 py-1 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:text-sm"
+                            className="whitespace-nowrap rounded-[11px] px-3 py-1 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:text-sm"
                             style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
                             onClick={() =>
                               openConfirm({
@@ -700,7 +700,7 @@ export default function ModeratorUsers() {
                             Suspend
                           </button>
                           <button
-                            className="whitespace-nowrap rounded-[18px] px-3 py-1 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:text-sm"
+                            className="whitespace-nowrap rounded-[11px] px-3 py-1 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:text-sm"
                             style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
                             onClick={() =>
                               openConfirm({
@@ -721,7 +721,7 @@ export default function ModeratorUsers() {
                       ) : (
                         <div className="flex items-center justify-end">
                           <button
-                            className="whitespace-nowrap rounded-[18px] px-3 py-1 text-[11px] font-semibold sm:px-4 sm:text-sm"
+                            className="whitespace-nowrap rounded-[11px] px-3 py-1 text-[11px] font-semibold sm:px-4 sm:text-sm"
                             style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
                             onClick={() =>
                               openConfirm({
@@ -752,7 +752,7 @@ export default function ModeratorUsers() {
               <button
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                 disabled={currentPage === 1}
-                className="flex h-8 w-8 items-center justify-center rounded-[18px] border text-sm disabled:cursor-not-allowed"
+                className="flex h-8 w-8 items-center justify-center rounded-[11px] border text-sm disabled:cursor-not-allowed"
                 style={{
                   borderColor: "#c8b79a",
                   color: "#8b6a46",
@@ -766,7 +766,7 @@ export default function ModeratorUsers() {
                 <>
                   <button
                     onClick={() => setCurrentPage(1)}
-                    className="h-8 w-8 rounded-[18px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md"
+                    className="h-8 w-8 rounded-[11px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md"
                     style={{ backgroundColor: "#E3D9C4", color: "#8b6a46" }}
                   >
                     1
@@ -779,7 +779,7 @@ export default function ModeratorUsers() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`h-8 w-8 rounded-[18px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md ${
+                  className={`h-8 w-8 rounded-[11px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md ${
                     currentPage === page ? "text-white" : ""
                   }`}
                   style={
@@ -799,7 +799,7 @@ export default function ModeratorUsers() {
                   )}
                   <button
                     onClick={() => setCurrentPage(totalPages)}
-                    className="h-8 w-8 rounded-[18px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md"
+                    className="h-8 w-8 rounded-[11px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md"
                     style={{ backgroundColor: "#E3D9C4", color: "#8b6a46" }}
                   >
                     {totalPages}
@@ -810,7 +810,7 @@ export default function ModeratorUsers() {
               <button
                 onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                 disabled={currentPage === totalPages}
-                className="flex h-8 w-8 items-center justify-center rounded-[18px] border text-sm disabled:cursor-not-allowed"
+                className="flex h-8 w-8 items-center justify-center rounded-[11px] border text-sm disabled:cursor-not-allowed"
                 style={{
                   borderColor: "#c8b79a",
                   color: "#8b6a46",
@@ -827,28 +827,27 @@ export default function ModeratorUsers() {
       {confirmConfig && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 px-4">
           <div
-            className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] bg-white px-8 pb-8 pt-10 shadow-xl"
-            style={{ border: "1px solid #111111" }}
+            className="relative w-full max-w-[315px] overflow-hidden rounded-[21px] bg-white px-6 pb-6 pt-7 shadow-xl"
           >
-            <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: "#111111" }} />
+            <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: "#111111" }} />
 
             <div
-              className="mx-auto mb-8 flex h-28 w-28 items-center justify-center rounded-full border-[3px] text-6xl font-black leading-none"
+              className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full border-[3px] text-5xl font-black leading-none"
               style={{ borderColor: "#111111", color: "#111111" }}
             >
               !
             </div>
 
-            <p className="text-center text-[1.7rem] font-medium leading-tight" style={{ color: "#111111" }}>
+            <p className="text-center text-[1.25rem] font-medium leading-tight" style={{ color: "#111111" }}>
               {confirmConfig.title}
             </p>
-            <p className="mt-5 text-center text-xl" style={{ color: "#7A7A85" }}>
+            <p className="mt-4 text-center text-[0.95rem]" style={{ color: "#7A7A85" }}>
               {confirmConfig.subtitle}
             </p>
 
             <button
               onClick={runConfirm}
-              className="mx-auto mt-10 block w-full max-w-[285px] rounded-[18px] py-3 text-center text-2xl font-medium text-white transition-opacity hover:opacity-90"
+              className="mx-auto mt-7 block w-full max-w-[214px] rounded-[11px] py-2.5 text-center text-xl font-medium text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: "#111111" }}
             >
               {confirmConfig.confirmLabel}
@@ -856,7 +855,7 @@ export default function ModeratorUsers() {
 
             <button
               onClick={closeConfirm}
-              className="mt-6 w-full rounded-[18px] text-center text-2xl font-medium transition-opacity hover:opacity-70"
+              className="mt-4 w-full rounded-[11px] text-center text-xl font-medium transition-opacity hover:opacity-70"
               style={{ color: "#111111" }}
             >
               Cancel
