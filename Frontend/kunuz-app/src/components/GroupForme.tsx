@@ -390,32 +390,6 @@ export default function GuildForm({
           </div>
         </SectionBlock>
 
-        {/* Guild Visibility */}
-        <SectionBlock>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <SectionLabel>Group Visibility</SectionLabel>
-            <div style={{ display: "flex", gap: "8.6px" }}>
-              {(["Public", "Private"] as const).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, visibility: opt }))}
-                  style={{
-                    padding: "7.5px 19.35px",
-                    borderRadius: "21.5px",
-                    border: `1px solid ${formData.visibility === opt ? ESPRESSO : "#D6CFC3"}`,
-                    backgroundColor: formData.visibility === opt ? ESPRESSO : "#FFFFFF",
-                    color: formData.visibility === opt ? "#FFFFFF" : ESPRESSO,
-                    fontFamily: FONT, fontWeight: 500, fontSize: "14px",
-                    cursor: "pointer", transition: "all 0.15s",
-                  }}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
-        </SectionBlock>
 
         {/* Guild Rules */}
         <SectionBlock isLast>

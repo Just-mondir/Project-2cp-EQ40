@@ -3,6 +3,24 @@
 import { useEffect, useState } from "react";
 import { Mail, Lock, Eye, EyeOff, LayoutDashboard } from "lucide-react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+function getAuthToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+}
+
+function getAuthUserEmail(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = localStorage.getItem("authUser");
+    const user = raw ? JSON.parse(raw) : null;
+    return user?.email || "";
+  } catch {
+    return "";
+  }
+}
+
 // ─────────────────────────────────────────────────────────
 //  TYPES
 // ─────────────────────────────────────────────────────────
@@ -79,46 +97,81 @@ function IconBadge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Field({ placeholder, value, onChange, type = "text" }: {
+// ── Password field with show/hide toggle ──
+function PasswordField({ placeholder, value, onChange }: {
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
-  type?: string;
 }) {
   const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
-  const isPassword = type === "password";
 
   return (
     <div style={{ width: "100%", position: "relative", marginBottom: "10px" }}>
       <input
-        className="profile-popup-field"
-        type={isPassword && !show ? "password" : "text"}
+        type={show ? "text" : "password"}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
+        autoComplete="new-password"
         style={{
           width: "100%", height: "48px", borderRadius: "10px",
           border: `1.5px solid ${focused ? "#432817" : "#D6CFC3"}`,
           backgroundColor: "#FFFFFF",
-          padding: isPassword ? "0 44px 0 16px" : "0 16px",
+          padding: "0 44px 0 16px",
           fontFamily: "'Lato', sans-serif", fontSize: "15px",
           color: "#432817", outline: "none", boxSizing: "border-box",
           transition: "border 0.15s",
         }}
       />
-      {isPassword && (
-        <button
-          type="button"
-          onClick={() => setShow((v) => !v)}
-          className="profile-popup-eye-toggle"
-          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#8B7355", display: "flex", alignItems: "center" }}
-        >
-          {show ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        style={{
+          position: "absolute", right: "12px", top: "50%",
+          transform: "translateY(-50%)", background: "none",
+          border: "none", cursor: "pointer", color: "#8B7355",
+          display: "flex", alignItems: "center",
+        }}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
+
+// ── Plain text field (email, OTP, etc.) ──
+function TextField({ placeholder, value, onChange, maxLength }: {
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  maxLength?: number;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <div style={{ width: "100%", position: "relative", marginBottom: "10px" }}>
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        autoComplete="off"
+        maxLength={maxLength}
+        style={{
+          width: "100%", height: "48px", borderRadius: "10px",
+          border: `1.5px solid ${focused ? "#432817" : "#D6CFC3"}`,
+          backgroundColor: "#FFFFFF",
+          padding: "0 16px",
+          fontFamily: "'Lato', sans-serif", fontSize: "15px",
+          color: "#432817", outline: "none", boxSizing: "border-box",
+          transition: "border 0.15s",
+        }}
+      />
     </div>
   );
 }
@@ -183,22 +236,15 @@ function useIsDarkHomeTheme() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-
     const root = document.documentElement;
     const syncTheme = () => {
       setIsDarkHomeTheme(
         root.dataset.theme === "dark" && root.dataset.themeScope === "home",
       );
     };
-
     syncTheme();
-
     const observer = new MutationObserver(syncTheme);
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-theme", "data-theme-scope"],
-    });
-
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-theme-scope"] });
     return () => observer.disconnect();
   }, []);
 
@@ -223,14 +269,17 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
     if (!form.newEmail || !form.confirmPassword) { setError("Please fill in all fields."); return; }
     setLoading(true);
     try {
-      // 🔌 BACKEND INTEGRATION POINT
-      // const res = await fetch("/api/user/change-email", {
-      //   method: "PUT",
-      //   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      //   body: JSON.stringify(form),
-      // });
-      // if (!res.ok) throw new Error((await res.json()).message);
-      console.log("Payload:", form);
+      const res = await fetch(`${API_URL}/api/users/me/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ email: form.newEmail }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg = data?.errors?.email?.[0] || data?.errors?.detail || data?.message || "Failed to update email.";
+        setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        return;
+      }
       onClose();
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
@@ -247,8 +296,8 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
         <PopupTitle text="Change email" />
         <PopupSubtitle text="Enter your new email address below" />
         <div style={{ width: "100%" }}>
-          <Field placeholder="New email address"   value={form.newEmail}        onChange={update("newEmail")} />
-          <Field placeholder="Confirm your password" value={form.confirmPassword} onChange={update("confirmPassword")} type="password" />
+          <TextField placeholder="New email address" value={form.newEmail} onChange={update("newEmail")} />
+          <PasswordField placeholder="Confirm your password" value={form.confirmPassword} onChange={update("confirmPassword")} />
         </div>
         {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
         <PrimaryBtn label={loading ? "Saving…" : "Save changes"} onClick={handleSubmit} disabled={loading} />
@@ -266,6 +315,8 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<ChangePasswordForm>({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
   const isDarkHomeTheme = useIsDarkHomeTheme();
   const popupIconColor = isDarkHomeTheme ? "#F6EAD2" : "#432817";
 
@@ -278,14 +329,50 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
     if (form.newPassword !== form.confirmNewPassword) { setError("New passwords do not match."); return; }
     setLoading(true);
     try {
-      // 🔌 BACKEND INTEGRATION POINT
-      // const res = await fetch("/api/user/change-password", {
-      //   method: "PUT",
-      //   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      //   body: JSON.stringify(form),
-      // });
-      // if (!res.ok) throw new Error((await res.json()).message);
-      console.log("Payload:", form);
+      const email = getAuthUserEmail();
+      if (!email) { setError("Could not determine your email. Please log in again."); setLoading(false); return; }
+      const forgotRes = await fetch(`${API_URL}/api/auth/forgot-password/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const forgotData = await forgotRes.json().catch(() => null);
+      if (!forgotRes.ok) {
+        const msg = forgotData?.errors?.email?.[0] || forgotData?.message || "Failed to send OTP.";
+        setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        return;
+      }
+      setOtpStep(true);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    setError("");
+    if (!otpCode.trim()) { setError("Please enter the OTP code."); return; }
+    if (otpCode.trim().length !== 6) { setError("OTP code must be exactly 6 digits."); return; }
+    setLoading(true);
+    try {
+      const email = getAuthUserEmail();
+      const res = await fetch(`${API_URL}/api/auth/reset-password/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp_code: otpCode, password: form.newPassword }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          data?.errors?.otp_code?.[0] ||
+          data?.errors?.password?.[0] ||
+          data?.errors?.detail ||
+          data?.message ||
+          "Failed to reset password.";
+        setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        return;
+      }
       onClose();
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
@@ -300,21 +387,34 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
       <PopupCard onClick={onClose}>
         <IconBadge><Lock size={26} color={popupIconColor} strokeWidth={1.5} /></IconBadge>
         <PopupTitle text="Change password" />
-        <PopupSubtitle text="Choose a strong new password" />
-        <div style={{ width: "100%" }}>
-          <Field placeholder="Current password"     value={form.currentPassword}    onChange={update("currentPassword")}    type="password" />
-          <Field placeholder="New password"         value={form.newPassword}        onChange={update("newPassword")}        type="password" />
-          <Field placeholder="Confirm new password" value={form.confirmNewPassword} onChange={update("confirmNewPassword")} type="password" />
-        </div>
-        {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
-        <PrimaryBtn label={loading ? "Updating…" : "Update password"} onClick={handleSubmit} disabled={loading} />
+        {!otpStep ? (
+          <>
+            <PopupSubtitle text="Choose a strong new password" />
+            <div style={{ width: "100%" }}>
+              <PasswordField placeholder="Current password"     value={form.currentPassword}    onChange={update("currentPassword")} />
+              <PasswordField placeholder="New password"         value={form.newPassword}        onChange={update("newPassword")} />
+              <PasswordField placeholder="Confirm new password" value={form.confirmNewPassword} onChange={update("confirmNewPassword")} />
+            </div>
+            {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
+            <PrimaryBtn label={loading ? "Sending OTP…" : "Update password"} onClick={handleSubmit} disabled={loading} />
+          </>
+        ) : (
+          <>
+            <PopupSubtitle text="Enter the OTP code sent to your email" />
+            <div style={{ width: "100%" }}>
+              <TextField placeholder="Enter 6-digit OTP" value={otpCode} onChange={setOtpCode} maxLength={6} />
+            </div>
+            {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
+            <PrimaryBtn label={loading ? "Updating…" : "Confirm"} onClick={handleOtpSubmit} disabled={loading} />
+          </>
+        )}
         <CancelBtn onClick={onClose} />
       </PopupCard>
       <GlobalStyles />
-      
     </>
   );
 }
+
 // ═════════════════════════════════════════════════════════
 //  POPUP 3 — Dashboard
 // ═════════════════════════════════════════════════════════
@@ -336,7 +436,6 @@ export function DashboardPopup({
   onPlatformStatistics?: () => void;
 }) {
   const isDarkDashboard = useIsDarkHomeTheme();
-
   const neutralIconColor = isDarkDashboard ? "#F6EAD2" : "#432817";
   const dangerIconColor = isDarkDashboard ? "#F6EAD2" : "#C0392B";
 
@@ -398,10 +497,7 @@ export function DashboardPopup({
     <>
       <Backdrop onClick={onClose} />
       <div
-        style={{
-          position: "fixed", inset: 0, zIndex: 101,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
+        style={{ position: "fixed", inset: 0, zIndex: 101, display: "flex", alignItems: "center", justifyContent: "center" }}
         onClick={onClose}
       >
         <div
@@ -415,7 +511,6 @@ export function DashboardPopup({
             animation: "popIn 0.22s cubic-bezier(0.34,1.56,0.64,1)",
           }}
         >
-          {/* Header */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid #E0D5C5" }}>
             <div style={{ width: "40px", height: "40px", borderRadius: "50%", border: "1.5px solid #432817", backgroundColor: "rgba(67,40,23,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <LayoutDashboard size={20} color="#432817" strokeWidth={1.5} />
@@ -424,8 +519,6 @@ export function DashboardPopup({
               Dashboard
             </p>
           </div>
-
-          {/* Items */}
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             {items.map((item, i) => (
               <button
