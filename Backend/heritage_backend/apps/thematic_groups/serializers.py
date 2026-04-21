@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+import bleach
+
+
+def _sanitize_plain(value: str) -> str:
+    if not value:
+        return value
+    return bleach.clean(value, tags=[], strip=True).strip()
+
 from apps.posts.serializers import PostDetailSerializer, PostListSerializer
 from apps.users.models import User
 
@@ -108,6 +116,17 @@ class ThematicGroupWriteSerializer(serializers.Serializer):
     region = serializers.ChoiceField(choices=ThematicGroup.REGION_CHOICES, required=False, allow_blank=True)
     rules = serializers.CharField(required=False, allow_blank=True, default="")
 
+
+    def validate(self, attrs):
+        # --- XSS sanitization ---
+        if "name" in attrs:
+            attrs["name"] = _sanitize_plain(attrs["name"])
+        if "description" in attrs:
+            attrs["description"] = _sanitize_plain(attrs["description"])
+        if "rules" in attrs:
+            attrs["rules"] = _sanitize_plain(attrs["rules"])
+        # --- end sanitization ---
+        return attrs
 
     def create(self, validated_data):
         request = self.context["request"]
