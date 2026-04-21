@@ -4,6 +4,25 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+import bleach
+
+ALLOWED_CONTENT_TAGS = ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li", "a", "h1", "h2", "h3"]
+ALLOWED_CONTENT_ATTRS = {"a": ["href", "target", "rel"], "span": ["class", "style"]}
+
+
+def sanitize_plain(value: str) -> str:
+    """Strip ALL HTML tags — for fields that should be plain text (titles, names)."""
+    if not value:
+        return value
+    return bleach.clean(value, tags=[], strip=True).strip()
+
+
+def sanitize_rich(value: str) -> str:
+    """Allow only safe tags — for rich text content fields."""
+    if not value:
+        return value
+    return bleach.clean(value, tags=ALLOWED_CONTENT_TAGS, attributes=ALLOWED_CONTENT_ATTRS, strip=True).strip()
+
 from apps.users.models import User
 from .models import (
     AlertDetails,
@@ -216,6 +235,15 @@ class PostDetailSerializer(serializers.Serializer):
         return ""
 
     def validate(self, attrs):
+        # --- XSS sanitization ---
+        if "title" in attrs:
+            attrs["title"] = sanitize_plain(attrs["title"])
+        if "content" in attrs:
+            attrs["content"] = sanitize_rich(attrs["content"])
+        if "location" in attrs:
+            attrs["location"] = sanitize_plain(attrs["location"])
+        # --- end sanitization ---
+
         post_type = attrs.get("post_type") or (self.instance.post_type if self.instance else None)
         if post_type == "event" and not attrs.get("starts_at") and not self.instance:
             raise serializers.ValidationError(
@@ -340,6 +368,11 @@ class CommentSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid parent comment id.")
 
     def validate(self, attrs):
+        # --- XSS sanitization ---
+        if "content" in attrs:
+            attrs["content"] = sanitize_rich(attrs["content"])
+        # --- end sanitization ---
+
         parent_comment = attrs.get("parent_id")
         post = self.context.get("post")
 
@@ -391,6 +424,11 @@ class AnnotationSerializer(serializers.Serializer):
         return str(obj.post.id)
 
     def validate(self, attrs):
+        # --- XSS sanitization ---
+        if "text" in attrs:
+            attrs["text"] = sanitize_rich(attrs["text"])
+        # --- end sanitization ---
+
         if not attrs.get("text") and not attrs.get("image"):
             raise serializers.ValidationError("Annotation must contain text or image.")
         return attrs

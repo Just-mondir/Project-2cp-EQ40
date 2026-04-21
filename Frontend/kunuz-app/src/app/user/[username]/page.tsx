@@ -12,6 +12,7 @@ import { logoutClient } from "@/lib/session";
 import LocationWorldCard from "@/components/LocationWorldCard";
 
 import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
+import NotificationModal from "@/components/NotificationModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -52,6 +53,11 @@ function getAuthUser(): { id?: string; username?: string; display_name?: string 
   } catch {
     return null;
   }
+}
+
+function getRefreshToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("refreshToken") || "";
 }
 
 async function apiFetch(url: string, options: RequestInit = {}) {
@@ -426,55 +432,6 @@ function EmptyState({ icon, message }: { icon: React.ReactNode; message: string 
     <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
       {icon}
       <p className="mt-4 text-sm">{message}</p>
-    </div>
-  );
-}
-
-/* ───────────────── NOTIFICATION MODAL ───────────────── */
-
-function NotificationModal({
-  isOpen, onClose, type = "info", title, message, primaryAction, secondaryAction,
-}: {
-  isOpen: boolean; onClose: () => void; type?: "info" | "warning" | "success" | "error";
-  title?: string; message?: string;
-  primaryAction?: { label: string; onClick: () => void };
-  secondaryAction?: { label: string; onClick: () => void };
-}) {
-  if (!isOpen) return null;
-  const STATUS_CONFIG = {
-    info: { color: "#000000", icon: <HelpCircle size={48} strokeWidth={1.5} />, iconColor: "#000000" },
-    warning: { color: "#F2994A", icon: <AlertTriangle size={48} strokeWidth={1.5} />, iconColor: "#F2994A" },
-    success: { color: "#27AE60", icon: <CheckCircle size={48} strokeWidth={1.5} />, iconColor: "#27AE60" },
-    error: { color: "#EB5757", icon: <AlertCircle size={48} strokeWidth={1.5} />, iconColor: "#EB5757" },
-  };
-  const config = STATUS_CONFIG[type] || STATUS_CONFIG.info;
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="profile-dashboard-modal bg-white rounded-xl shadow-2xl w-full max-w-[420px] overflow-hidden relative animate-in fade-in zoom-in duration-200">
-        <div style={{ height: "6px", backgroundColor: config.color }} />
-        <button onClick={onClose} className="profile-dashboard-modal__close absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 transition-colors">
-          <X size={20} className="text-gray-400" />
-        </button>
-        <div className="p-8 flex flex-col items-center text-center">
-          <div className="profile-dashboard-modal__icon mb-6 flex items-center justify-center p-2 rounded-full border-2" style={{ borderColor: config.iconColor + "40", color: config.iconColor }}>
-            {config.icon}
-          </div>
-          <h2 className="profile-dashboard-modal__title text-[20px] font-bold text-[#432817] mb-2 leading-tight">{title}</h2>
-          <p className="profile-dashboard-modal__message text-[14px] text-[#8B7355] mb-8 leading-relaxed max-w-[300px]">{message}</p>
-          <div className="flex flex-col gap-3 w-full max-w-[200px]">
-            {primaryAction && (
-              <button onClick={primaryAction.onClick} className="profile-dashboard-modal__primary w-full py-3 bg-black text-white text-[15px] font-bold rounded-lg hover:bg-black/90 transition-all active:scale-[0.98]">
-                {primaryAction.label}
-              </button>
-            )}
-            {secondaryAction && (
-              <button onClick={secondaryAction.onClick} className="profile-dashboard-modal__secondary w-full py-2 bg-transparent text-[#432817] text-[15px] font-semibold hover:opacity-70 transition-all">
-                {secondaryAction.label}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1266,11 +1223,33 @@ function ProfileHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+<<<<<<< HEAD
   const menuItems = [dashboardT("title")];
+=======
+  const menuItems = isOwnProfile && (profileInfo.role === "moderator" || profileInfo.role === "admin")
+  ? ["Dashboard", "Platform statistics"]
+  : ["Dashboard"];
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
 
   const handleLogout = async () => {
     await logoutClient();
     setShowLogoutModal(false);
+    router.push("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await fetch(`${API_URL}/api/users/me/`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh: getRefreshToken() }),
+      });
+    } catch { }
+    setShowDeleteAccountModal(false);
+    await logoutClient();
     router.push("/");
   };
 
@@ -1283,10 +1262,17 @@ function ProfileHeader({
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
             {menuItems.map((item, i) => (
+<<<<<<< HEAD
               <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === dashboardT("title")) setShowDashboardModal(true); }}>
                 {item}
               </button>
             ))}
+=======
+  <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); if (item === "Platform statistics") router.push("/statistics"); }}>
+    {item}
+  </button>
+))}
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
           </div>
         )}
       </div>
@@ -1295,6 +1281,7 @@ function ProfileHeader({
       {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}
       {showChangePasswordModal && <ChangePasswordPopup onClose={() => setShowChangePasswordModal(false)} />}
       {showDashboardModal && (
+<<<<<<< HEAD
         <DashboardPopup
           onClose={() => setShowDashboardModal(false)}
           isModerator={false}
@@ -1306,6 +1293,20 @@ function ProfileHeader({
       )}
       <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title={userPageT("modals.logout.title")} message={userPageT("modals.logout.message")} primaryAction={{ label: userPageT("modals.logout.confirm"), onClick: handleLogout }} secondaryAction={{ label: userPageT("modals.logout.cancel"), onClick: () => setShowLogoutModal(false) }} />
       <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title={userPageT("modals.deleteAccount.title")} message={userPageT("modals.deleteAccount.message")} primaryAction={{ label: userPageT("modals.deleteAccount.confirm"), onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: userPageT("modals.deleteAccount.cancel"), onClick: () => setShowDeleteAccountModal(false) }} />
+=======
+  <DashboardPopup
+    onClose={() => setShowDashboardModal(false)}
+    isModerator={profileInfo.role === "moderator" || profileInfo.role === "admin"}  // ← CHANGED
+    onChangeEmail={() => setShowChangeEmailModal(true)}
+    onChangePassword={() => setShowChangePasswordModal(true)}
+    onDeleteAccount={() => setShowDeleteAccountModal(true)}
+    onLogout={() => setShowLogoutModal(true)}
+    onPlatformStatistics={() => router.push("/statistics")}  // ← ADD THIS LINE
+  />
+)}
+      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, your token will be cleared and you will be redirected to the landing page." primaryAction={{ label: "Log out", onClick: handleLogout }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
+      <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: handleDeleteAccount }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
 
       <div className="flex items-start gap-8">
         <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
@@ -1765,3 +1766,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
