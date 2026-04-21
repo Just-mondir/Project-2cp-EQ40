@@ -1,15 +1,3 @@
-import { Lato, Playfair_Display } from "next/font/google";
-
-const lato = Lato({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["700"],
-});
-
 function UserIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -126,4 +114,3 @@ export default function HowDoesItWork() {
     </section>
   );
 }
-

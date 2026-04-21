@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import LeftSidebar from "@/components/LeftSidebar";
 import BackButton from "@/components/BackButton";
 import ProfileForm from "@/components/ProfileForm";
@@ -15,6 +16,7 @@ function getAuthToken(): string {
 }
 
 export default function EditProfilePage() {
+  const t = useTranslations("auth.pages.editProfile");
   const router = useRouter();
 
   const [profileData, setProfileData] = useState({
@@ -164,7 +166,7 @@ export default function EditProfilePage() {
                   lineHeight: 1.2,
                 }}
               >
-                Edit profile
+                {t("title")}
               </h1>
             </div>
 
@@ -187,7 +189,7 @@ export default function EditProfilePage() {
                 {profileData.profileImage ? (
                   <img
                     src={profileData.profileImage}
-                    alt="Profile"
+                    alt={t("imageAlt")}
                     className="w-full h-full object-cover rounded-[10px]"
                   />
                 ) : (
@@ -229,7 +231,7 @@ export default function EditProfilePage() {
                 />
               </div>
               <p style={{ color: "#79747E", fontFamily: "Lato, sans-serif", fontSize: "17px" }}>
-                Upload profile photo
+                {t("uploadPhoto")}
               </p>
             </div>
           </div>

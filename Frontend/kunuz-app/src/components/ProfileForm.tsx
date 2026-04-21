@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 import RichTextEditor from "@/components/RichTextEditor";
 
 const FONT = "var(--font-lato), 'Lato', sans-serif";
@@ -69,8 +70,13 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+type PillOption = {
+  label: string;
+  value: string;
+};
+
 function PillGroup({ options, value, onChange, variant = "default" }: {
-  options: string[];
+  options: PillOption[];
   value: string;
   onChange: (val: string) => void;
   variant?: string;
@@ -82,14 +88,14 @@ function PillGroup({ options, value, onChange, variant = "default" }: {
       style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
     >
       {options.map((opt) => {
-        const active = value === opt;
+        const active = value === opt.value;
         return (
           <button
-            key={opt}
+            key={opt.value}
             type="button"
-            onClick={() => onChange(opt)}
+            onClick={() => onChange(opt.value)}
             className="post-form-pill"
-            data-option={opt}
+            data-option={opt.value}
             data-active={active ? "true" : "false"}
             style={{
               display: "inline-flex",
@@ -107,7 +113,7 @@ function PillGroup({ options, value, onChange, variant = "default" }: {
               boxShadow: active ? "none" : "0 1px 4px rgba(67,40,23,0.06)",
             }}
           >
-            {opt}
+            {opt.label}
           </button>
         );
       })}
@@ -115,7 +121,23 @@ function PillGroup({ options, value, onChange, variant = "default" }: {
   );
 }
 
-const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide"];
+const normalizeExpertiseValue = (value?: string) => {
+  switch ((value || "").toLowerCase()) {
+    case "amateur":
+      return "Amateur";
+    case "student":
+      return "Student";
+    case "researcher":
+      return "Researcher";
+    case "historian":
+      return "Historian";
+    case "guide":
+    case "tour guide":
+      return "Tour Guide";
+    default:
+      return value || "Researcher";
+  }
+};
 
 export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
   onCancel: () => void;
@@ -128,36 +150,40 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
     speciality?: string;
   };
 }) {
+  const t = useTranslations("auth.profileForm");
+  const expertiseOptions: PillOption[] = [
+    { value: "Amateur", label: t("expertiseOptions.amateur") },
+    { value: "Student", label: t("expertiseOptions.student") },
+    { value: "Researcher", label: t("expertiseOptions.researcher") },
+    { value: "Historian", label: t("expertiseOptions.historian") },
+    { value: "Tour Guide", label: t("expertiseOptions.tourGuide") },
+  ];
 
-  // ← CHANGED: all separate states merged into one formData object
   const [formData, setFormData] = useState({
     firstName: initialValues.firstName ?? "",
     lastName: initialValues.lastName ?? "",
     biography: initialValues.biography ?? "",
-    expertise: initialValues.expertise ?? "Researcher",
+    expertise: normalizeExpertiseValue(initialValues.expertise),
     speciality: initialValues.speciality ?? "",
     badgeFiles: [] as string[],
   });
 
   const badgeInputRef = useRef<HTMLInputElement>(null);
 
-  // ← CHANGED: single handler for text inputs
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ← CHANGED: updates badgeFiles inside object
   const handleBadgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const names = Array.from(e.target.files).map((f) => f.name);
-      setFormData(prev => ({ ...prev, badgeFiles: [...prev.badgeFiles, ...names] }));
+      setFormData((prev) => ({ ...prev, badgeFiles: [...prev.badgeFiles, ...names] }));
     }
   };
 
-  // ← CHANGED: updates expertise inside object
   const handleExpertiseChange = (val: string) => {
-    setFormData(prev => ({ ...prev, expertise: val }));
+    setFormData((prev) => ({ ...prev, expertise: val }));
   };
 
   const withFocus = (el: HTMLInputElement | HTMLTextAreaElement | null) => {
@@ -178,8 +204,6 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
       backgroundColor: CREAM_PAGE,
       fontFamily: FONT,
     }}>
-
-      {/* Scrollable body */}
       <div
         style={{
           flex: 1,
@@ -190,74 +214,69 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
         }}
         className="hide-scrollbar"
       >
-
-        {/* Info Section */}
         <SectionBlock>
-          <SectionLabel>Info</SectionLabel>
+          <SectionLabel>{t("sections.info")}</SectionLabel>
 
           <div style={{ marginBottom: "14px" }}>
-            <FieldLabel>First name</FieldLabel>
+            <FieldLabel>{t("fields.firstName")}</FieldLabel>
             <input
               type="text"
-              name="firstName"                          
-              value={formData.firstName}                
-              onChange={handleChange}                   
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
               style={inputStyle}
               ref={withFocus}
             />
           </div>
 
           <div style={{ marginBottom: "14px" }}>
-            <FieldLabel>Last name</FieldLabel>
+            <FieldLabel>{t("fields.lastName")}</FieldLabel>
             <input
               type="text"
-              name="lastName"                          
-              value={formData.lastName}                
-              onChange={handleChange}                  
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
               style={inputStyle}
               ref={withFocus}
             />
           </div>
 
           <div>
-  <FieldLabel>Biography</FieldLabel>
-  <RichTextEditor
-    value={formData.biography}
-    onChange={(val: string) => setFormData(prev => ({ ...prev, biography: val }))}
-    placeholder="Tell us about yourself..."
-    minHeight="140px"
-  />
-</div>
+            <FieldLabel>{t("fields.biography")}</FieldLabel>
+            <RichTextEditor
+              value={formData.biography}
+              onChange={(val: string) => setFormData((prev) => ({ ...prev, biography: val }))}
+              placeholder={t("placeholders.biography")}
+              minHeight="140px"
+            />
+          </div>
         </SectionBlock>
 
-        {/* Expertise Section */}
         <SectionBlock>
-          <SectionLabel>Expertise</SectionLabel>
+          <SectionLabel>{t("sections.expertise")}</SectionLabel>
           <PillGroup
             options={expertiseOptions}
-            value={formData.expertise}                 
+            value={formData.expertise}
             onChange={handleExpertiseChange}
             variant="expertise"
           />
         </SectionBlock>
 
-        {/* Speciality Section */}
         <SectionBlock>
-          <SectionLabel>Speciality</SectionLabel>
+          <SectionLabel>{t("sections.speciality")}</SectionLabel>
           <input
             className="post-form-control"
             type="text"
-            name="speciality"                          
-            value={formData.speciality}                 
-            onChange={handleChange}                     
+            name="speciality"
+            value={formData.speciality}
+            onChange={handleChange}
             style={inputStyle}
             ref={withFocus}
           />
         </SectionBlock>
 
-        {/* Badge Section */}
         <SectionBlock isLast={true}>
-          <SectionLabel>Badge</SectionLabel>
+          <SectionLabel>{t("sections.badge")}</SectionLabel>
           <div
             className="post-form-control profile-form-badge-trigger"
             onClick={() => badgeInputRef.current?.click()}
@@ -274,8 +293,9 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
             }}
           >
             <span className="profile-form-badge-text" style={{ color: "#79747E", fontFamily: FONT, fontSize: "14px" }}>
-              {/* ← CHANGED */}
-              {formData.badgeFiles.length > 0 ? `${formData.badgeFiles.length} file(s) selected` : "Request badge"}
+              {formData.badgeFiles.length > 0
+                ? t("badge.selectedCount", { count: formData.badgeFiles.length })
+                : t("badge.request")}
             </span>
             <svg className="profile-form-badge-icon" width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M12 5v14M5 12h14" stroke="#79747E" strokeWidth="2" strokeLinecap="round"/>
@@ -289,10 +309,8 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
             onChange={handleBadgeChange}
           />
         </SectionBlock>
-
       </div>
 
-      {/* Fixed Cancel + Done buttons */}
       <div style={{
         display: "flex",
         alignItems: "center",
@@ -318,7 +336,7 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
           onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
         >
-          Cancel
+          {t("actions.cancel")}
         </button>
 
         <button
@@ -339,10 +357,9 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#5a3822"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ESPRESSO; }}
         >
-          Done
+          {t("actions.done")}
         </button>
       </div>
-
     </div>
   );
 }

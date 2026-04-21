@@ -44,6 +44,17 @@ type EventItem = {
   imageUrl: string;
 };
 
+type EventApiPost = {
+  content?: string;
+  event_details?: {
+    starts_at?: string;
+  };
+  images?: Array<{ image?: string }>;
+  location?: string;
+  region?: string;
+  title?: string;
+};
+
 const fallbackEvents: EventItem[] = [
   {
     title: "Casbah Restoration Workshop",
@@ -88,12 +99,6 @@ const fallbackEvents: EventItem[] = [
     imageUrl: "/e108c4a81ca8f617b8f5c16cfc0e2e7f 1.jpg",
   },
 ];
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("fr-FR");
-}
 
 function EventCard({ item }: { item: EventItem }) {
   const hasImage = !!item.imageUrl;
@@ -170,9 +175,9 @@ export default function UpcomingEvents() {
         const data = await res.json();
         const results = data.results || data;
 
-        const fetched: EventItem[] = (results || [])
+        const fetched: EventItem[] = ((results || []) as EventApiPost[])
           .slice(0, 6)
-          .map((post: any) => {
+          .map((post) => {
             const stripHtml = (html: string) => {
               if (!html) return "";
               return html.replace(/<[^>]*>/g, "");

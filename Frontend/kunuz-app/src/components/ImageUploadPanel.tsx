@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 const MAX_IMAGES = 5;
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB limit for Cloudinary
@@ -14,7 +15,7 @@ const getAuthToken = () => {
 };
 
 export type ImageItem = {
-  id?: string;       // present for remote images (PostImage.id from backend)
+  id?: string;
   url: string;
   name: string;
   isRemote: boolean;
@@ -30,6 +31,7 @@ export default function ImageUploadPanel({
   initialImages = [],
   onImagesChange,
 }: ImageUploadPanelProps) {
+  const t = useTranslations("auth.imageUpload");
   const [images, setImages] = useState<ImageItem[]>(initialImages);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -50,9 +52,9 @@ export default function ImageUploadPanel({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
 
-    const validFiles = files.filter(file => {
+    const validFiles = files.filter((file) => {
       if (file.size > MAX_FILE_BYTES) {
-        alert(`File "${file.name}" is too large. Maximum size is 10 MB.`);
+        alert(t("fileTooLarge", { name: file.name }));
         return false;
       }
       return true;
@@ -74,11 +76,10 @@ export default function ImageUploadPanel({
   const handleDelete = async (index: number) => {
     const img = images[index];
 
-    // If it's a remote image, delete it from the backend first
     if (img.isRemote && img.id) {
       const token = getAuthToken();
       if (!token) {
-        alert("Please log in to delete images.");
+        alert(t("deleteRequiresLogin"));
         return;
       }
 
@@ -91,7 +92,7 @@ export default function ImageUploadPanel({
         });
         if (!res.ok) {
           console.error("Failed to delete image from server");
-          return; // don't remove from UI if server deletion failed
+          return;
         }
       } catch (err) {
         console.error("Error deleting image:", err);
@@ -99,7 +100,6 @@ export default function ImageUploadPanel({
       }
     }
 
-    // Remove from local state
     const next = [...images];
     if (!next[index].isRemote && next[index].url) {
       URL.revokeObjectURL(next[index].url);
@@ -142,7 +142,7 @@ export default function ImageUploadPanel({
                   onClick={() => handleDelete(idx)}
                   className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-200 hover:bg-black/40"
                   style={{ backgroundColor: "rgba(67,40,23,0.80)" }}
-                  title="Remove photo"
+                  title={t("removePhoto")}
                 >
                   <svg
                     width="13"
@@ -175,7 +175,7 @@ export default function ImageUploadPanel({
                   color: "rgba(67, 40, 23, 0.45)",
                   height: "100%",
                 }}
-                title="Add photo"
+                title={t("addPhoto")}
               >
                 <svg
                   width="24"

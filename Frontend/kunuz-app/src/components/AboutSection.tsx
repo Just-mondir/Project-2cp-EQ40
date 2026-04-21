@@ -75,7 +75,7 @@ export default function AboutSection() {
 
         {/* Colonne droite : images */}
         <div className="flex flex-col gap-6 sm:gap-8 items-center md:items-end w-full max-w-[350px] sm:max-w-[420px] lg:max-w-[460px]">
-          {/* Ligne du haut — 40% left (narrow), 60% right (wide) */}
+          {/* Ligne du haut - 40% left (narrow), 60% right (wide) */}
           <div className="flex gap-6 lg:gap-8 items-start w-full justify-center">
             <div
               className="overflow-hidden rounded-[12px] bg-[#e0d4bf]"
@@ -103,7 +103,7 @@ export default function AboutSection() {
             </div>
           </div>
 
-          {/* Ligne du bas — 60% left (wide), 40% right (narrow) */}
+          {/* Ligne du bas - 60% left (wide), 40% right (narrow) */}
           <div className="flex gap-6 lg:gap-8 items-end w-full justify-center">
             <div
               className="overflow-hidden rounded-[12px] bg-[#e0d4bf]"
@@ -135,4 +135,3 @@ export default function AboutSection() {
     </section>
   );
 }
-

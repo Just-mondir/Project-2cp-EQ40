@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Mail, Lock, Eye, EyeOff, LayoutDashboard } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-// ─────────────────────────────────────────────────────────
-//  TYPES
-// ─────────────────────────────────────────────────────────
 interface ChangeEmailForm {
   newEmail: string;
   confirmPassword: string;
@@ -16,10 +14,6 @@ interface ChangePasswordForm {
   newPassword: string;
   confirmNewPassword: string;
 }
-
-// ─────────────────────────────────────────────────────────
-//  SHARED UI HELPERS
-// ─────────────────────────────────────────────────────────
 
 function Backdrop({ onClick }: { onClick: () => void }) {
   return (
@@ -85,6 +79,7 @@ function Field({ placeholder, value, onChange, type = "text" }: {
   onChange: (v: string) => void;
   type?: string;
 }) {
+  const t = useTranslations("auth.profilePopups");
   const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
   const isPassword = type === "password";
@@ -113,6 +108,7 @@ function Field({ placeholder, value, onChange, type = "text" }: {
         <button
           type="button"
           onClick={() => setShow((v) => !v)}
+          aria-label={show ? t("actions.hidePassword") : t("actions.showPassword")}
           className="profile-popup-eye-toggle"
           style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#8B7355", display: "flex", alignItems: "center" }}
         >
@@ -147,7 +143,7 @@ function PrimaryBtn({ label, onClick, disabled = false }: { label: string; onCli
   );
 }
 
-function CancelBtn({ label = "Cancel", onClick }: { label?: string; onClick: () => void }) {
+function CancelBtn({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -205,10 +201,9 @@ function useIsDarkHomeTheme() {
   return isDarkHomeTheme;
 }
 
-// ═════════════════════════════════════════════════════════
-//  POPUP 1 — Change Email
-// ═════════════════════════════════════════════════════════
 export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("auth.profilePopups.changeEmail");
+  const common = useTranslations("auth.profilePopups");
   const [form, setForm] = useState<ChangeEmailForm>({ newEmail: "", confirmPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -220,20 +215,13 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = async () => {
     setError("");
-    if (!form.newEmail || !form.confirmPassword) { setError("Please fill in all fields."); return; }
+    if (!form.newEmail || !form.confirmPassword) { setError(t("errors.required")); return; }
     setLoading(true);
     try {
-      // 🔌 BACKEND INTEGRATION POINT
-      // const res = await fetch("/api/user/change-email", {
-      //   method: "PUT",
-      //   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      //   body: JSON.stringify(form),
-      // });
-      // if (!res.ok) throw new Error((await res.json()).message);
       console.log("Payload:", form);
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : common("errors.generic"));
     } finally {
       setLoading(false);
     }
@@ -244,25 +232,24 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
       <Backdrop onClick={onClose} />
       <PopupCard onClick={onClose}>
         <IconBadge><Mail size={26} color={popupIconColor} strokeWidth={1.5} /></IconBadge>
-        <PopupTitle text="Change email" />
-        <PopupSubtitle text="Enter your new email address below" />
+        <PopupTitle text={t("title")} />
+        <PopupSubtitle text={t("subtitle")} />
         <div style={{ width: "100%" }}>
-          <Field placeholder="New email address"   value={form.newEmail}        onChange={update("newEmail")} />
-          <Field placeholder="Confirm your password" value={form.confirmPassword} onChange={update("confirmPassword")} type="password" />
+          <Field placeholder={t("fields.newEmail")} value={form.newEmail} onChange={update("newEmail")} />
+          <Field placeholder={t("fields.confirmPassword")} value={form.confirmPassword} onChange={update("confirmPassword")} type="password" />
         </div>
         {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
-        <PrimaryBtn label={loading ? "Saving…" : "Save changes"} onClick={handleSubmit} disabled={loading} />
-        <CancelBtn onClick={onClose} />
+        <PrimaryBtn label={loading ? t("actions.saving") : t("actions.save")} onClick={handleSubmit} disabled={loading} />
+        <CancelBtn onClick={onClose} label={common("actions.cancel")} />
       </PopupCard>
       <GlobalStyles />
     </>
   );
 }
 
-// ═════════════════════════════════════════════════════════
-//  POPUP 2 — Change Password
-// ═════════════════════════════════════════════════════════
 export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("auth.profilePopups.changePassword");
+  const common = useTranslations("auth.profilePopups");
   const [form, setForm] = useState<ChangePasswordForm>({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -274,21 +261,14 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = async () => {
     setError("");
-    if (!form.currentPassword || !form.newPassword || !form.confirmNewPassword) { setError("Please fill in all fields."); return; }
-    if (form.newPassword !== form.confirmNewPassword) { setError("New passwords do not match."); return; }
+    if (!form.currentPassword || !form.newPassword || !form.confirmNewPassword) { setError(t("errors.required")); return; }
+    if (form.newPassword !== form.confirmNewPassword) { setError(t("errors.mismatch")); return; }
     setLoading(true);
     try {
-      // 🔌 BACKEND INTEGRATION POINT
-      // const res = await fetch("/api/user/change-password", {
-      //   method: "PUT",
-      //   headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      //   body: JSON.stringify(form),
-      // });
-      // if (!res.ok) throw new Error((await res.json()).message);
       console.log("Payload:", form);
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : common("errors.generic"));
     } finally {
       setLoading(false);
     }
@@ -299,25 +279,22 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
       <Backdrop onClick={onClose} />
       <PopupCard onClick={onClose}>
         <IconBadge><Lock size={26} color={popupIconColor} strokeWidth={1.5} /></IconBadge>
-        <PopupTitle text="Change password" />
-        <PopupSubtitle text="Choose a strong new password" />
+        <PopupTitle text={t("title")} />
+        <PopupSubtitle text={t("subtitle")} />
         <div style={{ width: "100%" }}>
-          <Field placeholder="Current password"     value={form.currentPassword}    onChange={update("currentPassword")}    type="password" />
-          <Field placeholder="New password"         value={form.newPassword}        onChange={update("newPassword")}        type="password" />
-          <Field placeholder="Confirm new password" value={form.confirmNewPassword} onChange={update("confirmNewPassword")} type="password" />
+          <Field placeholder={t("fields.currentPassword")} value={form.currentPassword} onChange={update("currentPassword")} type="password" />
+          <Field placeholder={t("fields.newPassword")} value={form.newPassword} onChange={update("newPassword")} type="password" />
+          <Field placeholder={t("fields.confirmNewPassword")} value={form.confirmNewPassword} onChange={update("confirmNewPassword")} type="password" />
         </div>
         {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
-        <PrimaryBtn label={loading ? "Updating…" : "Update password"} onClick={handleSubmit} disabled={loading} />
-        <CancelBtn onClick={onClose} />
+        <PrimaryBtn label={loading ? t("actions.updating") : t("actions.update")} onClick={handleSubmit} disabled={loading} />
+        <CancelBtn onClick={onClose} label={common("actions.cancel")} />
       </PopupCard>
       <GlobalStyles />
-      
     </>
   );
 }
-// ═════════════════════════════════════════════════════════
-//  POPUP 3 — Dashboard
-// ═════════════════════════════════════════════════════════
+
 export function DashboardPopup({
   onClose,
   isModerator = false,
@@ -335,6 +312,7 @@ export function DashboardPopup({
   onLogout: () => void;
   onPlatformStatistics?: () => void;
 }) {
+  const t = useTranslations("auth.profilePopups.dashboard");
   const isDarkDashboard = useIsDarkHomeTheme();
 
   const neutralIconColor = isDarkDashboard ? "#F6EAD2" : "#432817";
@@ -342,20 +320,20 @@ export function DashboardPopup({
 
   const items = [
     {
-      label: "Change email",
+      label: t("items.changeEmail"),
       icon: <Mail size={18} color={neutralIconColor} strokeWidth={1.5} />,
       onClick: () => { onClose(); onChangeEmail(); },
       danger: false,
     },
     {
-      label: "Change password",
+      label: t("items.changePassword"),
       icon: <Lock size={18} color={neutralIconColor} strokeWidth={1.5} />,
       onClick: () => { onClose(); onChangePassword(); },
       danger: false,
     },
     ...(isModerator
       ? [{
-          label: "Platform statistics",
+          label: t("items.platformStatistics"),
           icon: (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={neutralIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="20" x2="18" y2="10" />
@@ -368,7 +346,7 @@ export function DashboardPopup({
         }]
       : []),
     {
-      label: "Delete account",
+      label: t("items.deleteAccount"),
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dangerIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="3 6 5 6 21 6" />
@@ -381,7 +359,7 @@ export function DashboardPopup({
       danger: true,
     },
     {
-      label: "Logout",
+      label: t("items.logout"),
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={neutralIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -415,17 +393,15 @@ export function DashboardPopup({
             animation: "popIn 0.22s cubic-bezier(0.34,1.56,0.64,1)",
           }}
         >
-          {/* Header */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid #E0D5C5" }}>
             <div style={{ width: "40px", height: "40px", borderRadius: "50%", border: "1.5px solid #432817", backgroundColor: "rgba(67,40,23,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <LayoutDashboard size={20} color="#432817" strokeWidth={1.5} />
             </div>
             <p style={{ margin: 0, color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "20px" }}>
-              Dashboard
+              {t("title")}
             </p>
           </div>
 
-          {/* Items */}
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             {items.map((item, i) => (
               <button

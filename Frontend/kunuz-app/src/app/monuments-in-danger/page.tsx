@@ -3,10 +3,23 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import {
+  HISTORICAL_PERIOD_VALUES,
+  MONUMENT_TYPE_VALUES,
+  MOBILIZATION_STATUS_VALUES,
+  REGION_VALUES,
+  URGENCY_LEVEL_VALUES,
+  translateHistoricalPeriod,
+  translateMobilizationStatus,
+  translateMonumentType,
+  translateRegion,
+  translateUrgencyLevel,
+} from "@/lib/authFilterOptions";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -403,6 +416,7 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
+  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -415,7 +429,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? "See less" : "See more"}
+          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
         </button>
       )}
     </div>
@@ -439,6 +453,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
+  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -449,7 +464,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -458,7 +473,24 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 
   if (post.post_type === "alert" && post.alert_details) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const statusKeyMap: Record<string, string> = {
+      restored: "statuses.restored",
+      under_intervention: "statuses.underIntervention",
+      destroyed: "statuses.destroyed",
+      alert: "statuses.alert",
+    };
+    const urgencyKeyMap: Record<string, string> = {
+      low: "urgency.low",
+      medium: "urgency.medium",
+      high: "urgency.high",
+      critical: "urgency.critical",
+    };
+    const statusLabel = statusKeyMap[post.alert_details.current_status]
+      ? feedT(statusKeyMap[post.alert_details.current_status])
+      : STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const urgencyLabel = urgencyKeyMap[post.alert_details.urgence_level]
+      ? feedT(urgencyKeyMap[post.alert_details.urgence_level])
+      : level.label;
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -468,9 +500,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{urgencyLabel}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -496,6 +528,8 @@ function CommentItem({
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
@@ -623,16 +657,16 @@ function CommentItem({
   };
 
   const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
+    const reason = window.prompt(feedT("prompts.reportComment"));
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("comment", comment.id, reason.trim());
       setShowMenu(false);
-      window.alert("Comment reported successfully.");
+      window.alert(feedT("feedback.commentReported"));
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : "Failed to report comment."
+        error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
       );
     }
   };
@@ -679,24 +713,24 @@ function CommentItem({
                       style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                       onClick={handleEditComment}
                     >
-                      Edit comment
+                      {feedT("actions.editComment")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
                       style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                       onClick={handleDeleteComment}
                     >
-                      Delete comment
+                      {feedT("actions.deleteComment")}
                     </button>
                   </>
                 ) : (
-                  <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={handleReportComment}
-                  >
-                    Report comment
-                  </button>
+                    <button
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                      onClick={handleReportComment}
+                    >
+                      {feedT("actions.reportComment")}
+                    </button>
                 )}
               </div>
             )}
@@ -722,14 +756,14 @@ function CommentItem({
                 style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
                 onClick={handleSaveEditedComment}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
                 onClick={handleCancelEditComment}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
@@ -761,7 +795,7 @@ function CommentItem({
               <polyline points="9 14 4 9 9 4" />
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
-            <span>Reply</span>
+            <span>{commonT("reply")}</span>
           </button>
         </div>
 
@@ -769,7 +803,7 @@ function CommentItem({
           <div className="flex items-center gap-2 mt-2">
             <input
               type="text"
-              placeholder="Write a reply..."
+              placeholder={feedT("placeholders.reply")}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => {
@@ -816,6 +850,8 @@ function AnnotationItem({
   onReject: (id: string) => void;
   onRefresh?: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
@@ -918,22 +954,22 @@ function AnnotationItem({
   };
 
   const handleReport = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
+    const reason = window.prompt(feedT("prompts.reportAnnotation"));
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("annotation", annotation.id, reason.trim());
       setShowMenu(false);
-      window.alert("Reported successfully");
+      window.alert(feedT("feedback.annotationReported"));
     } catch {
-      window.alert("Failed to report");
+      window.alert(feedT("feedback.annotationReportFailed"));
     }
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -987,14 +1023,14 @@ function AnnotationItem({
                       style={{ color: "#432817" }}
                       onClick={handleEditAnnotation}
                     >
-                      Edit annotation
+                      {feedT("actions.editAnnotation")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
                       style={{ color: "#432817" }}
                       onClick={handleDelete}
                     >
-                      Delete annotation
+                      {feedT("actions.deleteAnnotation")}
                     </button>
                   </>
                 )}
@@ -1004,7 +1040,7 @@ function AnnotationItem({
                     style={{ color: "#432817" }}
                     onClick={handleReport}
                   >
-                    Report annotation
+                    {feedT("actions.reportAnnotation")}
                   </button>
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
@@ -1014,14 +1050,14 @@ function AnnotationItem({
                       style={{ color: "#5C7A3E" }}
                       onClick={handleAccept}
                     >
-                      Accept
+                      {commonT("accept")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
                       style={{ color: "#C0392B" }}
                       onClick={handleReject}
                     >
-                      Reject
+                      {commonT("reject")}
                     </button>
                   </>
                 )}
@@ -1049,14 +1085,14 @@ function AnnotationItem({
                 style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
                 onClick={handleSaveEditedAnnotation}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
                 onClick={handleCancelEditAnnotation}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
@@ -1086,6 +1122,8 @@ function AnnotationItem({
 /* ───────────────── FILTER SECTION ───────────────── */
 
 function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; onClose: () => void; onApply: (filters: any) => void }) {
+  const filtersT = useTranslations("auth.filters");
+  const postFormT = useTranslations("auth.postForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({
     region: "All",
@@ -1103,11 +1141,11 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
   if (!isAnimating && !isVisible) return null;
 
   const filters = [
-    { key: "region", label: "Geographical Regions", options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer"] },
-    { key: "historical_period", label: "Historical Periods", options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"] },
-    { key: "monument_type", label: "Heritage Type", options: ["All", "Civil", "Religious", "Military", "Funerary"] },
-    { key: "urgence_level", label: "Urgency Level", options: ["All", "Low", "Medium", "High", "Critical"] },
-    { key: "current_status", label: "Mobilization Status", options: ["All", "Restored", "Under intervention", "Destroyed", "Alert"] },
+    { key: "region", label: filtersT("labels.region"), options: ["All", ...REGION_VALUES] },
+    { key: "historical_period", label: filtersT("labels.historicalPeriod"), options: ["All", ...HISTORICAL_PERIOD_VALUES] },
+    { key: "monument_type", label: filtersT("labels.heritageType"), options: ["All", ...MONUMENT_TYPE_VALUES] },
+    { key: "urgence_level", label: filtersT("labels.urgencyLevel"), options: ["All", ...URGENCY_LEVEL_VALUES] },
+    { key: "current_status", label: filtersT("labels.mobilizationStatus"), options: ["All", ...MOBILIZATION_STATUS_VALUES] },
   ];
 
   const handleSelectChange = (key: string, value: string) => {
@@ -1142,7 +1180,7 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
           <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>Filters</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>{filtersT("title")}</h3>
         </div>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -1161,7 +1199,21 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
                     className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
                     style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--brown)", fontWeight: "700" }}
                   >
-                    {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
+                    {filter.options.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt === "All"
+                          ? filtersT("all")
+                          : filter.key === "region"
+                            ? translateRegion(opt, postFormT)
+                            : filter.key === "historical_period"
+                              ? translateHistoricalPeriod(opt, postFormT)
+                              : filter.key === "monument_type"
+                                ? translateMonumentType(opt, postFormT)
+                                : filter.key === "urgence_level"
+                                  ? translateUrgencyLevel(opt, postFormT)
+                                  : translateMobilizationStatus(opt, postFormT)}
+                      </option>
+                    ))}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -1173,8 +1225,8 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
         </div>
       </div>
       <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
-        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>Reset</button>
-        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>Apply</button>
+        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>{filtersT("reset")}</button>
+        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>{filtersT("apply")}</button>
       </div>
     </div>
   );
@@ -1196,6 +1248,7 @@ function PostModal({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   onMobilizationClick: () => void;
 }) {
+  const feedT = useTranslations("auth.feed");
   const [newComment, setNewComment] = useState("");
   const [newAnnotationText, setNewAnnotationText] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
@@ -1448,7 +1501,7 @@ function PostModal({
               </button>
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2", border: "1px solid rgba(67, 40, 23, 0.1)" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>Report post</button>
+                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>{feedT("actions.reportPost")}</button>
                 </div>
               )}
             </div>
@@ -1470,12 +1523,12 @@ function PostModal({
             {isContentLong && !contentExpanded ? (
               <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
                 {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
+                <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
               </p>
             ) : (
               <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
             )}
-            {isContentLong && contentExpanded && <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>}
+            {isContentLong && contentExpanded && <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>}
           </div>
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
@@ -1488,7 +1541,7 @@ function PostModal({
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              Comments ({comments.length})
+              {feedT("tabs.comments", { count: comments.length })}
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
@@ -1499,7 +1552,7 @@ function PostModal({
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              Annotations ({getAcceptedAnnotationsCount(annotations)})
+              {feedT("tabs.annotations", { count: getAcceptedAnnotationsCount(annotations) })}
             </button>
           </div>
 
@@ -1513,7 +1566,7 @@ function PostModal({
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <CommentIcon size={28} className="opacity-30" />
                       <p className="text-xs" style={{ color: "#8B7355" }}>
-                        No comments yet. Be the first to comment!
+                        {feedT("empty.comments")}
                       </p>
                     </div>
                   )}
@@ -1528,7 +1581,7 @@ function PostModal({
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <AnnotationIcon size={28} className="opacity-30" />
                       <p className="text-xs" style={{ color: "#8B7355" }}>
-                        No annotations yet. Be the first to annotate!
+                        {feedT("empty.annotations")}
                       </p>
                     </div>
                   )}
@@ -1569,7 +1622,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add a comment"
+                  placeholder={feedT("placeholders.comment")}
                   className="flex-1 py-2.5 px-4 text-xs rounded-xl outline-none border bg-white"
                   style={{ color: "#432817", borderColor: "#E0D5C5" }}
                   value={newComment}
@@ -1584,7 +1637,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add an annotation"
+                  placeholder={feedT("placeholders.annotation")}
                   className="flex-1 py-2.5 px-4 text-xs rounded-xl outline-none border bg-white"
                   style={{ color: "#432817", borderColor: "#E0D5C5" }}
                   value={newAnnotationText}
@@ -1620,6 +1673,7 @@ function PostCard({
   onHistoryClick: () => void;
   onMobilizationClick: () => void;
 }) {
+  const feedT = useTranslations("auth.feed");
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -1691,7 +1745,7 @@ function PostCard({
                   style={{ color: "#432817" }}
                   onClick={(e) => { e.stopPropagation(); setShowMenu(false); onMobilizationClick(); }}
                 >
-                  Report post
+                  {feedT("actions.reportPost")}
                 </button>
               </div>
             )}
@@ -1817,6 +1871,9 @@ function MobilizationModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const pageT = useTranslations("auth.pages.monumentsInDanger.reportModal");
+  const postFormT = useTranslations("auth.postForm");
   const [selectedPrev, setSelectedPrev] = useState("Alert");
   const [selectedReq, setSelectedReq] = useState("Under intervention");
   const [description, setDescription] = useState("");
@@ -1833,7 +1890,7 @@ function MobilizationModal({
     try {
       const formData = new FormData();
       // On envoie les champs attendus par PostDetailSerializer
-      formData.append("title", `Mobilization: ${post.title}`);
+      formData.append("title", `${pageT("generatedTitlePrefix")} ${post.title}`);
       formData.append("content", description);
       formData.append("location", post.location || "");
       formData.append("region", post.region || "");
@@ -1857,12 +1914,12 @@ function MobilizationModal({
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Failed to submit report");
+      if (!res.ok) throw new Error(pageT("errors.submitFailed"));
       onSuccess();
       onClose();
     } catch (err) {
       console.error("Submission error:", err);
-      alert("Failed to submit mobilization report.");
+      alert(pageT("errors.submitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -1882,11 +1939,11 @@ function MobilizationModal({
             <div className="bg-white p-1.5 rounded-full shadow-sm group-hover:bg-[#432817] group-hover:text-white transition-all">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
             </div>
-            <span className="text-sm font-bold opacity-80 group-hover:opacity-100">Back</span>
+            <span className="text-sm font-bold opacity-80 group-hover:opacity-100">{commonT("back")}</span>
           </button>
 
           <h2 className="text-3xl text-[#432817] font-bold tracking-tight text-center flex-1 pr-16" style={{ fontFamily: "var(--font-lato), sans-serif" }}>
-            Mobilization report
+            {pageT("title")}
           </h2>
         </div>
 
@@ -1894,7 +1951,7 @@ function MobilizationModal({
           {/* Left: Image Upload Preview */}
           <div className="flex-[0.7] flex flex-col gap-4 min-h-0 overflow-y-auto pr-2 feed-scroll">
             <label className="text-sm font-bold text-[#432817]">
-              Documentation photos
+              {pageT("documentationPhotos")}
             </label>
             <div className="flex-1 overflow-hidden" style={{ minHeight: "400px" }}>
               <ImageUploadPanel initialImages={[]} onImagesChange={setImages} />
@@ -1906,11 +1963,11 @@ function MobilizationModal({
             {/* Description */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-[#432817]">
-                Description
+                {pageT("description")}
               </label>
               <textarea
                 className="w-full h-32 p-4 bg-[#F7F5EF]/50 border-2 border-transparent rounded-[24px] resize-none text-sm outline-none focus:border-[#C4A882] focus:bg-white transition-all shadow-inner"
-                placeholder="Entrez le contenu de votre post ici..."
+                placeholder={pageT("descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 style={{ fontFamily: 'var(--font-lato)' }}
@@ -1920,7 +1977,7 @@ function MobilizationModal({
             {/* Previous Status */}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-bold text-[#432817]">
-                Previous Status<span style={{ color: "red" }}>*</span>
+                {pageT("previousStatus")}<span style={{ color: "red" }}>*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {options.map(opt => (
@@ -1932,7 +1989,7 @@ function MobilizationModal({
                       : 'bg-transparent border-[#432817]/10 text-[#432817] hover:border-[#432817]/30'
                       }`}
                   >
-                    {opt}
+                    {translateMobilizationStatus(opt, postFormT)}
                   </button>
                 ))}
               </div>
@@ -1941,7 +1998,7 @@ function MobilizationModal({
             {/* Current Status */}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-bold text-[#432817]">
-                New Status <span style={{ color: "red" }}>*</span>
+                {pageT("newStatus")} <span style={{ color: "red" }}>*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {options.map(opt => (
@@ -1953,7 +2010,7 @@ function MobilizationModal({
                       : 'bg-transparent border-[#432817]/10 text-[#432817] hover:border-[#432817]/30'
                       }`}
                   >
-                    {opt}
+                    {translateMobilizationStatus(opt, postFormT)}
                   </button>
                 ))}
               </div>
@@ -1965,7 +2022,7 @@ function MobilizationModal({
                 onClick={onClose}
                 className="px-8 py-3 rounded-2xl font-bold text-sm text-[#432817] hover:bg-[#432817]/5 transition-colors"
               >
-                Cancel
+                {commonT("cancel")}
               </button>
               <button
                 onClick={handleSubmit}
@@ -1975,9 +2032,9 @@ function MobilizationModal({
                 {submitting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Submitting...
+                    {pageT("submitting")}
                   </div>
-                ) : "Submit Report"}
+                ) : pageT("submit")}
               </button>
             </div>
           </div>
@@ -1996,6 +2053,7 @@ const MOCK_HISTORIES = [
 ];
 
 function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost | null; onClose: () => void; onMobilizationReport: () => void }) {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
   if (!post) return null;
   const imageList = post.images ?? [];
 
@@ -2011,7 +2069,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
               className="w-full h-full object-cover opacity-90 transition-opacity duration-300 hover:opacity-100"
             />
           ) : (
-            <div className="p-10 text-cream text-center opacity-40">No preview image</div>
+            <div className="p-10 text-cream text-center opacity-40">{pageT("history.noPreviewImage")}</div>
           )}
         </div>
 
@@ -2023,7 +2081,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm" style={{ color: "#432817" }}>{post.user_display_name || post.user_username}</span>
-                <span className="text-[10px]" style={{ color: "#8B7355" }}>posted in {formatDate(post.created_at)}</span>
+                <span className="text-[10px]" style={{ color: "#8B7355" }}>{pageT("history.postedIn", { date: formatDate(post.created_at) })}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -2037,7 +2095,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
           <div className="px-5 py-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-1 mb-1">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-              <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+              <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || pageT("defaultLocation")}</span>
             </div>
             <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
             <ExpandableContent content={post.content} className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }} />
@@ -2090,7 +2148,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
               className="w-full py-3.5 bg-[#432817] text-white text-sm font-bold rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
               style={{ fontFamily: "var(--font-lato), sans-serif" }}
             >
-              <span className="text-xl font-medium">+</span> Add mobilization report
+              <span className="text-xl font-medium">+</span> {pageT("addMobilizationReport")}
             </button>
           </div>
         </div>
@@ -2105,10 +2163,12 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
 /* ─────────────────── MOBILE MONUMENTS STRIP ─────────────────── */
 
 function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const postFormT = useTranslations("auth.postForm");
   if (!posts || posts.length === 0) return null;
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Monuments in critical danger</h3>
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>{pageT("criticalTitle")}</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -2120,9 +2180,9 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
         {posts.map((post) => {
           const image = post.images?.[0]?.image;
           const imageUrl = image ? (image.startsWith("/media/") ? `${API_URL}${image}` : image) : "/about-5.jpg";
-          const userName = post.user_display_name || post.user_username || "Unknown";
+          const userName = post.user_display_name || post.user_username || pageT("unknownUser");
           const alertStatus = post.alert_details?.current_status || "Alert";
-          const capitalizedStatus = alertStatus.charAt(0).toUpperCase() + alertStatus.slice(1).replace("_", " ");
+          const translatedStatus = translateMobilizationStatus(alertStatus, postFormT);
 
           return (
             <div
@@ -2174,15 +2234,15 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
                       maxWidth: "90px"
                     }}
                   >
-                    {post.location || post.region || "Algeria"}
+                    {post.location || post.region || pageT("defaultLocation")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
-                    <span className="text-[8px] font-medium" style={{ color: "#E53935" }}>Critical</span>
+                    <span className="text-[8px] font-medium" style={{ color: "#E53935" }}>{translateUrgencyLevel("Critical", postFormT)}</span>
                   </div>
-                  <span className="text-[8px] font-medium" style={{ color: "#9E9E9E" }}>{capitalizedStatus}</span>
+                  <span className="text-[8px] font-medium" style={{ color: "#9E9E9E" }}>{translatedStatus}</span>
                 </div>
               </div>
             </div>
@@ -2196,6 +2256,9 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
 /* ───────────────── RIGHT SIDEBAR ───────────────── */
 
 function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPost[] }) {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const addEventT = useTranslations("auth.pages.addEvent");
+  const postFormT = useTranslations("auth.postForm");
   if (!posts || posts.length === 0) {
     return (
       <aside className="w-[320px] xl:w-[380px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
@@ -2206,22 +2269,22 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
             className="px-8 py-2.5 mb-6 bg-[#432817] text-white text-base font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
             style={{ fontFamily: "var(--font-lato), sans-serif" }}
           >
-            + Add Mobilization Event
+            + {addEventT("title")}
           </button>
 
           {/* Centered Title */}
           <h2
             className="text-2xl font-bold mb-8 text-center"
             style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-          >
-            View Monuments in critical danger
-          </h2>
+        >
+          {pageT("criticalTitle")}
+        </h2>
 
-          <div className="flex items-center justify-center h-48">
-            <span className="text-sm opacity-50" style={{ color: "#432817" }}>No critical monuments found.</span>
-          </div>
+        <div className="flex items-center justify-center h-48">
+            <span className="text-sm opacity-50" style={{ color: "#432817" }}>{pageT("noCritical")}</span>
         </div>
-      </aside>
+      </div>
+    </aside>
     );
   }
 
@@ -2234,7 +2297,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
           className="px-8 py-2.5 mb-6 bg-[#432817] text-white text-base font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
           style={{ fontFamily: "var(--font-lato), sans-serif" }}
         >
-          + Add Mobilization Event
+          + {addEventT("title")}
         </button>
 
         {/* Centered Title */}
@@ -2242,7 +2305,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
           className="text-2xl font-bold mb-8 text-center"
           style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
         >
-          View Monuments in critical danger
+          {pageT("criticalTitle")}
         </h2>
 
         {/* Scrollable list of cards */}
@@ -2250,9 +2313,9 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
           {posts.map((post) => {
             const image = post.images?.[0]?.image;
             const imageUrl = image ? (image.startsWith("/media/") ? `${API_URL}${image}` : image) : "/about-5.jpg";
-            const userName = post.user_display_name || post.user_username || "Unknown";
+            const userName = post.user_display_name || post.user_username || pageT("unknownUser");
             const alertStatus = post.alert_details?.current_status || "Alert";
-            const capitalizedStatus = alertStatus.charAt(0).toUpperCase() + alertStatus.slice(1).replace("_", " ");
+            const translatedStatus = translateMobilizationStatus(alertStatus, postFormT);
 
             return (
               <div
@@ -2277,17 +2340,17 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#7a5a3a", flexShrink: 0 }}>
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                       </svg>
-                      <span className="truncate">{post.location || post.region || "Algeria"}</span>
+                      <span className="truncate">{post.location || post.region || pageT("defaultLocation")}</span>
                     </div>
 
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
-                      <span>Critical</span>
+                      <span>{translateUrgencyLevel("Critical", postFormT)}</span>
                     </div>
 
                     <span className="opacity-40 flex-shrink-0">|</span>
 
-                    <span className="flex-shrink-0">{capitalizedStatus}</span>
+                    <span className="flex-shrink-0">{translatedStatus}</span>
                   </div>
 
                   {/* User row */}
@@ -2311,6 +2374,8 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
 /* ───────────────── MAIN PAGE ───────────────── */
 
 export default function MonumentsInDangerPage() {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const addEventT = useTranslations("auth.pages.addEvent");
   const router = useRouter();
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [criticalPosts, setCriticalPosts] = useState<ApiPost[]>([]);
@@ -2488,7 +2553,7 @@ export default function MonumentsInDangerPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
-                  placeholder="Search alerts..."
+                  placeholder={pageT("searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -2513,7 +2578,7 @@ export default function MonumentsInDangerPage() {
                 className="px-8 py-2.5 bg-[#432817] text-white text-sm font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
                 style={{ fontFamily: "var(--font-lato), sans-serif" }}
               >
-                + Add Mobilization Event
+                + {addEventT("title")}
               </button>
             </div>
 
@@ -2543,8 +2608,8 @@ export default function MonumentsInDangerPage() {
                 ) : !loading && (
                   <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
                     <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-[#432817]/40"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                    <p className="text-xl font-bold" style={{ color: "#432817" }}>No alerts found matching your criteria</p>
-                    <p className="text-sm mt-2" style={{ color: "#432817" }}>Try adjusting your search or filters</p>
+                    <p className="text-xl font-bold" style={{ color: "#432817" }}>{pageT("noResultsTitle")}</p>
+                    <p className="text-sm mt-2" style={{ color: "#432817" }}>{pageT("noResultsDescription")}</p>
                   </div>
                 )}
 

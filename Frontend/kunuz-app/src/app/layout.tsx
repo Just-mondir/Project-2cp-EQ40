@@ -4,7 +4,6 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 import GoogleProvider from "@/components/GoogleProvider";
 import AuthGate from "@/components/AuthGate";
-import ThemeToggle from "@/components/ThemeToggle";
 import {
   LIGHT_ONLY_PLATFORM_ROUTE_LIST,
   PUBLIC_ROUTE_LIST,
@@ -29,7 +28,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Kunuz — Discover the Soul of Algeria",
+  title: "Kunuz - Discover the Soul of Algeria",
   description: "Kunuz connects generations through Algeria's rich cultural heritage.",
 };
 
@@ -69,14 +68,10 @@ export default function RootLayout({
         className={`${lato.variable} ${aclonica.variable} ${playfair.variable} font-sans antialiased`}
       >
         <GoogleProvider>
-          <AuthGate>
-            <ThemeToggle />
-            {children}
-          </AuthGate>
+          <AuthGate>{children}</AuthGate>
         </GoogleProvider>
         <Footer />
       </body>
     </html>
   );
 }
-

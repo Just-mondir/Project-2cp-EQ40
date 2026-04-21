@@ -32,7 +32,7 @@ useEffect(() => {
       className="object-cover object-center"
       sizes="100vw"
     />
-        {/* Gradient overlay — white to dark */}
+        {/* Gradient overlay - white to dark */}
         <div
           className="absolute inset-0"
           style={{
@@ -41,7 +41,7 @@ useEffect(() => {
         />
       </div>
 
-      {/* Content — left-aligned with generous spacing */}
+      {/* Content - left-aligned with generous spacing */}
       <div
         className="absolute z-10 flex flex-col items-start px-6 sm:px-0"
         style={{
@@ -86,7 +86,7 @@ useEffect(() => {
           </span>{" "}
           Connects Generations Through Algeria&apos;s Rich Cultural Heritage
         </p>
-        {/* Get Started — hover via React state */}
+        {/* Get Started - hover via React state */}
 <Link
   href="/sign-up"
   className="w-fit cursor-pointer rounded-full border-2 font-bold transition-all duration-300"

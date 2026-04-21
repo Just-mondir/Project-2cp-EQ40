@@ -6,6 +6,7 @@ import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel"
 import PostForm from "@/components/PostForm";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const getAuthToken = () => {
@@ -31,6 +32,7 @@ type PostFormValues = {
 };
 
 export default function AddPostPage() {
+  const t = useTranslations("auth.pages.addPost");
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [images, setImages] = useState<ImageItem[]>([]);
@@ -129,7 +131,7 @@ export default function AddPostPage() {
       router.push(`/user/${me.data?.username ?? me.username}`);
     } catch (err) {
       console.error("Error creating post:", err);
-      alert("Failed to create post");
+      alert(t("errors.createFailed"));
     } finally {
       setSaving(false);
     }
@@ -157,7 +159,7 @@ export default function AddPostPage() {
                   lineHeight: 1.2,
                 }}
               >
-                Add post
+                {t("title")}
               </h1>
 
               {saving && (
@@ -169,7 +171,7 @@ export default function AddPostPage() {
                     fontFamily: "var(--font-lato), 'Lato', sans-serif",
                   }}
                 >
-                  Publishing...
+                  {t("publishing")}
                 </p>
               )}
             </div>

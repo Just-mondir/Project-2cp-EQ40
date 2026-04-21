@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
@@ -530,6 +531,8 @@ function CommentItem({
   onDelete?: (commentId: string) => void; isReply?: boolean;
 }) {
   const router = useRouter();
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
   const [gemsCount, setGemsCount] = useState(comment.gems_count);
@@ -623,14 +626,14 @@ function CommentItem({
   };
 
   const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
+    const reason = window.prompt(feedT("prompts.reportComment"));
     if (!reason || !reason.trim()) return;
     try {
       await submitReport("comment", comment.id, reason.trim());
       setShowMenu(false);
-      window.alert("Comment reported successfully.");
+      window.alert(feedT("feedback.commentReported"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to report comment.");
+      window.alert(error instanceof Error ? error.message : feedT("feedback.commentReportFailed"));
     }
   };
 
@@ -648,11 +651,11 @@ function CommentItem({
               <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
                 {isOwner ? (
                   <>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditComment}>Edit comment</button>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDeleteComment}>Delete comment</button>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditComment}>{feedT("actions.editComment")}</button>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDeleteComment}>{feedT("actions.deleteComment")}</button>
                   </>
                 ) : (
-                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportComment}>Report comment</button>
+                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportComment}>{feedT("actions.reportComment")}</button>
                 )}
               </div>
             )}
@@ -662,8 +665,8 @@ function CommentItem({
           <div className="mt-1">
             <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none" rows={3} style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
             <div className="flex items-center gap-2 mt-2">
-              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#432817", color: "#FFF8E2" }} onClick={handleSaveEditedComment}>Save</button>
-              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#E0D5C5", color: "#432817" }} onClick={handleCancelEditComment}>Cancel</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#432817", color: "#FFF8E2" }} onClick={handleSaveEditedComment}>{commonT("save")}</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#E0D5C5", color: "#432817" }} onClick={handleCancelEditComment}>{commonT("cancel")}</button>
             </div>
           </div>
         ) : (
@@ -675,12 +678,12 @@ function CommentItem({
           </button>
           <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }} onClick={() => setShowReplyInput(!showReplyInput)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4" /><path d="M20 20v-7a4 4 0 0 0-4-4H4" /></svg>
-            <span>Reply</span>
+            <span>{commonT("reply")}</span>
           </button>
         </div>
         {showReplyInput && (
           <div className="flex items-center gap-2 mt-2">
-            <input type="text" placeholder="Write a reply..." value={replyText} onChange={(e) => setReplyText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitReply(); }} className="flex-1 text-xs rounded-xl px-3 py-2 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+            <input type="text" placeholder={feedT("placeholders.reply")} value={replyText} onChange={(e) => setReplyText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitReply(); }} className="flex-1 text-xs rounded-xl px-3 py-2 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
             <button onClick={handleSubmitReply} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#432817" }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             </button>
@@ -700,6 +703,8 @@ function AnnotationItem({
   onDelete: (id: string) => void; onAccept: (id: string) => void;
   onReject: (id: string) => void; onRefresh: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
@@ -758,21 +763,21 @@ function AnnotationItem({
   const handleCancelEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(false); };
 
   const handleReportAnnotation = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
+    const reason = window.prompt(feedT("prompts.reportAnnotation"));
     if (!reason || !reason.trim()) return;
     try {
       await submitReport("annotation", annotation.id, reason.trim());
       setShowMenu(false);
-      window.alert("Annotation reported successfully.");
+      window.alert(feedT("feedback.annotationReported"));
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to report annotation.");
+      window.alert(error instanceof Error ? error.message : feedT("feedback.annotationReportFailed"));
     }
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
   };
   const sc = statusColors[annotation.status] ?? statusColors.pending;
   const imageUrl = annotation.image ? (annotation.image.startsWith("/media/") ? `${API_URL}${annotation.image}` : annotation.image) : "";
@@ -791,17 +796,17 @@ function AnnotationItem({
               <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]" style={{ backgroundColor: "#FFF8E2" }}>
                 {isOwner && (
                   <>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditAnnotation}>Edit annotation</button>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDelete}>Delete annotation</button>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditAnnotation}>{feedT("actions.editAnnotation")}</button>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDelete}>{feedT("actions.deleteAnnotation")}</button>
                   </>
                 )}
                 {!isOwner && (
-                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportAnnotation}>Report annotation</button>
+                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportAnnotation}>{feedT("actions.reportAnnotation")}</button>
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#EAF0E6]" style={{ color: "#5C7A3E" }} onClick={handleAccept}>Accept</button>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#C0392B" }} onClick={handleReject}>Reject</button>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#EAF0E6]" style={{ color: "#5C7A3E" }} onClick={handleAccept}>{commonT("accept")}</button>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#C0392B" }} onClick={handleReject}>{commonT("reject")}</button>
                   </>
                 )}
               </div>
@@ -812,8 +817,8 @@ function AnnotationItem({
           <div className="mt-1">
             <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none" rows={3} style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
             <div className="flex items-center gap-2 mt-2">
-              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#432817", color: "#FFF8E2" }} onClick={handleSaveEditedAnnotation}>Save</button>
-              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#E0D5C5", color: "#432817" }} onClick={handleCancelEditAnnotation}>Cancel</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#432817", color: "#FFF8E2" }} onClick={handleSaveEditedAnnotation}>{commonT("save")}</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#E0D5C5", color: "#432817" }} onClick={handleCancelEditAnnotation}>{commonT("cancel")}</button>
             </div>
           </div>
         ) : annotation.text ? (
@@ -839,6 +844,9 @@ function PostModal({
   loggedInUsername: string;
   initialTab?: "comments" | "annotations";
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
+  const userPageT = useTranslations("auth.pages.userProfile");
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
   const [newComment, setNewComment] = useState("");
   const [newAnnotationText, setNewAnnotationText] = useState("");
@@ -1091,7 +1099,7 @@ function PostModal({
 
   return (
     <>
-      <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title="Delete this post?" message="This action is permanent and cannot be undone. The post and all its images will be removed." primaryAction={{ label: "Delete", onClick: confirmDeletePost }} secondaryAction={{ label: "Cancel", onClick: () => setShowDeleteModal(false) }} />
+      <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title={userPageT("modals.deletePost.title")} message={userPageT("modals.deletePost.message")} primaryAction={{ label: userPageT("modals.deletePost.confirm"), onClick: confirmDeletePost }} secondaryAction={{ label: userPageT("modals.deletePost.cancel"), onClick: () => setShowDeleteModal(false) }} />
       <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
@@ -1115,11 +1123,11 @@ function PostModal({
                   <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
                     {isOwner ? (
                       <>
-                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>Edit</button>
-                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>Delete</button>
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>{commonT("delete")}</button>
                       </>
                     ) : (
-                      <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={() => { setShowPostMenu(false); if (!isLoggedIn) { router.push("/login"); return; } }}>Report post</button>
+                      <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={() => { setShowPostMenu(false); if (!isLoggedIn) { router.push("/login"); return; } }}>{feedT("actions.reportPost")}</button>
                     )}
                   </div>
                 )}
@@ -1142,22 +1150,22 @@ function PostModal({
                 {isContentLong && !contentExpanded ? (
                   <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
                     {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
-                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
                   </p>
                 ) : (
                   <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
                 )}
                 {isContentLong && contentExpanded && (
-                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
                 )}
               </div>
             )}
             <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
               <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
-                <CommentIcon size={13} /> Comments ({comments.length})
+                <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
               </button>
               <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
-                <AnnotationIcon size={13} /> Annotations ({acceptedAnnotationsCount})
+                <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
               </button>
             </div>
             <div className="flex-1 overflow-y-auto feed-scroll">
@@ -1166,7 +1174,7 @@ function PostModal({
                   {topLevelComments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <CommentIcon size={28} className="opacity-30" />
-                      <p className="text-xs" style={{ color: "#8B7355" }}>No comments yet. Be the first to comment!</p>
+                      <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.comments")}</p>
                     </div>
                   ) : topLevelComments.map((comment) => renderCommentThread(comment))}
                 </div>
@@ -1180,7 +1188,7 @@ function PostModal({
                   ) : annotations.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <AnnotationIcon size={28} className="opacity-30" />
-                      <p className="text-xs" style={{ color: "#8B7355" }}>No annotations yet. Be the first to annotate!</p>
+                      <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.annotations")}</p>
                     </div>
                   ) : annotations.map((annotation) => (
                     <AnnotationItem key={annotation.id} annotation={annotation} postId={post.id} postAuthorId={post.user_id} onDelete={handleDeleteAnnotation} onAccept={handleAcceptAnnotation} onReject={handleRejectAnnotation} onRefresh={() => fetchAnnotations(post.id)} />
@@ -1207,14 +1215,14 @@ function PostModal({
             <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
               {activeTab === "comments" ? (
                 <>
-                  <input type="text" placeholder="Add a comment" value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+                  <input type="text" placeholder={feedT("placeholders.comment")} value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
                   <button onClick={handleSubmitComment} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 hover:opacity-80" style={{ backgroundColor: "#432817" }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                   </button>
                 </>
               ) : (
                 <>
-                  <input type="text" placeholder="Add an annotation" value={newAnnotationText} onChange={(e) => setNewAnnotationText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+                  <input type="text" placeholder={feedT("placeholders.annotation")} value={newAnnotationText} onChange={(e) => setNewAnnotationText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
                   <button onClick={handleSubmitAnnotation} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 hover:opacity-80" style={{ backgroundColor: "#432817" }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                   </button>
@@ -1238,6 +1246,10 @@ function ProfileHeader({
   isOwnProfile: boolean;
 }) {
   const router = useRouter();
+  const dashboardT = useTranslations("auth.profilePopups.dashboard");
+  const addPostT = useTranslations("auth.pages.addPost");
+  const editProfileT = useTranslations("auth.pages.editProfile");
+  const userPageT = useTranslations("auth.pages.userProfile");
   const [showMenu, setShowMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
@@ -1254,7 +1266,7 @@ function ProfileHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const menuItems = ["Dashboard"];
+  const menuItems = [dashboardT("title")];
 
   const handleLogout = async () => {
     await logoutClient();
@@ -1271,7 +1283,7 @@ function ProfileHeader({
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
             {menuItems.map((item, i) => (
-              <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); }}>
+              <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === dashboardT("title")) setShowDashboardModal(true); }}>
                 {item}
               </button>
             ))}
@@ -1292,8 +1304,8 @@ function ProfileHeader({
           onLogout={() => setShowLogoutModal(true)}
         />
       )}
-      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, your token will be cleared and you will be redirected to the landing page." primaryAction={{ label: "Log out", onClick: handleLogout }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
-      <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
+      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title={userPageT("modals.logout.title")} message={userPageT("modals.logout.message")} primaryAction={{ label: userPageT("modals.logout.confirm"), onClick: handleLogout }} secondaryAction={{ label: userPageT("modals.logout.cancel"), onClick: () => setShowLogoutModal(false) }} />
+      <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title={userPageT("modals.deleteAccount.title")} message={userPageT("modals.deleteAccount.message")} primaryAction={{ label: userPageT("modals.deleteAccount.confirm"), onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: userPageT("modals.deleteAccount.cancel"), onClick: () => setShowDeleteAccountModal(false) }} />
 
       <div className="flex items-start gap-8">
         <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
@@ -1350,8 +1362,8 @@ function ProfileHeader({
 
       {isOwnProfile && (
         <div className="flex items-center justify-center gap-3 mt-6">
-          <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>Add post</button>
-          <button onClick={() => router.push("/edit-profile")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>Edit profile</button>
+          <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>{addPostT("title")}</button>
+          <button onClick={() => router.push("/edit-profile")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>{editProfileT("title")}</button>
         </div>
       )}
     </div>

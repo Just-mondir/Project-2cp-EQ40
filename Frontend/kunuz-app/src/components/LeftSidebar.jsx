@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { normalizeThemePathname } from "@/lib/themeRoutes";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
@@ -40,28 +41,27 @@ export default function LeftSidebar({
   activePage = "home",
   variant = "default",
 }) {
+  const t = useTranslations("auth.sidebar");
   const pathname = usePathname();
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => {
+    if (typeof window === "undefined") return "";
 
-  useEffect(() => {
     try {
       const direct =
         localStorage.getItem("username") ||
         localStorage.getItem("user_username") ||
         "";
-      if (direct) {
-        setUsername(direct);
-        return;
-      }
+      if (direct) return direct;
+
       const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        const parsed = JSON.parse(storedUser);
-        setUsername(parsed?.username || parsed?.user_username || "");
-      }
+      if (!storedUser) return "";
+
+      const parsed = JSON.parse(storedUser);
+      return parsed?.username || parsed?.user_username || "";
     } catch {
-      setUsername("");
+      return "";
     }
-  }, []);
+  });
 
   useEffect(() => {
     if (!username) {
@@ -143,9 +143,13 @@ export default function LeftSidebar({
   };
 
   useEffect(() => {
-    if (isNotifOpen) {
-      fetchMiniNotifications();
-    }
+    if (!isNotifOpen) return;
+
+    const loadNotifications = async () => {
+      await fetchMiniNotifications();
+    };
+
+    void loadNotifications();
   }, [isNotifOpen]);
 
   useEffect(() => {
@@ -163,7 +167,7 @@ export default function LeftSidebar({
     () => [
       {
         key: "home",
-        label: "Home",
+        label: t("nav.home"),
         href: "/home-page",
         path: (
           <>
@@ -174,7 +178,7 @@ export default function LeftSidebar({
       },
       {
         key: "communities",
-        label: "Communities",
+        label: t("nav.communities"),
         href: "#",
         path: (
           <>
@@ -187,7 +191,7 @@ export default function LeftSidebar({
       },
       {
         key: "monuments",
-        label: "Monuments in Danger",
+        label: t("nav.monuments"),
         href: "/monuments-in-danger",
         path: (
           <>
@@ -199,7 +203,7 @@ export default function LeftSidebar({
       },
       {
         key: "events",
-        label: "Events",
+        label: t("nav.events"),
         href: "/events",
         path: (
           <>
@@ -212,7 +216,7 @@ export default function LeftSidebar({
       },
       {
         key: "notifications",
-        label: "Notifications",
+        label: t("nav.notifications"),
         href: "/notifications",
         hasBadge: true,
         path: (
@@ -224,7 +228,7 @@ export default function LeftSidebar({
       },
       {
         key: "profile",
-        label: "Profile",
+        label: t("nav.profile"),
         href: username ? `/user/${username}` : "#",
         path: (
           <>
@@ -234,20 +238,20 @@ export default function LeftSidebar({
         ),
       },
     ],
-    [username],
+    [t, username],
   );
 
   return (
     <>
       {/* Desktop Sidebar (Floating Pill) */}
       <aside
-        className={`fixed left-4 top-4 w-[56px] hidden md:flex flex-col items-center py-6 z-50 rounded-2xl${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
+        className={`rtl-sidebar fixed left-4 top-4 w-[56px] hidden md:flex flex-col items-center py-6 z-50 rounded-2xl${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
         style={{
           backgroundColor: sidebarBg,
           boxShadow: "0 4px 24px rgba(67,40,23,0.12)",
         }}
       >
-        <Link href="/home-page" className="mb-6 px-1" aria-label="Kunuz home">
+        <Link href="/home-page" className="mb-6 px-1" aria-label={t("nav.home")}>
           <KunuzSidebarIcon />
         </Link>
 
@@ -301,7 +305,7 @@ export default function LeftSidebar({
                   </button>
 
                   <span
-                    className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
+                    className="rtl-sidebar-tooltip absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
                     style={{
                       backgroundColor: navActiveBg,
                       color: navActiveIcon,
@@ -314,7 +318,7 @@ export default function LeftSidebar({
 
                   {isNotifOpen && (
                     <div
-                      className="absolute left-full ml-4 top-1/2 -translate-y-1/2 w-[320px] rounded-2xl border p-4 z-[70]"
+                      className="rtl-sidebar-overlay absolute left-full ml-4 top-1/2 -translate-y-1/2 w-[320px] rounded-2xl border p-4 z-[70]"
                       style={{
                         backgroundColor: overlayBg,
                         borderColor: overlayBorder,
@@ -323,23 +327,23 @@ export default function LeftSidebar({
                     >
                       <div className="flex items-center justify-between mb-3">
                         <p className="text-sm font-bold" style={{ color: foregroundText }}>
-                          Notifications
+                          {t("overlay.title")}
                         </p>
                         <Bell size={14} color={mutedText} />
                       </div>
 
                       {notifLoading ? (
-                        <p className="text-xs" style={{ color: mutedText }}>Loading...</p>
+                        <p className="text-xs" style={{ color: mutedText }}>{t("overlay.loading")}</p>
                       ) : notifications.length === 0 ? (
                         <p className="text-xs leading-5" style={{ color: mutedText }}>
-                          No notifications yet.
+                          {t("overlay.empty")}
                         </p>
                       ) : (
                         <div className="space-y-2">
                           {notifications.map((notification) => (
                             <div key={notification.id} className="rounded-xl p-2.5" style={{ backgroundColor: overlayItemBg }}>
                               <p className="text-[12px] font-semibold leading-5" style={{ color: foregroundText }}>
-                                {notification.actor_display_name || "Someone"} {notification.event_label || notification.message}
+                                {notification.actor_display_name || t("overlay.someone")} {notification.event_label || notification.message}
                               </p>
                             </div>
                           ))}
@@ -353,7 +357,7 @@ export default function LeftSidebar({
                           style={{ backgroundColor: navActiveBg, color: navActiveIcon }}
                           onClick={() => setIsNotifOpen(false)}
                         >
-                          View all
+                          {t("overlay.viewAll")}
                         </Link>
                       </div>
                     </div>
@@ -383,7 +387,7 @@ export default function LeftSidebar({
                 </Link>
 
                 <span
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
+                  className="rtl-sidebar-tooltip absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 z-50"
                   style={{
                     backgroundColor: navActiveBg,
                     color: navActiveIcon,
@@ -425,13 +429,13 @@ export default function LeftSidebar({
             </Link>
 
             <span
-              className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
+              className="rtl-sidebar-tooltip absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
               style={{
                 backgroundColor: navActiveBg,
                 color: navActiveIcon,
               }}
             >
-              Help
+              {t("nav.help")}
             </span>
           </div>
         </nav>
@@ -439,7 +443,7 @@ export default function LeftSidebar({
 
       {/* Mobile Bottom Navigation */}
       <nav
-        className={`fixed bottom-0 left-0 right-0 h-16 md:hidden flex items-center justify-around z-[100] px-4 border-t${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
+        className={`rtl-mobile-sidebar fixed bottom-0 left-0 right-0 h-16 md:hidden flex items-center justify-around z-[100] px-4 border-t${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
         style={{
           backgroundColor: sidebarBg,
           borderColor: isLegacyRoute ? "var(--legacy-route-mobile-border)" : "var(--border-soft)",

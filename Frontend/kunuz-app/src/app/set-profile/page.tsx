@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import AddDocuments, { type BadgeRequestDraft } from "@/components/AddDocuments";
 
-const expertiseOptions = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide", "Architect"];
+const expertiseValues = ["Amateur", "Student", "Researcher", "Historian", "Tour Guide", "Architect"];
 const MAX_USERNAME_ATTEMPTS = 5;
 
 const slugifyForUsername = (value: string): string =>
@@ -94,6 +95,11 @@ const persistAuthUser = (payload: unknown) => {
 };
 
 export default function SetProfilePage() {
+  const t = useTranslations("auth.pages.setProfile");
+  const expertiseOptions = useMemo(
+    () => expertiseValues.map((value) => ({ value, label: t(`expertiseOptions.${value}`) })),
+    [t],
+  );
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [biography, setBiography] = useState("");
@@ -127,7 +133,7 @@ export default function SetProfilePage() {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) {
-        throw new Error("No authentication token found. Please log in.");
+        throw new Error(t("errors.noAuthToken"));
       }
 
       const expertiseMap: Record<string, string> = {
@@ -196,19 +202,19 @@ export default function SetProfilePage() {
             continue;
           }
           throw new Error(
-            extractBackendErrorMessage(result.body, "Failed to update profile form"),
+            extractBackendErrorMessage(result.body, t("errors.updateProfile")),
           );
         }
         if (!profileBody) {
           throw new Error(
-            "We couldn't find a unique username. Please tweak your name and try again.",
+            t("errors.uniqueUsername"),
           );
         }
       } else {
         const result = await callProfileUpdate();
         if (!result.ok) {
           throw new Error(
-            extractBackendErrorMessage(result.body, "Failed to update profile form"),
+            extractBackendErrorMessage(result.body, t("errors.updateProfile")),
           );
         }
         profileBody = result.body;
@@ -237,7 +243,7 @@ export default function SetProfilePage() {
 
         if (!picResponse.ok) {
           throw new Error(
-            extractBackendErrorMessage(picData, "Failed to upload profile picture"),
+            extractBackendErrorMessage(picData, t("errors.uploadPicture")),
           );
         }
 
@@ -273,12 +279,12 @@ export default function SetProfilePage() {
 
         if (!badgeResponse.ok || !badgeBody?.success) {
           throw new Error(
-            extractBackendErrorMessage(badgeBody, "Failed to submit badge request"),
+            extractBackendErrorMessage(badgeBody, t("errors.submitBadge")),
           );
         }
 
         setBadgeRequestNotice(
-          `Badge request submitted for ${requestName}. Moderators were notified by email.`,
+          t("badgeNotice", { name: requestName }),
         );
         setBadgeDraft(null);
       }
@@ -286,7 +292,7 @@ export default function SetProfilePage() {
       router.push("/home-page");
     } catch (err: unknown) {
       console.error(err);
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("errors.generic"));
     } finally {
       setLoading(false);
     }
@@ -307,7 +313,7 @@ export default function SetProfilePage() {
             <div className="absolute inset-4 md:inset-6 lg:inset-7 rounded-[32px] overflow-hidden">
               <Image
                 src="/signup.jpg"
-                alt="Moroccan architectural interior"
+                alt={t("heroImageAlt")}
                 fill
                 className="object-cover object-center"
               />
@@ -329,7 +335,7 @@ export default function SetProfilePage() {
                     fontSize: "40px",
                   }}
                 >
-                  Set Profile Information
+                  {t("title")}
                 </h1>
                 <p
                   style={{
@@ -339,7 +345,7 @@ export default function SetProfilePage() {
                     fontSize: "16px",
                   }}
                 >
-                  These information will be visible on your profile
+                  {t("subtitle")}
                 </p>
               </div>
 
@@ -353,7 +359,7 @@ export default function SetProfilePage() {
     {profileImage ? (
       <img
         src={profileImage}
-        alt="Profile"
+        alt={t("profileImageAlt")}
         className="w-full h-full rounded-full object-cover"
       />
     ) : (
@@ -416,7 +422,7 @@ export default function SetProfilePage() {
                       fontSize: "17.85px",
                     }}
                   >
-                    First name
+                    {t("fields.firstName")}
                   </label>
                   <input
                     id="firstName"
@@ -446,7 +452,7 @@ export default function SetProfilePage() {
                       fontSize: "17.85px",
                     }}
                   >
-                    Last name
+                    {t("fields.lastName")}
                   </label>
                   <input
                     id="lastName"
@@ -476,7 +482,7 @@ export default function SetProfilePage() {
                       fontSize: "17.85px",
                     }}
                   >
-                    Biography
+                    {t("fields.biography")}
                   </label>
                   <textarea
                     id="biography"
@@ -505,34 +511,34 @@ export default function SetProfilePage() {
                       fontSize: "17.85px",
                     }}
                   >
-                    Expertise
+                    {t("fields.expertise")}
                   </label>
                   <div className="flex flex-wrap" style={{ gap: "20px" }}>
                     {expertiseOptions.map((option) => (
                       <button
-                        key={option}
+                        key={option.value}
                         type="button"
-                        onClick={() => setSelectedExpertise(option)}
+                        onClick={() => setSelectedExpertise(option.value)}
                         style={{
                           padding: "3px 10px",
                           borderRadius: "13.48px",
                           fontSize: "15px",
                           fontFamily: "var(--font-lato)",
                           fontWeight: 400,
-                          border: selectedExpertise === option
+                          border: selectedExpertise === option.value
                             ? "none"
                             : "0.84px solid #79747E",
-                          backgroundColor: selectedExpertise === option
+                          backgroundColor: selectedExpertise === option.value
                             ? "#432817"
                             : "transparent",
-                          color: selectedExpertise === option
+                          color: selectedExpertise === option.value
                             ? "#FFFFFF"
                             : "#79747E",
                           cursor: "pointer",
                           transition: "all 0.2s",
                         }}
                       >
-                        {option}
+                        {option.label}
                       </button>
                     ))}
                   </div>
@@ -549,7 +555,7 @@ export default function SetProfilePage() {
                       fontSize: "17.85px",
                     }}
                   >
-                    Speciality
+                    {t("fields.speciality")}
                   </label>
                   <input
                     id="speciality"
@@ -597,7 +603,7 @@ export default function SetProfilePage() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      Request Badge
+                      {t("requestBadge")}
                     </span>
                     <span
                       style={{
@@ -661,7 +667,7 @@ export default function SetProfilePage() {
                     marginTop: "4px",
                   }}
                 >
-                  {loading ? "Saving..." : "Done"}
+                  {loading ? t("actions.saving") : t("actions.done")}
                 </button>
 
               </form>

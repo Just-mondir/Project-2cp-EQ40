@@ -53,7 +53,7 @@ export default function Header() {
         boxShadow: scrolled ? "0 4px 18px rgba(44,26,14,0.07)" : "none",
       }}
     >
-{/* â”€â”€ Main bar â”€â”€ */}
+{/* Main bar */}
 <div
   className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
   style={{ height: "52px" }}
@@ -100,7 +100,7 @@ export default function Header() {
     ))}
   </nav>
 
-  {/* Sign Up â€” desktop */}
+  {/* Sign Up - desktop */}
 <Link
   href="/sign-up"
   className="hidden cursor-pointer md:flex flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
@@ -115,7 +115,7 @@ export default function Header() {
 >
   Sign Up
 </Link>
-        {/* Hamburger + Dropdown â€” mobile */}
+        {/* Hamburger + Dropdown - mobile */}
         <div
           className="md:hidden relative"
           onMouseEnter={() => setMobileOpen(true)}
