@@ -8,6 +8,15 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
+import bleach
+
+
+def _sanitize_plain(value: str) -> str:
+    """Strip ALL HTML for plain-text fields."""
+    if not value:
+        return value
+    return bleach.clean(value, tags=[], strip=True).strip()
+
 from apps.core.responses import RESPONSE_CONFLICT_MESSAGE
 from .models import BlacklistedToken, ExpertiseChoices, OTPCode, OTPPurposeChoices, User
 from .utils import create_hashed_otp, is_otp_expired, send_otp_email, verify_otp_code
@@ -144,7 +153,7 @@ class VerifyEmailSerializer(serializers.Serializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """Validate credentials and issue JWT tokens for login."""
+    """Validate credentials and issue JWT tokens for login (single-step, no OTP)."""
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     def validate(self, attrs):
@@ -165,9 +174,12 @@ class LoginSerializer(serializers.Serializer):
         return attrs
     def create(self, validated_data):
         user = validated_data["user"]
-        _, plain_otp = create_hashed_otp(user, OTPPurposeChoices.LOGIN)
-        send_otp_email(user.email, plain_otp)
-        return user
+        refresh = RefreshToken.for_user(user)
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "user": UserProfileSerializer(user).data,
+        }
 
 
 class UserUpdateSerializer(serializers.Serializer):
@@ -194,6 +206,19 @@ class UserUpdateSerializer(serializers.Serializer):
         if query.count() > 0:
             raise serializers.ValidationError(RESPONSE_CONFLICT_MESSAGE["username_exists"])
         return value
+
+    def validate(self, attrs):
+        # --- XSS sanitization ---
+        if "username" in attrs and attrs["username"]:
+            attrs["username"] = _sanitize_plain(attrs["username"])
+        if "display_name" in attrs and attrs["display_name"]:
+            attrs["display_name"] = _sanitize_plain(attrs["display_name"])
+        if "bio" in attrs and attrs["bio"]:
+            attrs["bio"] = _sanitize_plain(attrs["bio"])
+        if "speciality" in attrs and attrs["speciality"]:
+            attrs["speciality"] = _sanitize_plain(attrs["speciality"])
+        # --- end sanitization ---
+        return attrs
 
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():

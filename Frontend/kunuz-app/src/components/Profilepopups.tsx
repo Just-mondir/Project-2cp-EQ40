@@ -4,6 +4,30 @@ import { useEffect, useState } from "react";
 import { Mail, Lock, Eye, EyeOff, LayoutDashboard } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+<<<<<<< HEAD
+=======
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+function getAuthToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+}
+
+function getAuthUserEmail(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = localStorage.getItem("authUser");
+    const user = raw ? JSON.parse(raw) : null;
+    return user?.email || "";
+  } catch {
+    return "";
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+//  TYPES
+// ─────────────────────────────────────────────────────────
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
 interface ChangeEmailForm {
   newEmail: string;
   confirmPassword: string;
@@ -73,37 +97,83 @@ function IconBadge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Field({ placeholder, value, onChange, type = "text" }: {
+// ── Password field with show/hide toggle ──
+function PasswordField({ placeholder, value, onChange }: {
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
-  type?: string;
 }) {
   const t = useTranslations("auth.profilePopups");
   const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
-  const isPassword = type === "password";
 
   return (
     <div style={{ width: "100%", position: "relative", marginBottom: "10px" }}>
       <input
-        className="profile-popup-field"
-        type={isPassword && !show ? "password" : "text"}
+        type={show ? "text" : "password"}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
+        autoComplete="new-password"
         style={{
           width: "100%", height: "48px", borderRadius: "10px",
           border: `1.5px solid ${focused ? "#432817" : "#D6CFC3"}`,
           backgroundColor: "#FFFFFF",
-          padding: isPassword ? "0 44px 0 16px" : "0 16px",
+          padding: "0 44px 0 16px",
           fontFamily: "'Lato', sans-serif", fontSize: "15px",
           color: "#432817", outline: "none", boxSizing: "border-box",
           transition: "border 0.15s",
         }}
       />
+      <button
+        type="button"
+        onClick={() => setShow((v) => !v)}
+        style={{
+          position: "absolute", right: "12px", top: "50%",
+          transform: "translateY(-50%)", background: "none",
+          border: "none", cursor: "pointer", color: "#8B7355",
+          display: "flex", alignItems: "center",
+        }}
+      >
+        {show ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
+
+// ── Plain text field (email, OTP, etc.) ──
+function TextField({ placeholder, value, onChange, maxLength }: {
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  maxLength?: number;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <div style={{ width: "100%", position: "relative", marginBottom: "10px" }}>
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        autoComplete="off"
+        maxLength={maxLength}
+        style={{
+          width: "100%", height: "48px", borderRadius: "10px",
+          border: `1.5px solid ${focused ? "#432817" : "#D6CFC3"}`,
+          backgroundColor: "#FFFFFF",
+          padding: "0 16px",
+          fontFamily: "'Lato', sans-serif", fontSize: "15px",
+          color: "#432817", outline: "none", boxSizing: "border-box",
+          transition: "border 0.15s",
+        }}
+      />
+<<<<<<< HEAD
       {isPassword && (
         <button
           type="button"
@@ -115,6 +185,8 @@ function Field({ placeholder, value, onChange, type = "text" }: {
           {show ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
       )}
+=======
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
     </div>
   );
 }
@@ -179,22 +251,15 @@ function useIsDarkHomeTheme() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-
     const root = document.documentElement;
     const syncTheme = () => {
       setIsDarkHomeTheme(
         root.dataset.theme === "dark" && root.dataset.themeScope === "home",
       );
     };
-
     syncTheme();
-
     const observer = new MutationObserver(syncTheme);
-    observer.observe(root, {
-      attributes: true,
-      attributeFilter: ["data-theme", "data-theme-scope"],
-    });
-
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-theme-scope"] });
     return () => observer.disconnect();
   }, []);
 
@@ -218,7 +283,21 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
     if (!form.newEmail || !form.confirmPassword) { setError(t("errors.required")); return; }
     setLoading(true);
     try {
+<<<<<<< HEAD
       console.log("Payload:", form);
+=======
+      const res = await fetch(`${API_URL}/api/users/me/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ email: form.newEmail }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg = data?.errors?.email?.[0] || data?.errors?.detail || data?.message || "Failed to update email.";
+        setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        return;
+      }
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : common("errors.generic"));
@@ -235,8 +314,13 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
         <PopupTitle text={t("title")} />
         <PopupSubtitle text={t("subtitle")} />
         <div style={{ width: "100%" }}>
+<<<<<<< HEAD
           <Field placeholder={t("fields.newEmail")} value={form.newEmail} onChange={update("newEmail")} />
           <Field placeholder={t("fields.confirmPassword")} value={form.confirmPassword} onChange={update("confirmPassword")} type="password" />
+=======
+          <TextField placeholder="New email address" value={form.newEmail} onChange={update("newEmail")} />
+          <PasswordField placeholder="Confirm your password" value={form.confirmPassword} onChange={update("confirmPassword")} />
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
         </div>
         {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
         <PrimaryBtn label={loading ? t("actions.saving") : t("actions.save")} onClick={handleSubmit} disabled={loading} />
@@ -253,6 +337,8 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<ChangePasswordForm>({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
   const isDarkHomeTheme = useIsDarkHomeTheme();
   const popupIconColor = isDarkHomeTheme ? "#F6EAD2" : "#432817";
 
@@ -265,7 +351,54 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
     if (form.newPassword !== form.confirmNewPassword) { setError(t("errors.mismatch")); return; }
     setLoading(true);
     try {
+<<<<<<< HEAD
       console.log("Payload:", form);
+=======
+      const email = getAuthUserEmail();
+      if (!email) { setError("Could not determine your email. Please log in again."); setLoading(false); return; }
+      const forgotRes = await fetch(`${API_URL}/api/auth/forgot-password/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const forgotData = await forgotRes.json().catch(() => null);
+      if (!forgotRes.ok) {
+        const msg = forgotData?.errors?.email?.[0] || forgotData?.message || "Failed to send OTP.";
+        setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        return;
+      }
+      setOtpStep(true);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    setError("");
+    if (!otpCode.trim()) { setError("Please enter the OTP code."); return; }
+    if (otpCode.trim().length !== 6) { setError("OTP code must be exactly 6 digits."); return; }
+    setLoading(true);
+    try {
+      const email = getAuthUserEmail();
+      const res = await fetch(`${API_URL}/api/auth/reset-password/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp_code: otpCode, password: form.newPassword }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        const msg =
+          data?.errors?.otp_code?.[0] ||
+          data?.errors?.password?.[0] ||
+          data?.errors?.detail ||
+          data?.message ||
+          "Failed to reset password.";
+        setError(typeof msg === "string" ? msg : JSON.stringify(msg));
+        return;
+      }
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : common("errors.generic"));
@@ -279,6 +412,7 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
       <Backdrop onClick={onClose} />
       <PopupCard onClick={onClose}>
         <IconBadge><Lock size={26} color={popupIconColor} strokeWidth={1.5} /></IconBadge>
+<<<<<<< HEAD
         <PopupTitle text={t("title")} />
         <PopupSubtitle text={t("subtitle")} />
         <div style={{ width: "100%" }}>
@@ -289,12 +423,43 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
         {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
         <PrimaryBtn label={loading ? t("actions.updating") : t("actions.update")} onClick={handleSubmit} disabled={loading} />
         <CancelBtn onClick={onClose} label={common("actions.cancel")} />
+=======
+        <PopupTitle text="Change password" />
+        {!otpStep ? (
+          <>
+            <PopupSubtitle text="Choose a strong new password" />
+            <div style={{ width: "100%" }}>
+              <PasswordField placeholder="Current password"     value={form.currentPassword}    onChange={update("currentPassword")} />
+              <PasswordField placeholder="New password"         value={form.newPassword}        onChange={update("newPassword")} />
+              <PasswordField placeholder="Confirm new password" value={form.confirmNewPassword} onChange={update("confirmNewPassword")} />
+            </div>
+            {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
+            <PrimaryBtn label={loading ? "Sending OTP…" : "Update password"} onClick={handleSubmit} disabled={loading} />
+          </>
+        ) : (
+          <>
+            <PopupSubtitle text="Enter the OTP code sent to your email" />
+            <div style={{ width: "100%" }}>
+              <TextField placeholder="Enter 6-digit OTP" value={otpCode} onChange={setOtpCode} maxLength={6} />
+            </div>
+            {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
+            <PrimaryBtn label={loading ? "Updating…" : "Confirm"} onClick={handleOtpSubmit} disabled={loading} />
+          </>
+        )}
+        <CancelBtn onClick={onClose} />
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
       </PopupCard>
       <GlobalStyles />
     </>
   );
 }
 
+<<<<<<< HEAD
+=======
+// ═════════════════════════════════════════════════════════
+//  POPUP 3 — Dashboard
+// ═════════════════════════════════════════════════════════
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
 export function DashboardPopup({
   onClose,
   isModerator = false,
@@ -314,7 +479,6 @@ export function DashboardPopup({
 }) {
   const t = useTranslations("auth.profilePopups.dashboard");
   const isDarkDashboard = useIsDarkHomeTheme();
-
   const neutralIconColor = isDarkDashboard ? "#F6EAD2" : "#432817";
   const dangerIconColor = isDarkDashboard ? "#F6EAD2" : "#C0392B";
 
@@ -376,10 +540,7 @@ export function DashboardPopup({
     <>
       <Backdrop onClick={onClose} />
       <div
-        style={{
-          position: "fixed", inset: 0, zIndex: 101,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
+        style={{ position: "fixed", inset: 0, zIndex: 101, display: "flex", alignItems: "center", justifyContent: "center" }}
         onClick={onClose}
       >
         <div
@@ -401,7 +562,10 @@ export function DashboardPopup({
               {t("title")}
             </p>
           </div>
+<<<<<<< HEAD
 
+=======
+>>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             {items.map((item, i) => (
               <button

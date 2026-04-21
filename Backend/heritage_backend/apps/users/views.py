@@ -69,8 +69,8 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data)
         if not serializer.is_valid():
             return api_error(message="Login failed.", errors=serializer.errors, status_code=401)
-        user = serializer.save()
-        return api_success(message="OTP sent to your email", data={"user_id": user.pk}, status_code=200)
+        token_data = serializer.save()
+        return api_success(message="Login successful.", data=token_data, status_code=200)
 
 
 class VerifyLoginOTPView(APIView):

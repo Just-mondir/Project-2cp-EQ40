@@ -2088,7 +2088,7 @@ function PostCard({
       <PostDetailBadge post={post} />
 
       <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
-        <div dangerouslySetInnerHTML={{ __html: post.title }} />
+        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </h3>
 
       <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
@@ -2187,6 +2187,43 @@ function PostCard({
   );
 }
 
+/* ─────────────────── POST CACHE HELPERS ─────────────────── */
+
+const CACHE_KEY = "home_posts_cache";
+const CACHE_NEXT_KEY = "home_posts_next";
+const CACHE_SCROLL_KEY = "home_posts_scroll";
+const MAX_CACHED_POSTS = 60; // ~3 pages
+
+function savePostsToCache(posts: ApiPost[], nextUrl: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const toCache = posts.slice(0, MAX_CACHED_POSTS);
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(toCache));
+    sessionStorage.setItem(CACHE_NEXT_KEY, nextUrl || "");
+  } catch { /* storage full – ignore */ }
+}
+
+function loadPostsFromCache(): { posts: ApiPost[]; nextUrl: string | null } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const posts = JSON.parse(raw) as ApiPost[];
+    const next = sessionStorage.getItem(CACHE_NEXT_KEY) || null;
+    return { posts, nextUrl: next || null };
+  } catch { return null; }
+}
+
+function saveScrollPosition(pos: number) {
+  if (typeof window === "undefined") return;
+  try { sessionStorage.setItem(CACHE_SCROLL_KEY, String(pos)); } catch { }
+}
+
+function loadScrollPosition(): number {
+  if (typeof window === "undefined") return 0;
+  return Number(sessionStorage.getItem(CACHE_SCROLL_KEY) || 0);
+}
+
 /* ─────────────────── MAIN PAGE ─────────────────── */
 
 export default function HomePageRoute() {
@@ -2204,6 +2241,7 @@ export default function HomePageRoute() {
   const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts/`);
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+  const [cacheRestored, setCacheRestored] = useState(false);
 
   const guilds = useMemo<GuildCard[]>(
     () =>
@@ -2281,6 +2319,68 @@ export default function HomePageRoute() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* ── Restore posts from sessionStorage cache on mount ── */
+  useEffect(() => {
+    const cached = loadPostsFromCache();
+    if (cached && cached.posts.length > 0) {
+      const restored = cached.posts.map((p, i) => ({ ...p, _key: i }));
+      setPosts(restored);
+      setNextUrl(cached.nextUrl);
+      setCacheRestored(true);
+
+      // Restore scroll position after render
+      requestAnimationFrame(() => {
+        const scrollPos = loadScrollPosition();
+        if (feedRef.current && scrollPos > 0) {
+          feedRef.current.scrollTop = scrollPos;
+        }
+      });
+
+      // Background refresh: silently re-fetch page 1 to pick up new posts
+      (async () => {
+        try {
+          const res = await apiFetch(`${API_URL}/api/posts/`);
+          if (!res.ok) return;
+          const data = await res.json();
+          const freshPosts: ApiPost[] = (Array.isArray(data.results) ? data.results : [])
+            .map((post: any, i: number) => ({ ...normalizeApiPost(post), _key: i }));
+          if (freshPosts.length > 0) {
+            setPosts(prev => {
+              // Merge: replace cached page-1 posts with fresh ones, keep rest
+              const existingIds = new Set(freshPosts.map(p => p.id));
+              const remaining = prev.filter(p => !existingIds.has(p.id));
+              const merged = [...freshPosts, ...remaining].map((p, i) => ({ ...p, _key: i }));
+              savePostsToCache(merged, typeof data.next === "string" && data.next ? data.next : null);
+              return merged;
+            });
+            if (typeof data.next === "string" && data.next) {
+              setNextUrl(data.next);
+            }
+          }
+        } catch { /* silent */ }
+      })();
+    }
+  }, []);
+
+  /* ── Save scroll position on scroll ── */
+  useEffect(() => {
+    const feedElement = feedRef.current;
+    if (!feedElement) return;
+    let ticking = false;
+    const handleScroll = () => {
+      if (feedElement.scrollTop > 10) setShowFilter(false);
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          saveScrollPosition(feedElement.scrollTop);
+          ticking = false;
+        });
+      }
+    };
+    feedElement.addEventListener("scroll", handleScroll);
+    return () => feedElement.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
@@ -2367,6 +2467,11 @@ export default function HomePageRoute() {
     const observer = new IntersectionObserver(
       async (entries) => {
         if (!entries[0].isIntersecting || loading || !nextUrl) return;
+        // Skip fetch if we just restored from cache and still have posts
+        if (cacheRestored && posts.length > 0) {
+          setCacheRestored(false);
+          return;
+        }
         try {
           setLoading(true);
           const resolvedNextUrl =
@@ -2392,7 +2497,13 @@ export default function HomePageRoute() {
             ...normalizeApiPost(post),
             _key: previousLength + i,
           }));
-          setPosts(prev => [...prev, ...formattedPosts]);
+          setPosts(prev => {
+            const updated = [...prev, ...formattedPosts];
+            // Cache the feed state after each fetch
+            const newNext = typeof data.next === "string" && data.next ? data.next : null;
+            savePostsToCache(updated, newNext);
+            return updated;
+          });
           setNextUrl(typeof data.next === "string" && data.next ? data.next : null);
           if (formattedPosts.length > 0) setNewPostStart(previousLength);
         } catch (err) {
@@ -2407,15 +2518,7 @@ export default function HomePageRoute() {
 
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length]);
-
-  useEffect(() => {
-    const feedElement = feedRef.current;
-    if (!feedElement) return;
-    const handleScroll = () => { if (feedElement.scrollTop > 10) setShowFilter(false); };
-    feedElement.addEventListener("scroll", handleScroll);
-    return () => feedElement.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [nextUrl, loading, posts.length, cacheRestored]);
 
   return (
     <>
@@ -2424,7 +2527,7 @@ export default function HomePageRoute() {
         <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
             <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
-              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--border-soft)", boxShadow: isFocused ? "0 0 0 3px rgba(213,172,85,0.18)" : "0 8px 20px rgba(20,12,6,0.1)" }}>
+              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"

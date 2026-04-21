@@ -35,7 +35,14 @@ from .serializers import (
     ThematicGroupSerializer,
     ThematicGroupWriteSerializer,
 )
-from .services import get_group_by_id, user_can_access_group, user_is_group_admin, user_is_group_member
+from .services import (
+    get_group_by_id,
+    user_can_access_group,
+    user_is_group_admin,
+    user_is_group_member,
+    send_join_request_email,
+    decode_join_review_token,
+)
 
 
 def _paginate(queryset, request: Request, serializer_cls):
@@ -254,6 +261,14 @@ class GroupJoinRequestView(APIView):
             return api_error("You already have a pending request for this group.", status_code=status.HTTP_409_CONFLICT)
         join_request = GroupJoinRequest(group=group, requester_id=user_id)
         join_request.save()
+
+        # Send email notification to the group admin
+        try:
+            requester_name = getattr(request.user, "display_name", "") or getattr(request.user, "username", "Someone")
+            send_join_request_email(group, join_request, requester_name=requester_name)
+        except Exception:
+            pass
+
         return api_success("Join request submitted.", GroupJoinRequestSerializer(join_request).data, status_code=status.HTTP_201_CREATED)
 
 
@@ -536,6 +551,65 @@ class SuggestedGroupsView(APIView):
         page = paginator.paginate_queryset(suggested_groups, request)
         serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
+
+class GroupJoinRequestEmailReviewView(APIView):
+    """Handle approve/reject of join requests via signed email links."""
+    authentication_classes: list = []
+    permission_classes: list = []
+
+    def get(self, request: Request, group_id: str, token: str) -> Response:
+        from django.utils.html import escape
+
+        try:
+            request_id, action = decode_join_review_token(token)
+        except Exception:
+            return api_error("Invalid or expired review link.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        if action not in {"approved", "rejected"}:
+            return api_error("Invalid review action.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        try:
+            join_request = GroupJoinRequest.objects.get(id=ObjectId(request_id), group=group)
+        except (GroupJoinRequest.DoesNotExist, InvalidId):
+            return api_error("Join request not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        if join_request.status != "pending":
+            return api_success(f"Join request was already {escape(join_request.status)}.")
+
+        join_request.status = action
+        join_request.reviewed_by_id = "email-link"
+        join_request.reviewed_at = timezone.now()
+        join_request.save()
+
+        if action == "approved":
+            existing = GroupMembership.objects(group=group, user_id=join_request.requester_id).first()
+            if not existing:
+                GroupMembership(group=group, user_id=join_request.requester_id).save()
+
+        # Send in-app notification to requester
+        event_type = f"group_join_request_{action}"
+        notify(
+            event_type=event_type,
+            actor_id=str(group.admin_id),
+            actor_name=group.name,
+            recipient_id=join_request.requester_id,
+            target_type="group",
+            target_id=str(group.id),
+            group_name=group.name,
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": f"Join request {escape(action)} successfully.",
+                "data": GroupJoinRequestSerializer(join_request).data,
+            }
+        )
 
 
 class GroupAboutView(APIView):
