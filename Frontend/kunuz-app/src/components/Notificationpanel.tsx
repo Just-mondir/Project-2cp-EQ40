@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useLocaleSettings } from "@/components/LocaleProvider";
 
 type NotificationItem = {
   id: string;
@@ -51,18 +53,6 @@ function groupByRecency(items: NotificationItem[]) {
   return { today, thisWeek, older };
 }
 
-function formatRelativeTime(isoDate: string): string {
-  const date = new Date(isoDate);
-  const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (diffSeconds < 60) return "Just now";
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} d ago`;
-}
-
 function Avatar({ item }: { item: NotificationItem }) {
   const initials = (item.actor_display_name || item.actor_username || "S").slice(0, 1).toUpperCase();
   return (
@@ -86,7 +76,12 @@ function SectionTitle({ title, count }: { title: string; count: number }) {
   );
 }
 
-function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id: string) => void }) {
+function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
+  item: NotificationItem;
+  onRead: (id: string) => void;
+  relativeTimeLabel: string;
+  someoneLabel: string;
+}) {
   return (
     <button
       type="button"
@@ -96,12 +91,12 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
       <Avatar item={item} />
       <div className="min-w-0 flex-1">
         <p className="m-0 text-[14px] leading-6 text-[#2F2319]">
-          <span className="font-bold text-[#432817]">{item.actor_display_name || item.actor_username || "Someone"}</span>{" "}
+          <span className="font-bold text-[#432817]">{item.actor_display_name || item.actor_username || someoneLabel}</span>{" "}
           <span>{item.event_label || item.message}</span>
         </p>
         <div className="mt-1 flex items-center gap-2 text-[12px] text-[#8A6A4B]">
           <span className="rounded-full bg-[#F3E6D3] px-2 py-0.5 font-medium">{item.event_type.replaceAll("_", " ")}</span>
-          <span>{formatRelativeTime(item.created_at)}</span>
+          <span>{relativeTimeLabel}</span>
         </div>
       </div>
     </button>
@@ -109,10 +104,25 @@ function NotificationRow({ item, onRead }: { item: NotificationItem; onRead: (id
 }
 
 export default function NotificationPanel({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("auth.notificationPanel");
+  const { locale } = useLocaleSettings();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const rtf = useMemo(() => new Intl.RelativeTimeFormat(locale, { numeric: "auto" }), [locale]);
+
+  const formatRelativeTime = useCallback((isoDate: string): string => {
+    const date = new Date(isoDate);
+    const diffSeconds = Math.floor((date.getTime() - Date.now()) / 1000);
+    const absSeconds = Math.abs(diffSeconds);
+
+    if (absSeconds < 60) return t("time.justNow");
+    if (absSeconds < 3600) return rtf.format(Math.round(diffSeconds / 60), "minute");
+    if (absSeconds < 86400) return rtf.format(Math.round(diffSeconds / 3600), "hour");
+    return rtf.format(Math.round(diffSeconds / 86400), "day");
+  }, [rtf, t]);
 
   const buildHeaders = () => {
     const token = getAuthToken();
@@ -152,9 +162,16 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
-    const timer = window.setInterval(fetchNotifications, 30000);
-    return () => window.clearInterval(timer);
+    const initialLoad = window.setTimeout(() => {
+      void fetchNotifications();
+    }, 0);
+    const timer = window.setInterval(() => {
+      void fetchNotifications();
+    }, 30000);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(timer);
+    };
   }, [fetchNotifications]);
 
   useEffect(() => {
@@ -198,9 +215,9 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
       <div className="flex h-full w-full max-w-[760px] flex-col border-l border-[#D8C8B1] bg-[#FFF8E2] shadow-[0_0_60px_rgba(40,22,9,0.2)]">
         <div className="flex items-start justify-between border-b border-[#E1D3BF] px-6 py-5">
           <div>
-            <p className="m-0 text-[12px] font-bold uppercase tracking-[0.22em] text-[#8B6A4B]">Inbox</p>
-            <h2 className="m-0 mt-1 text-[28px] font-bold text-[#432817]">Notifications</h2>
-            <p className="mt-1 text-[13px] text-[#8B7355]">{unreadCount} unread notifications</p>
+            <p className="m-0 text-[12px] font-bold uppercase tracking-[0.22em] text-[#8B6A4B]">{t("inbox")}</p>
+            <h2 className="m-0 mt-1 text-[28px] font-bold text-[#432817]">{t("title")}</h2>
+            <p className="mt-1 text-[13px] text-[#8B7355]">{t("unreadCount", { count: unreadCount })}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -210,7 +227,7 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
               className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-white px-4 text-[13px] font-semibold text-[#432817] transition hover:bg-[#FAF1DC]"
             >
               {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-              Refresh
+              {t("actions.refresh")}
             </button>
             <button
               type="button"
@@ -218,11 +235,11 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
               className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-[#432817] px-4 text-[13px] font-semibold text-[#FFF8E2] transition hover:bg-[#5A3720]"
             >
               <CheckCheck className="h-4 w-4" />
-              Mark all read
+              {t("actions.markAllRead")}
             </button>
             <button
               onClick={onClose}
-              aria-label="Close notifications"
+              aria-label={t("actions.close")}
               className="rounded-full p-2 text-[#432817] transition hover:bg-white/80"
             >
               <CircleX className="h-6 w-6" />
@@ -233,24 +250,24 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loading ? (
             <div className="flex h-full items-center justify-center text-[#8B7355]">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading notifications...
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t("loading")}
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-[#D7C6AF] bg-white/50 px-8 py-16 text-center text-[#7F654B]">
               <Bell className="mb-3 h-10 w-10 text-[#C7A981]" />
-              <p className="m-0 text-lg font-semibold text-[#432817]">No notifications yet</p>
+              <p className="m-0 text-lg font-semibold text-[#432817]">{t("empty.title")}</p>
               <p className="mt-2 max-w-md text-sm leading-6 text-[#84694E]">
-                Likes, comments, group invites, badge reviews, and moderation updates will appear here.
+                {t("empty.description")}
               </p>
             </div>
           ) : (
             <div className="space-y-5">
               {today.length > 0 && (
                 <section className="space-y-3">
-                  <SectionTitle title="Today" count={today.length} />
+                  <SectionTitle title={t("sections.today")} count={today.length} />
                   <div className="space-y-3">
                     {today.map((item) => (
-                      <NotificationRow key={item.id} item={item} onRead={markAsRead} />
+                      <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
                     ))}
                   </div>
                 </section>
@@ -258,10 +275,10 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
 
               {thisWeek.length > 0 && (
                 <section className="space-y-3">
-                  <SectionTitle title="This week" count={thisWeek.length} />
+                  <SectionTitle title={t("sections.thisWeek")} count={thisWeek.length} />
                   <div className="space-y-3">
                     {thisWeek.map((item) => (
-                      <NotificationRow key={item.id} item={item} onRead={markAsRead} />
+                      <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
                     ))}
                   </div>
                 </section>
@@ -269,10 +286,10 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
 
               {older.length > 0 && (
                 <section className="space-y-3 pb-6">
-                  <SectionTitle title="Earlier" count={older.length} />
+                  <SectionTitle title={t("sections.earlier")} count={older.length} />
                   <div className="space-y-3">
                     {older.map((item) => (
-                      <NotificationRow key={item.id} item={item} onRead={markAsRead} />
+                      <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
                     ))}
                   </div>
                 </section>

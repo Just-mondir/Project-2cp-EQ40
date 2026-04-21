@@ -154,6 +154,131 @@ select {
   justify-content: center;
 }
 
+.theme-toggle--inline {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: auto;
+  width: 44px;
+  height: 44px;
+  box-shadow: none;
+  backdrop-filter: blur(18px);
+}
+
+.theme-toggle--inline .theme-toggle__glow {
+  inset: 0;
+  opacity: 0.45;
+}
+
+.app-header__bar {
+  padding-inline-start: 0;
+  padding-inline-end: 1rem;
+}
+
+.app-header__nav {
+  direction: inherit;
+}
+
+.authenticated-app-shell {
+  direction: ltr;
+}
+
+html[dir="rtl"] body {
+  direction: rtl;
+}
+
+html[dir="rtl"] .app-header__actions,
+html[dir="rtl"] .app-header__mobile-actions {
+  flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .app-header__nav {
+  text-align: right;
+}
+
+html[dir="rtl"] .app-header__underline {
+  left: auto;
+  right: 0;
+}
+
+html[dir="rtl"] .app-header__mobile-panel nav,
+html[dir="rtl"] .hero-content {
+  text-align: right;
+}
+
+html[dir="rtl"] .hero-content {
+  align-items: flex-end;
+}
+
+html[dir="rtl"] .rtl-sidebar {
+  left: auto !important;
+  right: 1rem !important;
+}
+
+html[dir="rtl"] .rtl-sidebar-tooltip {
+  left: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0.75rem !important;
+  right: 100% !important;
+}
+
+html[dir="rtl"] .rtl-sidebar-overlay {
+  left: auto !important;
+  margin-left: 0 !important;
+  margin-right: 1rem !important;
+  right: 100% !important;
+}
+
+html[dir="rtl"] .rtl-mobile-sidebar {
+  flex-direction: row-reverse;
+}
+
+html[data-locale-direction="rtl"] .authenticated-app-shell {
+  direction: ltr;
+}
+
+html[data-locale-direction="rtl"] .authenticated-app-shell :is(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  label,
+  legend,
+  figcaption,
+  blockquote,
+  .truncate,
+  [class*="line-clamp-"]
+) {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+}
+
+html[data-locale-direction="rtl"] .authenticated-app-shell :is(
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="url"],
+  textarea,
+  select,
+  option,
+  [contenteditable="true"],
+  .ProseMirror
+) {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+}
+
+html[data-locale-direction="rtl"] .authenticated-app-shell input::placeholder,
+html[data-locale-direction="rtl"] .authenticated-app-shell textarea::placeholder {
+  text-align: right;
+}
+
 html[data-theme="dark"][data-theme-scope="home"] body {
   background-image:
     radial-gradient(circle at top left, rgba(190, 145, 86, 0.12), transparent 30%),
@@ -376,6 +501,25 @@ html[data-theme="dark"][data-theme-scope="home"] .feed-scroll::-webkit-scrollbar
     right: 14px;
     width: 46px;
     height: 46px;
+  }
+
+  .theme-toggle--inline {
+    top: auto;
+    right: auto;
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (min-width: 640px) {
+  .app-header__bar {
+    padding-inline-end: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-header__bar {
+    padding-inline-end: 3rem;
   }
 }
 

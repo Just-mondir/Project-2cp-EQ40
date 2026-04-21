@@ -10,6 +10,17 @@ type Monument = {
   currentStatus: string;
 };
 
+type AlertApiPost = {
+  title?: string;
+  images?: Array<{ image?: string }>;
+  region?: string;
+  location?: string;
+  alert_details?: {
+    urgence_level?: string;
+    current_status?: string;
+  };
+};
+
 const fallbackMonuments: Monument[] = [
   {
     src: "/timgad%201.jpg",
@@ -50,10 +61,10 @@ export default function MonumentsInDanger() {
         if (!res.ok) return;
         const data = await res.json();
 
-        const fetched: Monument[] = (data.results || [])
-          .filter((post: any) => post.images?.[0]?.image)
+        const fetched: Monument[] = ((data.results || []) as AlertApiPost[])
+          .filter((post) => post.images?.[0]?.image)
           .slice(0, 3)
-          .map((post: any) => {
+          .map((post) => {
             const stripHtml = (html: string) => {
               if (!html) return "";
               let result = html;

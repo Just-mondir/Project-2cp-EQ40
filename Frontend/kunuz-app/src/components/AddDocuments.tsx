@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface AddDocumentsModalProps {
   onClose: () => void;
@@ -14,6 +15,7 @@ export type BadgeRequestDraft = {
 };
 
 export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }: AddDocumentsModalProps) {
+  const t = useTranslations("auth.addDocuments");
   const [dragOver, setDragOver] = useState(false);
   const [files, setFiles] = useState<File[]>(initialDraft?.document ? [initialDraft.document] : []);
   const [message, setMessage] = useState(initialDraft?.message ?? "");
@@ -29,13 +31,13 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+      setFiles((prev) => [...prev, ...Array.from(e.target.files)]);
     }
   };
 
   const handleSaveDraft = () => {
     if (files.length === 0) {
-      setError("Please select at least one document.");
+      setError(t("errors.selectDocument"));
       return;
     }
 
@@ -53,10 +55,10 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
         className="relative bg-white rounded-[20px] shadow-lg"
         style={{ width: "600px", padding: "40px 50px 40px 50px" }}
       >
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 hover:opacity-70 transition-opacity"
+          aria-label={t("close")}
         >
           <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="16" cy="16" r="15" stroke="#9E9E9E" strokeWidth="2" />
@@ -64,7 +66,6 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
           </svg>
         </button>
 
-        {/* Title */}
         <h2
           className="text-center font-black mb-8"
           style={{
@@ -73,10 +74,9 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
             fontSize: "36px",
           }}
         >
-          Add Documents
+          {t("title")}
         </h2>
 
-        {/* Drop Zone */}
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -103,7 +103,7 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
                   ✓ {file.name}
                 </p>
               ))}
-              <p className="text-xs mt-2" style={{ color: "#79747E" }}>Click to add more</p>
+              <p className="text-xs mt-2" style={{ color: "#79747E" }}>{t("clickToAddMore")}</p>
             </div>
           )}
           <input
@@ -118,7 +118,7 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Optional message to moderators"
+          placeholder={t("messagePlaceholder")}
           className="w-full"
           style={{
             minHeight: "90px",
@@ -135,7 +135,7 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
 
         {files.length > 1 && (
           <p className="text-xs mb-2" style={{ color: "#79747E", fontFamily: "var(--font-lato)" }}>
-            Only the first selected document will be uploaded.
+            {t("firstDocumentOnly")}
           </p>
         )}
 
@@ -145,7 +145,6 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
           </p>
         )}
 
-        {/* Done Button */}
         <div className="flex justify-center">
           <button
             onClick={handleSaveDraft}
@@ -161,10 +160,9 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
               cursor: "pointer",
             }}
           >
-            Done
+            {t("done")}
           </button>
         </div>
-
       </div>
     </div>
   );

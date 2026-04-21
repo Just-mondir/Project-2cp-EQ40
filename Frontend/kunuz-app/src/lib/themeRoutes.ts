@@ -3,6 +3,7 @@ export const PUBLIC_ROUTE_LIST = [
   "/landingpage",
   "/login",
   "/sign-up",
+  "/signup",
   "/verify-email",
   "/forgot-password",
 ] as const;

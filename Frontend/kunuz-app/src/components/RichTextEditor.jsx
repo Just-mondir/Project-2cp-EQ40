@@ -5,8 +5,6 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { Underline } from "@tiptap/extension-underline";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { TextAlign } from "@tiptap/extension-text-align";
-
-
 import {
     Bold,
     Italic,
@@ -21,8 +19,7 @@ import {
     ChevronDown,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-
-const ESPRESSO = "#432817";
+import { useTranslations } from "next-intl";
 
 const ToolbarButton = ({ onClick, isActive, children, title, disabled = false }) => (
     <button
@@ -41,12 +38,13 @@ const ToolbarButton = ({ onClick, isActive, children, title, disabled = false })
 
 const Divider = () => <div className="w-[1px] h-[24px] bg-[#E0D5C5]/60 mx-1" />;
 
-export function TitleEditor({ value, onChange, placeholder = "Entrez le titre de votre post ici..." }) {
+export function TitleEditor({ value, onChange, placeholder }) {
+    const t = useTranslations("auth.richTextEditor");
     const editor = useEditor({
         extensions: [
             StarterKit.configure({ heading: false, blockquote: false, bulletList: false, orderedList: false, codeBlock: false, horizontalRule: false }),
             Underline,
-            Placeholder.configure({ placeholder }),
+            Placeholder.configure({ placeholder: placeholder ?? t("placeholders.title") }),
         ],
         immediatelyRender: false,
         content: value || "",
@@ -71,19 +69,19 @@ export function TitleEditor({ value, onChange, placeholder = "Entrez le titre de
 
     return (
         <div className="rich-text-editor__surface w-full border border-[#E0D5C5] rounded-[10.75px] overflow-hidden bg-white shadow-sm flex flex-col">
-            {/* Mini toolbar */}
             <div className="rich-text-editor__toolbar flex items-center gap-0.5 px-2 py-1.5 border-b border-[#E0D5C5]/60 bg-[#FDFDFD]">
-                <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} title="Bold"><Bold size={13} /></ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} title="Italic"><Italic size={13} /></ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} title="Underline"><UnderlineIcon size={13} /></ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")} title="Strikethrough"><Strikethrough size={13} /></ToolbarButton>
+                <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} title={t("toolbar.bold")}><Bold size={13} /></ToolbarButton>
+                <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} title={t("toolbar.italic")}><Italic size={13} /></ToolbarButton>
+                <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} title={t("toolbar.underline")}><UnderlineIcon size={13} /></ToolbarButton>
+                <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")} title={t("toolbar.strikethrough")}><Strikethrough size={13} /></ToolbarButton>
             </div>
             <EditorContent editor={editor} />
         </div>
     );
 }
 
-export default function RichTextEditor({ value, onChange, placeholder = "Nouveau contenu...", minHeight = "180px" }) {
+export default function RichTextEditor({ value, onChange, placeholder, minHeight = "180px" }) {
+    const t = useTranslations("auth.richTextEditor");
     const [showHeadingMenu, setShowHeadingMenu] = useState(false);
     const headingMenuRef = useRef(null);
 
@@ -93,14 +91,13 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
                 heading: { levels: [1, 2, 3] },
             }),
             Underline,
-            Placeholder.configure({ placeholder }),
+            Placeholder.configure({ placeholder: placeholder ?? t("placeholders.content") }),
             TextAlign.configure({
                 types: ["heading", "paragraph"],
             }),
-
         ],
         immediatelyRender: false,
-        content: value || "", // HTML content
+        content: value || "",
         onUpdate: ({ editor }) => {
             onChange(editor.getHTML());
         },
@@ -128,42 +125,47 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
 
     if (!editor) return null;
 
+    const headingOptions = [
+        { key: "paragraph", label: t("types.paragraph") },
+        { key: "heading1", label: t("types.heading1"), level: 1 },
+        { key: "heading2", label: t("types.heading2"), level: 2 },
+        { key: "heading3", label: t("types.heading3"), level: 3 },
+    ];
+
     const currentType = editor.isActive("heading", { level: 1 })
-        ? "Titre 1"
+        ? "heading1"
         : editor.isActive("heading", { level: 2 })
-            ? "Titre 2"
+            ? "heading2"
             : editor.isActive("heading", { level: 3 })
-                ? "Titre 3"
-                : "Paragraphe";
+                ? "heading3"
+                : "paragraph";
 
     return (
         <div className="rich-text-editor__surface w-full border border-[#E0D5C5] rounded-[10.75px] overflow-hidden bg-white shadow-sm flex flex-col">
-            {/* ── TOOLBAR ── */}
             <div className="rich-text-editor__toolbar flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-[#E0D5C5]/60 bg-[#FDFDFD]">
-                {/* Paragraph Dropdown */}
                 <div className="relative" ref={headingMenuRef}>
                     <button
                         type="button"
                         onClick={() => setShowHeadingMenu(!showHeadingMenu)}
                         className="rich-text-editor__select flex items-center gap-2 px-3 h-[32px] rounded-md hover:bg-[#E0D5C5]/40 transition-colors text-[13px] text-[#432817] font-medium"
                     >
-                        {currentType}
+                        {headingOptions.find((option) => option.key === currentType)?.label}
                         <ChevronDown size={14} className={`transition-transform ${showHeadingMenu ? "rotate-180" : ""}`} />
                     </button>
                     {showHeadingMenu && (
                         <div className="absolute top-full left-0 mt-1 py-1 w-[140px] bg-white border border-[#E0D5C5] rounded-lg shadow-lg z-50">
-                            {["Paragraphe", "Titre 1", "Titre 2", "Titre 3"].map((type) => (
+                            {headingOptions.map((type) => (
                                 <button
-                                    key={type}
+                                    key={type.key}
                                     type="button"
                                     onClick={() => {
-                                        if (type === "Paragraphe") editor.commands.setParagraph();
-                                        else editor.commands.toggleHeading({ level: parseInt(type.split(" ")[1]) });
+                                        if (type.key === "paragraph") editor.commands.setParagraph();
+                                        else editor.commands.toggleHeading({ level: type.level });
                                         setShowHeadingMenu(false);
                                     }}
-                                    className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-[#432817]/5 ${currentType === type ? "text-[#8B6914] bg-[#432817]/5" : "text-[#432817]"}`}
+                                    className={`w-full text-left px-3 py-1.5 text-xs font-medium hover:bg-[#432817]/5 ${currentType === type.key ? "text-[#8B6914] bg-[#432817]/5" : "text-[#432817]"}`}
                                 >
-                                    {type}
+                                    {type.label}
                                 </button>
                             ))}
                         </div>
@@ -172,49 +174,44 @@ export default function RichTextEditor({ value, onChange, placeholder = "Nouveau
 
                 <Divider />
 
-                <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} title="Gras">
+                <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} title={t("toolbar.bold")}>
                     <Bold size={16} />
                 </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} title="Italique">
+                <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} title={t("toolbar.italic")}>
                     <Italic size={16} />
                 </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")} title="Barré">
+                <ToolbarButton onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")} title={t("toolbar.strikethrough")}>
                     <Strikethrough size={16} />
                 </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} title="Souligné">
+                <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} title={t("toolbar.underline")}>
                     <UnderlineIcon size={16} />
                 </ToolbarButton>
 
                 <Divider />
 
-                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("left").run()} isActive={editor.isActive({ textAlign: "left" })} title="Aligner à gauche">
+                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("left").run()} isActive={editor.isActive({ textAlign: "left" })} title={t("toolbar.alignLeft")}>
                     <AlignLeft size={16} />
                 </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("center").run()} isActive={editor.isActive({ textAlign: "center" })} title="Centrer">
+                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("center").run()} isActive={editor.isActive({ textAlign: "center" })} title={t("toolbar.alignCenter")}>
                     <AlignCenter size={16} />
                 </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("right").run()} isActive={editor.isActive({ textAlign: "right" })} title="Aligner à droite">
+                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("right").run()} isActive={editor.isActive({ textAlign: "right" })} title={t("toolbar.alignRight")}>
                     <AlignRight size={16} />
                 </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("justify").run()} isActive={editor.isActive({ textAlign: "justify" })} title="Justifier">
+                <ToolbarButton onClick={() => editor.chain().focus().setTextAlign("justify").run()} isActive={editor.isActive({ textAlign: "justify" })} title={t("toolbar.alignJustify")}>
                     <AlignJustify size={16} />
                 </ToolbarButton>
 
                 <Divider />
 
-                <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive("bulletList")} title="Liste à puces">
+                <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive("bulletList")} title={t("toolbar.bulletList")}>
                     <List size={16} />
                 </ToolbarButton>
-                <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")} title="Liste numérotée">
+                <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")} title={t("toolbar.orderedList")}>
                     <ListOrdered size={16} />
                 </ToolbarButton>
-
-
             </div>
 
-
-
-            {/* ── CONTENT AREA ── */}
             <div className="flex-1 overflow-y-auto">
                 <EditorContent editor={editor} />
             </div>

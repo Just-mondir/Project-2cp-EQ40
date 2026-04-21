@@ -43,7 +43,7 @@ export default function Footer() {
           </div>
 
           <p className="text-[#e8d9c0] font-normal text-xl leading-snug -mt-6" style={{ fontFamily: "Aclonica, sans-serif" }}>
-            "Preserving Algerian heritage <br></br>through community knowledge and technology."
+            &quot;Preserving Algerian heritage <br></br>through community knowledge and technology.&quot;
           </p>
 
           <div className="flex gap-4 mt-2">

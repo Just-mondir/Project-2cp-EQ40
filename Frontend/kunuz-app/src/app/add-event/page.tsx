@@ -6,6 +6,7 @@ import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel"
 import PostForm from "@/components/PostForm";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const getAuthToken = () => {
@@ -34,6 +35,7 @@ type PostFormValues = {
 };
 
 export default function AddEventPage() {
+    const t = useTranslations("auth.pages.addEvent");
     const router = useRouter();
     const [saving, setSaving] = useState(false);
     const [images, setImages] = useState<ImageItem[]>([]);
@@ -46,12 +48,12 @@ export default function AddEventPage() {
 
             // Validation
             if (!formValues.title || formValues.title.trim() === "") {
-                alert("Please provide a title for the event.");
+                alert(t("errors.missingTitle"));
                 return;
             }
 
             if (!formValues.startTime) {
-                alert("Please provide a start time for the event.");
+                alert(t("errors.missingStartTime"));
                 return;
             }
 
@@ -89,7 +91,7 @@ export default function AddEventPage() {
             if (!postRes.ok) {
                 const errorData = await postRes.json();
                 console.error("Post creation error:", errorData);
-                alert(`Failed to create event post: ${errorData?.message || "Unknown error"}`);
+                alert(t("errors.createPost", { message: errorData?.message || t("errors.unknown") }));
                 return;
             }
 
@@ -120,12 +122,12 @@ export default function AddEventPage() {
             }
 
             // Show success message and redirect
-            alert("Mobilization event created successfully!");
+            alert(t("success"));
 
             router.push("/events");
         } catch (err) {
             console.error("Error creating mobilization event:", err);
-            alert("Failed to create mobilization event. Please try again.");
+            alert(t("errors.createFailed"));
         } finally {
             setSaving(false);
         }
@@ -153,7 +155,7 @@ export default function AddEventPage() {
                                     lineHeight: 1.2,
                                 }}
                             >
-                                Add mobilization event
+                                {t("title")}
                             </h1>
 
                             {saving && (
@@ -165,7 +167,7 @@ export default function AddEventPage() {
                                         fontFamily: "var(--font-lato), 'Lato', sans-serif",
                                     }}
                                 >
-                                    Publishing...
+                                    {t("publishing")}
                                 </p>
                             )}
                         </div>

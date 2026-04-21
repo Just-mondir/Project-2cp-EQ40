@@ -5,10 +5,10 @@ import BackButton from "@/components/BackButton";
 import GuildForm from "@/components/GroupForme";
 import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+import { useTranslations } from "next-intl";
 
 export default function CreateGuildPage() {
+  const t = useTranslations("auth.pages.editGroup");
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
@@ -38,7 +38,7 @@ export default function CreateGuildPage() {
 
   const handleCancel = () => router.back();
 
-  const handleDone = async (formData: any) => {
+  const handleDone = async (formData: Record<string, unknown>) => {
     try {
       setSaving(true);
       // 🔌 BACKEND INTEGRATION POINT
@@ -79,11 +79,11 @@ export default function CreateGuildPage() {
                   lineHeight: 1.2,
                 }}
               >
-                Edit group
+                {t("title")}
               </h1>
               {saving && (
                 <p style={{ fontSize: "12px", color: "#8B6914", marginTop: "6px" }}>
-                  Creating...
+                  {t("saving")}
                 </p>
               )}
             </div>
@@ -117,7 +117,7 @@ export default function CreateGuildPage() {
                 {coverPhoto ? (
                   <img
                     src={coverPhoto}
-                    alt="Cover"
+                    alt={t("coverAlt")}
                     style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }}
                   />
                 ) : (
@@ -131,7 +131,7 @@ export default function CreateGuildPage() {
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
                     <span style={{ color: "#79747E", fontSize: "11px", fontFamily: "Lato, sans-serif" }}>
-                      Cover photo
+                      {t("coverPhoto")}
                     </span>
                   </div>
                 )}
@@ -161,7 +161,7 @@ export default function CreateGuildPage() {
                 {groupPhoto ? (
                   <img
                     src={groupPhoto}
-                    alt="Group"
+                    alt={t("groupAlt")}
                     style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }}
                   />
                 ) : (
@@ -185,7 +185,7 @@ export default function CreateGuildPage() {
                         lineHeight: 1.4,
                       }}
                     >
-                      Upload group photo
+                      {t("uploadGroupPhoto")}
                     </span>
                   </>
                 )}

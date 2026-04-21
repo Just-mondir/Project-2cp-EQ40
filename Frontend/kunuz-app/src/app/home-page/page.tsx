@@ -3,9 +3,16 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import {
+  translateHistoricalPeriod,
+  translateMonumentType,
+  translatePostType,
+  translateRegion,
+} from "@/lib/authFilterOptions";
 
 //const API_URL =
 //  process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
@@ -315,14 +322,22 @@ function buildTags(post: ApiPost): string[] {
   return tags;
 }
 
-const GUILDS = [
-  { name: "Heritage Photography", desc: "A space for sharing photos of cultural and historical landmarks", members: "2.7k", image: "/heritage-photography.jpg" },
-  { name: "UNESCO World Heritage Sites", desc: "Dedicated to Algeria's UNESCO-recognized sites", members: "4.1k", image: "/unisco.jpg" },
-  { name: "Monuments of Tipaza", desc: "Exploring and documenting the archaeological sites of Tipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
-  { name: "Heritage Photography", desc: "A space for sharing photos of cultural and historical landmarks", members: "2.7k", image: "/heritage-photography.jpg" },
-  { name: "UNESCO World Heritage Sites", desc: "Dedicated to Algeria's UNESCO-recognized sites", members: "4.1k", image: "/unisco.jpg" },
-  { name: "Monuments of Tipaza", desc: "Exploring and documenting the archaeological sites of Tipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
-];
+const GUILD_DEFINITIONS = [
+  { key: "heritagePhotography", members: "2.7k", image: "/heritage-photography.jpg" },
+  { key: "unescoWorldHeritage", members: "4.1k", image: "/unisco.jpg" },
+  { key: "monumentsOfTipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
+  { key: "heritagePhotography", members: "2.7k", image: "/heritage-photography.jpg" },
+  { key: "unescoWorldHeritage", members: "4.1k", image: "/unisco.jpg" },
+  { key: "monumentsOfTipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
+] as const;
+
+type GuildCard = {
+  desc: string;
+  image: string;
+  members: string;
+  membersLabel: string;
+  name: string;
+};
 
 /* ─────────────────── SVG ICONS ─────────────────── */
 
@@ -402,6 +417,7 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
+  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -414,7 +430,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? "See less" : "See more"}
+          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
         </button>
       )}
     </div>
@@ -438,6 +454,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
+  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -448,7 +465,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -457,7 +474,20 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 
   if (post.post_type === "alert" && post.alert_details) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const urgencyLabels: Record<string, string> = {
+      low: feedT("urgency.low"),
+      medium: feedT("urgency.medium"),
+      high: feedT("urgency.high"),
+      critical: feedT("urgency.critical"),
+    };
+    const statusLabels: Record<string, string> = {
+      restored: feedT("statuses.restored"),
+      under_intervention: feedT("statuses.underIntervention"),
+      destroyed: feedT("statuses.destroyed"),
+      alert: feedT("statuses.alert"),
+    };
+    const statusLabel = statusLabels[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const levelLabel = urgencyLabels[post.alert_details.urgence_level] ?? feedT("urgency.medium");
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -467,9 +497,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{levelLabel}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -496,6 +526,8 @@ function CommentItem({
   isReply?: boolean;
 }) {
   const router = useRouter();
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
   const [gemsCount, setGemsCount] = useState(comment.gems_count);
@@ -622,16 +654,16 @@ function CommentItem({
   };
 
   const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
+    const reason = window.prompt(feedT("prompts.reportComment"));
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("comment", comment.id, reason.trim());
       setShowMenu(false);
-      window.alert("Comment reported successfully.");
+      window.alert(feedT("feedback.commentReported"));
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : "Failed to report comment."
+        error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
       );
     }
   };
@@ -678,14 +710,14 @@ function CommentItem({
                       style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                       onClick={handleEditComment}
                     >
-                      Edit comment
+                      {feedT("actions.editComment")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
                       style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                       onClick={handleDeleteComment}
                     >
-                      Delete comment
+                      {feedT("actions.deleteComment")}
                     </button>
                   </>
                 ) : (
@@ -694,7 +726,7 @@ function CommentItem({
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                     onClick={handleReportComment}
                   >
-                    Report comment
+                    {feedT("actions.reportComment")}
                   </button>
                 )}
               </div>
@@ -721,14 +753,14 @@ function CommentItem({
                 style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
                 onClick={handleSaveEditedComment}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
                 onClick={handleCancelEditComment}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
@@ -760,7 +792,7 @@ function CommentItem({
               <polyline points="9 14 4 9 9 4" />
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
-            <span>Reply</span>
+            <span>{commonT("reply")}</span>
           </button>
         </div>
 
@@ -768,7 +800,7 @@ function CommentItem({
           <div className="flex items-center gap-2 mt-2">
             <input
               type="text"
-              placeholder="Write a reply..."
+              placeholder={feedT("placeholders.reply")}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => {
@@ -817,6 +849,8 @@ function AnnotationItem({
   onReject: (id: string) => void;
   onRefresh?: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
@@ -919,22 +953,22 @@ function AnnotationItem({
   };
 
   const handleReport = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
+    const reason = window.prompt(feedT("prompts.reportAnnotation"));
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("annotation", annotation.id, reason.trim());
       setShowMenu(false);
-      window.alert("Reported successfully");
+      window.alert(feedT("feedback.annotationReported"));
     } catch {
-      window.alert("Failed to report");
+      window.alert(feedT("feedback.annotationReportFailed"));
     }
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -991,14 +1025,14 @@ function AnnotationItem({
                       style={{ color: "#432817" }}
                       onClick={handleEditAnnotation}
                     >
-                      Edit annotation
+                      {feedT("actions.editAnnotation")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
                       style={{ color: "#432817" }}
                       onClick={handleDelete}
                     >
-                      Delete annotation
+                      {feedT("actions.deleteAnnotation")}
                     </button>
                   </>
                 )}
@@ -1009,7 +1043,7 @@ function AnnotationItem({
                     style={{ color: "#432817" }}
                     onClick={handleReport}
                   >
-                    Report annotation
+                    {feedT("actions.reportAnnotation")}
                   </button>
                 )}
 
@@ -1020,7 +1054,7 @@ function AnnotationItem({
                       style={{ color: "#5C7A3E" }}
                       onClick={handleAccept}
                     >
-                      Accept
+                      {commonT("accept")}
                     </button>
 
                     <button
@@ -1028,7 +1062,7 @@ function AnnotationItem({
                       style={{ color: "#C0392B" }}
                       onClick={handleReject}
                     >
-                      Reject
+                      {commonT("reject")}
                     </button>
                   </>
                 )}
@@ -1056,14 +1090,14 @@ function AnnotationItem({
                 style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
                 onClick={handleSaveEditedAnnotation}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
                 onClick={handleCancelEditAnnotation}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
@@ -1103,6 +1137,8 @@ function FilterSection({
   onClose: () => void;
   onApply: (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => void;
 }) {
+  const filtersT = useTranslations("auth.filters");
+  const postFormT = useTranslations("auth.postForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [choices, setChoices] = useState<{
     regions: string[];
@@ -1155,10 +1191,30 @@ function FilterSection({
   };
 
   const filters = [
-    { label: "Post Type", options: ["All", ...choices.post_types], value: postType, onChange: setPostType },
-    { label: "Geographical Regions", options: ["All", ...choices.regions], value: region, onChange: setRegion },
-    { label: "Historical Periods", options: ["All", ...choices.historical_periods], value: historicalPeriod, onChange: setHistoricalPeriod },
-    { label: "Heritage Type", options: ["All", ...choices.monument_types], value: monumentType, onChange: setMonumentType },
+    {
+      label: filtersT("labels.postType"),
+      options: [{ value: "All", label: filtersT("all") }, ...choices.post_types.map((value) => ({ value, label: translatePostType(value, postFormT) }))],
+      value: postType,
+      onChange: setPostType,
+    },
+    {
+      label: filtersT("labels.region"),
+      options: [{ value: "All", label: filtersT("all") }, ...choices.regions.map((value) => ({ value, label: translateRegion(value, postFormT) }))],
+      value: region,
+      onChange: setRegion,
+    },
+    {
+      label: filtersT("labels.historicalPeriod"),
+      options: [{ value: "All", label: filtersT("all") }, ...choices.historical_periods.map((value) => ({ value, label: translateHistoricalPeriod(value, postFormT) }))],
+      value: historicalPeriod,
+      onChange: setHistoricalPeriod,
+    },
+    {
+      label: filtersT("labels.heritageType"),
+      options: [{ value: "All", label: filtersT("all") }, ...choices.monument_types.map((value) => ({ value, label: translateMonumentType(value, postFormT) }))],
+      value: monumentType,
+      onChange: setMonumentType,
+    },
   ];
 
   return (
@@ -1171,7 +1227,7 @@ function FilterSection({
           <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--nav-active-bg)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nav-active-icon)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Filters</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{filtersT("title")}</h3>
         </div>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -1190,7 +1246,7 @@ function FilterSection({
                     className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
                     style={{ backgroundColor: "var(--panel-bg)", border: "1.5px solid var(--border-soft)", borderRadius: "14px", color: "var(--foreground)", fontWeight: "700" }}
                   >
-                    {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
+                    {filter.options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -1202,8 +1258,8 @@ function FilterSection({
         </div>
       </div>
       <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--panel-elevated)", borderColor: "var(--border-soft)" }}>
-        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--border-soft)", color: "var(--foreground)" }}>Reset</button>
-        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg border border-transparent" style={{ backgroundColor: "var(--nav-active-bg)", color: "var(--nav-active-icon)" }}>Apply</button>
+        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--border-soft)", color: "var(--foreground)" }}>{filtersT("reset")}</button>
+        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg border border-transparent" style={{ backgroundColor: "var(--nav-active-bg)", color: "var(--nav-active-icon)" }}>{filtersT("apply")}</button>
       </div>
     </div>
   );
@@ -1224,6 +1280,7 @@ function PostModal({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
 }) {
+  const feedT = useTranslations("auth.feed");
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
 
   const [newComment, setNewComment] = useState("");
@@ -1615,7 +1672,7 @@ function PostModal({
               </button>
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
                 </div>
               )}
             </div>
@@ -1639,13 +1696,13 @@ function PostModal({
               {isContentLong && !contentExpanded ? (
                 <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
                   {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
+                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
                 </p>
               ) : (
                 <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
               )}
               {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
               )}
 
 
@@ -1662,7 +1719,7 @@ function PostModal({
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              Comments ({comments.length})
+              {feedT("tabs.comments", { count: comments.length })}
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
@@ -1673,7 +1730,7 @@ function PostModal({
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              Annotations ({acceptedAnnotationsCount})
+              {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
             </button>
           </div>
 
@@ -1684,7 +1741,7 @@ function PostModal({
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <CommentIcon size={28} className="opacity-30" />
                     <p className="text-xs" style={{ color: "#8B7355" }}>
-                      No comments yet. Be the first to comment!
+                      {feedT("empty.comments")}
                     </p>
                   </div>
                 ) : (
@@ -1704,7 +1761,7 @@ function PostModal({
                 ) : annotations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <AnnotationIcon size={28} className="opacity-30" />
-                    <p className="text-xs" style={{ color: "#8B7355" }}>No annotations yet. Be the first to annotate!</p>
+                    <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.annotations")}</p>
                   </div>
                 ) : (
                   annotations.map((annotation) => (
@@ -1755,7 +1812,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add a comment"
+                  placeholder={feedT("placeholders.comment")}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }}
@@ -1774,7 +1831,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add an annotation"
+                  placeholder={feedT("placeholders.annotation")}
                   value={newAnnotationText}
                   onChange={(e) => setNewAnnotationText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }}
@@ -1799,10 +1856,16 @@ function PostModal({
 
 /* ─────────────────── MOBILE GUILDS STRIP ─────────────────── */
 
-function MobileGuildsStrip() {
+function MobileGuildsStrip({
+  guilds,
+  title,
+}: {
+  guilds: GuildCard[];
+  title: string;
+}) {
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>Popular Guilds</h3>
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{title}</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -1811,7 +1874,7 @@ function MobileGuildsStrip() {
           WebkitOverflowScrolling: "touch"
         }}
       >
-        {GUILDS.slice(0, 5).map((guild, i) => (
+        {guilds.slice(0, 5).map((guild, i) => (
           <div
             key={i}
             className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105 rounded-2xl border"
@@ -1866,13 +1929,19 @@ function MobileGuildsStrip() {
 
 /* ─────────────────── RIGHT SIDEBAR ─────────────────── */
 
-function RightSidebar() {
+function RightSidebar({
+  guilds,
+  title,
+}: {
+  guilds: GuildCard[];
+  title: string;
+}) {
   return (
     <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Popular Guilds</h2>
+        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{title}</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
-          {GUILDS.slice(0, 5).map((guild, i) => (
+          {guilds.slice(0, 5).map((guild, i) => (
             <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 8px 22px rgba(67,40,23,0.08)", backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
               <img src={guild.image} alt={guild.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 shadow-sm" style={{ borderColor: "var(--panel-elevated)" }} />
               <div className="flex flex-col justify-center min-w-0">
@@ -1880,7 +1949,7 @@ function RightSidebar() {
                 <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{guild.desc}</span>
                 <span className="flex items-center gap-1 text-[11px] mt-1.5 font-medium" style={{ color: "var(--accent-gold)" }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-                  {guild.members} Members
+                  {guild.membersLabel}
                 </span>
               </div>
             </div>
@@ -1908,6 +1977,7 @@ function PostCard({
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
 }) {
+  const feedT = useTranslations("auth.feed");
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -1999,7 +2069,7 @@ function PostCard({
           </button>
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
             </div>
           )}
         </div>
@@ -2120,6 +2190,7 @@ function PostCard({
 /* ─────────────────── MAIN PAGE ─────────────────── */
 
 export default function HomePageRoute() {
+  const t = useTranslations("auth.pages.home");
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
@@ -2133,6 +2204,18 @@ export default function HomePageRoute() {
   const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts/`);
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+
+  const guilds = useMemo<GuildCard[]>(
+    () =>
+      GUILD_DEFINITIONS.map((guild) => ({
+        desc: t(`guilds.items.${guild.key}.description`),
+        image: guild.image,
+        members: guild.members,
+        membersLabel: t("guilds.members", { count: guild.members }),
+        name: t(`guilds.items.${guild.key}.name`),
+      })),
+    [t],
+  );
 
   const normalizeApiPost = (raw: any, fallback?: ApiPost): ApiPost => ({
     id: String(raw?.id ?? fallback?.id ?? ""),
@@ -2345,7 +2428,7 @@ export default function HomePageRoute() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
-                  placeholder="Search posts, users..."
+                  placeholder={t("search.placeholder")}
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -2371,7 +2454,7 @@ export default function HomePageRoute() {
                     <div className="max-h-[400px] overflow-y-auto feed-scroll">
                       {searchResults?.users && searchResults.users.length > 0 && (
                         <div className="px-4 pt-3 pb-1">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Users</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.users")}</p>
                           {searchResults.users.map((user) => (
                             <button
                               key={user.id}
@@ -2391,7 +2474,7 @@ export default function HomePageRoute() {
                       )}
                       {searchResults?.posts && searchResults.posts.length > 0 && (
                         <div className="px-4 pt-2 pb-3">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Posts</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.posts")}</p>
                           {searchResults.posts.map((post) => (
                             <button
                               key={post.id}
@@ -2411,7 +2494,7 @@ export default function HomePageRoute() {
                       )}
                       {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (
                         <div className="flex flex-col items-center py-6 gap-1">
-                          <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>No results for "{searchQuery}"</p>
+                          <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>{t("search.noResults", { query: searchQuery })}</p>
                         </div>
                       )}
                     </div>
@@ -2422,7 +2505,7 @@ export default function HomePageRoute() {
 
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                <MobileGuildsStrip />
+                <MobileGuildsStrip guilds={guilds} title={t("guilds.title")} />
                 {posts.map((post, index) => (
                   <React.Fragment key={post._key ?? Number(post.id) ?? index}>
                     <PostCard
@@ -2446,7 +2529,7 @@ export default function HomePageRoute() {
                 )}
                 <div ref={sentinelRef} className="h-4" />
               </main>
-              <RightSidebar />
+              <RightSidebar guilds={guilds} title={t("guilds.title")} />
             </div>
           </div>
         </div>

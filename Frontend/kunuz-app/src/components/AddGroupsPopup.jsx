@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const SISAL = "#C4A882";
 
-/* Mock list of available groups — in a real app this comes from an API */
 const AVAILABLE_GROUPS = [
     { id: 1, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
     { id: 2, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
@@ -14,12 +14,11 @@ const AVAILABLE_GROUPS = [
     { id: 4, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
 ];
 
-
 export default function AddGroupsPopup({ onConfirm, onClose }) {
+    const t = useTranslations("auth.groupsPopup");
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState(new Set());
 
-    /* Close on Escape key */
     useEffect(() => {
         const handleKey = (e) => { if (e.key === "Escape") onClose(); };
         window.addEventListener("keydown", handleKey);
@@ -46,7 +45,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
     );
 
     return (
-        /* ── Backdrop ── */
         <div
             onClick={onClose}
             style={{
@@ -59,7 +57,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                 zIndex: 9999,
             }}
         >
-            {/* ── Card ── */}
             <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -73,10 +70,9 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                     fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
                 }}
             >
-                {/* Checkmark confirm button (top-right) */}
                 <button
                     onClick={handleConfirm}
-                    title="Confirm selection"
+                    title={t("confirmSelection")}
                     style={{
                         position: "absolute",
                         top: "16px",
@@ -101,7 +97,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                     </svg>
                 </button>
 
-                {/* Title */}
                 <h2
                     style={{
                         fontFamily: "var(--font-playfair), 'Playfair Display', serif",
@@ -113,10 +108,9 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                         letterSpacing: "0.01em",
                     }}
                 >
-                    Add groups
+                    {t("title")}
                 </h2>
 
-                {/* Search input */}
                 <p style={{
                     fontSize: "13px",
                     color: ESPRESSO,
@@ -124,14 +118,14 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                     marginBottom: "8px",
                     opacity: 0.8,
                 }}>
-                    Type Group name
+                    {t("typeGroupName")}
                 </p>
                 <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     autoFocus
-                    placeholder="Search groups…"
+                    placeholder={t("searchPlaceholder")}
                     style={{
                         width: "100%",
                         backgroundColor: "#FFFFFF",
@@ -147,11 +141,10 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                         marginBottom: "16px",
                         transition: "box-shadow 0.15s",
                     }}
-                    onFocus={(e) => { e.target.style.boxShadow = `0 0 0 2.5px rgba(139,105,20,0.22)`; }}
+                    onFocus={(e) => { e.target.style.boxShadow = "0 0 0 2.5px rgba(139,105,20,0.22)"; }}
                     onBlur={(e) => { e.target.style.boxShadow = "none"; }}
                 />
 
-                {/* Group list */}
                 <div style={{
                     display: "flex",
                     flexDirection: "column",
@@ -180,7 +173,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                                 }}
                                 onClick={() => toggle(group.id)}
                             >
-                                {/* Group avatar + name */}
                                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                                     <div style={{
                                         width: "40px",
@@ -210,7 +202,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                                     </span>
                                 </div>
 
-                                {/* + / ✓ button */}
                                 <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); toggle(group.id); }}
@@ -251,7 +242,7 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                             fontSize: "13px",
                             padding: "16px 0",
                         }}>
-                            No groups found
+                            {t("noGroupsFound")}
                         </p>
                     )}
                 </div>
