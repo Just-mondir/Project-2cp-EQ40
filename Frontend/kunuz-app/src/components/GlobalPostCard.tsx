@@ -1,21 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
-import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
-import {
-  translateHistoricalPeriod,
-  translateMonumentType,
-  translatePostType,
-  translateRegion,
-} from "@/lib/authFilterOptions";
 
-//const API_URL =
-//  process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
 const API_URL = "http://127.0.0.1:8000";
 
 function stripHtmlFallback(html: string): string {
@@ -95,6 +85,7 @@ function toggleStoredItem(key: string, id: string, add: boolean) {
   localStorage.setItem(key, JSON.stringify([...set]));
 }
 
+
 /* ─────────────────── TYPES ─────────────────── */
 
 type PostImage = {
@@ -138,6 +129,7 @@ type ApiPost = {
   monument_type?: string;
   created_at: string;
   user_id?: string;
+  group_id?: string;
   alert_details: AlertDetails | null;
   event_details: EventDetails | null;
   _key?: number;
@@ -278,7 +270,7 @@ function UserAvatar({
   return (
     <div
       className="rounded-full flex-shrink-0 flex items-center justify-center"
-      style={{ width: size, height: size, backgroundColor: "var(--avatar-surface)" }}
+      style={{ width: size, height: size, backgroundColor: "var(--border-soft)" }}
     >
       <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -322,21 +314,17 @@ function buildTags(post: ApiPost): string[] {
   return tags;
 }
 
-const GROUP_DEFINITIONS = [
-  { key: "heritagePhotography", members: "2.7k", image: "/heritage-photography.jpg" },
-  { key: "unescoWorldHeritage", members: "4.1k", image: "/unisco.jpg" },
-  { key: "monumentsOfTipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
-  { key: "heritagePhotography", members: "2.7k", image: "/heritage-photography.jpg" },
-  { key: "unescoWorldHeritage", members: "4.1k", image: "/unisco.jpg" },
-  { key: "monumentsOfTipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
-] as const;
-
-type GroupCard = {
-  desc: string;
-  image: string;
-  members: string;
-  membersLabel: string;
+type Group = {
+  id: string;
   name: string;
+  description: string;
+  member_count: number;
+  profile_picture?: string;
+  category: string;
+  historical_period: string;
+  region: string;
+  visibility: string;
+  admin_id: string;
 };
 
 /* ─────────────────── SVG ICONS ─────────────────── */
@@ -397,15 +385,6 @@ const AnnotationIcon = ({ className = "", size = 18 }) => (
   </svg>
 );
 
-const PeopleIcon = ({ className = "", size = 12 }) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-);
-
 /* ─────────────────── TAGS ─────────────────── */
 
 function PostTags({ tags }: { tags: string[] }) {
@@ -426,7 +405,6 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
-  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -439,7 +417,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
+          {expanded ? "See less" : "See more"}
         </button>
       )}
     </div>
@@ -449,7 +427,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
 /* ─────────────────── POST DETAIL BADGE ─────────────────── */
 
 const URGENCY_COLORS: Record<string, { bg: string; border: string; dot: string; label: string }> = {
-  low: { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E", label: "Low urgency" },
+  low: { bg: "var(--background)", border: "#C8A96E", dot: "#C8A96E", label: "Low urgency" },
   medium: { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39", label: "Medium urgency" },
   high: { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B", label: "High urgency" },
   critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000", label: "Critical" },
@@ -463,7 +441,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
-  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -474,7 +451,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -483,20 +460,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 
   if (post.post_type === "alert" && post.alert_details) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const urgencyLabels: Record<string, string> = {
-      low: feedT("urgency.low"),
-      medium: feedT("urgency.medium"),
-      high: feedT("urgency.high"),
-      critical: feedT("urgency.critical"),
-    };
-    const statusLabels: Record<string, string> = {
-      restored: feedT("statuses.restored"),
-      under_intervention: feedT("statuses.underIntervention"),
-      destroyed: feedT("statuses.destroyed"),
-      alert: feedT("statuses.alert"),
-    };
-    const statusLabel = statusLabels[post.alert_details.current_status] ?? post.alert_details.current_status;
-    const levelLabel = urgencyLabels[post.alert_details.urgence_level] ?? feedT("urgency.medium");
+    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -506,9 +470,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{levelLabel}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -535,8 +499,6 @@ function CommentItem({
   isReply?: boolean;
 }) {
   const router = useRouter();
-  const commonT = useTranslations("auth.common");
-  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
   const [gemsCount, setGemsCount] = useState(comment.gems_count);
@@ -663,16 +625,16 @@ function CommentItem({
   };
 
   const handleReportComment = async () => {
-    const reason = window.prompt(feedT("prompts.reportComment"));
+    const reason = window.prompt("Why are you reporting this comment?");
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("comment", comment.id, reason.trim());
       setShowMenu(false);
-      window.alert(feedT("feedback.commentReported"));
+      window.alert("Comment reported successfully.");
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
+        error instanceof Error ? error.message : "Failed to report comment."
       );
     }
   };
@@ -681,7 +643,7 @@ function CommentItem({
     <div
       className="flex gap-3 p-3 rounded-xl"
       style={{
-        backgroundColor: "var(--light)",
+        backgroundColor: "var(--panel-bg)",
         boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)",
         borderLeft: isReply ? "2px solid #E0D5C5" : "none",
       }}
@@ -692,7 +654,7 @@ function CommentItem({
         <div className="flex items-center justify-between">
           <button
             className="text-sm font-bold hover:underline transition-all cursor-pointer"
-            style={{ color: "#432817", background: "none", border: "none", padding: 0 }}
+            style={{ color: "var(--foreground)", background: "none", border: "none", padding: 0 }}
             onClick={() => router.push(`/user/${comment.user_username}`)}
           >
             {comment.user_username}
@@ -700,8 +662,8 @@ function CommentItem({
 
           <div className="relative" ref={menuRef}>
             <button
-              className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
-              style={{ color: "#8B7355" }}
+              className="p-0.5 rounded hover:bg-[var(--panel-hover)] transition-colors text-sm font-bold leading-none"
+              style={{ color: "var(--text-muted)" }}
               onClick={() => setShowMenu(!showMenu)}
             >
               ...
@@ -710,32 +672,32 @@ function CommentItem({
             {showMenu && (
               <div
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
-                style={{ backgroundColor: "#FFF8E2" }}
+                style={{ backgroundColor: "var(--background)" }}
               >
                 {isOwner ? (
                   <>
                     <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]"
+                      style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                       onClick={handleEditComment}
                     >
-                      {feedT("actions.editComment")}
+                      Edit comment
                     </button>
                     <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-red-500/10"
+                      style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                       onClick={handleDeleteComment}
                     >
-                      {feedT("actions.deleteComment")}
+                      Delete comment
                     </button>
                   </>
                 ) : (
                   <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                    className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]"
+                    style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                     onClick={handleReportComment}
                   >
-                    {feedT("actions.reportComment")}
+                    Report comment
                   </button>
                 )}
               </div>
@@ -751,32 +713,32 @@ function CommentItem({
               className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none"
               rows={3}
               style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E0D5C5",
-                color: "#432817",
+                backgroundColor: "var(--panel-bg)",
+                border: "1px solid var(--border-soft)",
+                color: "var(--foreground)",
               }}
             />
             <div className="flex items-center gap-2 mt-2">
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
+                style={{ backgroundColor: "var(--foreground)", color: "var(--background)" }}
                 onClick={handleSaveEditedComment}
               >
-                {commonT("save")}
+                Save
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
+                style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
                 onClick={handleCancelEditComment}
               >
-                {commonT("cancel")}
+                Cancel
               </button>
             </div>
           </div>
         ) : (
           <div
             className="text-sm leading-relaxed prose prose-sm max-w-none"
-            style={{ color: "#432817" }}
+            style={{ color: "var(--foreground)" }}
           >
             {stripHtml(comment.content)}
           </div>
@@ -784,8 +746,8 @@ function CommentItem({
 
         <div className="flex items-center gap-3 mt-1.5">
           <button
-            className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors"
-            style={{ color: gemmed ? "#8B6914" : "#8B7355" }}
+            className="text-[10px] flex items-center gap-1 hover:text-[var(--accent-gold)] transition-colors"
+            style={{ color: gemmed ? "#8B6914" : "var(--text-muted)" }}
             onClick={handleGemComment}
           >
             <GemIcon size={12} filled={gemmed} active={gemmed} />
@@ -793,15 +755,15 @@ function CommentItem({
           </button>
 
           <button
-            className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors"
-            style={{ color: "#8B7355" }}
+            className="text-[10px] flex items-center gap-1 hover:text-[var(--accent-gold)] transition-colors"
+            style={{ color: "var(--text-muted)" }}
             onClick={() => setShowReplyInput(!showReplyInput)}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 14 4 9 9 4" />
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
-            <span>{commonT("reply")}</span>
+            <span>Reply</span>
           </button>
         </div>
 
@@ -809,7 +771,7 @@ function CommentItem({
           <div className="flex items-center gap-2 mt-2">
             <input
               type="text"
-              placeholder={feedT("placeholders.reply")}
+              placeholder="Write a reply..."
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => {
@@ -817,17 +779,17 @@ function CommentItem({
               }}
               className="flex-1 text-xs rounded-xl px-3 py-2 outline-none border"
               style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E0D5C5",
-                color: "#432817",
+                backgroundColor: "var(--panel-bg)",
+                border: "1px solid var(--border-soft)",
+                color: "var(--foreground)",
               }}
             />
             <button
               onClick={handleSubmitReply}
               className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: "#432817" }}
+              style={{ backgroundColor: "var(--foreground)" }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--background)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -858,8 +820,6 @@ function AnnotationItem({
   onReject: (id: string) => void;
   onRefresh?: () => void;
 }) {
-  const commonT = useTranslations("auth.common");
-  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
@@ -962,22 +922,22 @@ function AnnotationItem({
   };
 
   const handleReport = async () => {
-    const reason = window.prompt(feedT("prompts.reportAnnotation"));
+    const reason = window.prompt("Why are you reporting this annotation?");
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("annotation", annotation.id, reason.trim());
       setShowMenu(false);
-      window.alert(feedT("feedback.annotationReported"));
+      window.alert("Reported successfully");
     } catch {
-      window.alert(feedT("feedback.annotationReportFailed"));
+      window.alert("Failed to report");
     }
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -992,14 +952,14 @@ function AnnotationItem({
     <div
       className="flex gap-3 p-3 rounded-xl"
       style={{
-        backgroundColor: "var(--light)",
+        backgroundColor: "var(--panel-bg)",
         boxShadow: "0 1px 6px rgba(67,40,23,0.06)",
         border: `1px solid ${sc.bg}`,
       }}
     >
       <div
         className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center"
-        style={{ backgroundColor: "#E0D5C5" }}
+        style={{ backgroundColor: "var(--border-soft)" }}
       >
         <AnnotationIcon size={14} />
       </div>
@@ -1015,8 +975,8 @@ function AnnotationItem({
 
           <div className="relative" ref={menuRef}>
             <button
-              className="p-0.5 rounded hover:bg-[#E0D5C5] text-sm font-bold"
-              style={{ color: "#8B7355" }}
+              className="p-0.5 rounded hover:bg-[var(--panel-hover)] text-sm font-bold"
+              style={{ color: "var(--text-muted)" }}
               onClick={() => setShowMenu(!showMenu)}
             >
               ...
@@ -1025,53 +985,53 @@ function AnnotationItem({
             {showMenu && (
               <div
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]"
-                style={{ backgroundColor: "#FFF8E2" }}
+                style={{ backgroundColor: "var(--background)" }}
               >
                 {isOwner && (
                   <>
                     <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817" }}
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
+                      style={{ color: "var(--foreground)" }}
                       onClick={handleEditAnnotation}
                     >
-                      {feedT("actions.editAnnotation")}
+                      Edit annotation
                     </button>
                     <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
-                      style={{ color: "#432817" }}
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-red-500/10"
+                      style={{ color: "var(--foreground)" }}
                       onClick={handleDelete}
                     >
-                      {feedT("actions.deleteAnnotation")}
+                      Delete annotation
                     </button>
                   </>
                 )}
 
                 {!isOwner && (
                   <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817" }}
+                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
+                    style={{ color: "var(--foreground)" }}
                     onClick={handleReport}
                   >
-                    {feedT("actions.reportAnnotation")}
+                    Report annotation
                   </button>
                 )}
 
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
                     <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#EAF0E6]"
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-green-500/10"
                       style={{ color: "#5C7A3E" }}
                       onClick={handleAccept}
                     >
-                      {commonT("accept")}
+                      Accept
                     </button>
 
                     <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
+                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-red-500/10"
                       style={{ color: "#C0392B" }}
                       onClick={handleReject}
                     >
-                      {commonT("reject")}
+                      Reject
                     </button>
                   </>
                 )}
@@ -1088,30 +1048,30 @@ function AnnotationItem({
               className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none"
               rows={3}
               style={{
-                backgroundColor: "#FFFFFF",
-                border: "1px solid #E0D5C5",
-                color: "#432817",
+                backgroundColor: "var(--panel-bg)",
+                border: "1px solid var(--border-soft)",
+                color: "var(--foreground)",
               }}
             />
             <div className="flex items-center gap-2 mt-2">
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
+                style={{ backgroundColor: "var(--foreground)", color: "var(--background)" }}
                 onClick={handleSaveEditedAnnotation}
               >
-                {commonT("save")}
+                Save
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
-                style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
+                style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
                 onClick={handleCancelEditAnnotation}
               >
-                {commonT("cancel")}
+                Cancel
               </button>
             </div>
           </div>
         ) : annotation.text ? (
-          <p className="text-xs" style={{ color: "#432817" }}>
+          <p className="text-xs" style={{ color: "var(--foreground)" }}>
             {annotation.text}
           </p>
         ) : null}
@@ -1125,7 +1085,7 @@ function AnnotationItem({
           />
         ) : null}
 
-        <span className="text-[10px]" style={{ color: "#8B7355" }}>
+        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
           {formatDate(annotation.created_at)}
         </span>
       </div>
@@ -1146,8 +1106,6 @@ function FilterSection({
   onClose: () => void;
   onApply: (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => void;
 }) {
-  const filtersT = useTranslations("auth.filters");
-  const postFormT = useTranslations("auth.postForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [choices, setChoices] = useState<{
     regions: string[];
@@ -1200,43 +1158,23 @@ function FilterSection({
   };
 
   const filters = [
-    {
-      label: filtersT("labels.postType"),
-      options: [{ value: "All", label: filtersT("all") }, ...choices.post_types.map((value) => ({ value, label: translatePostType(value, postFormT) }))],
-      value: postType,
-      onChange: setPostType,
-    },
-    {
-      label: filtersT("labels.region"),
-      options: [{ value: "All", label: filtersT("all") }, ...choices.regions.map((value) => ({ value, label: translateRegion(value, postFormT) }))],
-      value: region,
-      onChange: setRegion,
-    },
-    {
-      label: filtersT("labels.historicalPeriod"),
-      options: [{ value: "All", label: filtersT("all") }, ...choices.historical_periods.map((value) => ({ value, label: translateHistoricalPeriod(value, postFormT) }))],
-      value: historicalPeriod,
-      onChange: setHistoricalPeriod,
-    },
-    {
-      label: filtersT("labels.heritageType"),
-      options: [{ value: "All", label: filtersT("all") }, ...choices.monument_types.map((value) => ({ value, label: translateMonumentType(value, postFormT) }))],
-      value: monumentType,
-      onChange: setMonumentType,
-    },
+    { label: "Post Type", options: ["All", ...choices.post_types], value: postType, onChange: setPostType },
+    { label: "Geographical Regions", options: ["All", ...choices.regions], value: region, onChange: setRegion },
+    { label: "Historical Periods", options: ["All", ...choices.historical_periods], value: historicalPeriod, onChange: setHistoricalPeriod },
+    { label: "Heritage Type", options: ["All", ...choices.monument_types], value: monumentType, onChange: setMonumentType },
   ];
 
   return (
     <div
       className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
-      style={{ backgroundColor: "var(--overlay-bg)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--border-soft)" }}
+      style={{ backgroundColor: "var(--background)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--foreground)" }}
     >
-      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "var(--border-soft)" }}>
+      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--nav-active-bg)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nav-active-icon)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+          <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--foreground)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nav-bg)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{filtersT("title")}</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Filters</h3>
         </div>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -1247,15 +1185,15 @@ function FilterSection({
           <div className="flex flex-col gap-5">
             {filters.map((filter) => (
               <div key={filter.label} className="flex flex-col gap-2">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--text-muted)" }}>{filter.label}</label>
+                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--foreground)" }}>{filter.label}</label>
                 <div className="relative group w-full">
                   <select
                     value={filter.value}
                     onChange={(e) => filter.onChange(e.target.value)}
                     className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
-                    style={{ backgroundColor: "var(--panel-bg)", border: "1.5px solid var(--border-soft)", borderRadius: "14px", color: "var(--foreground)", fontWeight: "700" }}
+                    style={{ backgroundColor: "var(--panel-bg)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--foreground)", fontWeight: "700" }}
                   >
-                    {filter.options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -1266,9 +1204,9 @@ function FilterSection({
           </div>
         </div>
       </div>
-      <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--panel-elevated)", borderColor: "var(--border-soft)" }}>
-        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--border-soft)", color: "var(--foreground)" }}>{filtersT("reset")}</button>
-        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg border border-transparent" style={{ backgroundColor: "var(--nav-active-bg)", color: "var(--nav-active-icon)" }}>{filtersT("apply")}</button>
+      <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--panel-bg)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
+        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--foreground)", color: "var(--foreground)" }}>Reset</button>
+        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg border border-transparent" style={{ backgroundColor: "var(--foreground)", color: "var(--nav-bg)" }}>Apply</button>
       </div>
     </div>
   );
@@ -1289,7 +1227,6 @@ function PostModal({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
 }) {
-  const feedT = useTranslations("auth.feed");
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
 
   const [newComment, setNewComment] = useState("");
@@ -1588,7 +1525,7 @@ function PostModal({
         <>
           <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
             {imageList.map((_, index) => (
-              <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)" }} />
+              <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "var(--background)" : "rgba(255,255,255,0.5)" }} />
             ))}
           </div>
           <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
@@ -1603,12 +1540,12 @@ function PostModal({
         <LocationWorldCard
           location={post.location}
           region={post.region}
-          textStyle={{ color: "#8B7355" }}
-          iconColor="#8B7355"
+          textStyle={{ color: "var(--text-muted)" }}
+          iconColor="var(--text-muted)"
           iconSize={13}
           buttonClassName="mb-1"
         />
-        <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+        <h3 className="text-base font-bold" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </div>
 
       {post.post_type === "event" && post.event_details && (
@@ -1639,7 +1576,7 @@ function PostModal({
         );
       })()}
 
-      <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
+      <p className="text-sm leading-relaxed flex-1" style={{ color: "var(--foreground)" }}>{post.content}</p>
 
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4">
@@ -1656,90 +1593,90 @@ function PostModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "var(--panel-bg)" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
-        <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
-          <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+        <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
+          <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "var(--border-soft)" }}>
             <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
                 <button
                   className="font-bold text-base hover:underline text-left"
-                  style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                  style={{ color: "var(--foreground)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
                   onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}
                 >
                   {post.user_display_name || post.user_username}
                 </button>
-                <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{formatDate(post.created_at)}</p>
               </div>
             </div>
             <div className="relative" ref={postMenuRef}>
-              <button className="p-1 rounded hover:bg-[#E0D5C5] transition-colors mr-2" onClick={() => setShowPostMenu(!showPostMenu)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+              <button className="p-1 rounded hover:bg-[var(--panel-hover)] transition-colors mr-2" onClick={() => setShowPostMenu(!showPostMenu)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--text-muted)"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
-                <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
+                <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "var(--background)" }}>
+                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>Report post</button>
                 </div>
               )}
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--panel-hover)] transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
 
           {imageList.length > 0 && (
-            <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+            <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "var(--border-soft)" }}>
               <LocationWorldCard
                 location={post.location}
                 region={post.region}
-                textStyle={{ color: "#8B7355" }}
-                iconColor="#8B7355"
+                textStyle={{ color: "var(--text-muted)" }}
+                iconColor="var(--text-muted)"
                 iconSize={13}
                 buttonClassName="mb-1"
               />
-              <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+              <h3 className="text-base font-bold" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
               {isContentLong && !contentExpanded ? (
-                <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                <p className="text-xs leading-relaxed mt-1" style={{ color: "var(--foreground)" }}>
                   {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
                 </p>
               ) : (
-                <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
               )}
               {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
               )}
 
 
             </div>
           )}
 
-          <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+          <div className="flex border-b flex-shrink-0" style={{ borderColor: "var(--border-soft)" }}>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
               style={{
-                color: activeTab === "comments" ? "#432817" : "#8B7355",
-                borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent",
+                color: activeTab === "comments" ? "var(--foreground)" : "var(--text-muted)",
+                borderBottom: activeTab === "comments" ? "2px solid var(--foreground)" : "2px solid transparent",
               }}
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              {feedT("tabs.comments", { count: comments.length })}
+              Comments ({comments.length})
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
               style={{
-                color: activeTab === "annotations" ? "#432817" : "#8B7355",
-                borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent",
+                color: activeTab === "annotations" ? "var(--foreground)" : "var(--text-muted)",
+                borderBottom: activeTab === "annotations" ? "2px solid var(--foreground)" : "2px solid transparent",
               }}
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
+              Annotations ({acceptedAnnotationsCount})
             </button>
           </div>
 
@@ -1749,8 +1686,8 @@ function PostModal({
                 {topLevelComments.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <CommentIcon size={28} className="opacity-30" />
-                    <p className="text-xs" style={{ color: "#8B7355" }}>
-                      {feedT("empty.comments")}
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      No comments yet. Be the first to comment!
                     </p>
                   </div>
                 ) : (
@@ -1765,12 +1702,12 @@ function PostModal({
               <div className="px-5 py-3 flex flex-col gap-3">
                 {annotationsLoading ? (
                   <div className="flex justify-center py-6">
-                    <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+                    <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
                   </div>
                 ) : annotations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <AnnotationIcon size={28} className="opacity-30" />
-                    <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.annotations")}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>No annotations yet. Be the first to annotate!</p>
                   </div>
                 ) : (
                   annotations.map((annotation) => (
@@ -1790,28 +1727,28 @@ function PostModal({
             )}
           </div>
 
-          <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
+          <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "var(--border-soft)" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
               </button>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
-                style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }}
+                style={{ color: activeTab === "comments" ? "var(--foreground)" : "var(--text-muted)" }}
                 onClick={() => setActiveTab("comments")}
               >
                 <CommentIcon size={14} /> {formatCount(comments.length)}
               </button>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
-                style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355" }}
+                style={{ color: activeTab === "annotations" ? "var(--foreground)" : "var(--text-muted)" }}
                 onClick={() => setActiveTab("annotations")}
               >
                 <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
               </button>
             </div>
-            <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
+            <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
               <BookmarkIcon size={18} filled={saved} active={saved} />
             </button>
           </div>
@@ -1821,38 +1758,38 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder={feedT("placeholders.comment")}
+                  placeholder="Add a comment"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }}
                   className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border"
-                  style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }}
+                  style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)", color: "var(--foreground)" }}
                 />
                 <button
                   onClick={handleSubmitComment}
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
-                  style={{ backgroundColor: "#432817" }}
+                  style={{ backgroundColor: "var(--foreground)" }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--background)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
               </>
             ) : (
               <>
                 <input
                   type="text"
-                  placeholder={feedT("placeholders.annotation")}
+                  placeholder="Add an annotation"
                   value={newAnnotationText}
                   onChange={(e) => setNewAnnotationText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }}
                   className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border"
-                  style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }}
+                  style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)", color: "var(--foreground)" }}
                 />
                 <button
                   onClick={handleSubmitAnnotation}
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors hover:opacity-80"
-                  style={{ backgroundColor: "#432817" }}
+                  style={{ backgroundColor: "var(--foreground)" }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--background)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
               </>
             )}
@@ -1863,771 +1800,6 @@ function PostModal({
   );
 }
 
-/* ─────────────────── MOBILE GROUPS STRIP ─────────────────── */
 
-function MobileGroupsStrip({
-  groups,
-  title,
-}: {
-  groups: GroupCard[];
-  title: string;
-}) {
-  return (
-    <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{title}</h3>
-      <div
-        className="flex gap-3 overflow-x-auto pb-2"
-        style={{
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-        }}
-      >
-        {groups.slice(0, 5).map((group, i) => (
-          <div
-            key={i}
-            className="flex-shrink-0 flex flex-col items-center w-[75px]"
-          >
-            <div className="w-[60px] h-[60px] rounded-full overflow-hidden mb-1.5 border-2 border-white shadow-sm transition-transform hover:scale-105 cursor-pointer">
-              <img
-                src={group.image}
-                alt={group.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <span className="text-[10px] font-bold text-center leading-tight line-clamp-1" style={{ color: "#432817" }}>
-              {group.name}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────── RIGHT SIDEBAR ─────────────────── */
-
-function RightSidebar({
-  groups,
-  title,
-}: {
-  groups: GroupCard[];
-  title: string;
-}) {
-  return (
-    <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
-      <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{title}</h2>
-        <div className="flex flex-col gap-3 flex-shrink-0">
-          {groups.slice(0, 5).map((group, i) => (
-            <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 8px 22px rgba(67,40,23,0.08)", backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
-              <img src={group.image} alt={group.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 shadow-sm" style={{ borderColor: "var(--panel-elevated)" }} />
-              <div className="flex flex-col justify-center min-w-0">
-                <span className="font-bold text-sm truncate" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{group.desc}</span>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <PeopleIcon className="w-3 h-3 text-[var(--accent-gold)]" />
-                  <span className="text-[10px] font-bold" style={{ color: "var(--accent-gold)" }}>
-                    {group.membersLabel}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-/* ─────────────────── POST CARD ─────────────────── */
-
-function PostCard({
-  post,
-  isNew,
-  onCommentClick,
-  onAnnotationClick,
-  interaction,
-  onInteractionChange,
-}: {
-  post: ApiPost;
-  isNew: boolean;
-  onCommentClick: () => void;
-  onAnnotationClick: () => void;
-  interaction: PostInteraction;
-  onInteractionChange: (update: Partial<PostInteraction>) => void;
-}) {
-  const feedT = useTranslations("auth.feed");
-  const [imgError, setImgError] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const imageScrollRef = useRef<HTMLDivElement | null>(null);
-  const router = useRouter();
-  const { gemmed, gemsCount, saved, commentsCount, annotationsCount } = interaction;
-  const imageList = post.images ?? [];
-  const tags = buildTags(post);
-
-  const handleGem = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const nextGemmed = !gemmed;
-    const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
-    onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
-    toggleStoredItem("gemmed_posts", post.id, nextGemmed);
-    const token = getAuthToken();
-    try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to toggle gem");
-    } catch {
-      onInteractionChange({ gemmed, gemsCount });
-      toggleStoredItem("gemmed_posts", post.id, gemmed);
-    }
-  };
-
-  const handleSave = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const nextSaved = !saved;
-    onInteractionChange({ saved: nextSaved });
-    toggleStoredItem("saved_posts", post.id, nextSaved);
-    const token = getAuthToken();
-    try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to toggle save");
-    } catch {
-      onInteractionChange({ saved });
-      toggleStoredItem("saved_posts", post.id, saved);
-    }
-  };
-
-  const scrollToImage = (index: number) => {
-    const el = imageScrollRef.current;
-    if (!el) return;
-    el.scrollTo({ left: el.clientWidth * index, behavior: "smooth" });
-    setCurrentImageIndex(index);
-  };
-
-  const handleImageScroll = () => {
-    const el = imageScrollRef.current;
-    if (!el) return;
-    setCurrentImageIndex(Math.round(el.scrollLeft / el.clientWidth));
-  };
-
-  return (
-    <div
-      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""
-        }`}
-      style={{
-        boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
-        backgroundColor: "var(--light)",
-      }}
-      onClick={onCommentClick}
-      onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
-    >
-      <div className="flex items-center px-5 pt-4 pb-2">
-        <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
-        <div className="ml-3 flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <button
-              className="font-bold text-base hover:underline text-left"
-              style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-              onClick={(e) => { e.stopPropagation(); if (!post.user_username) return; router.push(`/user/${post.user_username}`); }}
-            >
-              {post.user_display_name || post.user_username}
-            </button>
-            <p className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
-          </div>
-        </div>
-        <div className="relative">
-          <button className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="px-5 pb-2">
-        <LocationWorldCard
-          location={post.location}
-          region={post.region}
-          textStyle={{ color: "#8B7355" }}
-          iconColor="#8B7355"
-          iconSize={14}
-        />
-      </div>
-
-      <PostDetailBadge post={post} />
-
-      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
-        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-      </h3>
-
-      <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
-      <PostTags tags={tags} />
-
-      {imageList.length > 0 && (
-        <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
-          {imgError ? (
-            <div className="w-full rounded-lg flex items-center justify-center" style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-            </div>
-          ) : (
-            <div className="relative w-full overflow-hidden rounded-lg h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
-              <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
-                {imageList.map((img) => {
-                  const imageUrl = img?.image
-                    ? img.image.startsWith("/media/")
-                      ? `${API_URL}${img.image}`
-                      : img.image
-                    : "";
-                  const bgImageUrl = imageUrl ? encodeURI(imageUrl) : "";
-                  return (
-                    <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
-                      {bgImageUrl ? (
-                        <>
-                          <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
-                          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-                        </>
-                      ) : null}
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-              {imageList.length > 1 && currentImageIndex > 0 && (
-                <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-                </button>
-              )}
-              {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
-                <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-                </button>
-              )}
-              {imageList.length > 1 && (
-                <>
-                  <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
-                    {imageList.map((_, index) => (
-                      <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)" }} />
-                    ))}
-                  </div>
-                  <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>{currentImageIndex + 1}/{imageList.length}</div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
-        <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
-            <GemIcon filled={gemmed} active={gemmed} />
-            <span>{formatCount(gemsCount)}</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
-            style={{ color: "#432817" }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onCommentClick();
-            }}
-          >
-            <CommentIcon />
-            <span>{formatCount(commentsCount)}</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
-            style={{ color: "#432817" }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAnnotationClick();
-            }}
-          >
-            <AnnotationIcon />
-            <span>{formatCount(annotationsCount)}</span>
-          </button>
-        </div>
-        <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
-          <BookmarkIcon filled={saved} active={saved} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────── POST CACHE HELPERS ─────────────────── */
-
-const CACHE_KEY = "home_posts_cache";
-const CACHE_NEXT_KEY = "home_posts_next";
-const CACHE_SCROLL_KEY = "home_posts_scroll";
-const MAX_CACHED_POSTS = 60; // ~3 pages
-
-function savePostsToCache(posts: ApiPost[], nextUrl: string | null) {
-  if (typeof window === "undefined") return;
-  try {
-    const toCache = posts.slice(0, MAX_CACHED_POSTS);
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify(toCache));
-    sessionStorage.setItem(CACHE_NEXT_KEY, nextUrl || "");
-  } catch { /* storage full – ignore */ }
-}
-
-function loadPostsFromCache(): { posts: ApiPost[]; nextUrl: string | null } | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const posts = JSON.parse(raw) as ApiPost[];
-    const next = sessionStorage.getItem(CACHE_NEXT_KEY) || null;
-    return { posts, nextUrl: next || null };
-  } catch { return null; }
-}
-
-function saveScrollPosition(pos: number) {
-  if (typeof window === "undefined") return;
-  try { sessionStorage.setItem(CACHE_SCROLL_KEY, String(pos)); } catch { }
-}
-
-function loadScrollPosition(): number {
-  if (typeof window === "undefined") return 0;
-  return Number(sessionStorage.getItem(CACHE_SCROLL_KEY) || 0);
-}
-
-/* ─────────────────── MAIN PAGE ─────────────────── */
-
-export default function HomePageRoute() {
-  const t = useTranslations("auth.pages.home");
-  const [posts, setPosts] = useState<ApiPost[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [newPostStart, setNewPostStart] = useState(-1);
-  const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
-  const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
-  const [showFilter, setShowFilter] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<{ users: any[]; posts: ApiPost[] } | null>(null);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
-  const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts/`);
-  const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
-  const [cacheRestored, setCacheRestored] = useState(false);
-
-  const groups = useMemo<GroupCard[]>(
-    () =>
-      GROUP_DEFINITIONS.map((group) => ({
-        desc: t(`guilds.items.${group.key}.description`),
-        image: group.image,
-        members: group.members,
-        membersLabel: t("guilds.members", { count: group.members }),
-        name: t(`guilds.items.${group.key}.name`),
-      })),
-    [t],
-  );
-
-  const normalizeApiPost = (raw: any, fallback?: ApiPost): ApiPost => ({
-    id: String(raw?.id ?? fallback?.id ?? ""),
-    user_id: raw?.user_id ?? fallback?.user_id ?? "",
-    user_display_name: raw?.user_display_name ?? fallback?.user_display_name ?? "",
-    user_username: raw?.user_username ?? fallback?.user_username ?? "",
-    user_profile_picture: raw?.user_profile_picture ?? fallback?.user_profile_picture ?? "",
-    title: raw?.title ?? fallback?.title ?? "",
-    content: raw?.content ?? fallback?.content ?? "",
-    post_type: raw?.post_type ?? fallback?.post_type ?? "",
-    region: raw?.region ?? fallback?.region ?? "",
-    location: raw?.location ?? fallback?.location ?? "",
-    gems_count: raw?.gems_count ?? fallback?.gems_count ?? 0,
-    comments_count: raw?.comments_count ?? fallback?.comments_count ?? 0,
-    accepted_annotations_count:
-      raw?.accepted_annotations_count ?? fallback?.accepted_annotations_count ?? 0,
-    is_gemmed: raw?.is_gemmed ?? fallback?.is_gemmed ?? false,
-    is_saved: raw?.is_saved ?? fallback?.is_saved ?? false,
-    images: Array.isArray(raw?.images) ? raw.images : fallback?.images ?? [],
-    tags: Array.isArray(raw?.tags) ? raw.tags : fallback?.tags ?? [],
-    historical_period: raw?.historical_period ?? fallback?.historical_period ?? "",
-    monument_type: raw?.monument_type ?? fallback?.monument_type ?? "",
-    created_at: raw?.created_at ?? fallback?.created_at ?? "",
-    alert_details: raw?.alert_details ?? fallback?.alert_details ?? null,
-    event_details: raw?.event_details ?? fallback?.event_details ?? null,
-    _key: fallback?._key,
-  });
-
-  const getInteraction = (post: ApiPost): PostInteraction =>
-    postInteractions[post.id] ?? {
-      gemmed: post.is_gemmed ?? getStoredSet("gemmed_posts").has(post.id),
-      gemsCount: post.gems_count,
-      saved: post.is_saved ?? getStoredSet("saved_posts").has(post.id),
-      commentsCount: post.comments_count ?? 0,
-      annotationsCount: post.accepted_annotations_count ?? 0,
-    };
-
-  const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
-    setPostInteractions((prev) => {
-      const sourcePost = posts.find((p) => p.id === postId);
-      const existing = prev[postId] ?? {
-        gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
-        gemsCount: sourcePost?.gems_count ?? 0,
-        saved: sourcePost?.is_saved ?? getStoredSet("saved_posts").has(postId),
-        commentsCount: sourcePost?.comments_count ?? 0,
-        annotationsCount: sourcePost?.accepted_annotations_count ?? 0,
-      };
-      return {
-        ...prev,
-        [postId]: {
-          ...existing,
-          ...update,
-          gemsCount: Math.max(
-            0,
-            update.gemsCount ?? existing.gemsCount ?? 0
-          ),
-        },
-      };
-    });
-  };
-  // ─────────────────────────────────────────────────────────────────────────
-
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const feedRef = useRef<HTMLElement | null>(null);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  /* ── Restore posts from sessionStorage cache on mount ── */
-  useEffect(() => {
-    const cached = loadPostsFromCache();
-    if (cached && cached.posts.length > 0) {
-      const restored = cached.posts.map((p, i) => ({ ...p, _key: i }));
-      setPosts(restored);
-      setNextUrl(cached.nextUrl);
-      setCacheRestored(true);
-
-      // Restore scroll position after render
-      requestAnimationFrame(() => {
-        const scrollPos = loadScrollPosition();
-        if (feedRef.current && scrollPos > 0) {
-          feedRef.current.scrollTop = scrollPos;
-        }
-      });
-
-      // Background refresh: silently re-fetch page 1 to pick up new posts
-      (async () => {
-        try {
-          const res = await apiFetch(`${API_URL}/api/posts/`);
-          if (!res.ok) return;
-          const data = await res.json();
-          const freshPosts: ApiPost[] = (Array.isArray(data.results) ? data.results : [])
-            .map((post: any, i: number) => ({ ...normalizeApiPost(post), _key: i }));
-          if (freshPosts.length > 0) {
-            setPosts(prev => {
-              // Merge: replace cached page-1 posts with fresh ones, keep rest
-              const existingIds = new Set(freshPosts.map(p => p.id));
-              const remaining = prev.filter(p => !existingIds.has(p.id));
-              const merged = [...freshPosts, ...remaining].map((p, i) => ({ ...p, _key: i }));
-              savePostsToCache(merged, typeof data.next === "string" && data.next ? data.next : null);
-              return merged;
-            });
-            if (typeof data.next === "string" && data.next) {
-              setNextUrl(data.next);
-            }
-          }
-        } catch { /* silent */ }
-      })();
-    }
-  }, []);
-
-  /* ── Save scroll position on scroll ── */
-  useEffect(() => {
-    const feedElement = feedRef.current;
-    if (!feedElement) return;
-    let ticking = false;
-    const handleScroll = () => {
-      if (feedElement.scrollTop > 10) setShowFilter(false);
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(() => {
-          saveScrollPosition(feedElement.scrollTop);
-          ticking = false;
-        });
-      }
-    };
-    feedElement.addEventListener("scroll", handleScroll);
-    return () => feedElement.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const handleSearch = (q: string) => {
-    setSearchQuery(q);
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    if (!q.trim()) { setSearchResults(null); return; }
-    searchTimeoutRef.current = setTimeout(async () => {
-      setSearchLoading(true);
-      const token = getAuthToken();
-      try {
-        const res = await fetch(`${API_URL}/api/posts/search/?q=${encodeURIComponent(q)}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-        setSearchResults(data.data || { users: [], posts: [] });
-      } catch { } finally {
-        setSearchLoading(false);
-      }
-    }, 400);
-  };
-
-  const openPostModal = async (
-    sourcePost: ApiPost,
-    tab: "comments" | "annotations",
-  ) => {
-    setSelectedPost(sourcePost);
-    setSelectedPostTab(tab);
-
-    const token = getAuthToken();
-    if (!token) return;
-
-    try {
-      const res = await fetch(`${API_URL}/api/posts/${sourcePost.id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-
-      const body = await res.json().catch(() => null);
-      const rawPost = body?.data ?? body;
-      if (!rawPost) return;
-
-      const hydratedPost = normalizeApiPost(rawPost, sourcePost);
-      setSelectedPost(hydratedPost);
-      setPosts((prev) =>
-        prev.map((item) =>
-          item.id === hydratedPost.id
-            ? { ...normalizeApiPost(hydratedPost, item), _key: item._key }
-            : item
-        )
-      );
-    } catch { }
-  };
-
-  const handleApplyFilter = async (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => {
-    const hasFilter = Object.values(filters).some((v) => v !== "");
-    if (!hasFilter) {
-      setActiveFilters(null);
-      setNextUrl(`${API_URL}/api/posts/`);
-      setPosts([]);
-      return;
-    }
-    setActiveFilters(filters);
-    const token = getAuthToken();
-    const params = new URLSearchParams();
-    if (filters.region) params.append("region", filters.region);
-    if (filters.post_type) params.append("post_type", filters.post_type);
-    if (filters.historical_period) params.append("historical_period", filters.historical_period);
-    if (filters.monument_type) params.append("monument_type", filters.monument_type);
-    try {
-      const res = await fetch(`${API_URL}/api/posts/filter/?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      const payload = data.data?.results || data.data || data.results || data;
-      const formatted: ApiPost[] = (Array.isArray(payload) ? payload : [])
-        .map((post: any, i: number) => ({
-          ...normalizeApiPost(post),
-          _key: i,
-        }));
-      setPosts(formatted);
-      setNextUrl(null);
-    } catch { }
-  };
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      async (entries) => {
-        if (!entries[0].isIntersecting || loading || !nextUrl) return;
-        // Skip fetch if we just restored from cache and still have posts
-        if (cacheRestored && posts.length > 0) {
-          setCacheRestored(false);
-          return;
-        }
-        try {
-          setLoading(true);
-          const resolvedNextUrl =
-            nextUrl.startsWith("http://") || nextUrl.startsWith("https://")
-              ? nextUrl
-              : `${API_URL}${nextUrl.startsWith("/") ? "" : "/"}${nextUrl}`;
-          const res = await apiFetch(resolvedNextUrl);
-          if (!res.ok) {
-            if (res.status === 401) {
-              localStorage.removeItem("accessToken");
-              localStorage.removeItem("authUser");
-              window.location.href = "/login";
-              return;
-            }
-            console.error(`HTTP error! status: ${res.status}`);
-            setNextUrl(null);
-            return;
-          }
-          const data = await res.json();
-          const previousLength = posts.length;
-          const payload = data.data || data;
-          const results = Array.isArray(payload.results) ? payload.results : (Array.isArray(payload) ? payload : (Array.isArray(data.results) ? data.results : []));
-          const formattedPosts: ApiPost[] = results.map((post: any, i: number) => ({
-            ...normalizeApiPost(post),
-            _key: previousLength + i,
-          }));
-          setPosts(prev => {
-            const updated = [...prev, ...formattedPosts];
-            const newNext = typeof data.next === "string" && data.next ? data.next : null;
-            savePostsToCache(updated, newNext);
-            return updated;
-          });
-          const nextLink = payload.next !== undefined ? payload.next : data.next;
-          setNextUrl(typeof nextLink === "string" && nextLink ? nextLink : null);
-          if (formattedPosts.length > 0) setNewPostStart(previousLength);
-        } catch (err) {
-          console.error("Error fetching posts:", err);
-          setNextUrl(null);
-        } finally {
-          setLoading(false);
-        }
-      },
-      { threshold: 1.0 }
-    );
-
-    if (sentinelRef.current) observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length, cacheRestored]);
-
-  return (
-    <>
-      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
-        <LeftSidebar activePage="home" />
-        <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
-          <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
-              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                <input
-                  type="text"
-                  placeholder={t("search.placeholder")}
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-                  className="flex-1 ml-3 outline-none bg-transparent text-sm"
-                  style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
-                />
-                <button className="flex-shrink-0 p-1 rounded hover:bg-[var(--panel-hover)] transition-colors" onClick={() => setShowFilter(!showFilter)}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
-                    <circle cx="8" cy="6" r="1.5" fill="var(--foreground)" /><circle cx="16" cy="12" r="1.5" fill="var(--foreground)" /><circle cx="10" cy="18" r="1.5" fill="var(--foreground)" />
-                  </svg>
-                </button>
-              </div>
-              <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} onApply={handleApplyFilter} />
-              {searchQuery && isFocused && (
-                <div className="absolute top-[60px] left-6 right-6 z-[70] rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: "var(--overlay-bg)", border: "1px solid var(--border-soft)" }}>
-                  {searchLoading ? (
-                    <div className="flex justify-center py-4">
-                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "var(--accent-gold)" }} />
-                    </div>
-                  ) : (
-                    <div className="max-h-[400px] overflow-y-auto feed-scroll">
-                      {searchResults?.users && searchResults.users.length > 0 && (
-                        <div className="px-4 pt-3 pb-1">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.users")}</p>
-                          {searchResults.users.map((user) => (
-                            <button
-                              key={user.id}
-                              className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
-                              onMouseDown={() => { window.location.href = `/user/${user.username}`; }}
-                            >
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--avatar-surface)" }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{user.display_name}</p>
-                                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>@{user.username}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {searchResults?.posts && searchResults.posts.length > 0 && (
-                        <div className="px-4 pt-2 pb-3">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.posts")}</p>
-                          {searchResults.posts.map((post) => (
-                            <button
-                              key={post.id}
-                              className="w-full flex items-start gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
-                              onMouseDown={() => setSelectedPost(post as any)}
-                            >
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "var(--avatar-surface)" }}>
-                                <CommentIcon size={12} />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold truncate" style={{ color: "var(--foreground)" }}>{post.title?.replace(/<[^>]*>/g, "")}</p>
-                                <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{post.content?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (
-                        <div className="flex flex-col items-center py-6 gap-1">
-                          <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>{t("search.noResults", { query: searchQuery })}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-1 overflow-hidden">
-              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                <MobileGroupsStrip groups={groups} title={t("guilds.title")} />
-                {posts.map((post, index) => (
-                  <React.Fragment key={post._key ?? Number(post.id) ?? index}>
-                    <PostCard
-                      post={post}
-                      isNew={index >= newPostStart && newPostStart !== -1}
-                      interaction={getInteraction(post)}
-                      onInteractionChange={(update) => updateInteraction(post.id, update)}
-                      onCommentClick={() => {
-                        openPostModal(post, "comments");
-                      }}
-                      onAnnotationClick={() => {
-                        openPostModal(post, "annotations");
-                      }}
-                    />
-                  </React.Fragment>
-                ))}
-                {loading && (
-                  <div className="flex justify-center py-6">
-                    <div className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "var(--accent-gold)" }} />
-                  </div>
-                )}
-                <div ref={sentinelRef} className="h-4" />
-              </main>
-              <RightSidebar groups={groups} title={t("guilds.title")} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {selectedPost && (
-        <PostModal
-          post={selectedPost}
-          initialTab={selectedPostTab}
-          interaction={getInteraction(selectedPost)}
-          onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
-          onClose={() => setSelectedPost(null)}
-        />
-      )}
-    </>
-  );
-}
+export { PostCard as GlobalPostCard, PostModal as GlobalPostModal };
+export type { ApiPost, PostInteraction };

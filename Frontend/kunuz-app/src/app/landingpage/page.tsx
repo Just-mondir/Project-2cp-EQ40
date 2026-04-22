@@ -3,7 +3,7 @@ import Hero from "@/components/Hero";
 import AboutSection from "@/components/AboutSection";
 import AboutMissionVision from "@/components/AboutMissionVision";
 import ExploreHeritage from "@/components/ExploreHeritage";
-import PopularGuilds from "@/components/PopularGuilds";
+import PopularGroups from "@/components/PopularGroups";
 import MonumentsInDanger from "@/components/MonumentsInDanger";
 import UpcomingEvents from "@/components/UpcomingEvents";
 import HowDoesItWork from "@/components/HowDoesItWork";
@@ -17,7 +17,7 @@ export default function Page() {
         <AboutSection />
         <AboutMissionVision />
         <ExploreHeritage />
-        <PopularGuilds />
+        <PopularGroups />
         <MonumentsInDanger />
         <UpcomingEvents />
         <HowDoesItWork />

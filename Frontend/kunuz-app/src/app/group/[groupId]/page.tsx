@@ -1,0 +1,513 @@
+"use client";
+
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import LeftSidebar from "@/components/LeftSidebar";
+import DOMPurify from "dompurify";
+import { PostCard as GlobalPostCard, PostModal as GlobalPostModal } from "@/components/SharedFeed";
+
+const API_URL = "http://127.0.0.1:8000";
+
+/* ─── helpers ─── */
+function getToken(): string {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("accessToken") || "";
+}
+function getAuthUser(): { id?: string; username?: string } | null {
+    if (typeof window === "undefined") return null;
+    try { return JSON.parse(localStorage.getItem("authUser") || "null"); } catch { return null; }
+}
+function resolveUrl(src?: string): string {
+    if (!src) return "";
+    if (src.startsWith("http")) return src;
+    if (src.startsWith("/")) return `${API_URL}${src}`;
+    return src;
+}
+function sanitize(html: string): string {
+    if (typeof window === "undefined") return html;
+    return DOMPurify.sanitize(html, { ALLOWED_TAGS: ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li"] });
+}
+function fmtDate(d: string) {
+    return new Date(d).toLocaleDateString("fr-FR");
+}
+function fmtCount(n: number) {
+    return n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+}
+
+/* ─── types ─── */
+type GroupDetail = {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    historical_period: string;
+    region: string;
+    profile_picture?: string;
+    banner_image?: string;
+    admin_id: string;
+    member_count: number;
+    post_count: number;
+    is_member: boolean;
+    is_admin: boolean;
+    rules?: string;
+};
+type Member = {
+    id: string;
+    username: string;
+    display_name: string;
+    profile_picture?: string;
+    is_admin: boolean;
+    role: string;
+};
+type Post = {
+    id: string;
+    title: string;
+    content: string;
+    user_username?: string;
+    user_display_name?: string;
+    user_profile_picture?: string;
+    created_at: string;
+    gems_count: number;
+    comments_count: number;
+    images?: { id: string; image: string }[];
+    location?: string;
+    region?: string;
+};
+
+/* ─── Avatar ─── */
+function Avatar({ src, size }: { src?: string; size: number }) {
+    const url = resolveUrl(src);
+    if (url) return <img src={url} alt="" className="rounded-full object-cover flex-shrink-0" style={{ width: size, height: size }} />;
+    return (
+        <div className="rounded-full flex items-center justify-center flex-shrink-0" style={{ width: size, height: size, backgroundColor: "var(--border-soft)" }}>
+            <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+        </div>
+    );
+}
+
+
+
+/* ══════════════════════════════════════════════
+   MAIN PAGE
+   ══════════════════════════════════════════════ */
+export default function GroupDetailPage() {
+    const { groupId } = useParams<{ groupId: string }>();
+    const router = useRouter();
+
+    const [group, setGroup] = useState<GroupDetail | null>(null);
+    const [members, setMembers] = useState<Member[]>([]);
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [tab, setTab] = useState<"posts" | "questions" | "about" | "my posts">("posts");
+    const [loading, setLoading] = useState(true);
+    const [postsLoading, setPostsLoading] = useState(false);
+    const [joining, setJoining] = useState(false);
+    const [joinStatus, setJoinStatus] = useState<"idle" | "pending" | "member">("idle");
+    const [nextUrl, setNextUrl] = useState<string | null>(null);
+    const [selectedPost, setSelectedPost] = useState<any | null>(null);
+    const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
+    const sentinelRef = useRef<HTMLDivElement>(null);
+
+    /* fetch group details */
+    useEffect(() => {
+        if (!groupId) return;
+        const token = getToken();
+        fetch(`${API_URL}/api/groups/${groupId}/`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+            .then(r => r.json())
+            .then(data => {
+                const g = data.data ?? data;
+                setGroup(g);
+                setJoinStatus(g.is_member ? "member" : "idle");
+            })
+            .catch(console.error)
+            .finally(() => setLoading(false));
+    }, [groupId]);
+
+    /* fetch members */
+    useEffect(() => {
+        if (!groupId) return;
+        const token = getToken();
+        fetch(`${API_URL}/api/groups/${groupId}/members/`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+            .then(r => r.json())
+            .then(data => setMembers(Array.isArray(data.data) ? data.data : []))
+            .catch(console.error);
+    }, [groupId]);
+
+    /* fetch posts */
+    const fetchPosts = useCallback(async (url: string, append = false) => {
+        setPostsLoading(true);
+        const token = getToken();
+        try {
+            const res = await fetch(url, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+            const data = await res.json();
+            const results = data.data?.results ?? data.results ?? [];
+            const next = data.data?.next ?? data.next ?? null;
+            setPosts(prev => append ? [...prev, ...results] : results);
+            setNextUrl(next);
+        } catch (e) { console.error(e); }
+        finally { setPostsLoading(false); }
+    }, []);
+
+    useEffect(() => {
+        if (!groupId) return;
+        if (tab === "about") return;
+        const base = tab === "questions"
+            ? `${API_URL}/api/groups/${groupId}/questions/`
+            : tab === "my posts"
+                ? `${API_URL}/api/groups/${groupId}/my-posts/`
+                : `${API_URL}/api/groups/${groupId}/posts/`;
+        setPosts([]);
+        fetchPosts(base);
+    }, [groupId, tab, fetchPosts]);
+
+    /* infinite scroll */
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el) return;
+        const obs = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && nextUrl && !postsLoading) fetchPosts(nextUrl, true);
+        }, { threshold: 0.1 });
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [nextUrl, postsLoading, fetchPosts]);
+
+    /* join / request to join */
+    const handleJoin = async () => {
+        if (!group || joining) return;
+        setJoining(true);
+        const token = getToken();
+        try {
+            const res = await fetch(`${API_URL}/api/groups/${group.id}/join/`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            });
+            if (res.ok || res.status === 201) {
+                setJoinStatus("pending");
+                setGroup(prev => prev ? { ...prev, member_count: prev.member_count + 1 } : prev);
+            }
+        } catch (e) { console.error(e); }
+        finally { setJoining(false); }
+    };
+
+    if (loading) return (
+        <div className="flex h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+            <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
+        </div>
+    );
+
+    if (!group) return (
+        <div className="flex h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+            <p style={{ color: "var(--text-muted)" }}>Group not found.</p>
+        </div>
+    );
+
+    const bannerUrl = resolveUrl(group.banner_image);
+    const avatarUrl = resolveUrl(group.profile_picture);
+    const adminMember = members.find(m => m.is_admin);
+    const regularMembers = members.filter(m => !m.is_admin);
+
+    return (
+        <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+            <LeftSidebar activePage="communities" />
+            <div className="flex flex-col flex-1 ml-[68px]">
+                {/* Single scrollable column */}
+                <div className="flex-1">
+
+                    {/* ── Header Banner ── */}
+                    <div className="relative w-full overflow-hidden" style={{ minHeight: 280 }}>
+                        {avatarUrl ? (
+                            <img
+                                src={avatarUrl}
+                                alt=""
+                                aria-hidden="true"
+                                className="absolute inset-0 w-full h-full object-cover"
+                                style={{ filter: "blur(40px) brightness(0.65) saturate(1.1)", transform: "scale(1.3)" }}
+                            />
+                        ) : (
+                            <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #2c1a0e 0%, #5a3a1a 100%)" }} />
+                        )}
+
+                        {/* Smooth bottom fade-to-background overlay */}
+                        <div
+                            className="absolute inset-0"
+                            style={{
+                                background: "linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.1) 50%, var(--background) 100%)"
+                            }}
+                        />
+
+                        {/* Centered Banner Content */}
+                        <div className="max-w-6xl mx-auto px-10 relative z-10 flex items-center gap-8 pt-16 pb-12">
+                            <div
+                                className="flex-shrink-0 rounded-full overflow-hidden"
+                                style={{ width: 140, height: 140, border: "4px solid rgba(255,255,255,0.25)", boxShadow: "0 10px 40px rgba(0,0,0,0.4)" }}
+                            >
+                                {avatarUrl
+                                    ? <img src={avatarUrl} alt={group.name} className="w-full h-full object-cover" style={{ filter: "blur(0.5px)" }} />
+                                    : <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#6B3E26" }}>
+                                        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                        </svg>
+                                    </div>
+                                }
+                            </div>
+                            <div className="flex flex-col min-w-0 text-white">
+                                <h1 className="font-bold leading-tight" style={{ fontFamily: "var(--font-lato), sans-serif", fontSize: 34, textShadow: "0 2px 4px rgba(0,0,0,0.3)" }}>{group.name}</h1>
+                                <div className="flex items-center gap-4 mt-2.5">
+                                    <span style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>{fmtCount(group.member_count)} members</span>
+                                    <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 20 }}>·</span>
+                                    <span style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>{fmtCount(group.post_count)} Posts</span>
+                                </div>
+                                {adminMember && (
+                                    <p style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", marginTop: 8 }}>
+                                        Managed by{" "}
+                                        <span style={{ fontWeight: 700, color: "rgba(255,255,255,1)" }}>{adminMember.display_name || adminMember.username}</span>
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Content Section */}
+                    <div className="max-w-6xl mx-auto">
+                        <div className="px-10 py-6">
+                            <h2 className="font-bold mb-3" style={{ fontSize: 20, color: "var(--foreground)" }}>Description</h2>
+                            <p className="leading-relaxed opacity-90" style={{ fontSize: 16, color: "var(--text-muted)" }}>{group.description}</p>
+                        </div>
+
+                        {/* ── Tabs Section ── */}
+                        <div className="flex items-center px-10 border-b-2 border-transparent sticky top-0 z-10" style={{ backgroundColor: "var(--background)" }}>
+                            {(group?.is_member ? ["posts", "questions", "my posts"] as const : ["posts", "questions", "about"] as const).map(t => (
+                                <button
+                                    key={t}
+                                    className="mr-14 py-6 font-bold capitalize transition-all relative"
+                                    style={{
+                                        fontFamily: "var(--font-lato), sans-serif",
+                                        fontSize: 22,
+                                        color: tab === t ? "#432817" : "rgba(67, 40, 23, 0.45)",
+                                    }}
+                                    onClick={() => setTab(t)}
+                                >
+                                    {t}
+                                    {tab === t && (
+                                        <div
+                                            className="absolute bottom-0 left-0 right-0 h-[4px] rounded-t-full"
+                                            style={{ backgroundColor: "#432817" }}
+                                        />
+                                    )}
+                                </button>
+                            ))}
+                            <div className="ml-auto flex items-center gap-4 py-4">
+                                <button
+                                    className="text-lg font-bold px-8 py-2.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    style={{ backgroundColor: "#432817", color: "#e8d9c0", boxShadow: "0 4px 12px rgba(67,40,23,0.2)" }}
+                                    onClick={handleJoin}
+                                    disabled={joining}
+                                >
+                                    + Invite
+                                </button>
+                                <button className="p-2 rounded-lg hover:bg-[var(--panel-hover)] transition-colors" style={{ color: "#432817" }}>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                        <circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ══ TWO-COLUMN AREA ══ */}
+                        <div className="flex gap-10 px-7 pt-7 pb-8 items-start">
+                            {/* ─ Left: Posts ─ */}
+                            <div className="flex-[1.4] min-w-0">
+                                {tab === "about" ? (
+                                    <div className="max-w-xl">
+                                        {group.rules && (
+                                            <div className="mb-6 p-4 rounded-2xl" style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)" }}>
+                                                <h3 className="font-bold mb-2 text-sm" style={{ color: "var(--foreground)" }}>Group Rules</h3>
+                                                <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-muted)" }}>{group.rules}</p>
+                                            </div>
+                                        )}
+                                        <div className="p-4 rounded-2xl" style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)" }}>
+                                            <h3 className="font-bold mb-3 text-sm" style={{ color: "var(--foreground)" }}>Details</h3>
+                                            {[
+                                                { label: "Category", value: group.category },
+                                                { label: "Region", value: group.region },
+                                                { label: "Period", value: group.historical_period },
+                                            ].filter(d => d.value).map(d => (
+                                                <div key={d.label} className="flex justify-between py-2 border-b last:border-0 text-sm" style={{ borderColor: "var(--border-soft)" }}>
+                                                    <span style={{ color: "var(--text-muted)" }}>{d.label}</span>
+                                                    <span className="font-semibold" style={{ color: "var(--foreground)" }}>{d.value}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {posts.length === 0 && !postsLoading && (
+                                            <div className="flex flex-col items-center py-16">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border-soft)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                                                </svg>
+                                                <p className="mt-4 font-semibold" style={{ color: "var(--text-muted)" }}>No posts yet</p>
+                                            </div>
+                                        )}
+                                        {posts.map(post => (
+                                            <GlobalPostCard
+                                                key={post.id}
+                                                post={post as any}
+                                                isNew={false}
+                                                groupDetails={group}
+                                                onCommentClick={() => { setSelectedPost(post); setSelectedPostTab("comments"); }}
+                                                onAnnotationClick={() => { setSelectedPost(post); setSelectedPostTab("annotations"); }}
+                                                interaction={{
+                                                    gemmed: (post as any).is_gemmed || false,
+                                                    gemsCount: post.gems_count,
+                                                    saved: (post as any).is_saved || false,
+                                                    commentsCount: post.comments_count,
+                                                    annotationsCount: (post as any).accepted_annotations_count || 0
+                                                }}
+                                                onInteractionChange={(update) => {
+                                                    setPosts(prev => prev.map(p => p.id === post.id ? {
+                                                        ...p,
+                                                        ...update,
+                                                        is_gemmed: update.gemmed ?? (p as any).is_gemmed,
+                                                        gems_count: update.gemsCount ?? p.gems_count,
+                                                        comments_count: update.commentsCount ?? p.comments_count,
+                                                    } : p));
+                                                }}
+                                            />
+                                        ))}
+                                        {postsLoading && (
+                                            <div className="flex justify-center py-6">
+                                                <div className="w-7 h-7 rounded-full border-3 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
+                                            </div>
+                                        )}
+                                        <div ref={sentinelRef} className="h-4" />
+                                    </>
+                                )}
+                            </div>
+
+                            {/* ─ Right: Members card ─ */}
+                            <div className="flex-1 min-w-[320px] max-w-[380px] hidden lg:block sticky top-[60px]">
+                                <div
+                                    className="rounded-2xl overflow-hidden"
+                                    style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 2px 14px rgba(67,40,23,0.08)" }}
+                                >
+                                    {/* Header */}
+                                    <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                                        <h2 className="font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                                            {fmtCount(group.member_count)} Members
+                                        </h2>
+                                        <button className="text-[10px] px-4 py-1 rounded-full font-bold" style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}>View all</button>
+                                    </div>
+
+                                    <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                                    {/* Admin */}
+                                    {adminMember && (
+                                        <div className="px-5 pt-4 pb-2">
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <circle cx="12" cy="8" r="4" /><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                </svg>
+                                                <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Admin</span>
+                                            </div>
+                                            <MemberRow member={adminMember} router={router} />
+                                        </div>
+                                    )}
+
+                                    <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                                    {/* Members */}
+                                    <div className="px-5 pt-4 pb-4">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                            </svg>
+                                            <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Members</span>
+                                        </div>
+                                        {regularMembers.length > 0 ? (
+                                            regularMembers.slice(0, 20).map(m => <MemberRow key={m.id} member={m} router={router} />)
+                                        ) : (
+                                            <div className="flex flex-col items-center py-6">
+                                                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border-soft)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                                </svg>
+                                                <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--text-muted)" }}>No members</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {selectedPost && (
+                <GlobalPostModal
+                    post={selectedPost as any}
+                    onClose={() => setSelectedPost(null)}
+                    initialTab={selectedPostTab}
+                    interaction={{
+                        gemmed: selectedPost.is_gemmed || false,
+                        gemsCount: selectedPost.gems_count,
+                        saved: selectedPost.is_saved || false,
+                        commentsCount: selectedPost.comments_count,
+                        annotationsCount: selectedPost.accepted_annotations_count || 0
+                    }}
+                    onInteractionChange={(update) => {
+                        setPosts(prev => prev.map(p => p.id === selectedPost.id ? {
+                            ...p,
+                            ...update,
+                            is_gemmed: update.gemmed ?? p.is_gemmed,
+                            gems_count: update.gemsCount ?? p.gems_count,
+                            comments_count: update.commentsCount ?? p.comments_count,
+                        } : p));
+                        setSelectedPost((prev: any) => prev ? {
+                            ...prev,
+                            ...update,
+                            is_gemmed: update.gemmed ?? prev.is_gemmed,
+                            gems_count: update.gemsCount ?? prev.gems_count,
+                            comments_count: update.commentsCount ?? prev.comments_count,
+                        } : null);
+                    }}
+                />
+            )}
+        </div>
+    );
+}
+
+function MemberRow({ member, router }: { member: Member; router: ReturnType<typeof useRouter> }) {
+    return (
+        <div
+            className="flex items-center gap-4 py-3 px-2 rounded-xl transition-colors cursor-pointer"
+            style={{ backgroundColor: "transparent" }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--panel-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            onClick={() => router.push(`/user/${member.username}`)}
+        >
+            <Avatar src={member.profile_picture} size={46} />
+            <div className="flex flex-col min-w-0 flex-1">
+                <span className="font-bold text-[13px] truncate leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                    {member.display_name || member.username}
+                </span>
+                <span className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>@{member.username}</span>
+            </div>
+            <button
+                className="text-[10px] px-3 py-1 rounded-full font-bold flex-shrink-0 transition-colors"
+                style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#d5c9b5'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--border-soft)'; }}
+                onClick={e => { e.stopPropagation(); router.push(`/user/${member.username}`); }}
+            >
+                View profile
+            </button>
+        </div>
+    );
+}

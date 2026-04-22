@@ -17,7 +17,7 @@
     "header": {
       "explore": "Explorer",
       "about": "À propos",
-      "guilds": "Guildes",
+      "guilds": "Groupes",
       "atRisk": "En danger",
       "events": "Événements",
       "help": "Aide",
@@ -47,7 +47,7 @@
       "description": "Découvrez des réflexions, des expériences personnelles, des éclairages historiques et des découvertes culturelles partagés par des passionnés du patrimoine de toute la communauté. À travers chaque publication, les membres documentent des lieux oubliés, mettent en lumière des monuments menacés et célèbrent les traditions qui façonnent notre identité. Explorez les contributions récentes et rejoignez un mouvement grandissant dédié à la préservation et à la transmission de notre héritage culturel aux générations futures."
     },
     "guilds": {
-      "title": "Guildes populaires",
+      "title": "Groupes populaires",
       "unesco": {
         "name": "Sites du patrimoine mondial de l'UNESCO",
         "description": "Un groupe pour découvrir, étudier et partager du contenu sur les sites reconnus par l'UNESCO pour leur valeur culturelle ou naturelle exceptionnelle",
@@ -139,7 +139,7 @@
       "endangeredSites": "Sites menacés",
       "events": "Événements",
       "joinCommunity": "Rejoindre la communauté",
-      "guilds": "Guildes",
+      "guilds": "Groupes",
       "guidelines": "Lignes directrices",
       "legal": "Mentions légales"
     }
@@ -344,7 +344,7 @@
         "groupRules": "Règles du groupe"
       },
       "fields": {
-        "guildName": "Nom de la guilde",
+        "groupName": "Nom du groupe",
         "description": "Description",
         "historicalPeriod": "Période historique",
         "region": "Région",
@@ -352,12 +352,12 @@
         "rulesGuidelines": "Règles et consignes (optionnel)"
       },
       "placeholders": {
-        "description": "Décrivez votre guilde...",
+        "description": "Décrivez votre groupe...",
         "historicalPeriod": "Sélectionnez la période historique",
         "region": "Sélectionnez la région",
         "category": "Sélectionnez une catégorie",
         "inviteMembers": "Inviter des membres",
-        "rules": "Rédigez les règles et consignes de votre guilde..."
+        "rules": "Rédigez les règles et consignes de votre groupe..."
       },
       "visibility": {
         "public": "Public",
@@ -640,7 +640,7 @@
     "pages": {
       "home": {
         "guilds": {
-          "title": "Guildes populaires",
+          "title": "Groupes populaires",
           "members": "{count} membres",
           "items": {
             "heritagePhotography": {

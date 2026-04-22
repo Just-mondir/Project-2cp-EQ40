@@ -17,7 +17,7 @@
     "header": {
       "explore": "Explore",
       "about": "About",
-      "guilds": "Guilds",
+      "guilds": "Groups",
       "atRisk": "At Risk",
       "events": "Events",
       "help": "Help",
@@ -47,7 +47,7 @@
       "description": "Discover reflections, personal experiences, historical insights, and cultural discoveries shared by heritage enthusiasts from across the community. Through every post, members document forgotten landmarks, highlight monuments at risk, and celebrate the traditions that shape our identity. Explore recent contributions and become part of a growing movement dedicated to preserving and passing on our cultural legacy to future generations."
     },
     "guilds": {
-      "title": "Popular Guilds",
+      "title": "Popular Groups",
       "unesco": {
         "name": "UNESCO World Heritage Sites",
         "description": "A group for discovering, studying, and sharing content about sites recognized by UNESCO for their outstanding cultural or natural value",
@@ -139,7 +139,7 @@
       "endangeredSites": "Endangered Sites",
       "events": "Events",
       "joinCommunity": "Join the Community",
-      "guilds": "Guilds",
+      "guilds": "Groups",
       "guidelines": "Guidelines",
       "legal": "Legal"
     }
@@ -344,7 +344,7 @@
         "groupRules": "Group rules"
       },
       "fields": {
-        "guildName": "Guild name",
+        "groupName": "Group name",
         "description": "Description",
         "historicalPeriod": "Historical Period",
         "region": "Region",
@@ -352,12 +352,12 @@
         "rulesGuidelines": "Rules & Guidelines (Optional)"
       },
       "placeholders": {
-        "description": "Describe your guild...",
+        "description": "Describe your group...",
         "historicalPeriod": "Select the historical period",
         "region": "Select the region",
         "category": "Select a category",
         "inviteMembers": "Invite members",
-        "rules": "Write your guild rules and guidelines..."
+        "rules": "Write your group rules and guidelines..."
       },
       "visibility": {
         "public": "Public",
@@ -640,7 +640,7 @@
     "pages": {
       "home": {
         "guilds": {
-          "title": "Popular Guilds",
+          "title": "Popular Groups",
           "members": "{count} Members",
           "items": {
             "heritagePhotography": {

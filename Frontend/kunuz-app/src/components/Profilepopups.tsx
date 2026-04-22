@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { Mail, Lock, Eye, EyeOff, LayoutDashboard } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-<<<<<<< HEAD
-=======
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 function getAuthToken(): string {
@@ -24,10 +22,6 @@ function getAuthUserEmail(): string {
   }
 }
 
-// ─────────────────────────────────────────────────────────
-//  TYPES
-// ─────────────────────────────────────────────────────────
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
 interface ChangeEmailForm {
   newEmail: string;
   confirmPassword: string;
@@ -173,20 +167,6 @@ function TextField({ placeholder, value, onChange, maxLength }: {
           transition: "border 0.15s",
         }}
       />
-<<<<<<< HEAD
-      {isPassword && (
-        <button
-          type="button"
-          onClick={() => setShow((v) => !v)}
-          aria-label={show ? t("actions.hidePassword") : t("actions.showPassword")}
-          className="profile-popup-eye-toggle"
-          style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#8B7355", display: "flex", alignItems: "center" }}
-        >
-          {show ? <EyeOff size={16} /> : <Eye size={16} />}
-        </button>
-      )}
-=======
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
     </div>
   );
 }
@@ -283,9 +263,6 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
     if (!form.newEmail || !form.confirmPassword) { setError(t("errors.required")); return; }
     setLoading(true);
     try {
-<<<<<<< HEAD
-      console.log("Payload:", form);
-=======
       const res = await fetch(`${API_URL}/api/users/me/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
@@ -297,7 +274,7 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
         setError(typeof msg === "string" ? msg : JSON.stringify(msg));
         return;
       }
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
+
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : common("errors.generic"));
@@ -314,18 +291,15 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
         <PopupTitle text={t("title")} />
         <PopupSubtitle text={t("subtitle")} />
         <div style={{ width: "100%" }}>
-<<<<<<< HEAD
-          <Field placeholder={t("fields.newEmail")} value={form.newEmail} onChange={update("newEmail")} />
-          <Field placeholder={t("fields.confirmPassword")} value={form.confirmPassword} onChange={update("confirmPassword")} type="password" />
-=======
-          <TextField placeholder="New email address" value={form.newEmail} onChange={update("newEmail")} />
-          <PasswordField placeholder="Confirm your password" value={form.confirmPassword} onChange={update("confirmPassword")} />
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
-        </div>
-        {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
+          <TextField placeholder={t("fields.newEmail")} value={form.newEmail} onChange={update("newEmail")} />
+          <PasswordField placeholder={t("fields.confirmPassword")} value={form.confirmPassword} onChange={update("confirmPassword")} />
+
+        </div >
+        {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>
+        }
         <PrimaryBtn label={loading ? t("actions.saving") : t("actions.save")} onClick={handleSubmit} disabled={loading} />
         <CancelBtn onClick={onClose} label={common("actions.cancel")} />
-      </PopupCard>
+      </PopupCard >
       <GlobalStyles />
     </>
   );
@@ -351,9 +325,6 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
     if (form.newPassword !== form.confirmNewPassword) { setError(t("errors.mismatch")); return; }
     setLoading(true);
     try {
-<<<<<<< HEAD
-      console.log("Payload:", form);
-=======
       const email = getAuthUserEmail();
       if (!email) { setError("Could not determine your email. Please log in again."); setLoading(false); return; }
       const forgotRes = await fetch(`${API_URL}/api/auth/forgot-password/`, {
@@ -398,7 +369,7 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
         setError(typeof msg === "string" ? msg : JSON.stringify(msg));
         return;
       }
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
+
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : common("errors.generic"));
@@ -412,29 +383,17 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
       <Backdrop onClick={onClose} />
       <PopupCard onClick={onClose}>
         <IconBadge><Lock size={26} color={popupIconColor} strokeWidth={1.5} /></IconBadge>
-<<<<<<< HEAD
         <PopupTitle text={t("title")} />
-        <PopupSubtitle text={t("subtitle")} />
-        <div style={{ width: "100%" }}>
-          <Field placeholder={t("fields.currentPassword")} value={form.currentPassword} onChange={update("currentPassword")} type="password" />
-          <Field placeholder={t("fields.newPassword")} value={form.newPassword} onChange={update("newPassword")} type="password" />
-          <Field placeholder={t("fields.confirmNewPassword")} value={form.confirmNewPassword} onChange={update("confirmNewPassword")} type="password" />
-        </div>
-        {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
-        <PrimaryBtn label={loading ? t("actions.updating") : t("actions.update")} onClick={handleSubmit} disabled={loading} />
-        <CancelBtn onClick={onClose} label={common("actions.cancel")} />
-=======
-        <PopupTitle text="Change password" />
         {!otpStep ? (
           <>
-            <PopupSubtitle text="Choose a strong new password" />
+            <PopupSubtitle text={t("subtitle")} />
             <div style={{ width: "100%" }}>
-              <PasswordField placeholder="Current password"     value={form.currentPassword}    onChange={update("currentPassword")} />
-              <PasswordField placeholder="New password"         value={form.newPassword}        onChange={update("newPassword")} />
-              <PasswordField placeholder="Confirm new password" value={form.confirmNewPassword} onChange={update("confirmNewPassword")} />
+              <PasswordField placeholder={t("fields.currentPassword")} value={form.currentPassword} onChange={update("currentPassword")} />
+              <PasswordField placeholder={t("fields.newPassword")} value={form.newPassword} onChange={update("newPassword")} />
+              <PasswordField placeholder={t("fields.confirmNewPassword")} value={form.confirmNewPassword} onChange={update("confirmNewPassword")} />
             </div>
             {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>}
-            <PrimaryBtn label={loading ? "Sending OTP…" : "Update password"} onClick={handleSubmit} disabled={loading} />
+            <PrimaryBtn label={loading ? "Sending OTP…" : t("actions.update")} onClick={handleSubmit} disabled={loading} />
           </>
         ) : (
           <>
@@ -446,20 +405,17 @@ export function ChangePasswordPopup({ onClose }: { onClose: () => void }) {
             <PrimaryBtn label={loading ? "Updating…" : "Confirm"} onClick={handleOtpSubmit} disabled={loading} />
           </>
         )}
-        <CancelBtn onClick={onClose} />
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
-      </PopupCard>
+        <CancelBtn onClick={onClose} label={common("actions.cancel")} />
+
+      </PopupCard >
       <GlobalStyles />
     </>
   );
 }
 
-<<<<<<< HEAD
-=======
 // ═════════════════════════════════════════════════════════
 //  POPUP 3 — Dashboard
 // ═════════════════════════════════════════════════════════
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
 export function DashboardPopup({
   onClose,
   isModerator = false,
@@ -497,17 +453,17 @@ export function DashboardPopup({
     },
     ...(isModerator
       ? [{
-          label: t("items.platformStatistics"),
-          icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={neutralIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10" />
-              <line x1="12" y1="20" x2="12" y2="4" />
-              <line x1="6" y1="20" x2="6" y2="14" />
-            </svg>
-          ),
-          onClick: () => { onClose(); onPlatformStatistics?.(); },
-          danger: false,
-        }]
+        label: t("items.platformStatistics"),
+        icon: (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={neutralIconColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+            <line x1="6" y1="20" x2="6" y2="14" />
+          </svg>
+        ),
+        onClick: () => { onClose(); onPlatformStatistics?.(); },
+        danger: false,
+      }]
       : []),
     {
       label: t("items.deleteAccount"),
@@ -562,10 +518,7 @@ export function DashboardPopup({
               {t("title")}
             </p>
           </div>
-<<<<<<< HEAD
 
-=======
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             {items.map((item, i) => (
               <button
@@ -588,8 +541,8 @@ export function DashboardPopup({
               </button>
             ))}
           </div>
-        </div>
-      </div>
+        </div >
+      </div >
       <GlobalStyles />
     </>
   );
