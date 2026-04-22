@@ -164,7 +164,28 @@ function StyledDropdown({
   );
 }
 
-export default function GuildForm({
+// ── Lists 
+const HISTORICAL_PERIODS = [
+  "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period",
+  "Roman period", "Vandal period", "Byzantine period", "Early Islamic period",
+  "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty",
+  "Zayyanid dynasty", "Ottoman period", "French colonization",
+  "War of Independence", "Independent Algeria", "Contemporary period",
+];
+
+const REGIONS = [
+  "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine",
+  "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna",
+  "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer",
+];
+
+const GROUP_CATEGORIES = [
+  "Architecture", "Archaeology", "History", "Art",
+  "Photography", "Research", "Tourism", "Conservation",
+];
+
+// ── Form 
+export default function GroupForm({
   onCancel,
   onDone,
   initialValues = {},
@@ -172,7 +193,7 @@ export default function GuildForm({
   onCancel: () => void;
   onDone: (data: Record<string, unknown>) => void;
   initialValues?: {
-    guildName?: string;
+    groupName?: string;
     description?: string;
     historicalPeriod?: string;
     region?: string;
@@ -205,7 +226,7 @@ export default function GuildForm({
   ];
 
   const [formData, setFormData] = useState({
-    guildName: initialValues.guildName ?? "",
+    groupName: initialValues.groupName ?? "",
     description: initialValues.description ?? "",
     historicalPeriod: initialValues.historicalPeriod ?? "",
     region: initialValues.region ?? "",
@@ -241,8 +262,8 @@ export default function GuildForm({
         <SectionBlock>
           <SectionLabel>{t("sections.info")}</SectionLabel>
           <div style={{ marginBottom: "14px" }}>
-            <FieldLabel>{t("fields.guildName")}</FieldLabel>
-            <input type="text" name="guildName" value={formData.guildName} onChange={handleChange} style={inputStyle} />
+            <FieldLabel>{t("fields.groupName")}</FieldLabel>
+            <input type="text" name="groupName" value={formData.groupName} onChange={handleChange} style={inputStyle} />
           </div>
           <div>
             <FieldLabel>{t("fields.description")}</FieldLabel>
@@ -255,6 +276,7 @@ export default function GuildForm({
           </div>
         </SectionBlock>
 
+        {/* Thematic tags */}
         <SectionBlock>
           <SectionLabel>{t("sections.thematicTags")}</SectionLabel>
           <div style={{ display: "flex", gap: "16px" }}>
@@ -359,7 +381,7 @@ export default function GuildForm({
             minHeight="129px"
           />
         </SectionBlock>
-      </div>
+      </div >
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "16px 32px", backgroundColor: CREAM_PAGE }}>
         <button
@@ -389,6 +411,6 @@ export default function GuildForm({
         onConfirm={handleInviteConfirm}
         alreadyInvited={invitedUsers.map((u) => u.id)}
       />
-    </div>
+    </div >
   );
 }

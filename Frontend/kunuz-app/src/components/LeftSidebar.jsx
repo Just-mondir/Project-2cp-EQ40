@@ -91,7 +91,7 @@ export default function LeftSidebar({
   }, [username]);
 
   // Colours based on variant â€” add-post uses page-matching bg
-  const isSpecialBg = activePage === "add-post" || variant === "add-post"|| activePage === "edit-profile" || variant === "edit-profile" ||activePage === "create-group" || variant === "create-group"||activePage === "edit-group" || variant === "edit-group";
+  const isSpecialBg = activePage === "add-post" || variant === "add-post" || activePage === "edit-profile" || variant === "edit-profile" || activePage === "create-group" || variant === "create-group" || activePage === "edit-group" || variant === "edit-group";
   const normalizedPathname = normalizeThemePathname(pathname || "/");
   const isLegacyRoute =
     normalizedPathname === "/add-post" ||
@@ -179,7 +179,7 @@ export default function LeftSidebar({
       {
         key: "communities",
         label: t("nav.communities"),
-        href: "#",
+        href: "/communities",
         path: (
           <>
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

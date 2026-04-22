@@ -75,13 +75,13 @@ export default function MonumentsInDanger() {
               } while (result !== prev);
               return result;
             };
-            const cleanTitle = stripHtml(post.title);
+            const cleanTitle = stripHtml(post.title || "");
 
             // Handle image URL correctly:
             const imgPath = post.images?.[0]?.image || "";
             const imageUrl = imgPath.startsWith("http")
               ? imgPath
-              : `https://res.cloudinary.com/dq3jtxkp/image/upload/${imgPath}`;
+              : `https://res.cloudinary.com/dq3jtkxtp/image/upload/${imgPath}`;
 
             return {
               src: imageUrl || "/fallback-image.jpg",  // Fallback image if URL is not found

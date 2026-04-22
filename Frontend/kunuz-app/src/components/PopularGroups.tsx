@@ -6,13 +6,13 @@ const lato = Lato({
   weight: ["400", "700"],
 });
 
-type Guild = {
+type Group = {
   name: string;
   description: string;
   membersLabel: string;
   avatar:
-    | { kind: "unesco" }
-    | { kind: "photo"; src: string; alt: string };
+  | { kind: "unesco" }
+  | { kind: "photo"; src: string; alt: string };
 };
 
 function PeopleIcon({ className }: { className?: string }) {
@@ -50,42 +50,36 @@ function UnescoAvatar() {
   );
 }
 
-function GuildCard({ guild }: { guild: Guild }) {
+function GroupCard({ group }: { group: Group }) {
   return (
-    <div
-      className="rounded-xl p-6 lg:p-8 flex flex-row items-start gap-4 lg:gap-5 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)]"
-      style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}
-    >
-      {guild.avatar.kind === "unesco" ? (
+    <div className="bg-white rounded-xl p-6 lg:p-8 flex flex-row items-start gap-4 lg:gap-5 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2]">
+      {group.avatar.kind === "unesco" ? (
         <UnescoAvatar />
       ) : (
         <Image
-          src={guild.avatar.src}
-          alt={guild.avatar.alt}
+          src={group.avatar.src}
+          alt={group.avatar.alt}
           width={80}
           height={80}
-          className="w-16 h-16 lg:w-20 lg:h-20 rounded-full object-cover shrink-0 border-2"
-          style={{ borderColor: "var(--panel-elevated)" }}
+          className="w-16 h-16 lg:w-20 lg:h-20 rounded-full object-cover shrink-0"
         />
       )}
 
       <div className="flex flex-col gap-1.5">
         <h3
-          className={`${lato.className} font-bold text-base lg:text-lg mb-1`}
-          style={{ color: "var(--foreground)" }}
+          className={`${lato.className} font-bold text-base lg:text-lg text-[#2C1A0E] mb-1`}
         >
-          {guild.name}
+          {group.name}
         </h3>
         <p
-          className={`${lato.className} font-normal text-xs lg:text-sm leading-relaxed`}
-          style={{ color: "var(--text-soft)" }}
+          className={`${lato.className} font-normal text-xs lg:text-sm leading-relaxed text-[#5a4a3a]`}
         >
-          {guild.description}
+          {group.description}
         </p>
-        <div className="flex flex-row items-center gap-2 mt-2" style={{ color: "var(--accent-gold)" }}>
+        <div className="flex flex-row items-center gap-2 mt-2 text-[#7a5a3a]">
           <PeopleIcon className="w-4 h-4 lg:w-5 lg:h-5" />
           <span className={`${lato.className} font-normal text-xs lg:text-sm`}>
-            {guild.membersLabel}
+            {group.membersLabel}
           </span>
         </div>
       </div>
@@ -93,8 +87,8 @@ function GuildCard({ guild }: { guild: Guild }) {
   );
 }
 
-export default function PopularGuilds() {
-  const unesco: Guild = {
+export default function PopularGroups() {
+  const unesco: Group = {
     name: "UNESCO World Heritage Sites",
     description:
       "A group for discovering, studying, and sharing content about sites recognized by UNESCO for their outstanding cultural or natural value",
@@ -102,7 +96,7 @@ export default function PopularGuilds() {
     avatar: { kind: "unesco" },
   };
 
-  const tipaza: Guild = {
+  const tipaza: Group = {
     name: "Monuments of Tipaza",
     description:
       "A community dedicated to exploring, documenting, and celebrating the monuments and archaeological sites of Tipaza and its surrounding region",
@@ -114,7 +108,7 @@ export default function PopularGuilds() {
     },
   };
 
-  const photography: Guild = {
+  const photography: Group = {
     name: "Heritage Photography",
     description:
       "A space for sharing and discussing photos of cultural and historical landmarks, focusing on storytelling, technique, and respectful preservation of heritage",
@@ -126,37 +120,38 @@ export default function PopularGuilds() {
     },
   };
 
-  const leftColumn: Guild[] = [unesco, tipaza, photography];
-  const rightColumn: Guild[] = [tipaza, photography, unesco];
+  const leftColumn: Group[] = [unesco, tipaza, photography];
+  const rightColumn: Group[] = [tipaza, photography, unesco];
 
   return (
     <section
-      id="guilds"
+      id="groups"
       className="w-full py-20 lg:py-28 px-8 lg:px-24 xl:px-32 scroll-mt-24"
-      style={{ backgroundColor: "var(--background)" }}
+      style={{ backgroundColor: "#FFF8E2" }}
     >
       <h2
-        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-center mb-12 lg:mb-16"
-        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif', color: "var(--foreground)" }}
+        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-12 lg:mb-16"
+        style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
       >
-        Popular Guilds
+        Popular Groups
       </h2>
 
       <div
         className="max-w-7xl mx-auto flex flex-col md:flex-row gap-8 lg:gap-10"
       >
         <div className="w-full md:w-1/2 flex flex-col gap-8">
-          {leftColumn.map((guild, idx) => (
-            <GuildCard key={`left-${idx}-${guild.name}`} guild={guild} />
+          {leftColumn.map((group, idx) => (
+            <GroupCard key={`left-${idx}-${group.name}`} group={group} />
           ))}
         </div>
 
         <div className="w-full md:w-1/2 flex flex-col gap-8">
-          {rightColumn.map((guild, idx) => (
-            <GuildCard key={`right-${idx}-${guild.name}`} guild={guild} />
+          {rightColumn.map((group, idx) => (
+            <GroupCard key={`right-${idx}-${group.name}`} group={group} />
           ))}
         </div>
       </div>
     </section>
   );
 }
+

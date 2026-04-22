@@ -1034,14 +1034,14 @@ function PostModal({
   ) : (
     <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
       <div className="mb-1">
-      <LocationWorldCard
-        location={post.location}
-        region={post.region}
-        textStyle={{ color: "#8B7355" }}
-        iconColor="#8B7355"
-        iconSize={13}
-        buttonClassName="mb-1"
-      />
+        <LocationWorldCard
+          location={post.location}
+          region={post.region}
+          textStyle={{ color: "#8B7355" }}
+          iconColor="#8B7355"
+          iconSize={13}
+          buttonClassName="mb-1"
+        />
         <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </div>
       <PostDetailBadge post={post} />
@@ -1223,13 +1223,10 @@ function ProfileHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-<<<<<<< HEAD
-  const menuItems = [dashboardT("title")];
-=======
-  const menuItems = isOwnProfile && (profileInfo.role === "moderator" || profileInfo.role === "admin")
-  ? ["Dashboard", "Platform statistics"]
-  : ["Dashboard"];
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
+  const isModeratorOrAdmin = isOwnProfile && (profileInfo.role === "moderator" || profileInfo.role === "admin");
+  const menuItems = isModeratorOrAdmin
+    ? [dashboardT("items.changeEmail"), dashboardT("items.changePassword"), dashboardT("items.platformStatistics")]
+    : [dashboardT("items.changeEmail"), dashboardT("items.changePassword")];
 
   const handleLogout = async () => {
     await logoutClient();
@@ -1262,17 +1259,20 @@ function ProfileHeader({
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
             {menuItems.map((item, i) => (
-<<<<<<< HEAD
-              <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === dashboardT("title")) setShowDashboardModal(true); }}>
+              <button
+                key={i}
+                className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                onClick={() => {
+                  setShowMenu(false);
+                  if (item === dashboardT("items.changeEmail")) setShowChangeEmailModal(true);
+                  if (item === dashboardT("items.changePassword")) setShowChangePasswordModal(true);
+                  if (item === dashboardT("items.platformStatistics")) router.push("/statistics");
+                }}
+              >
                 {item}
               </button>
             ))}
-=======
-  <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); if (item === "Platform statistics") router.push("/statistics"); }}>
-    {item}
-  </button>
-))}
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
           </div>
         )}
       </div>
@@ -1281,32 +1281,36 @@ function ProfileHeader({
       {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}
       {showChangePasswordModal && <ChangePasswordPopup onClose={() => setShowChangePasswordModal(false)} />}
       {showDashboardModal && (
-<<<<<<< HEAD
         <DashboardPopup
           onClose={() => setShowDashboardModal(false)}
-          isModerator={false}
+          isModerator={profileInfo.role === "moderator" || profileInfo.role === "admin"}
           onChangeEmail={() => setShowChangeEmailModal(true)}
           onChangePassword={() => setShowChangePasswordModal(true)}
           onDeleteAccount={() => setShowDeleteAccountModal(true)}
           onLogout={() => setShowLogoutModal(true)}
+          onPlatformStatistics={() => router.push("/statistics")}
         />
       )}
-      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title={userPageT("modals.logout.title")} message={userPageT("modals.logout.message")} primaryAction={{ label: userPageT("modals.logout.confirm"), onClick: handleLogout }} secondaryAction={{ label: userPageT("modals.logout.cancel"), onClick: () => setShowLogoutModal(false) }} />
-      <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title={userPageT("modals.deleteAccount.title")} message={userPageT("modals.deleteAccount.message")} primaryAction={{ label: userPageT("modals.deleteAccount.confirm"), onClick: () => setShowDeleteAccountModal(false) }} secondaryAction={{ label: userPageT("modals.deleteAccount.cancel"), onClick: () => setShowDeleteAccountModal(false) }} />
-=======
-  <DashboardPopup
-    onClose={() => setShowDashboardModal(false)}
-    isModerator={profileInfo.role === "moderator" || profileInfo.role === "admin"}  // ← CHANGED
-    onChangeEmail={() => setShowChangeEmailModal(true)}
-    onChangePassword={() => setShowChangePasswordModal(true)}
-    onDeleteAccount={() => setShowDeleteAccountModal(true)}
-    onLogout={() => setShowLogoutModal(true)}
-    onPlatformStatistics={() => router.push("/statistics")}  // ← ADD THIS LINE
-  />
-)}
-      <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, your token will be cleared and you will be redirected to the landing page." primaryAction={{ label: "Log out", onClick: handleLogout }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
-      <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: handleDeleteAccount }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
->>>>>>> 35e83fc66c1153301525f4272de59d76264cbaf0
+
+      <NotificationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        type="info"
+        title={userPageT("modals.logout.title")}
+        message={userPageT("modals.logout.message")}
+        primaryAction={{ label: userPageT("modals.logout.confirm"), onClick: handleLogout }}
+        secondaryAction={{ label: userPageT("modals.logout.cancel"), onClick: () => setShowLogoutModal(false) }}
+      />
+
+      <NotificationModal
+        isOpen={showDeleteAccountModal}
+        onClose={() => setShowDeleteAccountModal(false)}
+        type="error"
+        title={userPageT("modals.deleteAccount.title")}
+        message={userPageT("modals.deleteAccount.message")}
+        primaryAction={{ label: userPageT("modals.deleteAccount.confirm"), onClick: handleDeleteAccount }}
+        secondaryAction={{ label: userPageT("modals.deleteAccount.cancel"), onClick: () => setShowDeleteAccountModal(false) }}
+      />
 
       <div className="flex items-start gap-8">
         <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
@@ -1356,7 +1360,7 @@ function ProfileHeader({
           </div>
 
           <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>
-           {stripHtml(profileInfo.bio)}
+            {stripHtml(profileInfo.bio)}
           </p>
         </div>
       </div>
@@ -1579,7 +1583,7 @@ export default function ProfilePage() {
               const eventsData = await eventsRes.json();
               eventsCount = eventsData.count ?? (eventsData.results ?? eventsData).length;
             }
-          } catch {}
+          } catch { }
 
           // ← fetch likes count (sum of gems_count) and posts count — reuse same request
           let likesCount = 0;
@@ -1599,7 +1603,7 @@ export default function ProfilePage() {
               // ← fetch real posts count from same response
               allPostsCount = postsData.count ?? posts.length;
             }
-          } catch {}
+          } catch { }
 
           setProfileInfo({
             username: data.username ?? "",
@@ -1633,9 +1637,9 @@ export default function ProfilePage() {
       const collected: ApiPost[] = [];
       try {
         while (url) {
-          const res = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+          const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
           if (!res.ok) break;
-          const data = await res.json();
+          const data: any = await res.json();
           collected.push(...(data.results ?? []).map(mapPost));
           url = data.next ?? null;
         }

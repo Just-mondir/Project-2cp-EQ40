@@ -2,12 +2,12 @@
 
 import LeftSidebar from "@/components/LeftSidebar";
 import BackButton from "@/components/BackButton";
-import GuildForm from "@/components/GroupForme";
+import GroupForm from "@/components/GroupForm";
 import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 
-export default function CreateGuildPage() {
+export default function EditGroupPage() {
   const t = useTranslations("auth.pages.editGroup");
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -42,22 +42,22 @@ export default function CreateGuildPage() {
     try {
       setSaving(true);
       // 🔌 BACKEND INTEGRATION POINT
-      // const res = await fetch(`${API_URL}/api/guilds/`, {
+      // const res = await fetch(`${API_URL}/api/groups/`, {
       //   method: "POST",
       //   headers: { Authorization: `Bearer ${token}` },
       //   body: formData,
       // });
-      console.log("Guild data:", { ...formData, groupPhoto, coverPhoto });
+      console.log("Group data:", { ...formData, groupPhoto, coverPhoto });
       router.push("/communities");
     } catch (err) {
-      console.error("Error creating guild:", err);
+      console.error("Error updating group:", err);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
+    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
       <LeftSidebar activePage="create-group" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
@@ -68,9 +68,10 @@ export default function CreateGuildPage() {
         <div className="flex flex-1 overflow-hidden px-8 pb-8 gap-6">
 
           {/* ── Left panel ── */}
-          <div className="w-[240px] flex flex-col flex-shrink-0 overflow-hidden">
+          <div className="w-[240px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
             <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
               <h1
+                className="post-page-title"
                 style={{
                   fontFamily: "var(--font-lato), 'Lato', sans-serif",
                   fontSize: "30px",
@@ -84,9 +85,10 @@ export default function CreateGuildPage() {
               {saving && (
                 <p style={{ fontSize: "12px", color: "#8B6914", marginTop: "6px" }}>
                   {t("saving")}
-                </p>
-              )}
-            </div>
+                </p >
+              )
+              }
+            </div >
 
             <div
               style={{
@@ -97,9 +99,9 @@ export default function CreateGuildPage() {
                 gap: "8px",
               }}
             >
-              {/* ── Cover photo — slim banner ── */}
               <div
                 onClick={() => coverInputRef.current?.click()}
+                className="post-upload-slot"
                 style={{
                   width: "210px",
                   height: "80px",
@@ -141,6 +143,7 @@ export default function CreateGuildPage() {
               {/* ── Group photo — compact square with icon + label inside ── */}
               <div
                 onClick={() => fileInputRef.current?.click()}
+                className="post-upload-slot"
                 style={{
                   width: "210px",
                   height: "160px",         /* ← reduced from 276 px */
@@ -192,10 +195,10 @@ export default function CreateGuildPage() {
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
             </div>
-          </div>
+          </div >
 
           {/* ── Right panel ── */}
-          <div
+          < div
             className="flex-1 overflow-hidden flex flex-col post-panel-right post-form-panel"
             style={{
               backgroundColor: "#F7F5EF",
@@ -203,11 +206,11 @@ export default function CreateGuildPage() {
               border: "1px solid rgba(0,0,0,0.1)",
             }}
           >
-            <GuildForm onCancel={handleCancel} onDone={handleDone} />
-          </div>
+            <GroupForm onCancel={handleCancel} onDone={handleDone} />
+          </div >
 
-        </div>
-      </div>
-    </div>
+        </div >
+      </div >
+    </div >
   );
 }
