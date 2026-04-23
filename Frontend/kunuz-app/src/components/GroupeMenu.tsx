@@ -211,7 +211,7 @@ export default function GroupOptionsMenu({
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       ),
-      onClick: () => { setOpen(false); router.push(`/group/${groupId}?tab=members`); },
+      onClick: () => { setOpen(false); router.push(`/group/${groupId}/members`); },
       danger: false,
     },
   ];
@@ -239,7 +239,7 @@ export default function GroupOptionsMenu({
           <path d="M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       ),
-      onClick: () => { setOpen(false); router.push(`/group/${groupId}?tab=members`); },
+      onClick: () => { setOpen(false); router.push(`/group/${groupId}/members`); },
       danger: false,
     },
     {
@@ -276,7 +276,35 @@ export default function GroupOptionsMenu({
     },
   ];
 
-  const items = isAdmin ? adminItems : memberItems;
+  const visitorItems = [
+  {
+    label: "Members",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+    onClick: () => { setOpen(false); router.push(`/group/${groupId}/members`); },
+    danger: false,
+  },
+  {
+    label: "Report group",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+        <line x1="12" y1="9" x2="12" y2="13" />
+        <line x1="12" y1="17" x2="12.01" y2="17" />
+      </svg>
+    ),
+    onClick: () => { setOpen(false); },
+    danger: false,
+  },
+];
+
+const items = isAdmin ? adminItems : isMember ? memberItems : visitorItems;
 
   return (
     <>
