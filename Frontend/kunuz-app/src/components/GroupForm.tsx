@@ -180,8 +180,13 @@ const REGIONS = [
 ];
 
 const GROUP_CATEGORIES = [
-  "Architecture", "Archaeology", "History", "Art",
-  "Photography", "Research", "Tourism", "Conservation",
+  "Archaeology", "Ancient Civilizations", "Historical Sites",
+  "World Heritage Sites", "Ruins", "Architectural Heritage",
+  "Cultural Landmarks", "Monuments", "Castles", "Fortresses",
+  "Religious Sites", "Museums", "Palaces", "Temples",
+  "Historic Towns", "Prehistoric Sites", "Colonial Architecture",
+  "Monument Preservation", "Intangible Heritage", "Heritage Restoration",
+  "Cultural Experience", "Local History",
 ];
 
 // ── Form 
@@ -217,9 +222,30 @@ export default function GroupForm({
     "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer",
   ].map((value) => ({ value, label: t(`regions.${value}`) }));
   const categories: DropdownOption[] = [
-    "Architecture", "Archaeology", "History", "Art",
-    "Photography", "Research", "Tourism", "Conservation",
-  ].map((value) => ({ value, label: t(`categories.${value}`) }));
+  "Archaeology",
+  "Ancient Civilizations",
+  "Historical Sites",
+  "World Heritage Sites",
+  "Ruins",
+  "Architectural Heritage",
+  "Cultural Landmarks",
+  "Monuments",
+  "Castles",
+  "Fortresses",
+  "Religious Sites",
+  "Museums",
+  "Palaces",
+  "Temples",
+  "Historic Towns",
+  "Prehistoric Sites",
+  "Colonial Architecture",
+  "Monument Preservation",
+  "Intangible Heritage",
+  "Heritage Restoration",
+  "Cultural Experience",
+  "Local History",
+].map((value) => ({ value, label: value }));
+  
   const visibilityOptions: PillOption[] = [
     { value: "Public", label: t("visibility.public") },
     { value: "Private", label: t("visibility.private") },

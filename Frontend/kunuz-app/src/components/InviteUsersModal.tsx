@@ -13,20 +13,21 @@ export interface User {
   avatarUrl?: string | null;
 }
 
-const MOCK_USERS: User[] = [
-  { id: "1", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "2", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "3", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "4", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "5", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-];
+// ADD this instead:
+const API_URL = "http://127.0.0.1:8000";
+function getToken() { return typeof window !== "undefined" ? localStorage.getItem("accessToken") || "" : ""; }
 
 async function searchUsers(query: string): Promise<User[]> {
-  await new Promise((r) => setTimeout(r, 100));
-  if (!query.trim()) return MOCK_USERS;
-  return MOCK_USERS.filter((u) =>
-    u.username.toLowerCase().includes(query.toLowerCase())
-  );
+  const url = `${API_URL}/api/groups/users/search/${query.trim() ? `?q=${encodeURIComponent(query)}` : ""}`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } });
+    const data = await res.json();
+    const results = data.data?.results ?? data.results ?? data.data ?? [];
+    return (Array.isArray(results) ? results : []).map((u: any) => ({
+      id: String(u.id), username: u.username ?? "",
+      avatarUrl: u.profile_picture ? (u.profile_picture.startsWith("http") ? u.profile_picture : `${API_URL}${u.profile_picture}`) : null,
+    })).filter((u) => u.username.trim() !== "");
+  } catch { return []; }
 }
 
 function UserAvatar({ user, size = 40 }: { user: User; size?: number }) {
@@ -100,7 +101,7 @@ export default function InviteUsersModal({
 }: InviteUsersModalProps) {
   const t = useTranslations("auth.inviteUsers");
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<User[]>(MOCK_USERS);
+  const [results, setResults] = useState<User[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set(alreadyInvited));
   const [loading, setLoading] = useState(false);
 
