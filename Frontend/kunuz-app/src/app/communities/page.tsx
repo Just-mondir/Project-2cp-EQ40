@@ -1877,10 +1877,10 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
 
 /* ─────────────────── RIGHT SIDEBAR ─────────────────── */
 
-function RightSidebar({ groups, onSelectGroup, onCreateGroup }: { groups: Group[]; onSelectGroup: (group: Group) => void; onCreateGroup: () => void }) {
+function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: { groups: Group[]; myGroups?: Group[]; onSelectGroup: (group: Group) => void; onCreateGroup: () => void }) {
   const router = useRouter();
   return (
-    <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
+    <aside className="w-[350px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
         {/* Header: title + Create button */}
         <div className="flex justify-between items-center mb-5 flex-shrink-0">
@@ -1894,31 +1894,68 @@ function RightSidebar({ groups, onSelectGroup, onCreateGroup }: { groups: Group[
           </button>
         </div>
 
-        <div className="flex flex-col gap-6 overflow-y-auto" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div className="flex flex-col gap-6 overflow-y-auto pb-20" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+          {/* Your Groups Section */}
+          {myGroups.length > 0 && (
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Your Groups</h3>
+                <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "rgba(107, 62, 38, 0.1)", color: "#6B3E26" }}>{myGroups.length}</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                {myGroups.slice(0, 5).map((group) => (
+                  <div
+                    key={group.id}
+                    className="flex gap-3 py-2 px-1 items-center rounded-xl transition-colors hover:bg-[var(--panel-hover)] cursor-pointer"
+                    onClick={() => router.push(`/group/${group.id}`)}
+                  >
+                    <img
+                      src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
+                      alt={group.name}
+                      className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
+                    />
+                    <div className="flex flex-col justify-center min-w-0 flex-1">
+                      <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                      <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
+                    </div>
+                    <button
+                      className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90 flex-shrink-0"
+                      style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
+                      onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
+                    >Visit</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested Groups Section */}
           <div>
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Suggested Groups</h3>
               <button className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors" style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}>View all</button>
             </div>
             <div className="flex flex-col gap-2">
-              {groups.slice(0, 10).map((group) => (
-                <div key={group.id} className="flex gap-3 py-2 px-1 items-center rounded-xl transition-colors">
-                  <img
-                    src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
-                    alt={group.name}
-                    className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
-                  />
-                  <div className="flex flex-col justify-center min-w-0 flex-1">
-                    <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                    <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
+              {groups
+                .filter(g => !myGroups.some(mg => mg.id === g.id))
+                .slice(0, 10).map((group) => (
+                  <div key={group.id} className="flex gap-3 py-2 px-1 items-center rounded-xl transition-colors">
+                    <img
+                      src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
+                      alt={group.name}
+                      className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
+                    />
+                    <div className="flex flex-col justify-center min-w-0 flex-1">
+                      <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                      <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
+                    </div>
+                    <button
+                      className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90"
+                      style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
+                      onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
+                    >Visit</button>
                   </div>
-                  <button
-                    className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90"
-                    style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
-                    onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
-                  >Visit</button>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </div>
@@ -2205,6 +2242,7 @@ export default function CommunitiesPageRoute() {
   const router = useRouter();
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [myGroups, setMyGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
@@ -2230,8 +2268,24 @@ export default function CommunitiesPageRoute() {
     }
   };
 
+  const fetchMyGroups = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/groups/my-groups/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const myGData = data.data?.results || data.data || data.results || data;
+      setMyGroups(Array.isArray(myGData) ? myGData : []);
+    } catch (err) {
+      console.error("Error fetching my groups:", err);
+    }
+  };
+
   useEffect(() => {
     fetchGroups();
+    fetchMyGroups();
   }, []);
 
   const normalizeApiPost = (raw: any, fallback?: ApiPost): ApiPost => ({
@@ -2442,7 +2496,7 @@ export default function CommunitiesPageRoute() {
     <>
       <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
         <LeftSidebar activePage="communities" />
-        <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
+        <div className="flex h-full w-full max-w-[1200px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
             <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
               <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--foreground)" : "1px solid var(--foreground)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
@@ -2539,7 +2593,7 @@ export default function CommunitiesPageRoute() {
                   </div>
                 )}
                 {posts.map((post, index) => (
-                  <React.Fragment key={post._key ?? Number(post.id) ?? index}>
+                  <React.Fragment key={post.id && post.id !== "" ? `post-${post.id}` : (post._key ?? index)}>
                     <PostCard
                       groupDetails={groups.find(g => g.id === post.group_id) || undefined}
                       post={post}
@@ -2564,6 +2618,7 @@ export default function CommunitiesPageRoute() {
               </main>
               <RightSidebar
                 groups={groups}
+                myGroups={myGroups}
                 onSelectGroup={() => { }}
                 onCreateGroup={() => router.push("/create-group")}
               />

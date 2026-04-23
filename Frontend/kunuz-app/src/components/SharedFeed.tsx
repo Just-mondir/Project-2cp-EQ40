@@ -2546,7 +2546,7 @@ export default function CommunitiesPageRoute() {
                   </div>
                 )}
                 {posts.map((post, index) => (
-                  <React.Fragment key={post._key ?? Number(post.id) ?? index}>
+                  <React.Fragment key={post.id && post.id !== "" ? `post-${post.id}` : (post._key ?? index)}>
                     <PostCard
                       groupDetails={selectedGroup || groups.find(g => g.id === post.group_id) || undefined}
                       post={post}

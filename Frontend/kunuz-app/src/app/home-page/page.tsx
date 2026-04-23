@@ -2591,7 +2591,7 @@ export default function HomePageRoute() {
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} title={t("guilds.title")} />
                 {posts.map((post, index) => (
-                  <React.Fragment key={post._key ?? Number(post.id) ?? index}>
+                  <React.Fragment key={post.id && post.id !== "" ? `post-${post.id}` : (post._key ?? index)}>
                     <PostCard
                       post={post}
                       isNew={index >= newPostStart && newPostStart !== -1}

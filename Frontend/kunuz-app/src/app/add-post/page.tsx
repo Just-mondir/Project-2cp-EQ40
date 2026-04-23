@@ -26,7 +26,7 @@ type PostFormValues = {
   region: string;
   monumentType?: string | null;
   visibility: string;
-  groups: string[];
+  groups: { id: string; name: string }[];
   startTime?: string | null;
   endTime?: string | null;
 };
@@ -79,7 +79,12 @@ export default function AddPostPage() {
         formData.append("monument_type", formValues.monumentType);
       }
 
-      formData.append("visibility", formValues.visibility.toLowerCase());
+      const visibility = formValues.visibility === "Private" ? "groups" : "public";
+      formData.append("visibility", visibility);
+
+      if (formValues.groups && formValues.groups.length > 0) {
+        formData.append("group_id", formValues.groups[0].id);
+      }
 
       if (formValues.postType === "Event") {
         if (formValues.startTime) {

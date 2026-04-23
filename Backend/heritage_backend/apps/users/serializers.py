@@ -159,9 +159,13 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
+        user_obj = User.objects(email=email.strip().lower()).first()
+        if not user_obj:
+            raise serializers.ValidationError({"email": "No account found with this email."})
+        
         user = authenticate(request=None, username=email, password=password)
         if not user:
-            raise serializers.ValidationError({"detail": "Invalid credentials."})
+            raise serializers.ValidationError({"password": "The password you entered is incorrect."})
         if not user.is_verified:
             raise serializers.ValidationError(
                 {"detail": "Email is not verified. Please verify your email first."}

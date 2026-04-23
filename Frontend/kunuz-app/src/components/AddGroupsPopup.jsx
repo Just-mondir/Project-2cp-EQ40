@@ -7,17 +7,40 @@ const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const SISAL = "#C4A882";
 
-const AVAILABLE_GROUPS = [
-    { id: 1, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-    { id: 2, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-    { id: 3, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-    { id: 4, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
+function getAuthToken() {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("accessToken") || "";
+}
 
 export default function AddGroupsPopup({ onConfirm, onClose }) {
     const t = useTranslations("auth.groupsPopup");
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState(new Set());
+    const [availableGroups, setAvailableGroups] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMyGroups = async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/groups/my-groups/`, {
+                    headers: {
+                        Authorization: `Bearer ${getAuthToken()}`,
+                    },
+                });
+                if (!res.ok) throw new Error("Failed to fetch groups");
+                const data = await res.json();
+                const groups = data.data?.results || data.data || data.results || data;
+                setAvailableGroups(Array.isArray(groups) ? groups : []);
+            } catch (err) {
+                console.error("Error fetching my groups:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMyGroups();
+    }, []);
 
     useEffect(() => {
         const handleKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -35,12 +58,12 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
     };
 
     const handleConfirm = () => {
-        const groups = AVAILABLE_GROUPS.filter((g) => selected.has(g.id));
+        const groups = availableGroups.filter((g) => selected.has(g.id));
         onConfirm(groups);
         onClose();
     };
 
-    const filtered = AVAILABLE_GROUPS.filter((g) =>
+    const filtered = availableGroups.filter((g) =>
         g.name.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -183,7 +206,7 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                                         backgroundColor: SISAL,
                                     }}>
                                         <img
-                                            src={group.image}
+                                            src={group.profile_picture ? (group.profile_picture.startsWith("http") ? group.profile_picture : `${API_URL}${group.profile_picture}`) : "/heritage-photography.jpg"}
                                             alt={group.name}
                                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                             onError={(e) => {
@@ -234,7 +257,12 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                             </div>
                         );
                     })}
-                    {filtered.length === 0 && (
+                    {loading && (
+                        <div style={{ display: "flex", justifyContent: "center", padding: "20px" }}>
+                            <div className="w-6 h-6 border-2 border-t-transparent animate-spin rounded-full" style={{ borderColor: SISAL, borderTopColor: ESPRESSO }} />
+                        </div>
+                    )}
+                    {!loading && filtered.length === 0 && (
                         <p style={{
                             textAlign: "center",
                             color: ESPRESSO,
