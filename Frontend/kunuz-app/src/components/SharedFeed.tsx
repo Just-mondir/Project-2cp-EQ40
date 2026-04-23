@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import { Virtuoso } from "react-virtuoso";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import LeftSidebar from "@/components/LeftSidebar";
+import { PostSkeleton } from "@/components/Skeletons";
 
 
 const API_URL = "http://127.0.0.1:8000";
@@ -259,12 +262,12 @@ function UserAvatar({
 
   if (imageUrl) {
     return (
-      <img
+      <Image
         src={imageUrl}
         alt="Profile picture"
         className="rounded-full object-cover flex-shrink-0"
         style={{ width: size, height: size }}
-      />
+       width={500} height={500} />
     );
   }
 
@@ -1078,12 +1081,12 @@ function AnnotationItem({
         ) : null}
 
         {imageUrl ? (
-          <img
+          <Image
             src={imageUrl}
             alt="annotation"
             className="mt-2 rounded-lg max-w-full"
             style={{ maxHeight: 160, objectFit: "cover" }}
-          />
+           width={500} height={500} />
         ) : null}
 
         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
@@ -1505,7 +1508,7 @@ function PostModal({
                 </>
               ) : null}
               {imageUrl ? (
-                <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+                <Image src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" fill style={{ objectFit: "cover" }} />
               ) : null}
             </div>
           );
@@ -1822,11 +1825,11 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
             style={{ width: "120px" }}
           >
             <div className="flex flex-col items-center">
-              <img
+              <Image
                 src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
                 alt={group.name}
                 className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2"
-              />
+               width={64} height={64} />
               <span
                 className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
                 style={{
@@ -1896,11 +1899,11 @@ function RightSidebar({ groups, onSelectGroup, onCreateGroup }: { groups: Group[
               {groups.slice(0, 10).map((group) => (
                 <div key={group.id} className="flex gap-3 py-2 px-1 items-center hover:bg-[var(--panel-hover)] rounded-xl transition-colors cursor-pointer" onClick={() => onSelectGroup(group)}>
 
-                  <img
+                  <Image
                     src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
                     alt={group.name}
                     className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
-                  />
+                   width={32} height={32} />
                   <div className="flex flex-col justify-center min-w-0 flex-1">
                     <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
                     <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
@@ -2124,7 +2127,14 @@ function PostCard({
                         </>
                       ) : null}
                       {imageUrl ? (
-                        <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
+                        <Image
+                          src={imageUrl}
+                          alt={post.title}
+                          className="relative z-10 w-full h-full object-contain"
+                          fill
+                          style={{ objectFit: "cover" }}
+                          onError={() => setImgError(true)}
+                        />
                       ) : null}
                     </div>
                   );
@@ -2377,6 +2387,44 @@ export default function CommunitiesPageRoute() {
   };
 
   useEffect(() => {
+    if (posts.length > 0 || loading || !nextUrl) return;
+
+    (async () => {
+      try {
+        setLoading(true);
+        const resolvedNextUrl =
+          nextUrl.startsWith("http://") || nextUrl.startsWith("https://")
+            ? nextUrl
+            : `${API_URL}${nextUrl.startsWith("/") ? "" : "/"}${nextUrl}`;
+
+        const res = await apiFetch(resolvedNextUrl);
+        if (!res.ok) {
+          setNextUrl(null);
+          return;
+        }
+
+        const data = await res.json();
+        const payload = data.data || data;
+        const results = Array.isArray(payload.results)
+          ? payload.results
+          : (Array.isArray(data.results) ? data.results : []);
+        const formattedPosts: ApiPost[] = results.map((post: any, i: number) => ({
+          ...normalizeApiPost(post),
+          _key: i,
+        }));
+
+        setPosts(formattedPosts);
+        const nextLink = payload.next !== undefined ? payload.next : data.next;
+        setNextUrl(typeof nextLink === "string" && nextLink ? nextLink : null);
+      } catch {
+        setNextUrl(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [nextUrl, posts.length, loading]);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       async (entries) => {
         if (!entries[0].isIntersecting || loading || !nextUrl) return;
@@ -2490,7 +2538,11 @@ export default function CommunitiesPageRoute() {
                       {searchResults?.posts && searchResults.posts.length > 0 && (
                         <div className="px-4 pt-2 pb-3">
                           <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Posts</p>
-                          {searchResults.posts.map((post) => (
+                          <Virtuoso
+                            style={{ height: "300px" }}
+                            data={searchResults.posts}
+                            itemContent={(index, post) => (
+
                             <button
                               key={post.id}
                               className="w-full flex items-start gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
@@ -2504,7 +2556,8 @@ export default function CommunitiesPageRoute() {
                                 <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{post.content?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
                               </div>
                             </button>
-                          ))}
+                            )}
+                          />
                         </div>
                       )}
                       {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (
@@ -2545,7 +2598,11 @@ export default function CommunitiesPageRoute() {
                     <p className="text-sm" style={{ color: "var(--text-muted)" }}>Be the first to share something in this community!</p>
                   </div>
                 )}
-                {posts.map((post, index) => (
+                <Virtuoso
+                    useWindowScroll
+                    data={posts}
+                    itemContent={(index, post) => (
+
                   <React.Fragment key={post._key ?? Number(post.id) ?? index}>
                     <PostCard
                       groupDetails={selectedGroup || groups.find(g => g.id === post.group_id) || undefined}
@@ -2561,10 +2618,12 @@ export default function CommunitiesPageRoute() {
                       }}
                     />
                   </React.Fragment>
-                ))}
+                    )}
+                  />
                 {loading && (
-                  <div className="flex justify-center py-6">
-                    <div className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
+                  <div className="flex flex-col gap-4 py-4">
+                    <PostSkeleton />
+                    <PostSkeleton />
                   </div>
                 )}
                 <div ref={sentinelRef} className="h-4" />

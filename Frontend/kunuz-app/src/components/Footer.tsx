@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -39,9 +40,9 @@ export default function Footer() {
 
         {/* Logo + tagline + socials */}
         <div className="flex flex-col gap-4 col-span-2 -mt-10">
-          <div className="flex items-start mb-4">
-            {/* Full Kunuz Logo SVG tightly cropped */}
-            <img src="/kunuz-logo-light.svg" alt="Kunuz logo" className="w-[320px] h-auto object-contain flex-shrink-0" />
+<div className="flex items-start mb-4 relative" style={{ width: 320, height: 100 }}>
+              {/* Full Kunuz Logo SVG tightly cropped */}
+              <Image src="/kunuz-logo-light.svg" alt="Kunuz logo" className="object-contain flex-shrink-0"  fill={true} />
           </div>
 
           <p className="text-[#e8d9c0] font-normal text-xl leading-snug -mt-6" style={{ fontFamily: "Aclonica, sans-serif" }}>

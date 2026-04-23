@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from django.http import Http404
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -133,6 +135,7 @@ class MeView(APIView):
 class PublicUserProfileView(APIView):
     permission_classes = [AllowAny]
 
+    @method_decorator(cache_page(60))
     def get(self, request: Request, username: str) -> Response:
         try:
             user = User.objects.get(username=username)

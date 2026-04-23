@@ -66,6 +66,8 @@ type Post = {
     user_username?: string;
     user_display_name?: string;
     user_profile_picture?: string;
+    is_gemmed?: boolean;
+    is_saved?: boolean;
     created_at: string;
     gems_count: number;
     comments_count: number;

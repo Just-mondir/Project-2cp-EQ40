@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -133,11 +134,11 @@ export default function ImageUploadPanel({
                 className="image-upload-card relative rounded-xl overflow-hidden shadow-sm post-image-card"
                 style={{ backgroundColor: "var(--panel-elevated)" }}
               >
-                <img
+                <Image
                   src={img.url}
                   alt={img.name}
                   className="w-full h-full object-cover"
-                />
+                 fill={true} />
                 <button
                   onClick={() => handleDelete(idx)}
                   className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center transition-colors duration-200 hover:bg-black/40"

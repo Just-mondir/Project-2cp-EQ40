@@ -12,6 +12,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
+from apps.core.pagination import StandardResultsSetPagination
 from apps.notifications.registry import notify
 from apps.users.models import User
 from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails, Annotation, MobilizationEvent
@@ -34,6 +35,61 @@ class PostPagination(PageNumberPagination):
     max_page_size = 100
 
 
+def _build_post_list_context(request: Request, page):
+    users_map = {}
+    images_map = {}
+    alerts_map = {}
+    events_map = {}
+    annotations_map = {}
+    gemmed_post_ids = set()
+    saved_post_ids = set()
+
+    if page:
+        author_ids = list(set(str(post.author_id) for post in page if post.author_id))
+        users = User.objects.filter(id__in=author_ids)
+        for user in users:
+            users_map[str(user.id)] = user
+
+        images = PostImage.objects(post__in=page)
+        for img in images:
+            post_id = str(img.post.id)
+            if post_id not in images_map:
+                images_map[post_id] = []
+            images_map[post_id].append(img)
+
+        alerts = AlertDetails.objects(post__in=page)
+        for alert in alerts:
+            alerts_map[str(alert.post.id)] = alert
+
+        events = EventDetails.objects(post__in=page)
+        for event in events:
+            events_map[str(event.post.id)] = event
+
+        annotations = Annotation.objects(post__in=page, status="accepted")
+        for ann in annotations:
+            post_id = str(ann.post.id)
+            annotations_map[post_id] = annotations_map.get(post_id, 0) + 1
+
+        if request.user and request.user.is_authenticated:
+            user_id = str(request.user.id)
+            user_gems = Gem.objects(post__in=page, user_id=user_id)
+            gemmed_post_ids = set(str(g.post.id) for g in user_gems)
+
+            user_saves = Save.objects(post__in=page, user_id=user_id)
+            saved_post_ids = set(str(s.post.id) for s in user_saves)
+
+    return {
+        "request": request,
+        "users_map": users_map,
+        "images_map": images_map,
+        "alerts_map": alerts_map,
+        "events_map": events_map,
+        "annotations_map": annotations_map,
+        "gemmed_post_ids": gemmed_post_ids,
+        "saved_post_ids": saved_post_ids,
+    }
+
+
 def _save_post_images(post: Post, image_files) -> None:
     existing_count = PostImage.objects(post=post).count()
     allowed = 5 - existing_count
@@ -52,6 +108,8 @@ class PostListCreateView(APIView):
 
     def get(self, request: Request) -> Response:
         post_type = request.query_params.get("post_type")
+        has_images = request.query_params.get("has_images")
+        
         public_posts = Post.objects(
             is_deleted=False,
             visibility="public",
@@ -59,10 +117,17 @@ class PostListCreateView(APIView):
         )
         if post_type:
             public_posts = public_posts.filter(post_type=post_type)
+            
+        if has_images and has_images.lower() == "true":
+            # Get IDs of posts that have at least one image
+            image_post_ids = PostImage.objects.distinct("post")
+            public_posts = public_posts.filter(id__in=image_post_ids)
+            
         posts = public_posts.order_by("-created_at")
-        paginator = PostPagination()
+        paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
     def post(self, request: Request) -> Response:
@@ -365,7 +430,7 @@ class MySavedPostsView(APIView):
         posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -378,7 +443,7 @@ class MyGemedPostsView(APIView):
         posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -393,7 +458,7 @@ class UserEventsPostsView(APIView):
         posts = Post.objects(author_id=str(user.id), post_type="event", group_id__in=["", None], is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -408,7 +473,7 @@ class UserAlertsPostsView(APIView):
         posts = Post.objects(author_id=str(user.id), post_type="alert", group_id__in=["", None], is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -418,7 +483,7 @@ class EventsView(APIView):
         posts = Post.objects(post_type="event", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -437,7 +502,7 @@ class UpcomingEventsView(APIView):
         posts = Post.objects(id__in=post_ids, post_type="event", is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
 

@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 import { useState, useEffect } from "react";
 
 type Monument = {
@@ -110,7 +111,7 @@ export default function MonumentsInDanger() {
       style={{ backgroundColor: "#FFF8E2" }}
     >
       <div className="absolute inset-y-0 left-0 w-full md:w-1/2 overflow-hidden">
-        <img
+        <Image
           src={active.src}
           alt={active.alt}
           className="absolute inset-0 w-full h-full object-cover"
@@ -119,7 +120,7 @@ export default function MonumentsInDanger() {
             transform: "scale(1.03)",
             objectPosition: "left center",
           }}
-        />
+         fill={true} />
         <div className="absolute inset-0 bg-white/40 pointer-events-none" />
         <div
           className="absolute inset-0"
@@ -199,11 +200,11 @@ export default function MonumentsInDanger() {
                   }}
                   onMouseEnter={() => setActiveIndex(idx)}
                 >
-                  <img
+                  <Image
                     src={monument.src}
                     alt={monument.alt}
                     className="w-full h-full object-cover"
-                  />
+                   fill={true} />
                   {activeIndex === idx && (
                     <div
                       className="absolute bottom-0 left-0 right-0 h-1"

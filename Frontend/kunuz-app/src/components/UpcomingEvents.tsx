@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 
 import { useEffect, useState } from "react";
 import { Lato } from "next/font/google";
@@ -110,11 +111,11 @@ function EventCard({ item }: { item: EventItem }) {
     >
       {hasImage && (
         <div className="relative h-full shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
-          <img
+          <Image
             src={item.imageUrl}
             alt={item.title}
             className="w-full h-full object-cover rounded-l-2xl"
-          />
+           fill={true} />
         </div>
       )}
 
@@ -173,9 +174,9 @@ export default function UpcomingEvents() {
         if (!res.ok) return;
 
         const data = await res.json();
-        const results = data.results || data;
+        const results = data.data?.results || data.results || data;
 
-        const fetched: EventItem[] = ((results || []) as EventApiPost[])
+        const fetched: EventItem[] = (Array.isArray(results) ? results : [])
           .slice(0, 6)
           .map((post) => {
             const stripHtml = (html: string) => {

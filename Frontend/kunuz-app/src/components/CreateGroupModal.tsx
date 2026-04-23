@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 
 import React, { useState, useRef } from "react";
 import GroupForm from "./GroupForm";
@@ -110,7 +111,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
                             className="w-full aspect-[21/8] rounded-xl border-2 border-dashed border-[#D6CFC3] bg-[#F7F5EF] flex items-center justify-center overflow-hidden cursor-pointer hover:border-[#432817] transition-colors"
                         >
                             {coverPhoto ? (
-                                <img src={coverPhoto} alt="Cover" className="w-full h-full object-cover" />
+                                <Image src={coverPhoto} alt="Cover" className="w-full h-full object-cover"  fill={true} />
                             ) : (
                                 <div className="flex flex-col items-center gap-2">
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#79747E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -128,7 +129,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
                             className="w-full aspect-square rounded-xl border-2 border-dashed border-[#D6CFC3] bg-[#F7F5EF] flex flex-col items-center justify-center gap-3 overflow-hidden cursor-pointer hover:border-[#432817] transition-colors"
                         >
                             {groupPhoto ? (
-                                <img src={groupPhoto} alt="Group" className="w-full h-full object-cover" />
+                                <Image src={groupPhoto} alt="Group" className="w-full h-full object-cover"  fill={true} />
                             ) : (
                                 <>
                                     <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#ADADAD" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">

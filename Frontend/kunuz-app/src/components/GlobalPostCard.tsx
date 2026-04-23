@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
@@ -258,12 +259,12 @@ function UserAvatar({
 
   if (imageUrl) {
     return (
-      <img
+      <Image
         src={imageUrl}
         alt="Profile picture"
         className="rounded-full object-cover flex-shrink-0"
         style={{ width: size, height: size }}
-      />
+       fill={true} />
     );
   }
 
@@ -1077,12 +1078,12 @@ function AnnotationItem({
         ) : null}
 
         {imageUrl ? (
-          <img
+          <Image
             src={imageUrl}
             alt="annotation"
             className="mt-2 rounded-lg max-w-full"
             style={{ maxHeight: 160, objectFit: "cover" }}
-          />
+           fill={true} />
         ) : null}
 
         <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
@@ -1504,7 +1505,7 @@ function PostModal({
                 </>
               ) : null}
               {imageUrl ? (
-                <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+                <Image src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain"  fill={true} />
               ) : null}
             </div>
           );
@@ -1800,6 +1801,7 @@ function PostModal({
   );
 }
 
+const PostCard = PostModal;
 
 export { PostCard as GlobalPostCard, PostModal as GlobalPostModal };
 export type { ApiPost, PostInteraction };

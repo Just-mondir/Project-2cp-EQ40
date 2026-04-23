@@ -19,6 +19,7 @@ const slugifyForUsername = (value: string): string =>
 const randomSuffix = () => Math.random().toString(36).substring(2, 6);
 
 type ApiResponseBody = {
+  success?: boolean;
   message?: string;
   errors?: Record<string, unknown>;
   data?: Record<string, unknown>;
@@ -75,7 +76,9 @@ const isUsernameConflictResponse = (body: unknown): boolean => {
   if (!isRecord(body)) {
     return false;
   }
-  const usernameError = pickFirstErrorMessage(body.errors?.username);
+  const usernameError = isRecord(body.errors)
+    ? pickFirstErrorMessage(body.errors.username)
+    : null;
   if (!usernameError) {
     return false;
   }

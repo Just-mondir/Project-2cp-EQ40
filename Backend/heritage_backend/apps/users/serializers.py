@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate
 from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.cache import cache
 
 import bleach
 
@@ -18,6 +19,7 @@ def _sanitize_plain(value: str) -> str:
     return bleach.clean(value, tags=[], strip=True).strip()
 
 from apps.core.responses import RESPONSE_CONFLICT_MESSAGE
+from apps.posts.models import Post
 from .models import BlacklistedToken, ExpertiseChoices, OTPCode, OTPPurposeChoices, User
 from .utils import create_hashed_otp, is_otp_expired, send_otp_email, verify_otp_code
 
@@ -55,6 +57,36 @@ class PublicUserProfileSerializer(serializers.Serializer):
     badge = serializers.CharField()
     role = serializers.CharField()
     created_at = serializers.DateTimeField()
+    posts_count = serializers.SerializerMethodField()
+    likes_count = serializers.SerializerMethodField()
+    events_count = serializers.SerializerMethodField()
+
+    def get_posts_count(self, obj) -> int:
+        cache_key = f"public_profile_posts_count:{obj.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        value = Post.objects(author_id=str(obj.id), is_deleted=False, group_id__in=["", None]).count()
+        cache.set(cache_key, value, 60)
+        return value
+
+    def get_likes_count(self, obj) -> int:
+        cache_key = f"public_profile_likes_count:{obj.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        value = sum(post.gems_count or 0 for post in Post.objects(author_id=str(obj.id), is_deleted=False).only("gems_count"))
+        cache.set(cache_key, value, 60)
+        return value
+
+    def get_events_count(self, obj) -> int:
+        cache_key = f"public_profile_events_count:{obj.id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        value = Post.objects(author_id=str(obj.id), post_type="event", is_deleted=False, group_id__in=["", None]).count()
+        cache.set(cache_key, value, 60)
+        return value
 
 
 class RegisterSerializer(serializers.Serializer):

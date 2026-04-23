@@ -95,25 +95,48 @@ class PostListSerializer(serializers.Serializer):
     updated_at = serializers.DateTimeField(read_only=True)
 
     def get_user_display_name(self, obj):
-        user = _get_user_by_id(obj.author_id)
+        users_map = self.context.get("users_map")
+        if users_map is not None:
+            user = users_map.get(obj.author_id)
+        else:
+            user = _get_user_by_id(obj.author_id)
         return user.display_name if user else ""
 
     def get_user_username(self, obj):
-        user = _get_user_by_id(obj.author_id)
+        users_map = self.context.get("users_map")
+        if users_map is not None:
+            user = users_map.get(obj.author_id)
+        else:
+            user = _get_user_by_id(obj.author_id)
         return user.username if user else ""
 
     def get_user_profile_picture(self, obj):
-        user = _get_user_by_id(obj.author_id)
+        users_map = self.context.get("users_map")
+        if users_map is not None:
+            user = users_map.get(obj.author_id)
+        else:
+            user = _get_user_by_id(obj.author_id)
         return user.profile_picture if user else ""
 
     def get_title(self, obj):
         return obj.title
 
     def get_images(self, obj):
-        images = PostImage.objects(post=obj)
+        images_map = self.context.get("images_map")
+        if images_map is not None:
+            images = images_map.get(str(obj.id), [])
+        else:
+            images = PostImage.objects(post=obj)
         return PostImageSerializer(images, many=True).data
 
     def get_alert_details(self, obj):
+        alerts_map = self.context.get("alerts_map")
+        if alerts_map is not None:
+            details = alerts_map.get(str(obj.id))
+            if details:
+                return AlertDetailsSerializer(details).data
+            return None
+        
         try:
             details = AlertDetails.objects.get(post=obj)
             return AlertDetailsSerializer(details).data
@@ -121,6 +144,13 @@ class PostListSerializer(serializers.Serializer):
             return None
 
     def get_event_details(self, obj):
+        events_map = self.context.get("events_map")
+        if events_map is not None:
+            details = events_map.get(str(obj.id))
+            if details:
+                return EventDetailsSerializer(details).data
+            return None
+
         try:
             details = EventDetails.objects.get(post=obj)
             return EventDetailsSerializer(details).data
@@ -128,15 +158,26 @@ class PostListSerializer(serializers.Serializer):
             return None
 
     def get_accepted_annotations_count(self, obj):
+        annotations_map = self.context.get("annotations_map")
+        if annotations_map is not None:
+            return annotations_map.get(str(obj.id), 0)
         return Annotation.objects(post=obj, status="accepted").count()
 
     def get_is_gemmed(self, obj):
+        gemmed_post_ids = self.context.get("gemmed_post_ids")
+        if gemmed_post_ids is not None:
+            return str(obj.id) in gemmed_post_ids
+
         request = self.context.get("request")
         if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
             return False
         return Gem.objects(post=obj, user_id=str(request.user.id)).first() is not None
 
     def get_is_saved(self, obj):
+        saved_post_ids = self.context.get("saved_post_ids")
+        if saved_post_ids is not None:
+            return str(obj.id) in saved_post_ids
+
         request = self.context.get("request")
         if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
             return False

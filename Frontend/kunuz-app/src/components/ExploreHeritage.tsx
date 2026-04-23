@@ -1,3 +1,4 @@
+import Image from "next/image";
 interface PostImage {
   id: string;
   image: string;
@@ -39,12 +40,12 @@ function stripHtml(html: string): string {
 
 async function getHeritageImages(): Promise<HeritageImage[]> {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/posts/`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/posts/?has_images=true&page_size=6`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return fallbackImages;
     const data = await res.json();
-    const posts: Post[] = data.results || [];
+    const posts: Post[] = (data.data?.results || data.results) || [];
     const postsWithImages = posts
       .filter((post) => post.images?.[0]?.image)
       .slice(0, 6)
@@ -73,11 +74,11 @@ function ImageCard({ img, height }: { img: HeritageImage | undefined; height: st
     <div
       className={`w-full ${height} rounded-2xl overflow-hidden relative group cursor-pointer transition-transform duration-300 ease-out hover:scale-105`}
     >
-      <img
+      <Image
         src={img.src}
         alt={img.alt}
         className="w-full h-full object-cover rounded-2xl transition-transform duration-300 ease-out group-hover:scale-110 group-hover:blur-[1px]"
-      />
+       fill={true} />
       <div className="absolute inset-0 bg-black/40 flex items-center justify-center px-2 text-center text-white text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         {img.title}
       </div>

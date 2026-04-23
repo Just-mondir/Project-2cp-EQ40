@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -42,11 +43,12 @@ function UserAvatar({ user, size = 40 }: { user: User; size?: number }) {
           backgroundColor: SISAL,
         }}
       >
-        <img
+        <Image
           src={user.avatarUrl}
           alt={user.username}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          onError={(e) => {
+           fill={true}
+           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}
         />

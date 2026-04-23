@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Image from "next/image";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck } from "lucide-react";
@@ -58,7 +59,7 @@ function Avatar({ item }: { item: NotificationItem }) {
   return (
     <div className="relative h-12 w-12 overflow-hidden rounded-full border border-[#D4C4AE] bg-[#EFE4D2] shadow-sm">
       {item.actor_profile_picture ? (
-        <img src={item.actor_profile_picture} alt={item.actor_display_name} className="h-full w-full object-cover" />
+        <Image src={item.actor_profile_picture} alt={item.actor_display_name} className="h-full w-full object-cover"  fill={true} />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#5E432C]">{initials}</div>
       )}

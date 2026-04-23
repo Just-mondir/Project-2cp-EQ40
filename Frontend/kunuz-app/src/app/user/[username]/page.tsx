@@ -262,6 +262,11 @@ function resolveProfilePictureUrl(profilePicture?: string): string {
   return value;
 }
 
+function resolveBackendUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 function UserAvatar({
   profilePicture,
   size,
@@ -1480,6 +1485,8 @@ export default function ProfilePage() {
 
   const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [loadingMorePosts, setLoadingMorePosts] = useState(false);
+  const [allPostsNextUrl, setAllPostsNextUrl] = useState<string | null>(null);
   const [gemmedPosts, setGemmedPosts] = useState<ApiPost[]>([]);
   const [loadingGemmed, setLoadingGemmed] = useState(false);
   const [savedPosts, setSavedPosts] = useState<ApiPost[]>([]);
@@ -1506,6 +1513,7 @@ export default function ProfilePage() {
     likes_count: 0,
     events_count: 0,
   });
+  const postsSentinelRef = useRef<HTMLDivElement | null>(null);
 
   const params = useParams();
   const viewedUsername = typeof params?.username === "string" ? params.username : loggedInUsername;
@@ -1572,39 +1580,6 @@ export default function ProfilePage() {
           const json = await res.json();
           const data = json.data ?? json;
 
-          // ← fetch events count
-          let eventsCount = 0;
-          try {
-            const eventsRes = await fetch(
-              `${API_URL}/api/posts/user/${viewedUsername}/events/`,
-              { headers: { Authorization: `Bearer ${getAuthToken()}` } }
-            );
-            if (eventsRes.ok) {
-              const eventsData = await eventsRes.json();
-              eventsCount = eventsData.count ?? (eventsData.results ?? eventsData).length;
-            }
-          } catch { }
-
-          // ← fetch likes count (sum of gems_count) and posts count — reuse same request
-          let likesCount = 0;
-          let allPostsCount = 0;
-          try {
-            const postsRes = await fetch(
-              `${API_URL}/api/posts/user/${viewedUsername}/`,
-              { headers: { Authorization: `Bearer ${getAuthToken()}` } }
-            );
-            if (postsRes.ok) {
-              const postsData = await postsRes.json();
-              const posts = postsData.results ?? postsData;
-              likesCount = posts.reduce(
-                (sum: number, p: any) => sum + (p.gems_count ?? 0),
-                0
-              );
-              // ← fetch real posts count from same response
-              allPostsCount = postsData.count ?? posts.length;
-            }
-          } catch { }
-
           setProfileInfo({
             username: data.username ?? "",
             display_name: data.display_name ?? data.username ?? "",
@@ -1615,10 +1590,9 @@ export default function ProfilePage() {
             badge: data.badge ?? null,
             is_verified: data.is_verified ?? false,
             role: data.role ?? "",
-            // ← use real fetched count instead of data.posts_count
-            posts_count: allPostsCount,
-            likes_count: likesCount,
-            events_count: eventsCount,
+            posts_count: Number(data.posts_count ?? 0),
+            likes_count: Number(data.likes_count ?? 0),
+            events_count: Number(data.events_count ?? 0),
           });
         }
       } catch (err) {
@@ -1633,22 +1607,43 @@ export default function ProfilePage() {
     if (!viewedUsername) return;
     const fetchAllPosts = async () => {
       setLoadingPosts(true);
-      let url: string | null = `${API_URL}/api/posts/user/${viewedUsername}/`;
-      const collected: ApiPost[] = [];
       try {
-        while (url) {
-          const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
-          if (!res.ok) break;
-          const data: any = await res.json();
-          collected.push(...(data.results ?? []).map(mapPost));
-          url = data.next ?? null;
-        }
-        setAllPosts(collected);
+        const res: Response = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data: any = await res.json();
+        const payload = data.data ?? data;
+        const results = Array.isArray(payload.results) ? payload.results : [];
+        setAllPosts(results.map(mapPost));
+        setAllPostsNextUrl(typeof payload.next === "string" && payload.next ? payload.next : null);
       } catch (err) { console.error("Error fetching posts:", err); }
       finally { setLoadingPosts(false); }
     };
     fetchAllPosts();
   }, [viewedUsername]);
+
+  useEffect(() => {
+    if (activeTab !== "grid" || !allPostsNextUrl || loadingPosts || loadingMorePosts) return;
+    const observer = new IntersectionObserver(async (entries) => {
+      if (!entries[0].isIntersecting || !allPostsNextUrl) return;
+      try {
+        setLoadingMorePosts(true);
+        const res = await fetch(resolveBackendUrl(allPostsNextUrl), { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data: any = await res.json();
+        const payload = data.data ?? data;
+        const results = Array.isArray(payload.results) ? payload.results : [];
+        setAllPosts((prev) => [...prev, ...results.map(mapPost)]);
+        setAllPostsNextUrl(typeof payload.next === "string" && payload.next ? payload.next : null);
+      } catch (err) {
+        console.error("Error loading more profile posts:", err);
+      } finally {
+        setLoadingMorePosts(false);
+      }
+    }, { rootMargin: "200px" });
+
+    if (postsSentinelRef.current) observer.observe(postsSentinelRef.current);
+    return () => observer.disconnect();
+  }, [activeTab, allPostsNextUrl, loadingPosts, loadingMorePosts]);
 
   useEffect(() => {
     if (!isOwnProfile || activeTab !== "gems") return;
@@ -1743,7 +1738,13 @@ export default function ProfilePage() {
           {activeTab === "grid" && (
             loadingPosts ? <Spinner /> :
               allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message="No Posts yet" /> :
-                <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+                <>
+                  <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+                  {allPostsNextUrl && (
+                    <div ref={postsSentinelRef} className="h-8" />
+                  )}
+                  {loadingMorePosts && <Spinner />}
+                </>
           )}
           {isOwnProfile && activeTab === "gems" && (
             loadingGemmed ? <Spinner /> :
