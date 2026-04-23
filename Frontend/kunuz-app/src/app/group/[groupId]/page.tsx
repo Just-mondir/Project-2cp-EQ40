@@ -339,7 +339,13 @@ const handleJoin = async () => {
                     <h2 className="font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
                       {fmtCount(group.member_count)} Members
                     </h2>
-                    <button className="text-[10px] px-4 py-1 rounded-full font-bold" style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}>View all</button>
+                    <button
+  className="text-[10px] px-4 py-1 rounded-full font-bold transition-colors"
+  style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)", cursor: "pointer" }}
+  onClick={() => router.push(`/group/${groupId}/members`)}
+>
+  View all
+</button>
                   </div>
 
                   <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
