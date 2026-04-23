@@ -113,6 +113,7 @@ export default function GroupDetailPage() {
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [myPostsSidebar, setMyPostsSidebar] = useState<Post[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   /* fetch group details */
@@ -132,7 +133,6 @@ export default function GroupDetailPage() {
       .finally(() => setLoading(false));
   }, [groupId]);
 
-  /* fetch members */
   useEffect(() => {
     if (!groupId) return;
     const token = getToken();
@@ -143,6 +143,24 @@ export default function GroupDetailPage() {
       .then(data => setMembers(Array.isArray(data.data) ? data.data : []))
       .catch(console.error);
   }, [groupId]);
+
+  /* fetch my posts for sidebar */
+  useEffect(() => {
+    if (!groupId || !group?.is_member) {
+      setMyPostsSidebar([]);
+      return;
+    }
+    const token = getToken();
+    fetch(`${API_URL}/api/groups/${groupId}/my-posts/`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then(r => r.json())
+      .then(data => {
+        const results = data.data?.results ?? data.results ?? [];
+        setMyPostsSidebar(results.slice(0, 3));
+      })
+      .catch(console.error);
+  }, [groupId, group?.is_member]);
 
   /* fetch posts */
   const fetchPosts = useCallback(async (url: string, append = false) => {
@@ -183,37 +201,37 @@ export default function GroupDetailPage() {
     obs.observe(el);
     return () => obs.disconnect();
   }, [nextUrl, postsLoading, fetchPosts]);
- const handleInvite = async (users: User[]) => {
-  if (!group || users.length === 0) return;
-  const token = getToken();
-  await Promise.allSettled(
-    users.map(u =>
-      fetch(`${API_URL}/api/groups/${group.id}/invite/`, {
+  const handleInvite = async (users: User[]) => {
+    if (!group || users.length === 0) return;
+    const token = getToken();
+    await Promise.allSettled(
+      users.map(u =>
+        fetch(`${API_URL}/api/groups/${group.id}/invite/`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ recipient_id: u.id }),
+        })
+      )
+    );
+  };
+
+  const handleJoin = async () => {
+    if (!group || joining) return;
+    setJoining(true);
+    const token = getToken();
+    try {
+      const res = await fetch(`${API_URL}/api/groups/${group.id}/join/`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ recipient_id: u.id }),
-      })
-    )
-  );
-};
-
-const handleJoin = async () => {
-  if (!group || joining) return;
-  setJoining(true);
-  const token = getToken();
-  try {
-    const res = await fetch(`${API_URL}/api/groups/${group.id}/join/`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    });
-    if (res.ok || res.status === 201) {
-      setJoinStatus("pending");
-      setGroup(prev => prev ? { ...prev, member_count: prev.member_count + 1 } : prev);
-      setShowJoinModal(true);
-    }
-  } catch (e) { console.error(e); }
-  finally { setJoining(false); }
-};
+      });
+      if (res.ok || res.status === 201) {
+        setJoinStatus("pending");
+        setGroup(prev => prev ? { ...prev, member_count: prev.member_count + 1 } : prev);
+        setShowJoinModal(true);
+      }
+    } catch (e) { console.error(e); }
+    finally { setJoining(false); }
+  };
   if (loading) return (
     <div className="flex h-screen items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
       <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
@@ -237,15 +255,15 @@ const handleJoin = async () => {
 
           {/* ── GROUP HEADER COMPONENT ── */}
           <GroupHeader
-  group={group}
-  members={members}
-  joining={joining}
-  joinStatus={joinStatus}
-  onJoin={handleJoin}
-  onInvite={() => setShowInviteModal(true)}
-  tab={tab}
-  onTabChange={setTab}
-  GroupeMenuComponent={
+            group={group}
+            members={members}
+            joining={joining}
+            joinStatus={joinStatus}
+            onJoin={handleJoin}
+            onInvite={() => setShowInviteModal(true)}
+            tab={tab}
+            onTabChange={setTab}
+            GroupeMenuComponent={
               <GroupeMenu
                 groupId={group.id}
                 groupName={group.name}
@@ -328,58 +346,104 @@ const handleJoin = async () => {
               )}
             </div>
 
-          
-              <div className="flex-1 min-w-[320px] max-w-[380px] hidden lg:block sticky top-[60px]">
-                <div
-                  className="rounded-2xl overflow-hidden"
-                  style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 2px 14px rgba(67,40,23,0.08)" }}
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                    <h2 className="font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                      {fmtCount(group.member_count)} Members
-                    </h2>
-                    <button className="text-[10px] px-4 py-1 rounded-full font-bold" style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}>View all</button>
-                  </div>
 
-                  <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+            <div className="flex-1 min-w-[320px] max-w-[380px] hidden lg:block sticky top-[60px]">
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 2px 14px rgba(67,40,23,0.08)" }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                  <h2 className="font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                    {fmtCount(group.member_count)} Members
+                  </h2>
+                  <button className="text-[10px] px-4 py-1 rounded-full font-bold" style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}>View all</button>
+                </div>
 
-                  {/* Admin */}
-                  {adminMember && (
-                    <div className="px-5 pt-4 pb-2">
-                      <div className="flex items-center gap-2 mb-3">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="8" r="4" /><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        </svg>
-                        <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Admin</span>
-                      </div>
-                      <MemberRow member={adminMember} router={router} />
-                    </div>
-                  )}
+                <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
 
-                  <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
-
-                  {/* Members */}
+                {/* Your Posts */}
+                {group.is_member && myPostsSidebar.length > 0 && (
                   <div className="px-5 pt-4 pb-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span className="text-[14px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Your Posts</span>
+                      </div>
+                      <button
+                        className="text-[10px] font-bold hover:underline ripple"
+                        style={{ color: "#8B6914", backgroundColor: "transparent", border: "none", cursor: "pointer" }}
+                        onClick={() => setTab("my posts")}
+                      >
+                        See all
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {myPostsSidebar.map(p => (
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-3 cursor-pointer group"
+                          onClick={() => setSelectedPost(p)}
+                        >
+                          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--border-soft)]">
+                            <img
+                              src={p.images?.[0]?.image ? resolveUrl(p.images[0].image) : "/heritage-photography.jpg"}
+                              alt=""
+                              className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                            />
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-[12px] font-bold truncate leading-snug group-hover:text-[#8B6914] transition-colors" style={{ color: "var(--foreground)" }}>
+                              {p.title}
+                            </span>
+                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                              {new Date(p.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Admin */}
+                {adminMember && (
+                  <div className="px-5 pt-4 pb-2">
                     <div className="flex items-center gap-2 mb-3">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="8" r="4" /><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      </svg>
+                      <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Admin</span>
+                    </div>
+                    <MemberRow member={adminMember} router={router} />
+                  </div>
+                )}
+
+                <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                {/* Members */}
+                <div className="px-5 pt-4 pb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Members</span>
+                  </div>
+                  {regularMembers.length > 0 ? (
+                    regularMembers.slice(0, 20).map(m => <MemberRow key={m.id} member={m} router={router} />)
+                  ) : (
+                    <div className="flex flex-col items-center py-6">
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border-soft)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                       </svg>
-                      <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Members</span>
+                      <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--text-muted)" }}>No members</p>
                     </div>
-                    {regularMembers.length > 0 ? (
-                      regularMembers.slice(0, 20).map(m => <MemberRow key={m.id} member={m} router={router} />)
-                    ) : (
-                      <div className="flex flex-col items-center py-6">
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border-soft)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                        </svg>
-                        <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--text-muted)" }}>No members</p>
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
+            </div>
           </div>
         </div>
       </div>
@@ -414,16 +478,16 @@ const handleJoin = async () => {
           }}
         />
       )}
-       {showJoinModal && (
-  <JoinRequestSentModal onClose={() => setShowJoinModal(false)} />
-)}
-{showInviteModal && (
-  <InviteUsersModal
-    isOpen={showInviteModal}
-    onClose={() => setShowInviteModal(false)}
-    onConfirm={handleInvite}
-  />
-)}
+      {showJoinModal && (
+        <JoinRequestSentModal onClose={() => setShowJoinModal(false)} />
+      )}
+      {showInviteModal && (
+        <InviteUsersModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          onConfirm={handleInvite}
+        />
+      )}
     </div>
   );
 }
@@ -453,7 +517,7 @@ function MemberRow({ member, router }: { member: Member; router: ReturnType<type
       >
         View profile
       </button>
-       
+
     </div>
   );
 }

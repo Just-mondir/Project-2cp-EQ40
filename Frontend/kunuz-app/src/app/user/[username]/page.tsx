@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle } from "lucide-react";
+import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard, Mail, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
@@ -1237,26 +1237,13 @@ function ProfileHeader({
   const addPostT = useTranslations("auth.pages.addPost");
   const editProfileT = useTranslations("auth.pages.editProfile");
   const userPageT = useTranslations("auth.pages.userProfile");
-  const [showMenu, setShowMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [showDashboardModal, setShowDashboardModal] = useState(false);
   const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const menuRef = useRef<any>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setShowMenu(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
-  const isModeratorOrAdmin = isOwnProfile && (profileInfo.role === "moderator" || profileInfo.role === "admin");
-  const menuItems = isModeratorOrAdmin
-    ? [dashboardT("items.changeEmail"), dashboardT("items.changePassword"), dashboardT("items.platformStatistics")]
-    : [dashboardT("items.changeEmail"), dashboardT("items.changePassword")];
 
   const handleLogout = async () => {
     await logoutClient();
@@ -1282,29 +1269,10 @@ function ProfileHeader({
 
   return (
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
-      <div className="absolute top-4 right-6" ref={menuRef}>
-        <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowMenu(!showMenu)}>
+      <div className="absolute top-4 right-6">
+        <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
         </button>
-        {showMenu && (
-          <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-            {menuItems.map((item, i) => (
-              <button
-                key={i}
-                className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                onClick={() => {
-                  setShowMenu(false);
-                  if (item === dashboardT("items.changeEmail")) setShowChangeEmailModal(true);
-                  if (item === dashboardT("items.changePassword")) setShowChangePasswordModal(true);
-                  if (item === dashboardT("items.platformStatistics")) router.push("/statistics");
-                }}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── Popups ── */}
@@ -1426,7 +1394,8 @@ function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: str
   );
 }
 
-/* ───────────────── POST GRID CARD ───────────────── */
+/* ───────────────── DASHBOARD SECTION ───────────────── */
+
 
 function PostGridCard({
   post, interaction, onClick, onCommentClick, onAnnotationClick,
@@ -1762,7 +1731,7 @@ export default function ProfilePage() {
         />
       )}
 
-      <LeftSidebar activePage="profile" />
+      <LeftSidebar activePage={isOwnProfile ? "profile" : ""} />
 
       <main className="pl-[80px] pr-4">
         <div className="max-w-4xl mx-auto">

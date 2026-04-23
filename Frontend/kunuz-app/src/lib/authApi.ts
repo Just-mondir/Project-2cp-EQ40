@@ -73,10 +73,7 @@ function extractErrorMessage(
 ): string {
   if (!envelope) return fallback;
 
-  if (typeof envelope.message === "string" && envelope.message.trim()) {
-    return envelope.message;
-  }
-
+  // Prioritize specific field errors if they exist
   if (envelope.errors && typeof envelope.errors === "object") {
     const values = Object.values(envelope.errors);
     if (values.length > 0) {
@@ -88,6 +85,11 @@ function extractErrorMessage(
         return first;
       }
     }
+  }
+
+  // Fallback to top-level message
+  if (typeof envelope.message === "string" && envelope.message.trim()) {
+    return envelope.message;
   }
 
   return fallback;
