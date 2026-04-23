@@ -123,19 +123,13 @@ function PillGroup({ options, value, onChange, variant = "default" }: {
 
 const normalizeExpertiseValue = (value?: string) => {
   switch ((value || "").toLowerCase()) {
-    case "amateur":
-      return "Amateur";
-    case "student":
-      return "Student";
-    case "researcher":
-      return "Researcher";
-    case "historian":
-      return "Historian";
+    case "amateur":    return "amateur";   // ← lowercase
+    case "student":    return "student";   // ← lowercase
+    case "researcher": return "researcher";
+    case "historian":  return "historian";
     case "guide":
-    case "tour guide":
-      return "Tour Guide";
-    default:
-      return value || "Researcher";
+    case "tour guide": return "guide";
+    default:           return "";
   }
 };
 
@@ -152,12 +146,12 @@ export default function ProfileForm({ onCancel, onDone, initialValues = {} }: {
 }) {
   const t = useTranslations("auth.profileForm");
   const expertiseOptions: PillOption[] = [
-    { value: "Amateur", label: t("expertiseOptions.amateur") },
-    { value: "Student", label: t("expertiseOptions.student") },
-    { value: "Researcher", label: t("expertiseOptions.researcher") },
-    { value: "Historian", label: t("expertiseOptions.historian") },
-    { value: "Tour Guide", label: t("expertiseOptions.tourGuide") },
-  ];
+  { value: "amateur", label: t("expertiseOptions.amateur") },  // ← lowercase
+  { value: "student", label: t("expertiseOptions.student") },  // ← lowercase
+  { value: "researcher", label: t("expertiseOptions.researcher") },
+  { value: "historian", label: t("expertiseOptions.historian") },
+  { value: "guide", label: t("expertiseOptions.tourGuide") },  // ← "guide" not "Tour Guide"
+];
 
   const [formData, setFormData] = useState({
     firstName: initialValues.firstName ?? "",

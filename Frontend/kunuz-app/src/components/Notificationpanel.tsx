@@ -19,6 +19,7 @@ type NotificationItem = {
   message: string;
   is_read: boolean;
   created_at: string;
+  extra?: { request_id?: string; invitation_id?: string };
 };
 
 type NotificationResponse = {
@@ -82,11 +83,42 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
   relativeTimeLabel: string;
   someoneLabel: string;
 }) {
+  const [responding, setResponding] = useState(false);
+  const [responded, setResponded] = useState(false);
+
+  const handleRespond = async (status: "accepted" | "refused", e: React.MouseEvent) => {
+    e.stopPropagation();
+    setResponding(true);
+    try {
+      const invitationId = item.extra?.invitation_id ?? item.target_id;
+      await fetch(`${API_URL}/api/groups/invitations/${invitationId}/respond/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+      setResponded(true);
+      onRead(item.id);
+    } catch {
+      // silent fail
+    } finally {
+      setResponding(false);
+    }
+  };
+
+  const isInvite = item.event_type === "group_invite_received";
+  const isJoinRequest = item.event_type === "group_join_request";
+
+  // ── changed from <button> to <div> to avoid nested <button> hydration error ──
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => onRead(item.id)}
-      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${item.is_read ? "border-[#E4D8C8] bg-white/70" : "border-[#D8C1A3] bg-[#FFF8E2] shadow-[0_6px_18px_rgba(67,40,23,0.06)]"}`}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onRead(item.id); }}
+      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-pointer ${item.is_read ? "border-[#E4D8C8] bg-white/70" : "border-[#D8C1A3] bg-[#FFF8E2] shadow-[0_6px_18px_rgba(67,40,23,0.06)]"}`}
     >
       <Avatar item={item} />
       <div className="min-w-0 flex-1">
@@ -98,8 +130,101 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
           <span className="rounded-full bg-[#F3E6D3] px-2 py-0.5 font-medium">{item.event_type.replaceAll("_", " ")}</span>
           <span>{relativeTimeLabel}</span>
         </div>
+
+        {/* ── Accept/Decline for group invitations ── */}
+        {isInvite && !responded && (
+          <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              disabled={responding}
+              onClick={(e) => handleRespond("accepted", e)}
+              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              style={{ backgroundColor: "#432817", color: "#FFF8E2", border: "none", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              disabled={responding}
+              onClick={(e) => handleRespond("refused", e)}
+              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              style={{ backgroundColor: "transparent", color: "#432817", border: "1px solid #D8C1A3", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
+            >
+              Decline
+            </button>
+          </div>
+        )}
+
+        {/* ── Accept/Reject for join requests (admin sees this) ── */}
+        {isJoinRequest && !responded && (
+          <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              disabled={responding}
+              onClick={async (e) => {
+                e.stopPropagation();
+                setResponding(true);
+                try {
+                  await fetch(
+                    `${API_URL}/api/groups/${item.target_id}/requests/${item.extra?.request_id}/review/`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        Authorization: `Bearer ${getAuthToken()}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ status: "approved" }),
+                    }
+                  );
+                  setResponded(true);
+                  onRead(item.id);
+                } catch { }
+                finally { setResponding(false); }
+              }}
+              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              style={{ backgroundColor: "#432817", color: "#FFF8E2", border: "none", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              disabled={responding}
+              onClick={async (e) => {
+                e.stopPropagation();
+                setResponding(true);
+                try {
+                  await fetch(
+                    `${API_URL}/api/groups/${item.target_id}/requests/${item.extra?.request_id}/review/`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        Authorization: `Bearer ${getAuthToken()}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({ status: "rejected" }),
+                    }
+                  );
+                  setResponded(true);
+                  onRead(item.id);
+                } catch { }
+                finally { setResponding(false); }
+              }}
+              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              style={{ backgroundColor: "transparent", color: "#432817", border: "1px solid #D8C1A3", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
+            >
+              Reject
+            </button>
+          </div>
+        )}
+
+        {(isInvite || isJoinRequest) && responded && (
+          <p className="mt-2 text-[12px] font-semibold" style={{ color: "#8B6914" }}>
+            Response sent ✓
+          </p>
+        )}
+
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -301,3 +426,4 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     </div>
   );
 }
+

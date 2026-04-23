@@ -14,7 +14,7 @@ import LocationWorldCard from "@/components/LocationWorldCard";
 import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
 import NotificationModal from "@/components/NotificationModal";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 function stripHtmlFallback(html: string): string {
   let result = html;
@@ -1192,7 +1192,37 @@ function PostModal({
     </>
   );
 }
+function BioText({ bio }: { bio: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const lines = 2;
+  const isLong = bio.length > 120;
 
+  return (
+    <div className="max-w-md">
+      <p
+        className="text-sm leading-relaxed"
+        style={{
+          color: "#432817",
+          display: "-webkit-box",
+          WebkitLineClamp: expanded ? undefined : lines,
+          WebkitBoxOrient: "vertical",
+          overflow: expanded ? "visible" : "hidden",
+        } as React.CSSProperties}
+      >
+        {bio}
+      </p>
+      {isLong && (
+        <button
+          className="text-xs font-semibold mt-1"
+          style={{ color: "#8B6914", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          onClick={() => setExpanded(prev => !prev)}
+        >
+          {expanded ? "See less" : "See more"}
+        </button>
+      )}
+    </div>
+  );
+}
 /* ───────────────── PROFILE HEADER ───────────────── */
 
 function ProfileHeader({
@@ -1359,9 +1389,8 @@ function ProfileHeader({
             )}
           </div>
 
-          <p className="text-sm leading-relaxed max-w-md" style={{ color: "#432817" }}>
-            {stripHtml(profileInfo.bio)}
-          </p>
+          <BioText bio={stripHtml(profileInfo.bio)} />
+
         </div>
       </div>
 

@@ -13,6 +13,7 @@ EVENT_REGISTRY = {
     "reply_to_comment": "{actor} replied to your comment",
     "gem_on_comment": "{actor} liked your comment",
     "group_invite_received": "{actor} invited you to join {group_name}",
+    "group_join_request": "{actor} wants to join {group_name}",  
     "group_join_request_approved": "Your request to join {group_name} was approved",
     "group_join_request_rejected": "Your request to join {group_name} was rejected",
     "badge_request_reviewed": "Your badge request was reviewed",
@@ -48,6 +49,7 @@ def notify(
             target_type=target_type,
             target_id=str(target_id),
             message=message,
+            extra=context,  # ← add this
         )
         report.save()
         return report
