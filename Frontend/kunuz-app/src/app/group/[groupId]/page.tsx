@@ -173,7 +173,12 @@ export default function GroupDetailPage() {
       const data = await res.json();
       const results = data.data?.results ?? data.results ?? [];
       const next = data.data?.next ?? data.next ?? null;
-      setPosts(prev => append ? [...prev, ...results] : results);
+      setPosts(prev => {
+        if (!append) return results;
+        const existingIds = new Set(prev.map(p => p.id));
+        const uniqueNew = results.filter((p: any) => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
       setNextUrl(next);
     } catch (e) { console.error(e); }
     finally { setPostsLoading(false); }
@@ -310,9 +315,9 @@ export default function GroupDetailPage() {
                       <p className="mt-4 font-semibold" style={{ color: "var(--text-muted)" }}>No posts yet</p>
                     </div>
                   )}
-                  {posts.map(post => (
+                  {posts.map((post, idx) => (
                     <GlobalPostCard
-                      key={post.id}
+                      key={`${post.id}-${idx}`}
                       post={post as any}
                       isNew={false}
                       groupDetails={group}

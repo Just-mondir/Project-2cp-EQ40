@@ -2466,7 +2466,11 @@ export default function CommunitiesPageRoute() {
             ...normalizeApiPost(post),
             _key: previousLength + i,
           }));
-          setPosts(prev => [...prev, ...formattedPosts]);
+          setPosts(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const uniqueNew = formattedPosts.filter(p => !existingIds.has(p.id));
+            return [...prev, ...uniqueNew];
+          });
           const nextLink = payload.next !== undefined ? payload.next : data.next;
           setNextUrl(typeof nextLink === "string" && nextLink ? nextLink : null);
           if (formattedPosts.length > 0) setNewPostStart(previousLength);
@@ -2593,7 +2597,7 @@ export default function CommunitiesPageRoute() {
                   </div>
                 )}
                 {posts.map((post, index) => (
-                  <React.Fragment key={post.id && post.id !== "" ? `post-${post.id}` : (post._key ?? index)}>
+                  <React.Fragment key={`${post.id}-${index}`}>
                     <PostCard
                       groupDetails={groups.find(g => g.id === post.group_id) || undefined}
                       post={post}

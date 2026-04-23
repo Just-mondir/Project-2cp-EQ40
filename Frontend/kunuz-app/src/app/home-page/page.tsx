@@ -326,9 +326,6 @@ const GROUP_DEFINITIONS = [
   { key: "heritagePhotography", members: "2.7k", image: "/heritage-photography.jpg" },
   { key: "unescoWorldHeritage", members: "4.1k", image: "/unisco.jpg" },
   { key: "monumentsOfTipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
-  { key: "heritagePhotography", members: "2.7k", image: "/heritage-photography.jpg" },
-  { key: "unescoWorldHeritage", members: "4.1k", image: "/unisco.jpg" },
-  { key: "monumentsOfTipaza", members: "1.9k", image: "/monuments-of-tipaza.jpg" },
 ] as const;
 
 type GroupCard = {
@@ -2479,7 +2476,9 @@ export default function HomePageRoute() {
             _key: previousLength + i,
           }));
           setPosts(prev => {
-            const updated = [...prev, ...formattedPosts];
+            const existingIds = new Set(prev.map(p => p.id));
+            const uniqueNew = formattedPosts.filter(p => !existingIds.has(p.id));
+            const updated = [...prev, ...uniqueNew];
             const newNext = typeof data.next === "string" && data.next ? data.next : null;
             savePostsToCache(updated, newNext);
             return updated;
@@ -2591,7 +2590,7 @@ export default function HomePageRoute() {
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} title={t("guilds.title")} />
                 {posts.map((post, index) => (
-                  <React.Fragment key={post.id && post.id !== "" ? `post-${post.id}` : (post._key ?? index)}>
+                  <React.Fragment key={`${post.id}-${index}`}>
                     <PostCard
                       post={post}
                       isNew={index >= newPostStart && newPostStart !== -1}
