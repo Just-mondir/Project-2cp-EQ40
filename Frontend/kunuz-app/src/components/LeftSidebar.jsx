@@ -113,9 +113,51 @@ export default function LeftSidebar({
   const mutedText = isLegacyRoute ? "var(--legacy-route-muted-text)" : "var(--text-muted)";
   const foregroundText = isLegacyRoute ? "var(--legacy-route-foreground-text)" : "var(--foreground)";
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const notifContainerRef = useRef(null);
+
+  const fetchUnreadCount = async () => {
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      setUnreadCount(0);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_URL}/api/notifications/unread-count/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const json = await response.json();
+        // Handle both { data: { unread_count: N } } and { unread_count: N }
+        const count = json?.data?.unread_count !== undefined ? json.data.unread_count : (json?.unread_count !== undefined ? json.unread_count : 0);
+        setUnreadCount(Number(count));
+      }
+    } catch (err) {
+      console.error("Error fetching unread count:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 5000); // 5s
+
+    const handleUpdate = (e) => {
+      const newCount = Number(e.detail);
+      if (!isNaN(newCount)) {
+        setUnreadCount(newCount);
+      } else {
+        fetchUnreadCount();
+      }
+    };
+
+    window.addEventListener("refresh-unread-count", handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("refresh-unread-count", handleUpdate);
+    };
+  }, [pathname]); // Also refetch on navigation
 
   const fetchMiniNotifications = async () => {
     const token = localStorage.getItem("accessToken");
@@ -147,6 +189,7 @@ export default function LeftSidebar({
 
     const loadNotifications = async () => {
       await fetchMiniNotifications();
+      await fetchUnreadCount();
     };
 
     void loadNotifications();
@@ -218,7 +261,7 @@ export default function LeftSidebar({
         key: "notifications",
         label: t("nav.notifications"),
         href: "/notifications",
-        hasBadge: true,
+        hasBadge: unreadCount > 0,
         path: (
           <>
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -238,7 +281,7 @@ export default function LeftSidebar({
         ),
       },
     ],
-    [t, username],
+    [t, username, unreadCount],
   );
 
   return (
@@ -277,7 +320,10 @@ export default function LeftSidebar({
                   {item.path}
                 </svg>
                 {item.hasBadge && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                  <span
+                    className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#FF0000] rounded-full border-2 border-white z-20"
+                    title={`${unreadCount} new notifications`}
+                  />
                 )}
               </>
             );
@@ -479,7 +525,7 @@ export default function LeftSidebar({
                 {item.path}
               </svg>
               {item.hasBadge && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border" style={{ borderColor: navActiveIcon }} />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#FF0000] rounded-full border-2 border-white z-20" />
               )}
             </Link>
           );

@@ -344,10 +344,6 @@ export default function PostForm({
     "Ouled Nail",
     "Tassili n'Ajjer",
   ].map((value) => ({ value, label: t(`regions.${value}`) }));
-  const visibilityOptions = [
-    { value: "Public", label: t("options.visibility.public") },
-    { value: "Private", label: t("options.visibility.private") },
-  ];
 
   const [title, setTitle] = useState(initialValues.title ?? "");
   const [description, setDescription] = useState(
@@ -372,9 +368,6 @@ export default function PostForm({
   const [currentStatus, setCurrentStatus] = useState(
     initialValues.currentStatus ?? "under_intervention",
   );
-  const [visibility, setVisibility] = useState(
-    initialValues.visibility ?? "Public",
-  );
   const [selectedGroups, setSelectedGroups] = useState(
     initialValues.groups ?? [],
   );
@@ -389,10 +382,10 @@ export default function PostForm({
     setSelectedGroups((prev) => prev.filter((_, i) => i !== idx));
 
   const handleGroupsConfirm = (groups) => {
-    const names = groups.map((g) => g.name);
     setSelectedGroups((prev) => {
-      const existing = new Set(prev);
-      return [...prev, ...names.filter((n) => !existing.has(n))];
+      const existingIds = new Set(prev.map(g => g.id));
+      const newGroups = groups.filter(g => !existingIds.has(g.id));
+      return [...prev, ...newGroups.map(g => ({ id: g.id, name: g.name }))];
     });
   };
 
@@ -418,7 +411,7 @@ export default function PostForm({
       historicalPeriod,
       region,
       monumentType,
-      visibility,
+      visibility: selectedGroups.length > 0 ? "Private" : "Public",
       groups: selectedGroups,
       startTime,
       endTime,
@@ -633,13 +626,6 @@ export default function PostForm({
         <SectionBlock isLast={true}>
           <SectionLabel>{t("sections.postVisibility")} <span style={{ color: "red" }}>*</span></SectionLabel>
 
-          <div style={{ marginBottom: "14px" }}>
-            <PillGroup
-              options={visibilityOptions}
-              value={visibility}
-              onChange={setVisibility}
-            />
-          </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div
@@ -655,13 +641,11 @@ export default function PostForm({
                 border: "1px solid #ffffff",
                 boxShadow: "0 1px 4px rgba(67,40,23,0.06)",
                 minHeight: "46px",
-                opacity: visibility === "Private" ? 1 : 0.6,
-                pointerEvents: "auto",
               }}
             >
               {selectedGroups.map((group, i) => (
                 <span
-                  key={i}
+                  key={group.id}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -676,7 +660,7 @@ export default function PostForm({
                     color: ESPRESSO,
                   }}
                 >
-                  {group}
+                  {group.name}
                   <button
                     type="button"
                     onClick={() => removeGroup(i)}
