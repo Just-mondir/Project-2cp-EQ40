@@ -103,7 +103,7 @@ export default function GroupDetailPage() {
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [tab, setTab] = useState<"posts" | "questions" | "about" | "my posts">("posts");
+  const [tab, setTab] = useState<"posts" | "questions" | "about">("posts");
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -113,7 +113,6 @@ export default function GroupDetailPage() {
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [myPostsSidebar, setMyPostsSidebar] = useState<Post[]>([]);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   /* fetch group details */
@@ -144,23 +143,6 @@ export default function GroupDetailPage() {
       .catch(console.error);
   }, [groupId]);
 
-  /* fetch my posts for sidebar */
-  useEffect(() => {
-    if (!groupId || !group?.is_member) {
-      setMyPostsSidebar([]);
-      return;
-    }
-    const token = getToken();
-    fetch(`${API_URL}/api/groups/${groupId}/my-posts/`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then(r => r.json())
-      .then(data => {
-        const results = data.data?.results ?? data.results ?? [];
-        setMyPostsSidebar(results.slice(0, 3));
-      })
-      .catch(console.error);
-  }, [groupId, group?.is_member]);
 
   /* fetch posts */
   const fetchPosts = useCallback(async (url: string, append = false) => {
@@ -367,51 +349,6 @@ export default function GroupDetailPage() {
 
                 <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
 
-                {/* Your Posts */}
-                {group.is_member && myPostsSidebar.length > 0 && (
-                  <div className="px-5 pt-4 pb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-                        </svg>
-                        <span className="text-[14px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Your Posts</span>
-                      </div>
-                      <button
-                        className="text-[10px] font-bold hover:underline ripple"
-                        style={{ color: "#8B6914", backgroundColor: "transparent", border: "none", cursor: "pointer" }}
-                        onClick={() => setTab("my posts")}
-                      >
-                        See all
-                      </button>
-                    </div>
-                    <div className="flex flex-col gap-3">
-                      {myPostsSidebar.map(p => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-3 cursor-pointer group"
-                          onClick={() => setSelectedPost(p)}
-                        >
-                          <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--border-soft)]">
-                            <img
-                              src={p.images?.[0]?.image ? resolveUrl(p.images[0].image) : "/heritage-photography.jpg"}
-                              alt=""
-                              className="w-full h-full object-cover transition-transform group-hover:scale-110"
-                            />
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-[12px] font-bold truncate leading-snug group-hover:text-[#8B6914] transition-colors" style={{ color: "var(--foreground)" }}>
-                              {p.title}
-                            </span>
-                            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                              {new Date(p.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Admin */}
                 {adminMember && (
