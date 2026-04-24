@@ -28,6 +28,7 @@ type NotificationResponse = {
     results?: NotificationItem[];
     unread_count?: number;
   };
+  unread_count?: number;
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
@@ -279,7 +280,10 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
 
       const nextItems = listJson?.data?.results ?? [];
       setNotifications(nextItems);
-      setUnreadCount(Number(unreadJson?.data?.unread_count ?? 0));
+      const rawCount = unreadJson?.data?.unread_count !== undefined ? unreadJson.data.unread_count : (unreadJson?.unread_count !== undefined ? unreadJson.unread_count : 0);
+      const count = Number(rawCount);
+      setUnreadCount(count);
+      window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: count }));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -326,6 +330,11 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
   const markAllRead = async () => {
     const token = getAuthToken();
     if (!token) return;
+
+    // Snappy UI: set local count 0 immediately
+    setUnreadCount(0);
+    window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: 0 }));
+
     await fetch(`${API_URL}/api/notifications/read-all/`, {
       method: "PATCH",
       headers: buildHeaders(),
