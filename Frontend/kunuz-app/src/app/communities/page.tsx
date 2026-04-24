@@ -1881,25 +1881,33 @@ function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: {
   const router = useRouter();
   return (
     <aside className="w-[350px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
-      <div className="sticky top-0 h-full flex flex-col">
-        {/* Header: title + Create button */}
-        <div className="flex justify-between items-center mb-5 flex-shrink-0">
+  <div className="sticky top-0 h-full flex flex-col">
+    {/* Header: title + Create button */}
+    <div className="flex justify-between items-center mb-5 flex-shrink-0">
           <h2 className="text-xl font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Groups</h2>
           <button
             className="text-[11px] px-3 py-1.5 rounded-full font-bold transition-colors hover:opacity-90"
-            style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
+            style={{ backgroundColor: "#6B3E26", color: "var(--panel-bg)" }}
             onClick={onCreateGroup}
           >
             Create new group
           </button>
         </div>
 
-        <div className="flex flex-col gap-6 overflow-y-auto pb-20" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+        <div
+  className="flex flex-col gap-6 overflow-y-auto pb-20 rounded-2xl p-4"
+  style={{
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
+    backgroundColor: "var(--panel-bg)",
+    boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
+  }}
+>
           {/* Your Groups Section */}
           {myGroups.length > 0 && (
             <div>
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Your Groups</h3>
+                <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Your Groups</h3>
                 <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "rgba(107, 62, 38, 0.1)", color: "#6B3E26" }}>{myGroups.length}</span>
               </div>
               <div className="flex flex-col gap-2">
@@ -1920,7 +1928,7 @@ function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: {
                     </div>
                     <button
                       className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90 flex-shrink-0"
-                      style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
+                      style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
                       onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
                     >Visit</button>
                   </div>
@@ -1928,12 +1936,12 @@ function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: {
               </div>
             </div>
           )}
-
+           <div style={{ borderTop: "1px solid var(--border-soft)" }} />
           {/* Suggested Groups Section */}
           <div>
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Suggested Groups</h3>
-              <button className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors" style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}>View all</button>
+              <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Suggested Groups</h3>
+              <button className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors" style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}>View all</button>
             </div>
             <div className="flex flex-col gap-2">
               {groups
@@ -1951,7 +1959,7 @@ function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: {
                     </div>
                     <button
                       className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90"
-                      style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
+                      style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
                       onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
                     >Visit</button>
                   </div>
