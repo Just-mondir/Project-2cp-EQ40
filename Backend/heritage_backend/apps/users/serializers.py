@@ -19,7 +19,7 @@ def _sanitize_plain(value: str) -> str:
     return bleach.clean(value, tags=[], strip=True).strip()
 
 from apps.core.responses import RESPONSE_CONFLICT_MESSAGE
-from apps.posts.models import Post
+from apps.posts.models import Gem, Post
 from .models import BlacklistedToken, ExpertiseChoices, OTPCode, OTPPurposeChoices, User
 from .utils import create_hashed_otp, is_otp_expired, send_otp_email, verify_otp_code
 
@@ -75,7 +75,12 @@ class PublicUserProfileSerializer(serializers.Serializer):
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
-        value = sum(post.gems_count or 0 for post in Post.objects(author_id=str(obj.id), is_deleted=False).only("gems_count"))
+        post_ids = list(
+            Post.objects(author_id=str(obj.id), is_deleted=False)
+            .only("id")
+            .scalar("id")
+        )
+        value = Gem.objects(post__in=post_ids).count() if post_ids else 0
         cache.set(cache_key, value, 60)
         return value
 

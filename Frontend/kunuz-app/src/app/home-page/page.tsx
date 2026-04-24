@@ -2298,9 +2298,9 @@ export default function HomePageRoute() {
   };
   // ─────────────────────────────────────────────────────────────────────────
 
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFetchingMoreRef = useRef(false);
 
   /* ── Restore posts from sessionStorage cache on mount ── */
   useEffect(() => {
@@ -2476,63 +2476,76 @@ export default function HomePageRoute() {
     } catch { }
   };
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      async (entries) => {
-        if (!entries[0].isIntersecting || loading || !nextUrl) return;
-        // Skip fetch if we just restored from cache and still have posts
-        if (cacheRestored && posts.length > 0) {
-          setCacheRestored(false);
+  const loadMorePosts = async () => {
+    if (!nextUrl || loading || isFetchingMoreRef.current) return;
+
+    // Skip the first automatic trigger after restoring cache.
+    if (cacheRestored && posts.length > 0) {
+      setCacheRestored(false);
+      return;
+    }
+
+    isFetchingMoreRef.current = true;
+    try {
+      setLoading(true);
+      const resolvedNextUrl =
+        nextUrl.startsWith("http://") || nextUrl.startsWith("https://")
+          ? nextUrl
+          : `${API_URL}${nextUrl.startsWith("/") ? "" : "/"}${nextUrl}`;
+      const res = await apiFetch(resolvedNextUrl);
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("authUser");
+          window.location.href = "/login";
           return;
         }
-        try {
-          setLoading(true);
-          const resolvedNextUrl =
-            nextUrl.startsWith("http://") || nextUrl.startsWith("https://")
-              ? nextUrl
-              : `${API_URL}${nextUrl.startsWith("/") ? "" : "/"}${nextUrl}`;
-          const res = await apiFetch(resolvedNextUrl);
-          if (!res.ok) {
-            if (res.status === 401) {
-              localStorage.removeItem("accessToken");
-              localStorage.removeItem("authUser");
-              window.location.href = "/login";
-              return;
-            }
-            console.error(`HTTP error! status: ${res.status}`);
-            setNextUrl(null);
-            return;
-          }
-          const data = await res.json();
-          const previousLength = posts.length;
-          const payload = data.data || data;
-          const results = Array.isArray(payload.results) ? payload.results : (Array.isArray(payload) ? payload : (Array.isArray(data.results) ? data.results : []));
-          const formattedPosts: ApiPost[] = results.map((post: any, i: number) => ({
-            ...normalizeApiPost(post),
-            _key: previousLength + i,
-          }));
-          setPosts(prev => {
-            const updated = [...prev, ...formattedPosts];
-            const newNext = typeof data.next === "string" && data.next ? data.next : null;
-            savePostsToCache(updated, newNext);
-            return updated;
-          });
-          const nextLink = payload.next !== undefined ? payload.next : data.next;
-          setNextUrl(typeof nextLink === "string" && nextLink ? nextLink : null);
-          if (formattedPosts.length > 0) setNewPostStart(previousLength);
-        } catch (err) {
-          console.error("Error fetching posts:", err);
-          setNextUrl(null);
-        } finally {
-          setLoading(false);
-        }
-      },
-      { threshold: 1.0 }
-    );
+        console.error(`HTTP error! status: ${res.status}`);
+        setNextUrl(null);
+        return;
+      }
 
-    if (sentinelRef.current) observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length, cacheRestored]);
+      const data = await res.json();
+      const payload = data.data || data;
+      const nextLink = payload?.next !== undefined ? payload.next : data?.next;
+      const normalizedNext = typeof nextLink === "string" && nextLink ? nextLink : null;
+
+      const results = Array.isArray(payload?.results)
+        ? payload.results
+        : Array.isArray(payload)
+          ? payload
+          : Array.isArray(data?.results)
+            ? data.results
+            : [];
+
+      const incomingPosts: ApiPost[] = results.map((post: any) => normalizeApiPost(post));
+
+      setPosts((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const uniqueIncoming = incomingPosts.filter((p) => p.id && !existingIds.has(p.id));
+        if (uniqueIncoming.length === 0) {
+          savePostsToCache(prev, normalizedNext);
+          return prev;
+        }
+
+        setNewPostStart(prev.length);
+        const updated = [...prev, ...uniqueIncoming].map((post, index) => ({
+          ...post,
+          _key: index,
+        }));
+        savePostsToCache(updated, normalizedNext);
+        return updated;
+      });
+
+      setNextUrl(normalizedNext);
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+      setNextUrl(null);
+    } finally {
+      setLoading(false);
+      isFetchingMoreRef.current = false;
+    }
+  };
 
   return (
     <>
@@ -2629,8 +2642,11 @@ export default function HomePageRoute() {
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} title={t("guilds.title")} />
                 <Virtuoso
-                    useWindowScroll
+                    customScrollParent={feedRef.current ?? undefined}
                     data={posts}
+                    endReached={() => {
+                      void loadMorePosts();
+                    }}
                     itemContent={(index, post) => (
 
                   <React.Fragment key={post._key ?? Number(post.id) ?? index}>
@@ -2655,7 +2671,6 @@ export default function HomePageRoute() {
                     <PostSkeleton />
                   </div>
                 )}
-                <div ref={sentinelRef} className="h-4" />
               </main>
               <RightSidebar groups={groups} title={t("guilds.title")} />
             </div>

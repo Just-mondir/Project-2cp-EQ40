@@ -78,7 +78,14 @@ class Post(me.Document):
     meta = {
         "collection": "posts",
         "ordering": ["-created_at"],
-        "indexes": ["author_id", "post_type", "is_deleted"],
+        "indexes": [
+            "author_id",
+            "post_type",
+            "is_deleted",
+            {"fields": ["is_deleted", "visibility", "group_id", "-created_at"]},
+            {"fields": ["author_id", "is_deleted", "group_id", "-created_at"]},
+            {"fields": ["author_id", "post_type", "is_deleted", "group_id", "-created_at"]},
+        ],
     }
 
     def save(self, *args, **kwargs):

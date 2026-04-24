@@ -1570,10 +1570,7 @@ export default function ProfilePage() {
     if (!viewedUsername) return;
     const fetchProfile = async () => {
       try {
-        const endpoint = isOwnProfile
-          ? `${API_URL}/api/users/me/`
-          : `${API_URL}/api/users/${viewedUsername}/`;
-        const res = await fetch(endpoint, {
+        const res = await fetch(`${API_URL}/api/users/${viewedUsername}/`, {
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
         if (res.ok) {
@@ -1600,7 +1597,7 @@ export default function ProfilePage() {
       }
     };
     fetchProfile();
-  }, [viewedUsername, isOwnProfile]);
+  }, [viewedUsername]);
 
   /* ── Fetch posts ── */
   useEffect(() => {

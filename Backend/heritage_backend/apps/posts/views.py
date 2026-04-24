@@ -123,7 +123,7 @@ class PostListCreateView(APIView):
             image_post_ids = PostImage.objects.distinct("post")
             public_posts = public_posts.filter(id__in=image_post_ids)
             
-        posts = public_posts.order_by("-created_at")
+        posts = public_posts.order_by("-created_at", "-id")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(posts, request)
 
@@ -414,10 +414,10 @@ class UserPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(author_id=str(user.id), group_id__in=["", None], is_deleted=False)
+        posts = Post.objects(author_id=str(user.id), group_id__in=["", None], is_deleted=False).order_by("-created_at", "-id")
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -455,7 +455,7 @@ class UserEventsPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(author_id=str(user.id), post_type="event", group_id__in=["", None], is_deleted=False)
+        posts = Post.objects(author_id=str(user.id), post_type="event", group_id__in=["", None], is_deleted=False).order_by("-created_at", "-id")
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
@@ -470,7 +470,7 @@ class UserAlertsPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        posts = Post.objects(author_id=str(user.id), post_type="alert", group_id__in=["", None], is_deleted=False)
+        posts = Post.objects(author_id=str(user.id), post_type="alert", group_id__in=["", None], is_deleted=False).order_by("-created_at", "-id")
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context=_build_post_list_context(request, page))
