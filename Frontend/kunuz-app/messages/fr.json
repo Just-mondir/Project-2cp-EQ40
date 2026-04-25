@@ -156,13 +156,18 @@
       "reply": "Répondre",
       "comments": "Commentaires",
       "annotations": "Annotations",
-      "dashboard": "Tableau de bord"
+      "dashboard": "Tableau de bord",
+      "confirmDeletePost": "Êtes-vous sûr de vouloir supprimer cette publication ?",
+      "confirmDeleteComment": "Êtes-vous sûr de vouloir supprimer ce commentaire ?",
+      "confirmDeleteAnnotation": "Êtes-vous sûr de vouloir supprimer cette annotation ?",
+      "confirmDeleteReport": "Êtes-vous sûr de vouloir supprimer ce rapport ?"
     },
     "feed": {
       "actions": {
         "seeMore": "Voir plus",
         "seeLess": "Voir moins",
         "reportPost": "Signaler la publication",
+        "deletePost": "Supprimer la publication",
         "editComment": "Modifier le commentaire",
         "deleteComment": "Supprimer le commentaire",
         "reportComment": "Signaler le commentaire",
@@ -715,7 +720,8 @@
         "unknownUser": "Inconnu",
         "history": {
           "noPreviewImage": "Aucune image d’aperçu",
-          "postedIn": "publié le {date}"
+          "postedIn": "publié le {date}",
+          "empty": "Aucun rapport d'historique pour le moment."
         },
         "reportModal": {
           "title": "Rapport de mobilisation",
