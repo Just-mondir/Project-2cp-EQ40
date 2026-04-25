@@ -1268,12 +1268,15 @@ function ProfileHeader({
   };
 
   return (
+
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
-      <div className="absolute top-4 right-6">
-        <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-        </button>
-      </div>
+      {isOwnProfile && (
+  <div className="absolute top-4 right-6">
+    <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+    </button>
+  </div>
+   )}
 
       {/* ── Popups ── */}
       {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}
