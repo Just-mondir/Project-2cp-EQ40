@@ -1,13 +1,13 @@
 "use client";
 
 const FONT = "var(--font-lato), 'Lato', sans-serif";
-const GREEN = "#168F66";
+const RED = "#C0392B";
 
-interface JoinRequestSentModalProps {
+interface LeaveGroupModalProps {
   onClose: () => void;
 }
 
-export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalProps) {
+export default function LeaveGroupModal({ onClose }: LeaveGroupModalProps) {
   return (
     <>
       {/* Backdrop */}
@@ -39,24 +39,26 @@ export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalPr
           {/* Circle icon */}
           <div style={{
             width: "64px", height: "64px", borderRadius: "50%",
-            border: `1.5px solid ${GREEN}`,
-            backgroundColor: `rgba(22,143,102,0.07)`,
+            border: `1.5px solid ${RED}`,
+            backgroundColor: `rgba(192,57,43,0.07)`,
             display: "flex", alignItems: "center", justifyContent: "center",
             marginBottom: "16px",
           }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={GREEN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 6L9 17l-5-5" />
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
           </div>
 
           {/* Title */}
           <p style={{ margin: "0 0 6px", color: "#432817", fontFamily: FONT, fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-            Join request sent
+            You left the group
           </p>
 
           {/* Subtitle */}
           <p style={{ margin: "0 0 24px", color: "#8B7355", fontFamily: FONT, fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-            Thank you!<br />Waiting for admin approval.
+            You have successfully left this group.
           </p>
 
           {/* Close button */}
@@ -64,12 +66,12 @@ export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalPr
             onClick={onClose}
             style={{
               width: "100%", height: "50px", borderRadius: "10px", border: "none",
-              backgroundColor: GREEN, color: "#FFFFFF",
+              backgroundColor: RED, color: "#FFFFFF",
               fontFamily: FONT, fontWeight: 700, fontSize: "16px",
               cursor: "pointer", transition: "background 0.18s", marginTop: "6px",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#117a57"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = GREEN; }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#a93226"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = RED; }}
           >
             Close
           </button>

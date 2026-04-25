@@ -313,10 +313,7 @@ function EditPostInner() {
   }
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ backgroundColor: "var(--background)" }}
-    >
+    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
       <LeftSidebar activePage="add-post" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
@@ -348,7 +345,7 @@ function EditPostInner() {
                   fontFamily: "var(--font-lato), 'Lato', sans-serif",
                 }}
               >
-                {t("editingLabel")} <span style={{ fontStyle: "italic" }}>{post.title}</span>
+                {t("editingLabel")} <span style={{ fontStyle: "italic" }}>{post.title.replace(/<[^>]*>/g, "")}</span>
               </p>
 
               {saving && (

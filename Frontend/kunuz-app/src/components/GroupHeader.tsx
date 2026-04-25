@@ -49,6 +49,7 @@ type GroupHeaderProps = {
   joinStatus: "idle" | "pending" | "member";
   onJoin: () => void;
   onInvite?: () => void;
+  onAddPost?: () => void;
   tab: "posts" | "questions" | "about" | "my posts";
   onTabChange: (t: "posts" | "questions" | "about" | "my posts") => void;
   GroupeMenuComponent: React.ReactNode;
@@ -61,6 +62,7 @@ export default function GroupHeader({
   joinStatus,
   onJoin,
   onInvite,
+  onAddPost,
   tab,
   onTabChange,
   GroupeMenuComponent,
@@ -169,17 +171,26 @@ export default function GroupHeader({
           </button>
         ))}
 
-        <div className="ml-auto flex items-center gap-4 py-4">
-       <button
-  className="text-lg font-bold px-8 py-2.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-  style={{ backgroundColor: "#432817", color: "#e8d9c0", boxShadow: "0 4px 12px rgba(67,40,23,0.2)", opacity: joinStatus === "pending" ? 0.6 : 1 }}
-  onClick={group.is_member ? onInvite : onJoin}
-  disabled={joining || joinStatus === "pending"}
->
-  {group.is_member ? "+ Invite" : joinStatus === "pending" ? "Request sent" : joining ? "Joining..." : "Join"}
-</button>
-          {GroupeMenuComponent}
-        </div>
+      <div className="ml-auto flex items-center gap-4 py-4">
+  {group.is_member && (
+    <button
+      className="text-lg font-bold px-8 py-2.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+      style={{ backgroundColor: "var(--border-soft)", color: "#432817", boxShadow: "0 4px 12px rgba(67,40,23,0.1)" }}
+      onClick={onAddPost}
+    >
+      + Post
+    </button>
+  )}
+  <button
+    className="text-lg font-bold px-8 py-2.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+    style={{ backgroundColor: "#432817", color: "#e8d9c0", boxShadow: "0 4px 12px rgba(67,40,23,0.2)", opacity: joinStatus === "pending" ? 0.6 : 1 }}
+    onClick={group.is_member ? onInvite : onJoin}
+    disabled={joining || joinStatus === "pending"}
+  >
+    {group.is_member ? "+ Invite" : joinStatus === "pending" ? "Request sent" : joining ? "Joining..." : "Join"}
+  </button>
+  {GroupeMenuComponent}
+</div>
       </div>
     </>
   );

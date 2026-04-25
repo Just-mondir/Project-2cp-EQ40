@@ -307,7 +307,6 @@ class GroupJoinRequestView(APIView):
                 target_id=str(group.id),
                 group_name=group.name,
                 request_id=str(join_request.id),
-                invitation_id=str(invitation.id),
             )
         except Exception:
             pass
