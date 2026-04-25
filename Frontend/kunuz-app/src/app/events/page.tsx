@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import ReportPopup from "@/components/Report-popup";
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -471,6 +472,7 @@ function CommentItem({
   const [gemsCount, setGemsCount] = useState(comment.gems_count);
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -578,7 +580,8 @@ function CommentItem({
   };
 
   return (
-    <div
+    <div className="contents">
+      <div
       className="flex gap-3 p-3 rounded-xl"
       style={{
         backgroundColor: "var(--light)",
@@ -624,7 +627,10 @@ function CommentItem({
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={() => setShowMenu(false)}
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowReportPopup(true);
+                    }}
                   >
                     Report comment
                   </button>
@@ -694,6 +700,15 @@ function CommentItem({
           </div>
         )}
       </div>
+      </div>
+      {showReportPopup ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="comment"
+          targetId={comment.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -853,16 +868,6 @@ function AnnotationItem({
                     onClick={handleDelete}
                   >
                     Delete annotation
-                  </button>
-                )}
-
-                {!isOwner && (
-                  <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817" }}
-                    onClick={() => setShowMenu(false)}
-                  >
-                    Report annotation
                   </button>
                 )}
 
@@ -1279,6 +1284,7 @@ function PostModal({
   const [annotationsLoading, setAnnotationsLoading] = useState(false);
 
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
@@ -1641,9 +1647,9 @@ function PostModal({
     </div >
   );
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
@@ -1668,7 +1674,20 @@ function PostModal({
               </button>
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                  <button
+                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                    style={{ color: "#432817" }}
+                    onClick={() => {
+                      setShowPostMenu(false);
+                      if (!getAuthToken()) {
+                        router.push("/login");
+                        return;
+                      }
+                      setShowReportPopup(true);
+                    }}
+                  >
+                    Report post
+                  </button>
                 </div>
               )}
             </div>
@@ -1845,6 +1864,14 @@ function PostModal({
             )}
           </div>
         </div>
+        {showReportPopup ? (
+          <ReportPopup
+            isOpen={showReportPopup}
+            reportType="post"
+            targetId={post.id}
+            onClose={() => setShowReportPopup(false)}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -1869,6 +1896,7 @@ function PostCard({
 }) {
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -1927,7 +1955,8 @@ function PostCard({
   };
 
   return (
-    <div
+    <>
+      <div
       className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
       style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
       onClick={onCommentClick}
@@ -1954,7 +1983,21 @@ function PostCard({
           </button>
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+              <button
+                className="text-sm font-bold whitespace-nowrap"
+                style={{ color: "#432817" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(false);
+                  if (!getAuthToken()) {
+                    router.push("/login");
+                    return;
+                  }
+                  setShowReportPopup(true);
+                }}
+              >
+                Report post
+              </button>
             </div>
           )}
         </div>
@@ -2068,7 +2111,16 @@ function PostCard({
           <BookmarkIcon filled={saved} active={saved} />
         </button>
       </div>
-    </div>
+      </div>
+      {showReportPopup ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="post"
+          targetId={post.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
+    </>
   );
 }
 

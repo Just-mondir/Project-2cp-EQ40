@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import ReportPopup from "@/components/Report-popup";
 
 //const API_URL =
 //  process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
@@ -182,35 +183,6 @@ type CommentNode = {
   gems_count: number;
   is_gemmed: boolean;
 };
-
-type ReportTargetType = "post" | "comment" | "annotation";
-
-async function submitReport(
-  targetType: ReportTargetType,
-  targetId: string,
-  reason: string,
-): Promise<void> {
-  const token = getAuthToken();
-
-  const res = await fetch(`${API_URL}/api/reports/`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      target_type: targetType,
-      target_id: targetId,
-      reason,
-    }),
-  });
-
-  const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    throw new Error(data?.message || "Failed to submit report.");
-  }
-}
 
 function getAcceptedAnnotationsCount(annotations: Annotation[]): number {
   return annotations.filter((annotation) => annotation.status === "accepted").length;
@@ -503,6 +475,7 @@ function CommentItem({
   const [replyText, setReplyText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.content);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -621,86 +594,77 @@ function CommentItem({
     setIsEditing(false);
   };
 
-  const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("comment", comment.id, reason.trim());
-      setShowMenu(false);
-      window.alert("Comment reported successfully.");
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : "Failed to report comment."
-      );
-    }
+  const handleReportComment = () => {
+    setShowMenu(false);
+    setShowReportPopup(true);
   };
 
   return (
-    <div
-      className="flex gap-3 p-3 rounded-xl"
-      style={{
-        backgroundColor: "var(--light)",
-        boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)",
-        borderLeft: isReply ? "2px solid #E0D5C5" : "none",
-      }}
-    >
-      <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
+    <>
+      <div
+        className="flex gap-3 p-3 rounded-xl"
+        style={{
+          backgroundColor: "var(--light)",
+          boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)",
+          borderLeft: isReply ? "2px solid #E0D5C5" : "none",
+        }}
+      >
+        <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between">
-          <button
-            className="text-sm font-bold hover:underline transition-all cursor-pointer"
-            style={{ color: "#432817", background: "none", border: "none", padding: 0 }}
-            onClick={() => router.push(`/user/${comment.user_username}`)}
-          >
-            {comment.user_username}
-          </button>
-
-          <div className="relative" ref={menuRef}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
             <button
-              className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
-              style={{ color: "#8B7355" }}
-              onClick={() => setShowMenu(!showMenu)}
+              className="text-sm font-bold hover:underline transition-all cursor-pointer"
+              style={{ color: "#432817", background: "none", border: "none", padding: 0 }}
+              onClick={() => router.push(`/user/${comment.user_username}`)}
             >
-              ...
+              {comment.user_username}
             </button>
 
-            {showMenu && (
-              <div
-                className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
-                style={{ backgroundColor: "#FFF8E2" }}
+            <div className="relative" ref={menuRef}>
+              <button
+                className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none"
+                style={{ color: "#8B7355" }}
+                onClick={() => setShowMenu(!showMenu)}
               >
-                {isOwner ? (
-                  <>
+                ...
+              </button>
+
+              {showMenu && (
+                <div
+                  className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
+                  style={{ backgroundColor: "#FFF8E2" }}
+                >
+                  {isOwner ? (
+                    <>
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                        onClick={handleEditComment}
+                      >
+                        Edit comment
+                      </button>
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                        style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                        onClick={handleDeleteComment}
+                      >
+                        Delete comment
+                      </button>
+                    </>
+                  ) : (
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                       style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                      onClick={handleEditComment}
+                      onClick={handleReportComment}
                     >
-                      Edit comment
+                      Report comment
                     </button>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                      onClick={handleDeleteComment}
-                    >
-                      Delete comment
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={handleReportComment}
-                  >
-                    Report comment
-                  </button>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
         {isEditing ? (
           <div className="mt-1">
@@ -793,8 +757,17 @@ function CommentItem({
             </button>
           </div>
         )}
+        </div>
       </div>
-    </div>
+      {showReportPopup ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="comment"
+          targetId={comment.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -918,19 +891,6 @@ function AnnotationItem({
     setIsEditing(false);
   };
 
-  const handleReport = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert("Reported successfully");
-    } catch {
-      window.alert("Failed to report");
-    }
-  };
-
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
     pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
     accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
@@ -1001,16 +961,6 @@ function AnnotationItem({
                       Delete annotation
                     </button>
                   </>
-                )}
-
-                {!isOwner && (
-                  <button
-                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817" }}
-                    onClick={handleReport}
-                  >
-                    Report annotation
-                  </button>
                 )}
 
                 {isPostAuthor && annotation.status === "pending" && (
@@ -1234,6 +1184,7 @@ function PostModal({
   const [annotationsLoading, setAnnotationsLoading] = useState(false);
 
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
@@ -1588,9 +1539,10 @@ function PostModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+    <>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
@@ -1615,7 +1567,20 @@ function PostModal({
               </button>
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                  <button
+                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                    style={{ color: "#432817" }}
+                    onClick={() => {
+                      setShowPostMenu(false);
+                      if (!getAuthToken()) {
+                        router.push("/login");
+                        return;
+                      }
+                      setShowReportPopup(true);
+                    }}
+                  >
+                    Report post
+                  </button>
                 </div>
               )}
             </div>
@@ -1793,7 +1758,16 @@ function PostModal({
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      {showReportPopup ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="post"
+          targetId={post.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -1910,6 +1884,7 @@ function PostCard({
 }) {
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -1968,7 +1943,8 @@ function PostCard({
   };
 
   return (
-    <div
+    <>
+      <div
       className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""
         }`}
       style={{
@@ -1999,7 +1975,21 @@ function PostCard({
           </button>
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+              <button
+                className="text-sm font-bold whitespace-nowrap"
+                style={{ color: "#432817" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(false);
+                  if (!getAuthToken()) {
+                    router.push("/login");
+                    return;
+                  }
+                  setShowReportPopup(true);
+                }}
+              >
+                Report post
+              </button>
             </div>
           )}
         </div>
@@ -2113,7 +2103,16 @@ function PostCard({
           <BookmarkIcon filled={saved} active={saved} />
         </button>
       </div>
-    </div>
+      </div>
+      {showReportPopup ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="post"
+          targetId={post.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
+    </>
   );
 }
 

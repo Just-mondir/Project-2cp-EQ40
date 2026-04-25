@@ -12,6 +12,7 @@ import LocationWorldCard from "@/components/LocationWorldCard";
 
 import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
 import NotificationModal from "@/components/NotificationModal";
+import ReportPopup from "@/components/Report-popup";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -150,10 +151,9 @@ type CommentNode = {
   is_gemmed: boolean;
 };
 
-type ReportTargetType = "post" | "comment" | "annotation";
-
 // ← Type matching exact backend field names from User model
 type ProfileInfo = {
+  id: string;
   username: string;
   display_name: string;
   bio: string;
@@ -182,17 +182,6 @@ function toggleStoredItem(key: string, id: string, add: boolean) {
   const set = getStoredSet(key);
   add ? set.add(id) : set.delete(id);
   localStorage.setItem(key, JSON.stringify([...set]));
-}
-
-async function submitReport(targetType: ReportTargetType, targetId: string, reason: string): Promise<void> {
-  const token = getAuthToken();
-  const res = await fetch(`${API_URL}/api/reports/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ target_type: targetType, target_id: targetId, reason }),
-  });
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.message || "Failed to submit report.");
 }
 
 function formatDate(dateStr: string) {
@@ -494,6 +483,7 @@ function CommentItem({
   const [replyText, setReplyText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.content);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -579,20 +569,14 @@ function CommentItem({
     } catch { }
   };
 
-  const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
-    if (!reason || !reason.trim()) return;
-    try {
-      await submitReport("comment", comment.id, reason.trim());
-      setShowMenu(false);
-      window.alert("Comment reported successfully.");
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to report comment.");
-    }
+  const handleReportComment = () => {
+    setShowMenu(false);
+    setShowReportPopup(true);
   };
 
   return (
-    <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)", border: isReply ? "2px solid #E0D5C5" : "none" }}>
+    <>
+      <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)", border: isReply ? "2px solid #E0D5C5" : "none" }}>
       <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
@@ -644,7 +628,16 @@ function CommentItem({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      {showReportPopup ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="comment"
+          targetId={comment.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -714,18 +707,6 @@ function AnnotationItem({
 
   const handleCancelEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(false); };
 
-  const handleReportAnnotation = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
-    if (!reason || !reason.trim()) return;
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert("Annotation reported successfully.");
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Failed to report annotation.");
-    }
-  };
-
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
     pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
     accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
@@ -751,9 +732,6 @@ function AnnotationItem({
                     <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditAnnotation}>Edit annotation</button>
                     <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDelete}>Delete annotation</button>
                   </>
-                )}
-                {!isOwner && (
-                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportAnnotation}>Report annotation</button>
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
@@ -803,6 +781,7 @@ function PostModal({
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotationsLoading, setAnnotationsLoading] = useState(false);
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
@@ -1076,7 +1055,20 @@ function PostModal({
                         <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>Delete</button>
                       </>
                     ) : (
-                      <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={() => { setShowPostMenu(false); if (!isLoggedIn) { router.push("/login"); return; } }}>Report post</button>
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]"
+                        style={{ color: "#C0392B" }}
+                        onClick={() => {
+                          setShowPostMenu(false);
+                          if (!isLoggedIn) {
+                            router.push("/login");
+                            return;
+                          }
+                          setShowReportPopup(true);
+                        }}
+                      >
+                        Report post
+                      </button>
                     )}
                   </div>
                 )}
@@ -1181,6 +1173,14 @@ function PostModal({
           </div>
         </div>
       </div>
+      {showReportPopup ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="post"
+          targetId={post.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
     </>
   );
 }
@@ -1196,6 +1196,7 @@ function ProfileHeader({
 }) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [showDashboardModal, setShowDashboardModal] = useState(false);
@@ -1211,9 +1212,11 @@ function ProfileHeader({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const menuItems = isOwnProfile && (profileInfo.role === "moderator" || profileInfo.role === "admin")
-  ? ["Dashboard", "Platform statistics"]
-  : ["Dashboard"];
+  const menuItems = isOwnProfile
+    ? profileInfo.role === "moderator" || profileInfo.role === "admin"
+      ? ["Dashboard", "Platform statistics"]
+      : ["Dashboard"]
+    : ["Report user"];
 
   const handleLogout = async () => {
     await logoutClient();
@@ -1246,7 +1249,7 @@ function ProfileHeader({
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
             {menuItems.map((item, i) => (
-  <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); if (item === "Platform statistics") router.push("/statistics"); }}>
+  <button key={i} className="profile-dashboard-menu-item block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817", fontFamily: "var(--font-lato)" }} onClick={() => { setShowMenu(false); if (item === "Dashboard") setShowDashboardModal(true); if (item === "Platform statistics") router.push("/statistics"); if (item === "Report user") setShowReportPopup(true); }}>
     {item}
   </button>
 ))}
@@ -1268,6 +1271,14 @@ function ProfileHeader({
     onPlatformStatistics={() => router.push("/statistics")}  // ← ADD THIS LINE
   />
 )}
+      {showReportPopup && profileInfo.id ? (
+        <ReportPopup
+          isOpen={showReportPopup}
+          reportType="user"
+          targetId={profileInfo.id}
+          onClose={() => setShowReportPopup(false)}
+        />
+      ) : null}
       <NotificationModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} type="info" title="Are you sure you want to log out?" message="If you continue, your token will be cleared and you will be redirected to the landing page." primaryAction={{ label: "Log out", onClick: handleLogout }} secondaryAction={{ label: "Cancel", onClick: () => setShowLogoutModal(false) }} />
       <NotificationModal isOpen={showDeleteAccountModal} onClose={() => setShowDeleteAccountModal(false)} type="error" title="Delete your account?" message="This action is permanent and cannot be undone. All your data and posts will be removed." primaryAction={{ label: "Delete Account", onClick: handleDeleteAccount }} secondaryAction={{ label: "Keep Account", onClick: () => setShowDeleteAccountModal(false) }} />
 
@@ -1452,6 +1463,7 @@ export default function ProfilePage() {
 
   // ← state for real profile info from backend
   const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
+    id: "",
     username: "",
     display_name: "",
     bio: "",
@@ -1565,6 +1577,7 @@ export default function ProfilePage() {
           } catch {}
 
           setProfileInfo({
+            id: String(data.id ?? ""),
             username: data.username ?? "",
             display_name: data.display_name ?? data.username ?? "",
             bio: data.bio ?? "",

@@ -8,6 +8,7 @@ export default function Footer() {
   // Hide footer on specific pages
   if (
     pathname === "/home-page" ||
+    pathname === "/Moderator-home-page" ||
     pathname === "/events" ||
     pathname === "/monuments-in-danger" ||
     pathname === "/login" ||

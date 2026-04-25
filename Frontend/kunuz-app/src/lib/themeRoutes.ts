@@ -5,6 +5,7 @@ export const PUBLIC_ROUTE_LIST = [
   "/sign-up",
   "/verify-email",
   "/forgot-password",
+  "/Moderator-page",
 ] as const;
 
 export const LIGHT_ONLY_PLATFORM_ROUTE_LIST = [] as const;

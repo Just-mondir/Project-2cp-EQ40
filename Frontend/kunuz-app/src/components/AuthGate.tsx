@@ -10,6 +10,7 @@ const PUBLIC_PATHS = new Set([
   "/sign-up",
   "/verify-email",
   "/forgot-password",
+  "/Moderator-home-page",
 ]);
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
