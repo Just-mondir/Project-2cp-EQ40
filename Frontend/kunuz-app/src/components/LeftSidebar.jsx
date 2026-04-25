@@ -7,7 +7,7 @@ import { Bell } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { normalizeThemePathname } from "@/lib/themeRoutes";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 function KunuzSidebarIcon() {
   return (
@@ -70,7 +70,7 @@ export default function LeftSidebar({
         try {
           const token = localStorage.getItem("accessToken");
           if (!token) return;
-          const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+          const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8000";
           const res = await fetch(`${API_URL}/api/users/me/`, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -141,7 +141,10 @@ export default function LeftSidebar({
 
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 5000); // 5s
+    const interval = setInterval(() => {
+  const token = localStorage.getItem("accessToken");
+  if (token) fetchUnreadCount();
+}, 30000); // 30s is enough, no need to hammer every 5s
 
     const handleUpdate = (e) => {
       const newCount = Number(e.detail);

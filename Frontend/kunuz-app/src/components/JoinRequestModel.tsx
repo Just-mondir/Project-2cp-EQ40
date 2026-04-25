@@ -117,7 +117,7 @@ export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalPr
               onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.85"; }}
               onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
             >
-              Cancel
+              Close
             </button>
           </div>
         </div>

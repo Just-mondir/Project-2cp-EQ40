@@ -85,7 +85,10 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
   someoneLabel: string;
 }) {
   const [responding, setResponding] = useState(false);
-  const [responded, setResponded] = useState(false);
+   const [responded, setResponded] = useState(() => {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(`notification_responded_${item.id}`) === "true";
+});
 
   const handleRespond = async (status: "accepted" | "refused", e: React.MouseEvent) => {
     e.stopPropagation();
@@ -101,6 +104,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
         body: JSON.stringify({ status }),
       });
       setResponded(true);
+      localStorage.setItem(`notification_responded_${item.id}`, "true");
       onRead(item.id);
     } catch {
       // silent fail
@@ -178,6 +182,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
                     }
                   );
                   setResponded(true);
+                  localStorage.setItem(`notification_responded_${item.id}`, "true");
                   onRead(item.id);
                 } catch { }
                 finally { setResponding(false); }
@@ -206,6 +211,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
                     }
                   );
                   setResponded(true);
+                  localStorage.setItem(`notification_responded_${item.id}`, "true");
                   onRead(item.id);
                 } catch { }
                 finally { setResponding(false); }

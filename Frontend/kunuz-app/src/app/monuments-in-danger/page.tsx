@@ -2400,7 +2400,7 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
 
 /* ───────────────── RIGHT SIDEBAR ───────────────── */
 
-function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPost[] }) {
+function RightSidebar({ onAction, onPostClick, posts }: { onAction: () => void; onPostClick: (post: ApiPost) => void; posts: ApiPost[] }) {
   const pageT = useTranslations("auth.pages.monumentsInDanger");
   const addEventT = useTranslations("auth.pages.addEvent");
   const postFormT = useTranslations("auth.postForm");
@@ -2464,9 +2464,10 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
 
             return (
               <div
-                key={post.id}
-                className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
-              >
+  key={post.id}
+  className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
+  onClick={() => onPostClick(post)}
+>
                 {/* Thumbnail on left */}
                 <div className="flex-shrink-0">
                   <img src={imageUrl} alt={stripHtml(post.title)} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-sm" />
@@ -2786,7 +2787,11 @@ export default function MonumentsInDangerPage() {
                   )
                 }
               </main>
-              <RightSidebar onAction={() => router.push("/add-event")} posts={criticalPosts} />
+              <RightSidebar 
+  onAction={() => router.push("/add-event")} 
+  onPostClick={(post) => setSelectedPost(post)}
+  posts={criticalPosts} 
+/>
             </div>
 
           </div>

@@ -1204,7 +1204,7 @@ function MobileEventsStrip() {
 
 /* ─────────────────── RIGHT SIDEBAR ─────────────────── */
 
-function RightSidebar() {
+function RightSidebar({ onPostClick }: { onPostClick: (postId: string) => void }) {
   const pageT = useTranslations("auth.pages.events");
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1263,7 +1263,7 @@ function RightSidebar() {
               {pageT("noUpcoming")}
             </div>
           ) : upcomingEvents.map((eventItem, i) => (
-            <div key={i} className="flex px-5 py-3 mb-2.5 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
+            <div key={i} onClick={() => onPostClick(eventItem.id)} className="flex px-5 py-3 mb-2.5 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
               {/* Event Image: square 80x80, 20px radius */}
               {eventItem.event_image && (
                 <div className="w-[85px] h-[85px] flex-shrink-0 mr-4">
@@ -2211,6 +2211,14 @@ export default function HomePageRoute() {
     status: "All",
   });
 
+  const handleEventClick = (postId: string) => {
+  const post = posts.find(p => p.id === String(postId));
+  if (post) {
+    setSelectedPost(post);
+    setSelectedPostTab("comments");
+  }
+  };
+
   const constructUrl = (filters: typeof activeFilters, query: string) => {
     const params = new URLSearchParams();
     if (query) params.append("q", query);
@@ -2422,7 +2430,7 @@ export default function HomePageRoute() {
                 )}
                 <div ref={sentinelRef} className="h-4" />
               </main >
-              <RightSidebar />
+              <RightSidebar onPostClick={handleEventClick} />
             </div >
           </div >
         </div >
