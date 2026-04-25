@@ -86,38 +86,5 @@ def send_join_request_email(
     join_request_obj,
     requester_name: str,
 ) -> None:
-    """Send an email to the group admin with approve/reject links."""
-    try:
-        admin_user = User.objects.get(id=group.admin_id)
-    except Exception:
-        return
-
-    if not admin_user.email:
-        return
-
-    requester_name = (requester_name or "Someone").strip() or "Someone"
-    group_name = group.name or "a group"
-    subject = f"Join request for {group_name} from {requester_name}"
-
-    approve_url = build_join_review_url(str(group.id), str(join_request_obj.id), "approved")
-    reject_url = build_join_review_url(str(group.id), str(join_request_obj.id), "rejected")
-
-    body = (
-        f"{requester_name} wants to join your group \"{group_name}\".\n\n"
-        f"Approve: {approve_url}\n"
-        f"Reject: {reject_url}"
-    )
-
-    email = EmailMultiAlternatives(
-        subject=subject,
-        body=body,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[admin_user.email],
-    )
-
-    email.attach_alternative(
-        build_join_request_html(requester_name, group_name, approve_url, reject_url),
-        "text/html",
-    )
-
-    email.send(fail_silently=True)
+    """Email disabled — join requests handled via in-app notifications only."""
+    pass

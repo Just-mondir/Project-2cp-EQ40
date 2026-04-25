@@ -124,10 +124,13 @@ export default function GroupDetailPage() {
     })
       .then(r => r.json())
       .then(data => {
-        const g = data.data ?? data;
-        setGroup(g);
-        setJoinStatus(g.is_member ? "member" : "idle");
-      })
+  const g = data.data ?? data;
+  setGroup(g);
+  setJoinStatus(prev => {
+    if (prev === "pending") return "pending"; // don't override pending
+    return g.is_member ? "member" : "idle";
+  });
+})
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [groupId]);
