@@ -361,7 +361,13 @@ class MySavedPostsView(APIView):
 
     def get(self, request: Request) -> Response:
         saves = Save.objects(user_id=str(request.user.id))
-        post_ids = [save.post.id for save in saves]
+        post_ids = []
+        for save in saves:
+            try:
+                if save.post:
+                    post_ids.append(save.post.id)
+            except Exception:
+                continue
         posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
@@ -374,7 +380,13 @@ class MyGemedPostsView(APIView):
 
     def get(self, request: Request) -> Response:
         gems = Gem.objects(user_id=str(request.user.id))
-        post_ids = [gem.post.id for gem in gems]
+        post_ids = []
+        for gem in gems:
+            try:
+                if gem.post:
+                    post_ids.append(gem.post.id)
+            except Exception:
+                continue
         posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
