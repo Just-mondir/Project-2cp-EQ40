@@ -2,8 +2,11 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import LeaveGroupModal from "@/components/LeaveGroupeModal";
 
 const API_URL = "http://127.0.0.1:8000";
+
+
 
 function getToken(): string {
   if (typeof window === "undefined") return "";
@@ -126,7 +129,8 @@ export default function GroupOptionsMenu({
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+const [showLeaveModal, setShowLeaveModal] = useState(false);
+const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
   useEffect(() => {
@@ -264,14 +268,14 @@ export default function GroupOptionsMenu({
         </svg>
       ),
       onClick: async () => {
-        setOpen(false);
-        const token = getToken();
-        await fetch(`${API_URL}/api/groups/${groupId}/leave/`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        router.push("/communities");
-      },
+  setOpen(false);
+  const token = getToken();
+  await fetch(`${API_URL}/api/groups/${groupId}/leave/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  setShowLeaveModal(true);
+},
       danger: true,
     },
   ];
@@ -311,10 +315,12 @@ const items = isAdmin ? adminItems : isMember ? memberItems : visitorItems;
       <div ref={menuRef} style={{ position: "relative" }}>
         {/* 3-dots trigger button */}
         <button
-          onClick={() => setOpen(o => !o)}
-          className="p-2 rounded-lg hover:bg-[var(--panel-hover)] transition-colors"
-          style={{ color: "#432817" }}
-        >
+  onClick={() => setOpen(o => !o)}
+  className="p-2 rounded-lg transition-colors"
+  style={{ color: "#432817", backgroundColor: "transparent" }}
+  onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--border-soft)"; }}
+  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; }}
+>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="2" />
             <circle cx="12" cy="12" r="2" />
@@ -339,7 +345,9 @@ const items = isAdmin ? adminItems : isMember ? memberItems : visitorItems;
   </div>
 )}
 </div>
-
+      {showLeaveModal && (
+  <LeaveGroupModal onClose={() => { setShowLeaveModal(false); router.push("/communities"); }} />
+)}
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <DeleteConfirmModal

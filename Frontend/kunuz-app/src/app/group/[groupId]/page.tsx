@@ -11,7 +11,7 @@ import GroupeMenu from "@/components/GroupeMenu";
 import GroupHeader from "@/components/GroupHeader";  // ← ADDED
 import JoinRequestSentModal from "@/components/JoinRequestModel";
 import InviteUsersModal, { type User } from "@/components/InviteUsersModal";
-
+import GroupAddPostModal from "@/components/GroupAddPostModal";
 const API_URL = "http://127.0.0.1:8000";
 
 /* ─── helpers ─── */
@@ -113,6 +113,7 @@ export default function GroupDetailPage() {
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showAddPost, setShowAddPost] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   /* fetch group details */
@@ -251,6 +252,7 @@ export default function GroupDetailPage() {
             joinStatus={joinStatus}
             onJoin={handleJoin}
             onInvite={() => setShowInviteModal(true)}
+            onAddPost={() => setShowAddPost(true)}
             tab={tab}
             onTabChange={setTab}
             GroupeMenuComponent={
@@ -437,6 +439,17 @@ export default function GroupDetailPage() {
           onConfirm={handleInvite}
         />
       )}
+      {showAddPost && (
+  <GroupAddPostModal
+    groupId={group.id}
+    groupName={group.name}
+    onClose={() => setShowAddPost(false)}
+    onSuccess={() => {
+      setShowAddPost(false);
+      fetchPosts(`${API_URL}/api/groups/${groupId}/posts/`);
+    }}
+  />
+)}
     </div>
   );
 }

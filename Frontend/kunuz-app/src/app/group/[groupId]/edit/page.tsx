@@ -156,7 +156,7 @@ if (invitedUsers && invitedUsers.length > 0) {
     )
   );
 }
-      router.push(groupId ? `/groups/${groupId}` : "/communities");
+     router.push(groupId ? `/group/${groupId}` : "/communities");
     } catch (err) {
       console.error("Error updating guild:", err);
       setError("Something went wrong. Please try again.");

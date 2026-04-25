@@ -280,6 +280,7 @@ export default function PostForm({
   isSubmitting = false,
   isEditMode = false,
   hidePostType = false,
+  hideVisibility = false,  // ← ADD THIS
 }) {
   const t = useTranslations("auth.postForm");
   const postTypeOptions = [
@@ -622,7 +623,7 @@ export default function PostForm({
             </div>
           )}
         </SectionBlock>
-
+       {!hideVisibility && (
         <SectionBlock isLast={true}>
           <SectionLabel>{t("sections.postVisibility")} <span style={{ color: "red" }}>*</span></SectionLabel>
 
@@ -725,6 +726,7 @@ export default function PostForm({
             </button>
           </div>
         </SectionBlock>
+      )}
       </div>
 
       {showFooter && (
