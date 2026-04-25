@@ -2,15 +2,23 @@
 
 import LeftSidebar from "@/components/LeftSidebar";
 import BackButton from "@/components/BackButton";
-import GuildForm from "@/components/GroupForme";
+import GroupForm from "@/components/GroupForm";
 import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
+import { useTranslations } from "next-intl";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = "http://127.0.0.1:8000";
 
-export default function CreateGuildPage() {
+function getToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("accessToken") || "";
+}
+
+export default function CreateGroupPage() {
+  const t = useTranslations("auth.pages.createGroup");
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [groupPhoto, setGroupPhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -18,9 +26,14 @@ export default function CreateGuildPage() {
   const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
+  // Keep the actual File objects for multipart upload
+  const [groupPhotoFile, setGroupPhotoFile] = useState<File | null>(null);
+  const [coverPhotoFile, setCoverPhotoFile] = useState<File | null>(null);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setGroupPhotoFile(file);
       const reader = new FileReader();
       reader.onload = () => setGroupPhoto(reader.result as string);
       reader.readAsDataURL(file);
@@ -30,6 +43,7 @@ export default function CreateGuildPage() {
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setCoverPhotoFile(file);
       const reader = new FileReader();
       reader.onload = () => setCoverPhoto(reader.result as string);
       reader.readAsDataURL(file);
@@ -38,26 +52,80 @@ export default function CreateGuildPage() {
 
   const handleCancel = () => router.back();
 
-  const handleDone = async (formData: any) => {
-    try {
-      setSaving(true);
-      // 🔌 BACKEND INTEGRATION POINT
-      // const res = await fetch(`${API_URL}/api/guilds/`, {
-      //   method: "POST",
-      //   headers: { Authorization: `Bearer ${token}` },
-      //   body: formData,
-      // });
-      console.log("Guild data:", { ...formData, groupPhoto, coverPhoto });
-      router.push("/communities");
-    } catch (err) {
-      console.error("Error creating guild:", err);
-    } finally {
-      setSaving(false);
+  const handleDone = async (formData: Record<string, unknown>) => {
+  setError(null);
+  setSaving(true);
+
+  try {
+    const token = getToken();
+
+    // Step 1: Create group WITHOUT images
+    const body = new FormData();
+    body.append("name",              String(formData.groupName        ?? "").trim());
+    body.append("description",       String(formData.description      ?? ""));
+    body.append("category",          String(formData.category         ?? ""));
+    body.append("region",            String(formData.region           ?? ""));
+    body.append("historical_period", String(formData.historicalPeriod ?? ""));
+    body.append("rules",             String(formData.rules            ?? ""));
+    body.append("visibility",        String(formData.visibility       ?? "Public").toLowerCase());
+
+    const res = await fetch(`${API_URL}/api/groups/`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      setError(JSON.stringify(data));
+      return;
     }
-  };
+
+    const groupId = data?.data?.id ?? data?.id;
+
+    // Step 2: PATCH images separately if user selected them
+    if (groupId && (groupPhotoFile || coverPhotoFile)) {
+      const imageBody = new FormData();
+      if (groupPhotoFile) imageBody.append("profile_picture", groupPhotoFile);
+      if (coverPhotoFile) imageBody.append("banner_image",    coverPhotoFile);
+
+      await fetch(`${API_URL}/api/groups/${groupId}/`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: imageBody,
+      });
+    }
+    
+    // Send invitations
+const invitedUsers = formData.invitedUsers as { id: string }[] | undefined;
+if (groupId && invitedUsers && invitedUsers.length > 0) {
+  await Promise.allSettled(
+    invitedUsers.map((u) =>
+      fetch(`${API_URL}/api/groups/${groupId}/invite/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient_id: u.id }),
+      })
+    )
+  );
+}
+    // Navigate to the new group page
+    if (groupId) {
+      router.push(`/group/${groupId}`);
+    } else {
+      router.push("/communities");
+    }
+  } catch (err) {
+    console.error("Error creating group:", err);
+    setError("Network error. Please check your connection and try again.");
+  } finally {
+    setSaving(false);
+  }
+};
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
+    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
       <LeftSidebar activePage="create-group" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
@@ -68,9 +136,10 @@ export default function CreateGuildPage() {
         <div className="flex flex-1 overflow-hidden px-8 pb-8 gap-6">
 
           {/* ── Left panel ── */}
-          <div className="w-[240px] flex flex-col flex-shrink-0 overflow-hidden">
+          <div className="w-[240px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
             <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
               <h1
+                className="post-page-title"
                 style={{
                   fontFamily: "var(--font-lato), 'Lato', sans-serif",
                   fontSize: "30px",
@@ -79,11 +148,17 @@ export default function CreateGuildPage() {
                   lineHeight: 1.2,
                 }}
               >
-                Create group
+                {t("title")}
               </h1>
               {saving && (
                 <p style={{ fontSize: "12px", color: "#8B6914", marginTop: "6px" }}>
-                  Creating...
+                  {t("creating")}
+                </p>
+              )}
+              {/* Inline error shown under the title — no layout change */}
+              {error && (
+                <p style={{ fontSize: "12px", color: "#C0392B", marginTop: "6px", lineHeight: 1.4 }}>
+                  {error}
                 </p>
               )}
             </div>
@@ -97,9 +172,10 @@ export default function CreateGuildPage() {
                 gap: "8px",
               }}
             >
-              {/* ── Cover photo — slim banner ── */}
+              {/* Cover photo slot */}
               <div
                 onClick={() => coverInputRef.current?.click()}
+                className="post-upload-slot"
                 style={{
                   width: "210px",
                   height: "80px",
@@ -117,7 +193,7 @@ export default function CreateGuildPage() {
                 {coverPhoto ? (
                   <img
                     src={coverPhoto}
-                    alt="Cover"
+                    alt={t("coverAlt")}
                     style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }}
                   />
                 ) : (
@@ -131,19 +207,20 @@ export default function CreateGuildPage() {
                       <polyline points="21 15 16 10 5 21" />
                     </svg>
                     <span style={{ color: "#79747E", fontSize: "11px", fontFamily: "Lato, sans-serif" }}>
-                      Cover photo
+                      {t("coverPhoto")}
                     </span>
                   </div>
                 )}
               </div>
               <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverChange} />
 
-              {/* ── Group photo — compact square with icon + label inside ── */}
+              {/* Group photo slot */}
               <div
                 onClick={() => fileInputRef.current?.click()}
+                className="post-upload-slot"
                 style={{
                   width: "210px",
-                  height: "160px",         /* ← reduced from 276 px */
+                  height: "160px",
                   borderRadius: "10px",
                   border: "1px dashed #D6CFC3",
                   backgroundColor: "#FFFFFF",
@@ -161,12 +238,11 @@ export default function CreateGuildPage() {
                 {groupPhoto ? (
                   <img
                     src={groupPhoto}
-                    alt="Group"
+                    alt={t("groupAlt")}
                     style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "10px" }}
                   />
                 ) : (
                   <>
-                    {/* Download arrow — same icon as before, smaller */}
                     <svg
                       width="40" height="40" viewBox="0 0 24 24" fill="none"
                       stroke="#ADADAD" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"
@@ -185,7 +261,7 @@ export default function CreateGuildPage() {
                         lineHeight: 1.4,
                       }}
                     >
-                      Upload group photo
+                      {t("uploadGroupPhoto")}
                     </span>
                   </>
                 )}
@@ -203,7 +279,7 @@ export default function CreateGuildPage() {
               border: "1px solid rgba(0,0,0,0.1)",
             }}
           >
-            <GuildForm onCancel={handleCancel} onDone={handleDone} />
+            <GroupForm onCancel={handleCancel} onDone={handleDone} />
           </div>
 
         </div>

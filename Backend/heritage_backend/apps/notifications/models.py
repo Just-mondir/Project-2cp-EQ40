@@ -16,6 +16,7 @@ class Notification(me.Document):
     target_id = me.StringField(required=True)
     message = me.StringField(default="")
     is_read = me.BooleanField(default=False)
+    extra = me.DictField(default=dict)
     created_at = me.DateTimeField()
 
     meta = {
@@ -35,3 +36,4 @@ class Notification(me.Document):
 
     def __str__(self) -> str:
         return f"Notification({self.event_type}) for {self.recipient_id}"
+

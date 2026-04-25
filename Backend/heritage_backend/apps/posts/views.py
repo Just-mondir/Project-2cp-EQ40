@@ -121,7 +121,7 @@ class PostDetailView(APIView):
         post = self._get_post(pk)
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        if post.author_id != str(request.user.id) and not request.user.is_staff:
+        if post.author_id != str(request.user.id) and not (request.user.is_staff or getattr(request.user, "role", None) in ("moderator", "admin")):
             return api_error("You can only delete your own posts.", status_code=status.HTTP_403_FORBIDDEN)
         post.is_deleted = True
         post.save()
@@ -328,7 +328,7 @@ class CommentDetailView(APIView):
         if not comment:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        if comment.user_id != str(request.user.id) and not request.user.is_staff:
+        if comment.user_id != str(request.user.id) and not (request.user.is_staff or getattr(request.user, "role", None) in ("moderator", "admin")):
             return api_error("You can only delete your own comments.", status_code=status.HTTP_403_FORBIDDEN)
 
         replies = Comment.objects(parent=comment)
@@ -361,7 +361,13 @@ class MySavedPostsView(APIView):
 
     def get(self, request: Request) -> Response:
         saves = Save.objects(user_id=str(request.user.id))
-        post_ids = [save.post.id for save in saves]
+        post_ids = []
+        for save in saves:
+            try:
+                if save.post:
+                    post_ids.append(save.post.id)
+            except Exception:
+                continue
         posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
@@ -374,7 +380,13 @@ class MyGemedPostsView(APIView):
 
     def get(self, request: Request) -> Response:
         gems = Gem.objects(user_id=str(request.user.id))
-        post_ids = [gem.post.id for gem in gems]
+        post_ids = []
+        for gem in gems:
+            try:
+                if gem.post:
+                    post_ids.append(gem.post.id)
+            except Exception:
+                continue
         posts = Post.objects(id__in=post_ids, is_deleted=False)
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
@@ -623,7 +635,7 @@ class AnnotationDetailView(APIView):
         annotation = self._get_annotation(annotation_id)
         if not annotation:
             return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
-        if annotation.user_id != str(request.user.id):
+        if annotation.user_id != str(request.user.id) and not (request.user.is_staff or getattr(request.user, "role", None) in ("moderator", "admin")):
             return api_error("You can only delete your own annotation.", status_code=status.HTTP_403_FORBIDDEN)
         annotation.delete()
         return api_success("Annotation deleted.", status_code=status.HTTP_204_NO_CONTENT)

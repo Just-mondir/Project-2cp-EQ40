@@ -9,7 +9,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.views import APIView
+from apps.posts.utils import upload_to_cloudinary
 
 from apps.core.pagination import StandardResultsSetPagination
 from apps.core.responses import api_error, api_success
@@ -207,11 +209,8 @@ class ReportResolveView(APIView):
 
 class MobilizationReportListCreateView(APIView):
     """GET list mobilization reports, POST create a mobilization report."""
-
-    def get_permissions(self):
-        if self.request.method == "POST":
-            return [IsAuthenticated()]
-        return [IsAuthenticated()]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request: Request) -> Response:
         qs = MobilizationReport.objects.all()
@@ -220,11 +219,11 @@ class MobilizationReportListCreateView(APIView):
 
         if post_id:
             try:
-                post = Post.objects.get(id=ObjectId(post_id))
-                qs = qs.filter(post=post)
-            except (Post.DoesNotExist, InvalidId):
+                # Handle both raw string ID and ObjectId
+                qs = qs.filter(post=ObjectId(post_id))
+            except Exception:
                 return api_error(
-                    "Invalid or non-existent post_id.",
+                    "Invalid post_id.",
                     status_code=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -256,8 +255,14 @@ class MobilizationReportListCreateView(APIView):
     def post(self, request: Request) -> Response:
         created_by = str(request.user.id)
 
+        # Handle file uploads
+        request_data = request.data.copy()
+        image_files = request.FILES.getlist("uploaded_images")
+        
+        # We'll pass the list of URLs to the serializer if needed, 
+        # or just set them after save.
         serializer = MobilizationReportCreateSerializer(
-            data=request.data,
+            data=request_data,
             context={"created_by": created_by},
         )
         if not serializer.is_valid():
@@ -268,6 +273,14 @@ class MobilizationReportListCreateView(APIView):
             )
 
         mobilization_report = serializer.save()
+
+        if image_files:
+            images_list = [
+                upload_to_cloudinary(img, folder="mobilization_reports")
+                for img in list(image_files)[:4]
+            ]
+            mobilization_report.images = images_list
+            mobilization_report.save()
 
         return api_success(
             "Mobilization report submitted successfully.",
@@ -302,7 +315,7 @@ class MobilizationReportDetailView(APIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
-        if report.created_by != str(request.user.id) and not request.user.is_staff:
+        if report.created_by != str(request.user.id) and not (request.user.is_staff or getattr(request.user, "role", None) in ("moderator", "admin")):
             return api_error(
                 "You can only edit your own mobilization reports.",
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -344,7 +357,7 @@ class MobilizationReportDetailView(APIView):
                 status_code=status.HTTP_404_NOT_FOUND,
             )
 
-        if report.created_by != str(request.user.id) and not request.user.is_staff:
+        if report.created_by != str(request.user.id) and not (request.user.is_staff or getattr(request.user, "role", None) in ("moderator", "admin")):
             return api_error(
                 "You can only delete your own mobilization reports.",
                 status_code=status.HTTP_403_FORBIDDEN,

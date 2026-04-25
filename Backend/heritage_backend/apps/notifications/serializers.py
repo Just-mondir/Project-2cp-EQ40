@@ -29,6 +29,7 @@ class NotificationSerializer(serializers.Serializer):
     actor_username = serializers.SerializerMethodField()
     actor_profile_picture = serializers.SerializerMethodField()
     event_label = serializers.SerializerMethodField()
+    extra = serializers.DictField(default=dict)
 
     def get_id(self, obj) -> str:
         return str(obj.id)
@@ -56,6 +57,7 @@ class NotificationSerializer(serializers.Serializer):
             "group_invite_received": "invited you to a group",
             "group_join_request_approved": "approved your group request",
             "group_join_request_rejected": "rejected your group request",
+            "group_join_request": "wants to join your group",  # ← ADD HERE
             "badge_request_reviewed": "reviewed your badge request",
             "user_banned": "banned your account",
             "user_suspended": "suspended your account",

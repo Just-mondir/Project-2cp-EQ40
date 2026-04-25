@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const SISAL = "#C4A882";
 
 export default function AddLocationPopup({ initialValue = "", onConfirm, onClose }) {
+    const t = useTranslations("auth.locationPopup");
     const [location, setLocation] = useState(initialValue);
     const [mapLocation, setMapLocation] = useState("");
     const [mapOpened, setMapOpened] = useState(false);
 
-    /* Close on Escape key */
     useEffect(() => {
         const handleKey = (e) => { if (e.key === "Escape") onClose(); };
         window.addEventListener("keydown", handleKey);
@@ -37,7 +38,6 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
     };
 
     return (
-        /* ── Backdrop ── */
         <div
             onClick={onClose}
             style={{
@@ -50,7 +50,6 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                 zIndex: 9999,
             }}
         >
-            {/* ── Card ── */}
             <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -64,10 +63,9 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                     fontFamily: "var(--font-lato), 'Lato', sans-serif",
                 }}
             >
-                {/* ── Close (X) top-right ── */}
                 <button
                     onClick={onClose}
-                    title="Close"
+                    title={t("close")}
                     style={{
                         position: "absolute",
                         top: "14px",
@@ -92,7 +90,6 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                     </svg>
                 </button>
 
-                {/* ── Title ── */}
                 <h2 style={{
                     fontWeight: 700,
                     fontSize: "20px",
@@ -102,12 +99,11 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                     letterSpacing: "0.01em",
                     fontFamily: "var(--font-lato), 'Lato', sans-serif",
                 }}>
-                    Add Location
+                    {t("title")}
                 </h2>
 
-                {/* ── Type manually ── */}
                 <p style={{ fontSize: "12px", color: ESPRESSO, fontWeight: 600, marginBottom: "6px", opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Type location
+                    {t("typeLocation")}
                 </p>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                     <input
@@ -116,7 +112,7 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                         onChange={(e) => setLocation(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
                         autoFocus
-                        placeholder="City or monument name…"
+                        placeholder={t("placeholders.location")}
                         style={{
                             flex: 1,
                             backgroundColor: "#FFFFFF",
@@ -134,10 +130,9 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                         onFocus={(e) => { e.target.style.boxShadow = "0 0 0 2.5px rgba(139,105,20,0.22)"; }}
                         onBlur={(e) => { e.target.style.boxShadow = "none"; }}
                     />
-                    {/* Confirm typed location */}
                     <button
                         onClick={handleConfirm}
-                        title="Confirm location"
+                        title={t("confirmLocation")}
                         style={{
                             flexShrink: 0,
                             width: "40px",
@@ -161,21 +156,19 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                     </button>
                 </div>
 
-                {/* ── Divider ── */}
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "20px 0 16px" }}>
                     <div style={{ flex: 1, height: "1px", backgroundColor: SISAL, opacity: 0.4 }} />
                     <span style={{ fontSize: "11px", color: ESPRESSO, opacity: 0.45, fontFamily: "var(--font-lato)", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                        or pick from map
+                        {t("orPickFromMap")}
                     </span>
                     <div style={{ flex: 1, height: "1px", backgroundColor: SISAL, opacity: 0.4 }} />
                 </div>
 
-                {/* ── Map pin button ── */}
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: mapOpened ? "16px" : "0" }}>
                     <button
                         type="button"
                         onClick={handleOpenMap}
-                        title="Open Google Maps"
+                        title={t("openGoogleMaps")}
                         style={{
                             width: "56px",
                             height: "56px",
@@ -200,7 +193,6 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                             e.currentTarget.style.backgroundColor = "#fff5f5";
                         }}
                     >
-                        {/* Fully red map pin */}
                         <svg width="30" height="30" viewBox="0 0 24 24" fill="#FF0000">
                             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                             <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
@@ -208,7 +200,6 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                     </button>
                 </div>
 
-                {/* ── Map location input (appears after clicking map) ── */}
                 {mapOpened && (
                     <div style={{ animation: "fadeIn 0.2s ease" }}>
                         <p style={{
@@ -220,7 +211,7 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                             textTransform: "uppercase",
                             letterSpacing: "0.06em",
                         }}>
-                            Paste location from map
+                            {t("pasteLocationFromMap")}
                         </p>
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                             <input
@@ -228,7 +219,7 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                                 value={mapLocation}
                                 onChange={(e) => setMapLocation(e.target.value)}
                                 onKeyDown={(e) => { if (e.key === "Enter") handleMapConfirm(); }}
-                                placeholder="Paste or type the location you found…"
+                                placeholder={t("placeholders.mapLocation")}
                                 style={{
                                     flex: 1,
                                     backgroundColor: "#FFFFFF",
@@ -247,10 +238,9 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                                 onBlur={(e) => { e.target.style.boxShadow = "none"; }}
                                 autoFocus
                             />
-                            {/* Confirm map location */}
                             <button
                                 onClick={handleMapConfirm}
-                                title="Use this location"
+                                title={t("useThisLocation")}
                                 style={{
                                     flexShrink: 0,
                                     width: "40px",
@@ -274,7 +264,7 @@ export default function AddLocationPopup({ initialValue = "", onConfirm, onClose
                             </button>
                         </div>
                         <p style={{ fontSize: "11px", color: ESPRESSO, opacity: 0.45, marginTop: "6px", fontFamily: "var(--font-lato)" }}>
-                            Copy the place name from Google Maps and paste it above.
+                            {t("mapHint")}
                         </p>
                     </div>
                 )}

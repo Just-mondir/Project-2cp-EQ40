@@ -1,49 +1,35 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const SISAL = "#C4A882";
 
-// ── User type — ready for backend ─────────────────────────────────────────
 export interface User {
   id: string;
   username: string;
   avatarUrl?: string | null;
 }
 
-// ── Mock data — replace with real API response ────────────────────────────
-// avatarUrl uses https://i.pravatar.cc — a free placeholder avatar service.
-// When the backend is ready, each user object will have their real profile
-// image URL here — no other code needs to change.
-const MOCK_USERS: User[] = [
-  { id: "1", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "2", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "3", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "4", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-  { id: "5", username: "User456745475", avatarUrl: "/timgad 1.jpg" },
-];
+// ADD this instead:
+const API_URL = "http://127.0.0.1:8000";
+function getToken() { return typeof window !== "undefined" ? localStorage.getItem("accessToken") || "" : ""; }
 
-// 🔌 BACKEND INTEGRATION POINT
-// Replace this function body with a real fetch when the API is ready:
-//
-//   const res = await fetch(
-//     `${API_URL}/api/users/search?q=${encodeURIComponent(query)}`,
-//     { headers: { Authorization: `Bearer ${token}` } }
-//   );
-//   const data = await res.json();
-//   return data.users as User[];
-//
 async function searchUsers(query: string): Promise<User[]> {
-  await new Promise((r) => setTimeout(r, 100)); // simulate network latency
-  if (!query.trim()) return MOCK_USERS;
-  return MOCK_USERS.filter((u) =>
-    u.username.toLowerCase().includes(query.toLowerCase())
-  );
+  const url = `${API_URL}/api/groups/users/search/${query.trim() ? `?q=${encodeURIComponent(query)}` : ""}`;
+  try {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } });
+    const data = await res.json();
+    const results = data.data?.results ?? data.results ?? data.data ?? [];
+    return (Array.isArray(results) ? results : []).map((u: any) => ({
+      id: String(u.id), username: u.username ?? "",
+      avatarUrl: u.profile_picture ? (u.profile_picture.startsWith("http") ? u.profile_picture : `${API_URL}${u.profile_picture}`) : null,
+    })).filter((u) => u.username.trim() !== "");
+  } catch { return []; }
 }
 
-// ── Avatar — landscape placeholder matching the design ───────────────────
 function UserAvatar({ user, size = 40 }: { user: User; size?: number }) {
   if (user.avatarUrl) {
     return (
@@ -68,7 +54,6 @@ function UserAvatar({ user, size = 40 }: { user: User; size?: number }) {
       </div>
     );
   }
-  // Warm circle with a subtle landscape icon — same feel as AddGroupsPopup avatars
   return (
     <div
       style={{
@@ -101,13 +86,10 @@ function UserAvatar({ user, size = 40 }: { user: User; size?: number }) {
   );
 }
 
-// ── Props ─────────────────────────────────────────────────────────────────
 interface InviteUsersModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Receives the confirmed User objects so the parent can store id + username */
   onConfirm: (users: User[]) => void;
-  /** IDs already invited — pre-checked on open */
   alreadyInvited?: string[];
 }
 
@@ -117,28 +99,18 @@ export default function InviteUsersModal({
   onConfirm,
   alreadyInvited = [],
 }: InviteUsersModalProps) {
+  const t = useTranslations("auth.inviteUsers");
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<User[]>(MOCK_USERS);
+  const [results, setResults] = useState<User[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set(alreadyInvited));
   const [loading, setLoading] = useState(false);
 
-  // Close on Escape
   useEffect(() => {
     const handle = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
   }, [onClose]);
 
-  // Reset + initial load when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setSearch("");
-      setResults(MOCK_USERS);
-      setSelected(new Set(alreadyInvited));
-    }
-  }, [isOpen]);
-
-  // Debounced search
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(async () => {
@@ -153,7 +125,8 @@ export default function InviteUsersModal({
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -164,12 +137,9 @@ export default function InviteUsersModal({
     onClose();
   };
 
-  const filtered = results;
-
   if (!isOpen) return null;
 
   return (
-    // Backdrop — identical to AddGroupsPopup
     <div
       onClick={onClose}
       style={{
@@ -182,7 +152,6 @@ export default function InviteUsersModal({
         zIndex: 9999,
       }}
     >
-      {/* Card */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -196,10 +165,9 @@ export default function InviteUsersModal({
           fontFamily: "var(--font-lato), 'Lato', sans-serif",
         }}
       >
-        {/* ── Confirm / Send button — top right, same as AddGroupsPopup ── */}
         <button
           onClick={handleConfirm}
-          title="Confirm selection"
+          title={t("confirmSelection")}
           style={{
             position: "absolute",
             top: "16px",
@@ -231,10 +199,9 @@ export default function InviteUsersModal({
           >
             <path d="M20 6L9 17l-5-5" />
           </svg>
-          <span style={{ fontSize: "10px", fontWeight: 500 }}>Send</span>
+          <span style={{ fontSize: "10px", fontWeight: 500 }}>{t("send")}</span>
         </button>
 
-        {/* Title */}
         <h2
           style={{
             fontFamily: "var(--font-playfair), 'Playfair Display', serif",
@@ -246,10 +213,9 @@ export default function InviteUsersModal({
             letterSpacing: "0.01em",
           }}
         >
-          Invite
+          {t("title")}
         </h2>
 
-        {/* Search input */}
         <p
           style={{
             fontSize: "13px",
@@ -259,14 +225,14 @@ export default function InviteUsersModal({
             opacity: 0.8,
           }}
         >
-          Type username
+          {t("typeUsername")}
         </p>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           autoFocus
-          placeholder="Search users…"
+          placeholder={t("searchPlaceholder")}
           style={{
             width: "100%",
             backgroundColor: "#FFFFFF",
@@ -278,7 +244,7 @@ export default function InviteUsersModal({
             outline: "none",
             padding: "10px 14px",
             fontSize: "14px",
-            boxSizing: "border-box" as const,
+            boxSizing: "border-box",
             marginBottom: "16px",
             transition: "box-shadow 0.15s",
           }}
@@ -286,7 +252,6 @@ export default function InviteUsersModal({
           onBlur={(e) => { e.target.style.boxShadow = "none"; }}
         />
 
-        {/* User list */}
         <div
           style={{
             display: "flex",
@@ -296,7 +261,7 @@ export default function InviteUsersModal({
             overflowY: "auto",
             scrollbarWidth: "none",
             msOverflowStyle: "none",
-          } as React.CSSProperties}
+          }}
         >
           {loading ? (
             <p
@@ -308,9 +273,9 @@ export default function InviteUsersModal({
                 padding: "16px 0",
               }}
             >
-              Searching…
+              {t("searching")}
             </p>
-          ) : filtered.length === 0 ? (
+          ) : results.length === 0 ? (
             <p
               style={{
                 textAlign: "center",
@@ -320,10 +285,10 @@ export default function InviteUsersModal({
                 padding: "16px 0",
               }}
             >
-              No users found
+              {t("noUsersFound")}
             </p>
           ) : (
-            filtered.map((user) => {
+            results.map((user) => {
               const isSelected = selected.has(user.id);
               return (
                 <div
@@ -344,7 +309,6 @@ export default function InviteUsersModal({
                     cursor: "pointer",
                   }}
                 >
-                  {/* Avatar + username */}
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <UserAvatar user={user} size={40} />
                     <span
@@ -359,7 +323,6 @@ export default function InviteUsersModal({
                     </span>
                   </div>
 
-                  {/* + / ✓ toggle — identical to AddGroupsPopup */}
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); toggle(user.id); }}

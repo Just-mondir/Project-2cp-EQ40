@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import AddLocationPopup from "./AddLocationPopup";
 import AddGroupsPopup from "./AddGroupsPopup";
 import RichTextEditor, { TitleEditor } from "./RichTextEditor";
@@ -72,6 +73,22 @@ function SectionLabel({ children }) {
   );
 }
 
+function FieldLabel({ children }) {
+  return (
+    <p
+      style={{
+        color: ESPRESSO,
+        fontFamily: FONT,
+        fontWeight: 600,
+        fontSize: "12px",
+        marginBottom: "6px",
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
 function PillGroup({ options, value, onChange, variant = "default" }) {
   return (
     <div
@@ -80,14 +97,14 @@ function PillGroup({ options, value, onChange, variant = "default" }) {
       style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
     >
       {options.map((opt) => {
-        const active = value === opt;
+        const active = value === opt.value;
         return (
           <button
-            key={opt}
+            key={opt.value}
             type="button"
-            onClick={() => onChange(opt)}
+            onClick={() => onChange(opt.value)}
             className="post-form-pill"
-            data-option={opt}
+            data-option={opt.value}
             data-active={active ? "true" : "false"}
             style={{
               display: "inline-flex",
@@ -105,27 +122,11 @@ function PillGroup({ options, value, onChange, variant = "default" }) {
               boxShadow: active ? "none" : "0 1px 4px rgba(67,40,23,0.06)",
             }}
           >
-            <span>{opt}</span>
+            <span>{opt.label}</span>
           </button>
         );
       })}
     </div>
-  );
-}
-
-function FieldLabel({ children }) {
-  return (
-    <p
-      style={{
-        color: ESPRESSO,
-        fontFamily: FONT,
-        fontWeight: 600,
-        fontSize: "12px",
-        marginBottom: "6px",
-      }}
-    >
-      {children}
-    </p>
   );
 }
 
@@ -141,7 +142,7 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const display = value || placeholder || "";
+  const selectedOption = options.find((option) => option.value === value);
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -176,7 +177,7 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
             whiteSpace: "nowrap",
           }}
         >
-          {display}
+          {selectedOption?.label || placeholder || ""}
         </span>
         <svg
           className="post-form-dropdown-icon"
@@ -221,15 +222,15 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
           }}
         >
           {options.map((opt) => {
-            const isSelected = opt === value;
+            const isSelected = opt.value === value;
             return (
               <button
-                key={opt}
+                key={opt.value}
                 type="button"
                 className="post-form-dropdown-option"
                 data-selected={isSelected ? "true" : "false"}
                 onClick={() => {
-                  onChange(opt);
+                  onChange(opt.value);
                   setOpen(false);
                 }}
                 style={{
@@ -261,7 +262,7 @@ function StyledDropdown({ value, onChange, options, placeholder }) {
                   }
                 }}
               >
-                {opt}
+                {opt.label}
               </button>
             );
           })}
@@ -279,82 +280,35 @@ export default function PostForm({
   isSubmitting = false,
   isEditMode = false,
   hidePostType = false,
+  hideVisibility = false,  // ← ADD THIS
 }) {
-  const [title, setTitle] = useState(initialValues.title ?? "");
-  const [description, setDescription] = useState(
-    initialValues.description ?? "",
-  );
-  const [location, setLocation] = useState(initialValues.location ?? "");
-  const [postType, setPostType] = useState(
-    initialValues.postType ?? "Discovery",
-  );
-  const [dangerLevel, setDangerLevel] = useState(
-    initialValues.dangerLevel ?? null,
-  );
-  const [historicalPeriod, setHistoricalPeriod] = useState(
-    initialValues.historicalPeriod ?? "",
-  );
-  const [region, setRegion] = useState(initialValues.region ?? "");
-  const [monumentType, setMonumentType] = useState(
-    initialValues.monumentType ?? null,
-  );
-  const [selectedMonument, setSelectedMonument] = useState(
-    initialValues.selectedMonument ?? null,
-  );
-  const [previousStatus, setPreviousStatus] = useState(
-    initialValues.previousStatus ?? "alert",
-  );
-  const [currentStatus, setCurrentStatus] = useState(
-    initialValues.currentStatus ?? "under_intervention",
-  );
-  const [visibility, setVisibility] = useState(
-    initialValues.visibility ?? "Public",
-  );
-  const [selectedGroups, setSelectedGroups] = useState(
-    initialValues.groups ?? [],
-  );
-  const [startTime, setStartTime] = useState(initialValues.startTime ?? "");
-  const [endTime, setEndTime] = useState(initialValues.endTime ?? "");
-
-  const [showLocationPopup, setShowLocationPopup] = useState(false);
-  const [showGroupsPopup, setShowGroupsPopup] = useState(false);
-  const [showDoneModal, setShowDoneModal] = useState(false);
-  useEffect(() => {
-    setTitle(initialValues.title ?? "");
-    setDescription(initialValues.description ?? "");
-    setLocation(initialValues.location ?? "");
-    setPostType(initialValues.postType ?? "Discovery");
-    setMonumentType(initialValues.monumentType ?? null);
-    setSelectedMonument(initialValues.selectedMonument ?? null);
-    setPreviousStatus(initialValues.previousStatus ?? "alert");
-    setCurrentStatus(initialValues.currentStatus ?? "under_intervention");
-    setHistoricalPeriod(initialValues.historicalPeriod ?? "");
-    setRegion(initialValues.region ?? "");
-    setVisibility(initialValues.visibility ?? "Public");
-    setSelectedGroups(initialValues.groups ?? []);
-    setStartTime(initialValues.startTime ?? "");
-    setEndTime(initialValues.endTime ?? "");
-  }, [
-    initialValues.title,
-    initialValues.description,
-    initialValues.location,
-    initialValues.postType,
-    initialValues.dangerLevel,
-    initialValues.currentStatus,
-    initialValues.historicalPeriod,
-    initialValues.region,
-    initialValues.monumentType,
-    initialValues.visibility,
-    JSON.stringify(initialValues.groups ?? []),
-    initialValues.startTime,
-    initialValues.endTime,
-  ]);
-
-  const POST_TYPES = ["Question", "Visit", "Discovery", "In Danger", "Event"];
-  const DANGER_LEVELS = ["Low", "Medium", "High", "Critical"];
-  const MONUMENT_TYPES = ["Civil", "Military", "Religious", "Funerary"];
-  const CURRENT_STATUSES = ["Destroyed", "Under intervention", "Restored", "Alert"];
-  const HISTORICAL_PERIODS = [
+  const t = useTranslations("auth.postForm");
+  const postTypeOptions = [
+    { value: "Question", label: t("options.postTypes.question") },
+    { value: "Visit", label: t("options.postTypes.visit") },
+    { value: "Discovery", label: t("options.postTypes.discovery") },
+    { value: "In Danger", label: t("options.postTypes.inDanger") },
+    { value: "Event", label: t("options.postTypes.event") },
+  ];
+  const dangerLevelOptions = [
+    { value: "Low", label: t("options.dangerLevels.low") },
+    { value: "Medium", label: t("options.dangerLevels.medium") },
+    { value: "High", label: t("options.dangerLevels.high") },
+    { value: "Critical", label: t("options.dangerLevels.critical") },
+  ];
+  const monumentTypeOptions = [
+    { value: "Civil", label: t("options.monumentTypes.civil") },
+    { value: "Military", label: t("options.monumentTypes.military") },
+    { value: "Religious", label: t("options.monumentTypes.religious") },
+    { value: "Funerary", label: t("options.monumentTypes.funerary") },
+  ];
+  const statusOptions = [
+    { value: "Destroyed", label: t("options.statuses.destroyed") },
+    { value: "Under intervention", label: t("options.statuses.underIntervention") },
+    { value: "Restored", label: t("options.statuses.restored") },
+    { value: "Alert", label: t("options.statuses.alert") },
+  ];
+  const historicalPeriods = [
     "Prehistory",
     "Protohistory",
     "Numidian period",
@@ -373,8 +327,8 @@ export default function PostForm({
     "War of Independence",
     "Independent Algeria",
     "Contemporary period",
-  ];
-  const REGIONS = [
+  ].map((value) => ({ value, label: t(`historicalPeriods.${value}`) }));
+  const regions = [
     "Kabylia",
     "Tuareg",
     "Chaoui",
@@ -390,16 +344,49 @@ export default function PostForm({
     "Beni Mzab",
     "Ouled Nail",
     "Tassili n'Ajjer",
-  ];
+  ].map((value) => ({ value, label: t(`regions.${value}`) }));
+
+  const [title, setTitle] = useState(initialValues.title ?? "");
+  const [description, setDescription] = useState(
+    initialValues.description ?? "",
+  );
+  const [location, setLocation] = useState(initialValues.location ?? "");
+  const [postType, setPostType] = useState(
+    initialValues.postType ?? "Discovery",
+  );
+  const [dangerLevel, setDangerLevel] = useState(
+    initialValues.dangerLevel ?? null,
+  );
+  const [historicalPeriod, setHistoricalPeriod] = useState(
+    initialValues.historicalPeriod ?? "",
+  );
+  const [region, setRegion] = useState(initialValues.region ?? "");
+  const [monumentType, setMonumentType] = useState(
+    initialValues.monumentType ?? null,
+  );
+  const selectedMonument = initialValues.selectedMonument ?? null;
+  const previousStatus = initialValues.previousStatus ?? "alert";
+  const [currentStatus, setCurrentStatus] = useState(
+    initialValues.currentStatus ?? "under_intervention",
+  );
+  const [selectedGroups, setSelectedGroups] = useState(
+    initialValues.groups ?? [],
+  );
+  const [startTime, setStartTime] = useState(initialValues.startTime ?? "");
+  const [endTime, setEndTime] = useState(initialValues.endTime ?? "");
+
+  const [showLocationPopup, setShowLocationPopup] = useState(false);
+  const [showGroupsPopup, setShowGroupsPopup] = useState(false);
+  const [showDoneModal, setShowDoneModal] = useState(false);
 
   const removeGroup = (idx) =>
     setSelectedGroups((prev) => prev.filter((_, i) => i !== idx));
 
   const handleGroupsConfirm = (groups) => {
-    const names = groups.map((g) => g.name);
     setSelectedGroups((prev) => {
-      const existing = new Set(prev);
-      return [...prev, ...names.filter((n) => !existing.has(n))];
+      const existingIds = new Set(prev.map(g => g.id));
+      const newGroups = groups.filter(g => !existingIds.has(g.id));
+      return [...prev, ...newGroups.map(g => ({ id: g.id, name: g.name }))];
     });
   };
 
@@ -425,7 +412,7 @@ export default function PostForm({
       historicalPeriod,
       region,
       monumentType,
-      visibility,
+      visibility: selectedGroups.length > 0 ? "Private" : "Public",
       groups: selectedGroups,
       startTime,
       endTime,
@@ -456,30 +443,30 @@ export default function PostForm({
         className="hide-scrollbar"
       >
         <SectionBlock>
-          <SectionLabel>Info</SectionLabel>
+          <SectionLabel>{t("sections.info")}</SectionLabel>
 
           <div style={{ marginBottom: "14px" }}>
             <FieldLabel>
-              Title <span style={{ color: "red" }}>*</span>
+              {t("fields.title")} <span style={{ color: "red" }}>*</span>
             </FieldLabel>
             <TitleEditor
               value={title}
               onChange={setTitle}
-              placeholder="Entrez le titre de votre post ici..."
+              placeholder={t("placeholders.title")}
             />
           </div>
 
-          <FieldLabel>Description</FieldLabel>
+          <FieldLabel>{t("fields.description")}</FieldLabel>
           <RichTextEditor
             value={description}
             onChange={setDescription}
-            placeholder="Entrez le contenu de votre post ici..."
+            placeholder={t("placeholders.description")}
             minHeight="180px"
           />
         </SectionBlock>
 
         <SectionBlock>
-          <SectionLabel>Location</SectionLabel>
+          <SectionLabel>{t("sections.location")}</SectionLabel>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <input
               className="post-form-control"
@@ -487,7 +474,7 @@ export default function PostForm({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               style={{ ...inputStyle, width: "263px" }}
-              placeholder="City or monument name"
+              placeholder={t("placeholders.location")}
               ref={withFocus}
             />
             <button
@@ -514,7 +501,7 @@ export default function PostForm({
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent";
               }}
-              title="Add location"
+              title={t("actions.addLocation")}
             >
               <svg
                 width="15"
@@ -534,15 +521,15 @@ export default function PostForm({
         </SectionBlock>
 
         <SectionBlock>
-          <SectionLabel>Labels</SectionLabel>
+          <SectionLabel>{t("sections.labels")}</SectionLabel>
 
           {!hidePostType && (
             <div style={{ marginBottom: "18px" }}>
               <FieldLabel>
-                Post Type <span style={{ color: "red" }}>*</span>
+                {t("fields.postType")} <span style={{ color: "red" }}>*</span>
               </FieldLabel>
               <PillGroup
-                options={POST_TYPES}
+                options={postTypeOptions}
                 value={postType}
                 onChange={setPostType}
                 variant="post-type"
@@ -555,9 +542,9 @@ export default function PostForm({
               <div
                 style={{ marginBottom: "18px", animation: "fadeIn 0.2s ease" }}
               >
-                <FieldLabel>Danger Level <span style={{ color: "red" }}>*</span></FieldLabel>
+                <FieldLabel>{t("fields.dangerLevel")} <span style={{ color: "red" }}>*</span></FieldLabel>
                 <PillGroup
-                  options={DANGER_LEVELS}
+                  options={dangerLevelOptions}
                   value={dangerLevel}
                   onChange={setDangerLevel}
                 />
@@ -567,9 +554,9 @@ export default function PostForm({
                 <div
                   style={{ marginBottom: "18px", animation: "fadeIn 0.25s ease" }}
                 >
-                  <FieldLabel>Current Status</FieldLabel>
+                  <FieldLabel>{t("fields.currentStatus")}</FieldLabel>
                   <PillGroup
-                    options={CURRENT_STATUSES}
+                    options={statusOptions}
                     value={currentStatus}
                     onChange={setCurrentStatus}
                   />
@@ -580,29 +567,29 @@ export default function PostForm({
 
           <div style={{ display: "flex", gap: "16px", marginBottom: "18px" }}>
             <div style={{ flex: 1 }}>
-              <FieldLabel>Historical Period</FieldLabel>
+              <FieldLabel>{t("fields.historicalPeriod")}</FieldLabel>
               <StyledDropdown
                 value={historicalPeriod}
                 onChange={setHistoricalPeriod}
-                options={HISTORICAL_PERIODS}
-                placeholder="Select the historical period"
+                options={historicalPeriods}
+                placeholder={t("placeholders.historicalPeriod")}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <FieldLabel>Region</FieldLabel>
+              <FieldLabel>{t("fields.region")}</FieldLabel>
               <StyledDropdown
                 value={region}
                 onChange={setRegion}
-                options={REGIONS}
-                placeholder="Select the region"
+                options={regions}
+                placeholder={t("placeholders.region")}
               />
             </div>
           </div>
 
           <div>
-            <FieldLabel>Monument Type</FieldLabel>
+            <FieldLabel>{t("fields.monumentType")}</FieldLabel>
             <PillGroup
-              options={MONUMENT_TYPES}
+              options={monumentTypeOptions}
               value={monumentType}
               onChange={setMonumentType}
               variant="monument-type"
@@ -611,10 +598,10 @@ export default function PostForm({
 
           {postType === "Event" && (
             <div style={{ marginTop: "24px" }}>
-              <FieldLabel>Event Time <span style={{ color: "red" }}>*</span></FieldLabel>
+              <FieldLabel>{t("fields.eventTime")} <span style={{ color: "red" }}>*</span></FieldLabel>
               <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>Start time</div>
+                  <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>{t("fields.startTime")}</div>
                   <input
                     type="datetime-local"
                     value={startTime}
@@ -623,7 +610,7 @@ export default function PostForm({
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>End time</div>
+                  <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>{t("fields.endTime")}</div>
                   <input
                     type="datetime-local"
                     value={endTime}
@@ -636,17 +623,10 @@ export default function PostForm({
             </div>
           )}
         </SectionBlock>
-
+       {!hideVisibility && (
         <SectionBlock isLast={true}>
-          <SectionLabel>Post Visibility <span style={{ color: "red" }}>*</span></SectionLabel>
+          <SectionLabel>{t("sections.postVisibility")} <span style={{ color: "red" }}>*</span></SectionLabel>
 
-          <div style={{ marginBottom: "14px" }}>
-            <PillGroup
-              options={["Public", "Private"]}
-              value={visibility}
-              onChange={setVisibility}
-            />
-          </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div
@@ -662,13 +642,11 @@ export default function PostForm({
                 border: "1px solid #ffffff",
                 boxShadow: "0 1px 4px rgba(67,40,23,0.06)",
                 minHeight: "46px",
-                opacity: visibility === "Private" ? 1 : 0.6,
-                pointerEvents: "auto",
               }}
             >
               {selectedGroups.map((group, i) => (
                 <span
-                  key={i}
+                  key={group.id}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -683,7 +661,7 @@ export default function PostForm({
                     color: ESPRESSO,
                   }}
                 >
-                  {group}
+                  {group.name}
                   <button
                     type="button"
                     onClick={() => removeGroup(i)}
@@ -698,7 +676,7 @@ export default function PostForm({
                       color: ESPRESSO,
                       lineHeight: 1,
                     }}
-                    title="Remove group"
+                    title={t("actions.removeGroup")}
                   >
                     &times;
                   </button>
@@ -730,7 +708,7 @@ export default function PostForm({
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = "transparent";
               }}
-              title="Add group"
+              title={t("actions.addGroup")}
             >
               <svg
                 width="13"
@@ -748,6 +726,7 @@ export default function PostForm({
             </button>
           </div>
         </SectionBlock>
+      )}
       </div>
 
       {showFooter && (
@@ -784,7 +763,7 @@ export default function PostForm({
               if (!isSubmitting) e.currentTarget.style.opacity = "1";
             }}
           >
-            Cancel
+            {t("actions.cancel")}
           </button>
 
           <button
@@ -792,7 +771,7 @@ export default function PostForm({
             onClick={() => {
               if (postType === "Event" && startTime && endTime) {
                 if (new Date(endTime) <= new Date(startTime)) {
-                  alert("The End time must be strictly after the Start time.");
+                  alert(t("errors.endTimeAfterStart"));
                   return;
                 }
               }
@@ -825,7 +804,7 @@ export default function PostForm({
                 e.currentTarget.style.backgroundColor = ESPRESSO;
             }}
           >
-            {isSubmitting ? "Saving..." : "Done"}
+            {isSubmitting ? t("actions.saving") : t("actions.done")}
           </button>
         </div>
       )}
@@ -834,14 +813,14 @@ export default function PostForm({
         isOpen={showDoneModal}
         onClose={() => setShowDoneModal(false)}
         type="success"
-        title="Save changes?"
-        message="Are you sure you want to save these changes and update your post?"
+        title={t("reviewModal.title")}
+        message={t("reviewModal.message")}
         primaryAction={{
-          label: isSubmitting ? "Saving..." : "Save & Done",
+          label: isSubmitting ? t("actions.saving") : t("reviewModal.primaryAction"),
           onClick: handleConfirmDone,
         }}
         secondaryAction={{
-          label: "Review Again",
+          label: t("reviewModal.secondaryAction"),
           onClick: () => setShowDoneModal(false),
         }}
       />

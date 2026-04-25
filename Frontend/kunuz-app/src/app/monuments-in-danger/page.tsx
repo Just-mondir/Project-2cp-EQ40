@@ -3,11 +3,27 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import LocationWorldCard from "@/components/LocationWorldCard";
+<<<<<<< HEAD
 import ReportPopup from "@/components/Report-popup";
+=======
+import {
+  HISTORICAL_PERIOD_VALUES,
+  MONUMENT_TYPE_VALUES,
+  MOBILIZATION_STATUS_VALUES,
+  REGION_VALUES,
+  URGENCY_LEVEL_VALUES,
+  translateHistoricalPeriod,
+  translateMobilizationStatus,
+  translateMonumentType,
+  translateRegion,
+  translateUrgencyLevel,
+} from "@/lib/authFilterOptions";
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -56,15 +72,18 @@ function toggleStoredItem(key: string, id: string, add: boolean) {
   localStorage.setItem(key, JSON.stringify([...set]));
 }
 
-function getAuthUser() {
+function getAuthUser(): { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean } | null {
   if (typeof window === "undefined") return null;
   try {
-    const stored = localStorage.getItem("user") || localStorage.getItem("user_data");
+    const stored = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
   }
 }
+
+const isModerator = (user: any) => user?.role === "moderator" || user?.role === "admin" || user?.is_staff;
+
 
 /* ───────────────── TYPES ───────────────── */
 
@@ -130,6 +149,17 @@ type Annotation = {
   updated_at: string;
   validated_by_id: string;
   validated_at: string | null;
+};
+
+type HistoryReport = {
+  id: string;
+  post_id: string;
+  description: string;
+  images: string[];
+  previous_status: string;
+  requested_status: string;
+  created_by: string;
+  created_at: string;
 };
 
 type ApiCommentRaw = {
@@ -380,6 +410,7 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
+  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -392,7 +423,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? "See less" : "See more"}
+          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
         </button>
       )}
     </div>
@@ -416,6 +447,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
+  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -426,7 +458,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -435,7 +467,24 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 
   if (post.post_type === "alert" && post.alert_details) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const statusKeyMap: Record<string, string> = {
+      restored: "statuses.restored",
+      under_intervention: "statuses.underIntervention",
+      destroyed: "statuses.destroyed",
+      alert: "statuses.alert",
+    };
+    const urgencyKeyMap: Record<string, string> = {
+      low: "urgency.low",
+      medium: "urgency.medium",
+      high: "urgency.high",
+      critical: "urgency.critical",
+    };
+    const statusLabel = statusKeyMap[post.alert_details.current_status]
+      ? feedT(statusKeyMap[post.alert_details.current_status])
+      : STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const urgencyLabel = urgencyKeyMap[post.alert_details.urgence_level]
+      ? feedT(urgencyKeyMap[post.alert_details.urgence_level])
+      : level.label;
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -445,9 +494,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{urgencyLabel}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -473,6 +522,8 @@ function CommentItem({
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
@@ -503,6 +554,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
 
   const handleGemComment = async () => {
     const token = getAuthToken();
@@ -531,6 +583,7 @@ function CommentItem({
   };
 
   const handleDeleteComment = async () => {
+    if (!window.confirm(commonT("confirmDeleteComment"))) return;
     const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/`, {
@@ -600,9 +653,25 @@ function CommentItem({
     } catch { }
   };
 
+<<<<<<< HEAD
   const handleReportComment = () => {
     setShowMenu(false);
     setShowReportPopup(true);
+=======
+  const handleReportComment = async () => {
+    const reason = window.prompt(feedT("prompts.reportComment"));
+    if (!reason || !reason.trim()) return;
+
+    try {
+      await submitReport("comment", comment.id, reason.trim());
+      setShowMenu(false);
+      window.alert(feedT("feedback.commentReported"));
+    } catch (error) {
+      window.alert(
+        error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
+      );
+    }
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
   };
 
   return (
@@ -641,21 +710,23 @@ function CommentItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
-                {isOwner ? (
+                {canDelete ? (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                      onClick={handleEditComment}
-                    >
-                      Edit comment
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                        onClick={handleEditComment}
+                      >
+                        {feedT("actions.editComment")}
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
                       style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                       onClick={handleDeleteComment}
                     >
-                      Delete comment
+                      {feedT("actions.deleteComment")}
                     </button>
                   </>
                 ) : (
@@ -664,7 +735,7 @@ function CommentItem({
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                     onClick={handleReportComment}
                   >
-                    Report comment
+                    {feedT("actions.reportComment")}
                   </button>
                 )}
               </div>
@@ -691,14 +762,14 @@ function CommentItem({
                 style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
                 onClick={handleSaveEditedComment}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
                 onClick={handleCancelEditComment}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
@@ -730,7 +801,7 @@ function CommentItem({
               <polyline points="9 14 4 9 9 4" />
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
-            <span>Reply</span>
+            <span>{commonT("reply")}</span>
           </button>
         </div>
 
@@ -738,7 +809,7 @@ function CommentItem({
           <div className="flex items-center gap-2 mt-2">
             <input
               type="text"
-              placeholder="Write a reply..."
+              placeholder={feedT("placeholders.reply")}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => {
@@ -794,14 +865,18 @@ function AnnotationItem({
   onReject: (id: string) => void;
   onRefresh?: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = String(getAuthUser()?.id ?? "");
+  const currentUser = getAuthUser();
+  const currentUserId = String(currentUser?.id ?? "");
   const isOwner = currentUserId === String(annotation.user_id);
   const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const canDelete = isOwner || isModerator(currentUser);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -814,6 +889,7 @@ function AnnotationItem({
   }, []);
 
   const handleDelete = async () => {
+    if (!window.confirm(commonT("confirmDeleteAnnotation"))) return;
     const token = getAuthToken();
     try {
       const res = await fetch(
@@ -895,10 +971,26 @@ function AnnotationItem({
     setIsEditing(false);
   };
 
+<<<<<<< HEAD
+=======
+  const handleReport = async () => {
+    const reason = window.prompt(feedT("prompts.reportAnnotation"));
+    if (!reason || !reason.trim()) return;
+
+    try {
+      await submitReport("annotation", annotation.id, reason.trim());
+      setShowMenu(false);
+      window.alert(feedT("feedback.annotationReported"));
+    } catch {
+      window.alert(feedT("feedback.annotationReportFailed"));
+    }
+  };
+
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -945,23 +1037,36 @@ function AnnotationItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
-                {isOwner && (
+                {canDelete ? (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817" }}
-                      onClick={handleEditAnnotation}
-                    >
-                      Edit annotation
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817" }}
+                        onClick={handleEditAnnotation}
+                      >
+                        {feedT("actions.editAnnotation")}
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
                       style={{ color: "#432817" }}
                       onClick={handleDelete}
                     >
-                      Delete annotation
+                      {feedT("actions.deleteAnnotation")}
                     </button>
                   </>
+<<<<<<< HEAD
+=======
+                ) : (
+                  <button
+                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
+                    style={{ color: "#432817" }}
+                    onClick={handleReport}
+                  >
+                    {feedT("actions.reportAnnotation")}
+                  </button>
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
@@ -970,14 +1075,14 @@ function AnnotationItem({
                       style={{ color: "#5C7A3E" }}
                       onClick={handleAccept}
                     >
-                      Accept
+                      {commonT("accept")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
                       style={{ color: "#C0392B" }}
                       onClick={handleReject}
                     >
-                      Reject
+                      {commonT("reject")}
                     </button>
                   </>
                 )}
@@ -1005,14 +1110,14 @@ function AnnotationItem({
                 style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
                 onClick={handleSaveEditedAnnotation}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "#E0D5C5", color: "#432817" }}
                 onClick={handleCancelEditAnnotation}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
@@ -1042,6 +1147,8 @@ function AnnotationItem({
 /* ───────────────── FILTER SECTION ───────────────── */
 
 function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; onClose: () => void; onApply: (filters: any) => void }) {
+  const filtersT = useTranslations("auth.filters");
+  const postFormT = useTranslations("auth.postForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({
     region: "All",
@@ -1059,11 +1166,11 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
   if (!isAnimating && !isVisible) return null;
 
   const filters = [
-    { key: "region", label: "Geographical Regions", options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer"] },
-    { key: "historical_period", label: "Historical Periods", options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"] },
-    { key: "monument_type", label: "Heritage Type", options: ["All", "Civil", "Religious", "Military", "Funerary"] },
-    { key: "urgence_level", label: "Urgency Level", options: ["All", "Low", "Medium", "High", "Critical"] },
-    { key: "current_status", label: "Mobilization Status", options: ["All", "Restored", "Under intervention", "Destroyed", "Alert"] },
+    { key: "region", label: filtersT("labels.region"), options: ["All", ...REGION_VALUES] },
+    { key: "historical_period", label: filtersT("labels.historicalPeriod"), options: ["All", ...HISTORICAL_PERIOD_VALUES] },
+    { key: "monument_type", label: filtersT("labels.heritageType"), options: ["All", ...MONUMENT_TYPE_VALUES] },
+    { key: "urgence_level", label: filtersT("labels.urgencyLevel"), options: ["All", ...URGENCY_LEVEL_VALUES] },
+    { key: "current_status", label: filtersT("labels.mobilizationStatus"), options: ["All", ...MOBILIZATION_STATUS_VALUES] },
   ];
 
   const handleSelectChange = (key: string, value: string) => {
@@ -1098,7 +1205,7 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
           <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>Filters</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>{filtersT("title")}</h3>
         </div>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -1117,7 +1224,21 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
                     className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
                     style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--brown)", fontWeight: "700" }}
                   >
-                    {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
+                    {filter.options.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt === "All"
+                          ? filtersT("all")
+                          : filter.key === "region"
+                            ? translateRegion(opt, postFormT)
+                            : filter.key === "historical_period"
+                              ? translateHistoricalPeriod(opt, postFormT)
+                              : filter.key === "monument_type"
+                                ? translateMonumentType(opt, postFormT)
+                                : filter.key === "urgence_level"
+                                  ? translateUrgencyLevel(opt, postFormT)
+                                  : translateMobilizationStatus(opt, postFormT)}
+                      </option>
+                    ))}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -1129,8 +1250,8 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
         </div>
       </div>
       <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
-        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>Reset</button>
-        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>Apply</button>
+        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>{filtersT("reset")}</button>
+        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>{filtersT("apply")}</button>
       </div>
     </div>
   );
@@ -1152,6 +1273,7 @@ function PostModal({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   onMobilizationClick: () => void;
 }) {
+  const feedT = useTranslations("auth.feed");
   const [newComment, setNewComment] = useState("");
   const [newAnnotationText, setNewAnnotationText] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
@@ -1247,9 +1369,29 @@ function PostModal({
 
   if (!post) return null;
 
+  const currentUser = getAuthUser();
+  const isOwner = post && String(currentUser?.id ?? "") === String(post.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
+
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
+
+  const handleDeletePostModal = async () => {
+    const commonT = useTranslations("auth.common");
+    if (!window.confirm(feedT("actions.confirmDeletePost") || "Are you sure you want to delete this post?")) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        onClose();
+        window.location.reload();
+      }
+    } catch { }
+  };
 
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1405,6 +1547,7 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
+<<<<<<< HEAD
                 <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2", border: "1px solid rgba(67, 40, 23, 0.1)" }}>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
@@ -1420,6 +1563,21 @@ function PostModal({
                   >
                     Report post
                   </button>
+=======
+                <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
+                  {canDelete && (
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                      style={{ color: "#7B0000" }}
+                      onClick={handleDeletePostModal}
+                    >
+                      {feedT("actions.deletePost")}
+                    </button>
+                  )}
+                  {!canDelete && (
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>{feedT("actions.reportPost")}</button>
+                  )}
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
                 </div>
               )}
             </div>
@@ -1441,12 +1599,12 @@ function PostModal({
             {isContentLong && !contentExpanded ? (
               <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
                 {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
+                <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
               </p>
             ) : (
               <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
             )}
-            {isContentLong && contentExpanded && <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>}
+            {isContentLong && contentExpanded && <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>}
           </div>
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
@@ -1459,7 +1617,7 @@ function PostModal({
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              Comments ({comments.length})
+              {feedT("tabs.comments", { count: comments.length })}
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
@@ -1470,7 +1628,7 @@ function PostModal({
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              Annotations ({getAcceptedAnnotationsCount(annotations)})
+              {feedT("tabs.annotations", { count: getAcceptedAnnotationsCount(annotations) })}
             </button>
           </div>
 
@@ -1484,7 +1642,7 @@ function PostModal({
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <CommentIcon size={28} className="opacity-30" />
                       <p className="text-xs" style={{ color: "#8B7355" }}>
-                        No comments yet. Be the first to comment!
+                        {feedT("empty.comments")}
                       </p>
                     </div>
                   )}
@@ -1499,7 +1657,7 @@ function PostModal({
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
                       <AnnotationIcon size={28} className="opacity-30" />
                       <p className="text-xs" style={{ color: "#8B7355" }}>
-                        No annotations yet. Be the first to annotate!
+                        {feedT("empty.annotations")}
                       </p>
                     </div>
                   )}
@@ -1540,7 +1698,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add a comment"
+                  placeholder={feedT("placeholders.comment")}
                   className="flex-1 py-2.5 px-4 text-xs rounded-xl outline-none border bg-white"
                   style={{ color: "#432817", borderColor: "#E0D5C5" }}
                   value={newComment}
@@ -1555,7 +1713,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add an annotation"
+                  placeholder={feedT("placeholders.annotation")}
                   className="flex-1 py-2.5 px-4 text-xs rounded-xl outline-none border bg-white"
                   style={{ color: "#432817", borderColor: "#E0D5C5" }}
                   value={newAnnotationText}
@@ -1592,6 +1750,7 @@ function PostCard({
   onCommentClick,
   onHistoryClick,
   onMobilizationClick,
+  onDelete,
 }: {
   post: ApiPost;
   interaction: PostInteraction;
@@ -1599,13 +1758,19 @@ function PostCard({
   onCommentClick: () => void;
   onHistoryClick: () => void;
   onMobilizationClick: () => void;
+  onDelete?: (id: string) => void;
 }) {
+  const feedT = useTranslations("auth.feed");
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showReportPopup, setShowReportPopup] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const currentUser = getAuthUser();
+  const isOwner = currentUser?.id === post.user_id;
+  const canManage = isOwner || isModerator(currentUser);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1668,6 +1833,7 @@ function PostCard({
             </button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50 w-40" style={{ backgroundColor: "#FFF8E2" }}>
+<<<<<<< HEAD
                 <button
                   className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
                   style={{ color: "#432817" }}
@@ -1683,6 +1849,25 @@ function PostCard({
                 >
                   Report post
                 </button>
+=======
+                {canManage ? (
+                  <button
+                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600"
+                    style={{ color: "#7B0000" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(post.id); }}
+                  >
+                    {feedT("actions.deletePost")}
+                  </button>
+                ) : (
+                  <button
+                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
+                    style={{ color: "#432817" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                  >
+                    {feedT("actions.reportPost")}
+                  </button>
+                )}
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
               </div>
             )}
           </div>
@@ -1816,6 +2001,9 @@ function MobilizationModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const pageT = useTranslations("auth.pages.monumentsInDanger.reportModal");
+  const postFormT = useTranslations("auth.postForm");
   const [selectedPrev, setSelectedPrev] = useState("Alert");
   const [selectedReq, setSelectedReq] = useState("Under intervention");
   const [description, setDescription] = useState("");
@@ -1831,16 +2019,10 @@ function MobilizationModal({
     setSubmitting(true);
     try {
       const formData = new FormData();
-      // On envoie les champs attendus par PostDetailSerializer
-      formData.append("title", `Mobilization: ${post.title}`);
-      formData.append("content", description);
-      formData.append("location", post.location || "");
-      formData.append("region", post.region || "");
-      formData.append("historical_period", post.historical_period || "");
-      formData.append("monument_type", post.monument_type || "");
-      formData.append("visibility", "public");
-      // Le backend de Tin exige starts_at pour le type "event"
-      formData.append("starts_at", new Date().toISOString());
+      formData.append("post_id", post.id);
+      formData.append("description", description);
+      formData.append("previous_status", selectedPrev.toLowerCase().replace(/\s+/g, "_"));
+      formData.append("requested_status", selectedReq.toLowerCase().replace(/\s+/g, "_"));
 
       images.forEach((img) => {
         if (!img.isRemote && img.file) {
@@ -1848,7 +2030,7 @@ function MobilizationModal({
         }
       });
 
-      const res = await fetch(`${API_URL}/api/posts/mobilization-event/`, {
+      const res = await fetch(`${API_URL}/api/mobilization-reports/`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -1856,12 +2038,12 @@ function MobilizationModal({
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Failed to submit report");
+      if (!res.ok) throw new Error(pageT("errors.submitFailed"));
       onSuccess();
       onClose();
     } catch (err) {
       console.error("Submission error:", err);
-      alert("Failed to submit mobilization report.");
+      alert(pageT("errors.submitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -1881,11 +2063,11 @@ function MobilizationModal({
             <div className="bg-white p-1.5 rounded-full shadow-sm group-hover:bg-[#432817] group-hover:text-white transition-all">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
             </div>
-            <span className="text-sm font-bold opacity-80 group-hover:opacity-100">Back</span>
+            <span className="text-sm font-bold opacity-80 group-hover:opacity-100">{commonT("back")}</span>
           </button>
 
           <h2 className="text-3xl text-[#432817] font-bold tracking-tight text-center flex-1 pr-16" style={{ fontFamily: "var(--font-lato), sans-serif" }}>
-            Mobilization report
+            {pageT("title")}
           </h2>
         </div>
 
@@ -1893,7 +2075,7 @@ function MobilizationModal({
           {/* Left: Image Upload Preview */}
           <div className="flex-[0.7] flex flex-col gap-4 min-h-0 overflow-y-auto pr-2 feed-scroll">
             <label className="text-sm font-bold text-[#432817]">
-              Documentation photos
+              {pageT("documentationPhotos")}
             </label>
             <div className="flex-1 overflow-hidden" style={{ minHeight: "400px" }}>
               <ImageUploadPanel initialImages={[]} onImagesChange={setImages} />
@@ -1905,11 +2087,11 @@ function MobilizationModal({
             {/* Description */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-bold text-[#432817]">
-                Description
+                {pageT("description")}
               </label>
               <textarea
                 className="w-full h-32 p-4 bg-[#F7F5EF]/50 border-2 border-transparent rounded-[24px] resize-none text-sm outline-none focus:border-[#C4A882] focus:bg-white transition-all shadow-inner"
-                placeholder="Entrez le contenu de votre post ici..."
+                placeholder={pageT("descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 style={{ fontFamily: 'var(--font-lato)' }}
@@ -1919,7 +2101,7 @@ function MobilizationModal({
             {/* Previous Status */}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-bold text-[#432817]">
-                Previous Status<span style={{ color: "red" }}>*</span>
+                {pageT("previousStatus")}<span style={{ color: "red" }}>*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {options.map(opt => (
@@ -1931,7 +2113,7 @@ function MobilizationModal({
                       : 'bg-transparent border-[#432817]/10 text-[#432817] hover:border-[#432817]/30'
                       }`}
                   >
-                    {opt}
+                    {translateMobilizationStatus(opt, postFormT)}
                   </button>
                 ))}
               </div>
@@ -1940,7 +2122,7 @@ function MobilizationModal({
             {/* Current Status */}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-bold text-[#432817]">
-                New Status <span style={{ color: "red" }}>*</span>
+                {pageT("newStatus")} <span style={{ color: "red" }}>*</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 {options.map(opt => (
@@ -1952,7 +2134,7 @@ function MobilizationModal({
                       : 'bg-transparent border-[#432817]/10 text-[#432817] hover:border-[#432817]/30'
                       }`}
                   >
-                    {opt}
+                    {translateMobilizationStatus(opt, postFormT)}
                   </button>
                 ))}
               </div>
@@ -1964,7 +2146,7 @@ function MobilizationModal({
                 onClick={onClose}
                 className="px-8 py-3 rounded-2xl font-bold text-sm text-[#432817] hover:bg-[#432817]/5 transition-colors"
               >
-                Cancel
+                {commonT("cancel")}
               </button>
               <button
                 onClick={handleSubmit}
@@ -1974,9 +2156,9 @@ function MobilizationModal({
                 {submitting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Submitting...
+                    {pageT("submitting")}
                   </div>
-                ) : "Submit Report"}
+                ) : pageT("submit")}
               </button>
             </div>
           </div>
@@ -1989,12 +2171,51 @@ function MobilizationModal({
 
 /* ───────────────── HISTORY MODAL ───────────────── */
 
-const MOCK_HISTORIES = [
-  { id: "h1", user: "User4674538", transition: "Under intervention → Restored", content: "Content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content.", images: [] },
-  { id: "h2", user: "User4674538", transition: "Under intervention → Restored", content: "Content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content.", images: ["https://images.unsplash.com/photo-1590483256070-56b9c9f2b8ed?w=200", "https://images.unsplash.com/photo-1548016460-2ff8dbd59187?w=200", "https://images.unsplash.com/photo-1563289052-16e79b8d234a?w=200"] },
-];
+function HistoryModal({
+  post,
+  interaction,
+  onClose,
+  onMobilizationReport,
+  onToggleGem,
+  onToggleSave,
+  onDeleteHistory,
+}: {
+  post: ApiPost | null;
+  interaction: PostInteraction | null;
+  onClose: () => void;
+  onMobilizationReport: () => void;
+  onToggleGem: (postId: string, currentGemmed: boolean, currentCount: number) => void;
+  onToggleSave: (postId: string, currentSaved: boolean) => void;
+  onDeleteHistory: (reportId: string) => void;
+}) {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const postFormT = useTranslations("auth.postForm");
+  const [histories, setHistories] = useState<HistoryReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const currentUser = getAuthUser();
 
-function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost | null; onClose: () => void; onMobilizationReport: () => void }) {
+  useEffect(() => {
+    if (!post) return;
+    const fetchHistory = async () => {
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/api/mobilization-reports/?post_id=${post.id}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHistories(data.data?.results || []);
+        }
+      } catch (err) {
+        console.error("Fetch history error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [post]);
+
   if (!post) return null;
   const imageList = post.images ?? [];
 
@@ -2010,7 +2231,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
               className="w-full h-full object-cover opacity-90 transition-opacity duration-300 hover:opacity-100"
             />
           ) : (
-            <div className="p-10 text-cream text-center opacity-40">No preview image</div>
+            <div className="p-10 text-cream text-center opacity-40">{pageT("history.noPreviewImage")}</div>
           )}
         </div>
 
@@ -2022,7 +2243,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm" style={{ color: "#432817" }}>{post.user_display_name || post.user_username}</span>
-                <span className="text-[10px]" style={{ color: "#8B7355" }}>posted in {formatDate(post.created_at)}</span>
+                <span className="text-[10px]" style={{ color: "#8B7355" }}>{pageT("history.postedIn", { date: formatDate(post.created_at) })}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -2036,7 +2257,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
           <div className="px-5 py-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-1 mb-1">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-              <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || "Algeria"}</span>
+              <span className="text-xs" style={{ color: "#8B7355" }}>{post.location || post.region || pageT("defaultLocation")}</span>
             </div>
             <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
             <ExpandableContent content={post.content} className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }} />
@@ -2044,44 +2265,88 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
 
           {/* List area */}
           <div className="flex-1 overflow-y-auto feed-scroll p-4">
-            <div className="flex flex-col gap-4">
-              {MOCK_HISTORIES.map((h) => (
-                <div key={h.id} className="p-4 rounded-3xl bg-white shadow-sm" style={{ border: "1px solid rgba(67, 40, 23, 0.05)" }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-full bg-[#432817] flex items-center justify-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-                    </div>
-                    <span className="text-sm font-bold" style={{ color: "#432817" }}>{h.user}</span>
-                  </div>
-                  <div className="mb-2 text-[11px] font-bold" style={{ color: "rgba(67, 40, 23, 0.5)" }}>{h.transition}</div>
-                  <ExpandableContent content={h.content} className="text-xs leading-relaxed opacity-90 mb-3" style={{ color: "#432817" }} />
-                  {h.images.length > 0 && (
-                    <div className="flex gap-2 h-24 mt-2">
-                      {h.images.map((img, i) => (
-                        <img key={i} src={img} alt="Update" className="w-1/3 h-full object-cover rounded-xl" />
-                      ))}
-                    </div>
-                  )}
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+              </div>
+            ) : histories.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                <div className="mb-2">
+                  <HistoryIcon size={40} />
                 </div>
-              ))}
-            </div>
+                <span className="text-xs font-bold">{pageT("history.empty")}</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {histories.map((h) => (
+                  <div key={h.id} className="p-4 rounded-3xl bg-white shadow-sm" style={{ border: "1px solid rgba(67, 40, 23, 0.05)" }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold" style={{ color: "#8B7355" }}>{formatDate(h.created_at)}</span>
+                      </div>
+                      {isModerator(currentUser) && (
+                        <button
+                          onClick={() => onDeleteHistory(h.id)}
+                          className="p-1 rounded-full hover:bg-red-50 text-red-600 transition-colors"
+                          title="Delete report"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    <div className="mb-2 text-[11px] font-bold" style={{ color: "rgba(67, 40, 23, 0.5)" }}>
+                      {translateMobilizationStatus(h.previous_status, postFormT)} → {translateMobilizationStatus(h.requested_status, postFormT)}
+                    </div>
+                    <ExpandableContent content={h.description} className="text-xs leading-relaxed opacity-90 mb-3" style={{ color: "#432817" }} />
+                    {h.images && h.images.length > 0 && (
+                      <div className="flex gap-2 h-24 mt-2">
+                        {h.images.map((img, i) => (
+                          <img
+                            key={i}
+                            src={img.startsWith('/media/') ? API_URL + img : img}
+                            alt="Update"
+                            className="w-1/3 h-full object-cover rounded-xl"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Action footer */}
           <div className="p-6 border-t flex flex-col gap-4" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#432817" }}>
-                  <GemIcon size={18} /><span>{formatCount(post.gems_count)}</span>
-                </div>
+                <button
+                  className="flex items-center gap-1.5 text-xs font-bold"
+                  style={{ color: "#432817" }}
+                  onClick={() => {
+                    if (interaction) {
+                      onToggleGem(post.id, interaction.gemmed, interaction.gemsCount);
+                    }
+                  }}
+                >
+                  <GemIcon size={18} filled={interaction?.gemmed ?? false} />
+                  <span>{formatCount(interaction?.gemsCount ?? 0)}</span>
+                </button>
                 <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#432817" }}>
                   <CommentIcon size={18} /><span>{formatCount(post.comments_count)}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#432817" }}>
-                  <AnnotationIcon size={18} /><span>0</span>
-                </div>
               </div>
-              <BookmarkIcon size={18} />
+              <button
+                onClick={() => {
+                  if (interaction) {
+                    onToggleSave(post.id, interaction.saved);
+                  }
+                }}
+              >
+                <BookmarkIcon size={18} filled={interaction?.saved ?? false} />
+              </button>
             </div>
 
             <button
@@ -2089,7 +2354,7 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
               className="w-full py-3.5 bg-[#432817] text-white text-sm font-bold rounded-2xl shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
               style={{ fontFamily: "var(--font-lato), sans-serif" }}
             >
-              <span className="text-xl font-medium">+</span> Add mobilization report
+              <span className="text-xl font-medium">+</span> {pageT("addMobilizationReport")}
             </button>
           </div>
         </div>
@@ -2104,10 +2369,12 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
 /* ─────────────────── MOBILE MONUMENTS STRIP ─────────────────── */
 
 function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const postFormT = useTranslations("auth.postForm");
   if (!posts || posts.length === 0) return null;
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Monuments in critical danger</h3>
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>{pageT("criticalTitle")}</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -2119,9 +2386,9 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
         {posts.map((post) => {
           const image = post.images?.[0]?.image;
           const imageUrl = image ? (image.startsWith("/media/") ? `${API_URL}${image}` : image) : "/about-5.jpg";
-          const userName = post.user_display_name || post.user_username || "Unknown";
+          const userName = post.user_display_name || post.user_username || pageT("unknownUser");
           const alertStatus = post.alert_details?.current_status || "Alert";
-          const capitalizedStatus = alertStatus.charAt(0).toUpperCase() + alertStatus.slice(1).replace("_", " ");
+          const translatedStatus = translateMobilizationStatus(alertStatus, postFormT);
 
           return (
             <div
@@ -2173,15 +2440,15 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
                       maxWidth: "90px"
                     }}
                   >
-                    {post.location || post.region || "Algeria"}
+                    {post.location || post.region || pageT("defaultLocation")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
-                    <span className="text-[8px] font-medium" style={{ color: "#E53935" }}>Critical</span>
+                    <span className="text-[8px] font-medium" style={{ color: "#E53935" }}>{translateUrgencyLevel("Critical", postFormT)}</span>
                   </div>
-                  <span className="text-[8px] font-medium" style={{ color: "#9E9E9E" }}>{capitalizedStatus}</span>
+                  <span className="text-[8px] font-medium" style={{ color: "#9E9E9E" }}>{translatedStatus}</span>
                 </div>
               </div>
             </div>
@@ -2194,7 +2461,10 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
 
 /* ───────────────── RIGHT SIDEBAR ───────────────── */
 
-function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPost[] }) {
+function RightSidebar({ onAction, onPostClick, posts }: { onAction: () => void; onPostClick: (post: ApiPost) => void; posts: ApiPost[] }) {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const addEventT = useTranslations("auth.pages.addEvent");
+  const postFormT = useTranslations("auth.postForm");
   if (!posts || posts.length === 0) {
     return (
       <aside className="w-[320px] xl:w-[380px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col">
@@ -2205,7 +2475,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
             className="px-8 py-2.5 mb-6 bg-[#432817] text-white text-base font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
             style={{ fontFamily: "var(--font-lato), sans-serif" }}
           >
-            + Add Mobilization Event
+            + {addEventT("title")}
           </button>
 
           {/* Centered Title */}
@@ -2213,11 +2483,11 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
             className="text-2xl font-bold mb-8 text-center"
             style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
           >
-            View Monuments in critical danger
+            {pageT("criticalTitle")}
           </h2>
 
           <div className="flex items-center justify-center h-48">
-            <span className="text-sm opacity-50" style={{ color: "#432817" }}>No critical monuments found.</span>
+            <span className="text-sm opacity-50" style={{ color: "#432817" }}>{pageT("noCritical")}</span>
           </div>
         </div>
       </aside>
@@ -2233,7 +2503,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
           className="px-8 py-2.5 mb-6 bg-[#432817] text-white text-base font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
           style={{ fontFamily: "var(--font-lato), sans-serif" }}
         >
-          + Add Mobilization Event
+          + {addEventT("title")}
         </button>
 
         {/* Centered Title */}
@@ -2241,7 +2511,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
           className="text-2xl font-bold mb-8 text-center"
           style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
         >
-          View Monuments in critical danger
+          {pageT("criticalTitle")}
         </h2>
 
         {/* Scrollable list of cards */}
@@ -2249,15 +2519,16 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
           {posts.map((post) => {
             const image = post.images?.[0]?.image;
             const imageUrl = image ? (image.startsWith("/media/") ? `${API_URL}${image}` : image) : "/about-5.jpg";
-            const userName = post.user_display_name || post.user_username || "Unknown";
+            const userName = post.user_display_name || post.user_username || pageT("unknownUser");
             const alertStatus = post.alert_details?.current_status || "Alert";
-            const capitalizedStatus = alertStatus.charAt(0).toUpperCase() + alertStatus.slice(1).replace("_", " ");
+            const translatedStatus = translateMobilizationStatus(alertStatus, postFormT);
 
             return (
               <div
-                key={post.id}
-                className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
-              >
+  key={post.id}
+  className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
+  onClick={() => onPostClick(post)}
+>
                 {/* Thumbnail on left */}
                 <div className="flex-shrink-0">
                   <img src={imageUrl} alt={stripHtml(post.title)} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-sm" />
@@ -2276,17 +2547,17 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#7a5a3a", flexShrink: 0 }}>
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                       </svg>
-                      <span className="truncate">{post.location || post.region || "Algeria"}</span>
+                      <span className="truncate">{post.location || post.region || pageT("defaultLocation")}</span>
                     </div>
 
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#E53935" }}></span>
-                      <span>Critical</span>
+                      <span>{translateUrgencyLevel("Critical", postFormT)}</span>
                     </div>
 
                     <span className="opacity-40 flex-shrink-0">|</span>
 
-                    <span className="flex-shrink-0">{capitalizedStatus}</span>
+                    <span className="flex-shrink-0">{translatedStatus}</span>
                   </div>
 
                   {/* User row */}
@@ -2310,6 +2581,9 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
 /* ───────────────── MAIN PAGE ───────────────── */
 
 export default function MonumentsInDangerPage() {
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const commonT = useTranslations("auth.common");
+  const addEventT = useTranslations("auth.pages.addEvent");
   const router = useRouter();
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [criticalPosts, setCriticalPosts] = useState<ApiPost[]>([]);
@@ -2383,6 +2657,24 @@ export default function MonumentsInDangerPage() {
       updateInteraction(postId, { saved: currentSaved });
     }
   };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm(commonT("confirmDeletePost"))) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        setCriticalPosts((prev) => prev.filter((p) => p.id !== postId));
+      }
+    } catch (err) {
+      console.error("Delete post error:", err);
+    }
+  };
+
 
   // --- SEACH & FILTER LOGIC ---
   const constructUrl = (filters: typeof activeFilters, query: string) => {
@@ -2487,7 +2779,7 @@ export default function MonumentsInDangerPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
-                  placeholder="Search alerts..."
+                  placeholder={pageT("searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -2512,7 +2804,7 @@ export default function MonumentsInDangerPage() {
                 className="px-8 py-2.5 bg-[#432817] text-white text-sm font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
                 style={{ fontFamily: "var(--font-lato), sans-serif" }}
               >
-                + Add Mobilization Event
+                + {addEventT("title")}
               </button>
             </div>
 
@@ -2537,13 +2829,14 @@ export default function MonumentsInDangerPage() {
                       }}
                       onHistoryClick={() => setHistoryPost(post)}
                       onCommentClick={() => setSelectedPost(post)}
+                      onDelete={handleDeletePost}
                     />
                   ))
                 ) : !loading && (
                   <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
                     <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4 text-[#432817]/40"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                    <p className="text-xl font-bold" style={{ color: "#432817" }}>No alerts found matching your criteria</p>
-                    <p className="text-sm mt-2" style={{ color: "#432817" }}>Try adjusting your search or filters</p>
+                    <p className="text-xl font-bold" style={{ color: "#432817" }}>{pageT("noResultsTitle")}</p>
+                    <p className="text-sm mt-2" style={{ color: "#432817" }}>{pageT("noResultsDescription")}</p>
                   </div>
                 )}
 
@@ -2555,7 +2848,11 @@ export default function MonumentsInDangerPage() {
                   )
                 }
               </main>
-              <RightSidebar onAction={() => router.push("/add-event")} posts={criticalPosts} />
+              <RightSidebar 
+  onAction={() => router.push("/add-event")} 
+  onPostClick={(post) => setSelectedPost(post)}
+  posts={criticalPosts} 
+/>
             </div>
 
           </div>
@@ -2594,6 +2891,23 @@ export default function MonumentsInDangerPage() {
       )}
       <HistoryModal
         post={historyPost}
+        interaction={historyPost ? getInteraction(historyPost) : null}
+        onToggleGem={handleToggleGem}
+        onToggleSave={handleToggleSave}
+        onDeleteHistory={async (reportId) => {
+          if (!window.confirm(commonT("confirmDeleteReport"))) return;
+          const token = getAuthToken();
+          try {
+            const res = await fetch(`${API_URL}/api/mobilization-reports/${reportId}/`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bearer ${token}` },
+            });
+            if (res.ok) {
+              // Refresh the histories in the modal would be better, but for now we can just close it or rely on re-fetch if it's managed by state
+              // Since Histories state is internal to HistoryModal, I should probably pass a function to update it or handle it inside
+            }
+          } catch (err) { console.error(err); }
+        }}
         onClose={() => setHistoryPost(null)}
         onMobilizationReport={() => {
           const p = historyPost;

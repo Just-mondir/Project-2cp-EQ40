@@ -3,10 +3,24 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+<<<<<<< HEAD
 import ReportPopup from "@/components/Report-popup";
+=======
+import {
+  EVENT_STATUS_VALUES,
+  HISTORICAL_PERIOD_VALUES,
+  MONUMENT_TYPE_VALUES,
+  REGION_VALUES,
+  translateEventStatus,
+  translateHistoricalPeriod,
+  translateMonumentType,
+  translateRegion,
+} from "@/lib/authFilterOptions";
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -40,17 +54,18 @@ function getAuthToken(): string {
   return localStorage.getItem("accessToken") || "";
 }
 
-function getAuthUser():
-  | { id?: string; username?: string; display_name?: string }
-  | null {
+function getAuthUser(): { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean } | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem("authUser");
+    const raw = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
+
+const isModerator = (user: any) => user?.role === "moderator" || user?.role === "admin" || user?.is_staff;
+
 
 async function apiFetch(url: string, options: RequestInit = {}) {
   const token = getAuthToken();
@@ -373,6 +388,7 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
+  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -385,7 +401,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? "See less" : "See more"}
+          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
         </button>
       )}
     </div>
@@ -409,6 +425,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
+  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -419,7 +436,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -428,7 +445,24 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 
   if (post.post_type === "alert" && post.alert_details) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const statusKeyMap: Record<string, string> = {
+      restored: "statuses.restored",
+      under_intervention: "statuses.underIntervention",
+      destroyed: "statuses.destroyed",
+      alert: "statuses.alert",
+    };
+    const urgencyKeyMap: Record<string, string> = {
+      low: "urgency.low",
+      medium: "urgency.medium",
+      high: "urgency.high",
+      critical: "urgency.critical",
+    };
+    const statusLabel = statusKeyMap[post.alert_details.current_status]
+      ? feedT(statusKeyMap[post.alert_details.current_status])
+      : STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const urgencyLabel = urgencyKeyMap[post.alert_details.urgence_level]
+      ? feedT(urgencyKeyMap[post.alert_details.urgence_level])
+      : level.label;
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -438,9 +472,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{urgencyLabel}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -466,6 +500,7 @@ function CommentItem({
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
 }) {
+  const feedT = useTranslations("auth.feed");
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
@@ -492,6 +527,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
 
   const handleGemComment = async () => {
     const token = getAuthToken();
@@ -615,15 +651,16 @@ function CommentItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
-                {isOwner ? (
+                {canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
                     onClick={handleDeleteComment}
                   >
-                    Delete comment
+                    {feedT("actions.deleteComment")}
                   </button>
-                ) : (
+                )}
+                {!canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
@@ -632,7 +669,7 @@ function CommentItem({
                       setShowReportPopup(true);
                     }}
                   >
-                    Report comment
+                    {feedT("actions.reportComment")}
                   </button>
                 )}
               </div>
@@ -666,7 +703,7 @@ function CommentItem({
               <polyline points="9 14 4 9 9 4" />
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
-            <span>Reply</span>
+            <span>{feedT("reply")}</span>
           </button>
         </div>
 
@@ -674,7 +711,7 @@ function CommentItem({
           <div className="flex items-center gap-2 mt-2">
             <input
               type="text"
-              placeholder="Write a reply..."
+              placeholder={feedT("placeholders.reply")}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => {
@@ -732,12 +769,16 @@ function AnnotationItem({
   onReject: (id: string) => void;
   onRefresh?: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = String(getAuthUser()?.id ?? "");
+  const currentUser = getAuthUser();
+  const currentUserId = String(currentUser?.id ?? "");
   const isOwner = currentUserId === String(annotation.user_id);
   const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const canDelete = isOwner || isModerator(currentUser);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -809,9 +850,9 @@ function AnnotationItem({
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -867,10 +908,23 @@ function AnnotationItem({
                     style={{ color: "#432817" }}
                     onClick={handleDelete}
                   >
-                    Delete annotation
+                    {feedT("actions.deleteAnnotation")}
                   </button>
                 )}
 
+<<<<<<< HEAD
+=======
+                {!isOwner && (
+                  <button
+                    className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
+                    style={{ color: "#432817" }}
+                    onClick={() => setShowMenu(false)}
+                  >
+                    {feedT("actions.reportAnnotation")}
+                  </button>
+                )}
+
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
                     <button
@@ -878,7 +932,7 @@ function AnnotationItem({
                       style={{ color: "#5C7A3E" }}
                       onClick={handleAccept}
                     >
-                      Accept
+                      {commonT("accept")}
                     </button>
 
                     <button
@@ -886,7 +940,7 @@ function AnnotationItem({
                       style={{ color: "#C0392B" }}
                       onClick={handleReject}
                     >
-                      Reject
+                      {commonT("reject")}
                     </button>
                   </>
                 )}
@@ -923,6 +977,8 @@ function AnnotationItem({
 /* ───────────────── FILTER SECTION ───────────────── */
 
 function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; onClose: () => void; onApply: (filters: any) => void }) {
+  const filtersT = useTranslations("auth.filters");
+  const postFormT = useTranslations("auth.postForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({
     region: "All",
@@ -938,10 +994,10 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
   if (!isAnimating && !isVisible) return null;
 
   const filters = [
-    { key: "region", label: "Geographical Regions", options: ["All", "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine", "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna", "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer"] },
-    { key: "historical_period", label: "Historical Periods", options: ["All", "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period", "Roman period", "Vandal period", "Byzantine period", "Early Islamic period", "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty", "Zayyanid dynasty", "Ottoman period", "French colonization", "War of Independence", "Independent Algeria", "Contemporary period"] },
-    { key: "monument_type", label: "Heritage Type", options: ["All", "Civil", "Religious", "Military", "Funerary"] },
-    { key: "status", label: "Event Status", options: ["All", "Upcoming", "Ongoing", "Past"] },
+    { key: "region", label: filtersT("labels.region"), options: ["All", ...REGION_VALUES] },
+    { key: "historical_period", label: filtersT("labels.historicalPeriod"), options: ["All", ...HISTORICAL_PERIOD_VALUES] },
+    { key: "monument_type", label: filtersT("labels.heritageType"), options: ["All", ...MONUMENT_TYPE_VALUES] },
+    { key: "status", label: filtersT("labels.eventStatus"), options: ["All", ...EVENT_STATUS_VALUES] },
   ];
 
   const handleSelectChange = (key: string, value: string) => {
@@ -975,7 +1031,7 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
           <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>Filters</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>{filtersT("title")}</h3>
         </div>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -994,7 +1050,19 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
                     className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
                     style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--brown)", fontWeight: "700" }}
                   >
-                    {filter.options.map((opt) => <option key={opt}>{opt}</option>)}
+                    {filter.options.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt === "All"
+                          ? filtersT("all")
+                          : filter.key === "region"
+                            ? translateRegion(opt, postFormT)
+                            : filter.key === "historical_period"
+                              ? translateHistoricalPeriod(opt, postFormT)
+                              : filter.key === "monument_type"
+                                ? translateMonumentType(opt, postFormT)
+                                : translateEventStatus(opt, filtersT)}
+                      </option>
+                    ))}
                   </select>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 group-hover:opacity-100 transition-opacity">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
@@ -1006,8 +1074,8 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
         </div>
       </div>
       <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
-        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>Reset</button>
-        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>Apply</button>
+        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>{filtersT("reset")}</button>
+        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>{filtersT("apply")}</button>
       </div>
     </div>
   );
@@ -1029,6 +1097,7 @@ const UPCOMING_EVENTS_MOCKS = Array(5).fill({
 /* ─────────────────── MOBILE EVENTS STRIP ─────────────────── */
 
 function MobileEventsStrip() {
+  const pageT = useTranslations("auth.pages.events");
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1050,10 +1119,10 @@ function MobileEventsStrip() {
               const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
               return {
                 id: event.id,
-                user_name: event.user_display_name || event.user_username || "Unknown",
+                user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
                 event_image: imageUrl,
                 title: event.title,
-                location: event.location || event.region || "Algeria",
+                location: event.location || event.region || pageT("defaultLocation"),
                 start_date: sDate,
                 end_date: eDate,
               };
@@ -1072,11 +1141,11 @@ function MobileEventsStrip() {
       }
     }
     fetchUpcoming();
-  }, []);
+  }, [pageT]);
 
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>Upcoming Events</h3>
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>{pageT("upcomingTitle")}</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -1092,7 +1161,7 @@ function MobileEventsStrip() {
         ) : (
           upcomingEvents.length === 0 ? (
             <div className="flex w-full justify-center text-xs font-bold py-4 opacity-50" style={{ color: "var(--brown)" }}>
-              no upcoming event
+              {pageT("noUpcoming")}
             </div>
           ) : (
             upcomingEvents.map((eventItem, i) => (
@@ -1156,7 +1225,8 @@ function MobileEventsStrip() {
 
 /* ─────────────────── RIGHT SIDEBAR ─────────────────── */
 
-function RightSidebar() {
+function RightSidebar({ onPostClick }: { onPostClick: (postId: string) => void }) {
+  const pageT = useTranslations("auth.pages.events");
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1178,10 +1248,10 @@ function RightSidebar() {
               const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
               return {
                 id: event.id,
-                user_name: event.user_display_name || event.user_username || "Unknown",
+                user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
                 event_image: imageUrl,
                 title: event.title,
-                location: event.location || event.region || "Algeria",
+                location: event.location || event.region || pageT("defaultLocation"),
                 start_date: sDate,
                 end_date: eDate,
               };
@@ -1200,21 +1270,21 @@ function RightSidebar() {
       }
     }
     fetchUpcoming();
-  }, []);
+  }, [pageT]);
 
   return (
     <aside className="w-[380px] xl:w-[500px] flex-shrink-0 pl-6 pr-5 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-xl font-bold mb-5 flex-shrink-0 text-center" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>Upcoming Events</h2>
+        <h2 className="text-xl font-bold mb-5 flex-shrink-0 text-center" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>{pageT("upcomingTitle")}</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
           {loading ? (
             <div className="flex justify-center py-4"><div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} /></div>
           ) : upcomingEvents.length === 0 ? (
             <div className="flex w-full justify-center text-sm font-bold py-8 opacity-50" style={{ color: "var(--brown)" }}>
-              no upcoming event
+              {pageT("noUpcoming")}
             </div>
           ) : upcomingEvents.map((eventItem, i) => (
-            <div key={i} className="flex px-5 py-3 mb-2.5 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
+            <div key={i} onClick={() => onPostClick(eventItem.id)} className="flex px-5 py-3 mb-2.5 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
               {/* Event Image: square 80x80, 20px radius */}
               {eventItem.event_image && (
                 <div className="w-[85px] h-[85px] flex-shrink-0 mr-4">
@@ -1274,6 +1344,7 @@ function PostModal({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
 }) {
+  const feedT = useTranslations("auth.feed");
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
 
   const [newComment, setNewComment] = useState("");
@@ -1371,9 +1442,28 @@ function PostModal({
 
   if (!post) return null;
 
+  const currentUser = getAuthUser();
+  const isOwner = post && String(currentUser?.id ?? "") === String(post.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
+
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
+
+  const handleDeletePostModal = async () => {
+    if (!window.confirm(feedT("actions.confirmDeletePost") || "Are you sure you want to delete this post?")) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        onClose();
+        window.location.reload();
+      }
+    } catch { }
+  };
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
@@ -1619,14 +1709,31 @@ function PostModal({
 
       {post.post_type === "alert" && post.alert_details && (() => {
         const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
-        const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
+        const statusKeyMap: Record<string, string> = {
+          restored: "statuses.restored",
+          under_intervention: "statuses.underIntervention",
+          destroyed: "statuses.destroyed",
+          alert: "statuses.alert",
+        };
+        const urgencyKeyMap: Record<string, string> = {
+          low: "urgency.low",
+          medium: "urgency.medium",
+          high: "urgency.high",
+          critical: "urgency.critical",
+        };
+        const statusLabel = statusKeyMap[post.alert_details!.current_status]
+          ? feedT(statusKeyMap[post.alert_details!.current_status])
+          : STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
+        const urgencyLabel = urgencyKeyMap[post.alert_details!.urgence_level]
+          ? feedT(urgencyKeyMap[post.alert_details!.urgence_level])
+          : level.label;
         return (
           <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
+              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>{feedT("labels.alert")} · {urgencyLabel}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
             </div>
           </div>
@@ -1673,6 +1780,7 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
+<<<<<<< HEAD
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
@@ -1688,6 +1796,21 @@ function PostModal({
                   >
                     Report post
                   </button>
+=======
+                <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
+                  {canDelete && (
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                      style={{ color: "#7B0000" }}
+                      onClick={handleDeletePostModal}
+                    >
+                      {feedT("actions.deletePost")}
+                    </button>
+                  )}
+                  {!canDelete && (
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
+                  )}
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
                 </div>
               )}
             </div>
@@ -1711,13 +1834,13 @@ function PostModal({
               {isContentLong && !contentExpanded ? (
                 <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
                   {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
+                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
                 </p>
               ) : (
                 <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
               )}
               {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
               )}
 
 
@@ -1734,7 +1857,7 @@ function PostModal({
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              Comments ({comments.length})
+              {feedT("tabs.comments", { count: comments.length })}
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
@@ -1745,7 +1868,7 @@ function PostModal({
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              Annotations ({acceptedAnnotationsCount})
+              {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
             </button>
           </div>
 
@@ -1756,7 +1879,7 @@ function PostModal({
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <CommentIcon size={28} className="opacity-30" />
                     <p className="text-xs" style={{ color: "#8B7355" }}>
-                      No comments yet. Be the first to comment!
+                      {feedT("empty.comments")}
                     </p>
                   </div>
                 ) : (
@@ -1776,7 +1899,7 @@ function PostModal({
                 ) : annotations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <AnnotationIcon size={28} className="opacity-30" />
-                    <p className="text-xs" style={{ color: "#8B7355" }}>No annotations yet. Be the first to annotate!</p>
+                    <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.annotations")}</p>
                   </div>
                 ) : (
                   annotations.map((annotation) => (
@@ -1827,7 +1950,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add a comment"
+                  placeholder={feedT("placeholders.comment")}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }}
@@ -1846,7 +1969,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add an annotation"
+                  placeholder={feedT("placeholders.annotation")}
                   value={newAnnotationText}
                   onChange={(e) => setNewAnnotationText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }}
@@ -1886,6 +2009,7 @@ function PostCard({
   onAnnotationClick,
   interaction,
   onInteractionChange,
+  onDelete,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -1893,7 +2017,12 @@ function PostCard({
   onAnnotationClick: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
+  onDelete?: (postId: string) => void;
 }) {
+  const feedT = useTranslations("auth.feed");
+  const currentUser = getAuthUser();
+  const isOwner = currentUser?.id === post.user_id;
+  const canDelete = isOwner || isModerator(currentUser);
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showReportPopup, setShowReportPopup] = useState(false);
@@ -1983,6 +2112,7 @@ function PostCard({
           </button>
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+<<<<<<< HEAD
               <button
                 className="text-sm font-bold whitespace-nowrap"
                 style={{ color: "#432817" }}
@@ -1998,6 +2128,20 @@ function PostCard({
               >
                 Report post
               </button>
+=======
+              {canDelete && (
+                <button
+                  className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 mb-1"
+                  style={{ color: "#7B0000" }}
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(post.id); }}
+                >
+                  {feedT("actions.deletePost")}
+                </button>
+              )}
+              {!canDelete && (
+                <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
+              )}
+>>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
             </div>
           )}
         </div>
@@ -2127,6 +2271,8 @@ function PostCard({
 /* ───────────────── MAIN PAGE ───────────────── */
 
 export default function HomePageRoute() {
+  const pageT = useTranslations("auth.pages.events");
+  const tCommon = useTranslations("auth.common");
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
@@ -2141,6 +2287,14 @@ export default function HomePageRoute() {
     monument_type: "All",
     status: "All",
   });
+
+  const handleEventClick = (postId: string) => {
+  const post = posts.find(p => p.id === String(postId));
+  if (post) {
+    setSelectedPost(post);
+    setSelectedPostTab("comments");
+  }
+  };
 
   const constructUrl = (filters: typeof activeFilters, query: string) => {
     const params = new URLSearchParams();
@@ -2165,6 +2319,23 @@ export default function HomePageRoute() {
       commentsCount: post.comments_count ?? 0,
       annotationsCount: post.accepted_annotations_count ?? 0,
     };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm(tCommon("confirmDeletePost"))) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        if (selectedPost?.id === postId) setSelectedPost(null);
+      }
+    } catch (err) {
+      console.error("Delete post error:", err);
+    }
+  };
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
@@ -2282,7 +2453,7 @@ export default function HomePageRoute() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
-                  placeholder="Search events..."
+                  placeholder={pageT("searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -2306,7 +2477,7 @@ export default function HomePageRoute() {
                 {posts.length === 0 && !loading ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4"><circle cx="12" cy="12" r="10" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
-                    <p className="text-sm font-bold" style={{ color: "var(--brown)" }}>No events found matching your criteria.</p>
+                    <p className="text-sm font-bold" style={{ color: "var(--brown)" }}>{pageT("noResults")}</p>
                   </div>
                 ) : (
                   posts.map((post, index) => (
@@ -2324,6 +2495,7 @@ export default function HomePageRoute() {
                           setSelectedPost(post);
                           setSelectedPostTab("annotations");
                         }}
+                        onDelete={handleDeletePost}
                       />
                     </React.Fragment>
                   ))
@@ -2335,7 +2507,7 @@ export default function HomePageRoute() {
                 )}
                 <div ref={sentinelRef} className="h-4" />
               </main >
-              <RightSidebar />
+              <RightSidebar onPostClick={handleEventClick} />
             </div >
           </div >
         </div >

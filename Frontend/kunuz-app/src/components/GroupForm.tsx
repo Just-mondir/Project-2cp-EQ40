@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import RichTextEditor from "@/components/RichTextEditor";
 import InviteUsersModal, { type User } from "@/components/InviteUsersModal";
 
@@ -54,41 +55,15 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PillGroup({ options, value, onChange }: {
-  options: string[];
+type PillOption = {
+  label: string;
   value: string;
-  onChange: (val: string) => void;
-}) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-      {options.map((opt) => {
-        const active = value === opt;
-        return (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            style={{
-              padding: "6px 16px",
-              borderRadius: "9999px",
-              fontSize: "13px",
-              fontFamily: FONT,
-              fontWeight: 400,
-              cursor: "pointer",
-              transition: "all 0.15s",
-              backgroundColor: active ? ESPRESSO : "#FFFFFF",
-              color: active ? CREAM_PAGE : ESPRESSO,
-              border: "none",
-              boxShadow: active ? "none" : "0 1px 4px rgba(67,40,23,0.06)",
-            }}
-          >
-            {opt}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+};
+
+type DropdownOption = {
+  label: string;
+  value: string;
+};
 
 function StyledDropdown({
   value,
@@ -98,7 +73,7 @@ function StyledDropdown({
 }: {
   value: string;
   onChange: (val: string) => void;
-  options: string[];
+  options: DropdownOption[];
   placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -111,6 +86,8 @@ function StyledDropdown({
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  const selectedOption = options.find((option) => option.value === value);
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -139,7 +116,7 @@ function StyledDropdown({
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
         }}>
-          {value || placeholder || ""}
+          {selectedOption?.label || placeholder || ""}
         </span>
         <svg
           width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -159,12 +136,12 @@ function StyledDropdown({
           scrollbarColor: `${SISAL} transparent`, padding: "6px",
         }}>
           {options.map((opt) => {
-            const isSelected = opt === value;
+            const isSelected = opt.value === value;
             return (
               <button
-                key={opt}
+                key={opt.value}
                 type="button"
-                onClick={() => { onChange(opt); setOpen(false); }}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
                 style={{
                   display: "block", width: "100%", textAlign: "left",
                   padding: "8px 12px", borderRadius: "8px", border: "none", cursor: "pointer",
@@ -177,7 +154,7 @@ function StyledDropdown({
                 onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "rgba(196,168,130,0.15)"; }}
                 onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = "transparent"; }}
               >
-                {opt}
+                {opt.label}
               </button>
             );
           })}
@@ -203,20 +180,25 @@ const REGIONS = [
 ];
 
 const GROUP_CATEGORIES = [
-  "Architecture", "Archaeology", "History", "Art",
-  "Photography", "Research", "Tourism", "Conservation",
+  "Archaeology", "Ancient Civilizations", "Historical Sites",
+  "World Heritage Sites", "Ruins", "Architectural Heritage",
+  "Cultural Landmarks", "Monuments", "Castles", "Fortresses",
+  "Religious Sites", "Museums", "Palaces", "Temples",
+  "Historic Towns", "Prehistoric Sites", "Colonial Architecture",
+  "Monument Preservation", "Intangible Heritage", "Heritage Restoration",
+  "Cultural Experience", "Local History",
 ];
 
 // ── Form 
-export default function GuildForm({
+export default function GroupForm({
   onCancel,
   onDone,
   initialValues = {},
 }: {
   onCancel: () => void;
-  onDone: (data: any) => void;
+  onDone: (data: Record<string, unknown>) => void;
   initialValues?: {
-    guildName?: string;
+    groupName?: string;
     description?: string;
     historicalPeriod?: string;
     region?: string;
@@ -226,8 +208,51 @@ export default function GuildForm({
     tags?: string[];
   };
 }) {
+  const t = useTranslations("auth.groupForm");
+  const historicalPeriods: DropdownOption[] = [
+    "Prehistory", "Protohistory", "Numidian period", "Punic (Carthaginian) period",
+    "Roman period", "Vandal period", "Byzantine period", "Early Islamic period",
+    "Rostamid dynasty", "Zirid dynasty", "Hammadid dynasty", "Almohad dynasty",
+    "Zayyanid dynasty", "Ottoman period", "French colonization",
+    "War of Independence", "Independent Algeria", "Contemporary period",
+  ].map((value) => ({ value, label: t(`historicalPeriods.${value}`) }));
+  const regions: DropdownOption[] = [
+    "Kabylia", "Tuareg", "Chaoui", "Chleuh", "Medea", "Constantine",
+    "Algiers", "Tlemcen", "Oran", "Tipaza", "Setif", "Batna",
+    "Beni Mzab", "Ouled Nail", "Tassili n'Ajjer",
+  ].map((value) => ({ value, label: t(`regions.${value}`) }));
+  const categories: DropdownOption[] = [
+  "Archaeology",
+  "Ancient Civilizations",
+  "Historical Sites",
+  "World Heritage Sites",
+  "Ruins",
+  "Architectural Heritage",
+  "Cultural Landmarks",
+  "Monuments",
+  "Castles",
+  "Fortresses",
+  "Religious Sites",
+  "Museums",
+  "Palaces",
+  "Temples",
+  "Historic Towns",
+  "Prehistoric Sites",
+  "Colonial Architecture",
+  "Monument Preservation",
+  "Intangible Heritage",
+  "Heritage Restoration",
+  "Cultural Experience",
+  "Local History",
+].map((value) => ({ value, label: value }));
+  
+  const visibilityOptions: PillOption[] = [
+    { value: "Public", label: t("visibility.public") },
+    { value: "Private", label: t("visibility.private") },
+  ];
+
   const [formData, setFormData] = useState({
-    guildName: initialValues.guildName ?? "",
+    groupName: initialValues.groupName ?? "",
     description: initialValues.description ?? "",
     historicalPeriod: initialValues.historicalPeriod ?? "",
     region: initialValues.region ?? "",
@@ -238,106 +263,87 @@ export default function GuildForm({
     tagInput: "",
   });
 
-  // Invited users stored as User objects (id + username) for backend
   const [invitedUsers, setInvitedUsers] = useState<User[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleAddTag = () => {
-    const tag = formData.tagInput.trim().toLowerCase().replace(/\s+/g, "_");
-    if (tag && !formData.tags.includes(tag)) {
-      setFormData(prev => ({ ...prev, tags: [...prev.tags, tag], tagInput: "" }));
-    } else {
-      setFormData(prev => ({ ...prev, tagInput: "" }));
-    }
-  };
-
-  const handleRemoveTag = (index: number) => {
-    setFormData(prev => ({ ...prev, tags: prev.tags.filter((_, i) => i !== index) }));
-  };
-
-  // Called by InviteUsersModal on confirm — merges without duplicates
   const handleInviteConfirm = (users: User[]) => {
-    setInvitedUsers(prev => {
-      const existingIds = new Set(prev.map(u => u.id));
-      return [...prev, ...users.filter(u => !existingIds.has(u.id))];
+    setInvitedUsers((prev) => {
+      const existingIds = new Set(prev.map((u) => u.id));
+      return [...prev, ...users.filter((u) => !existingIds.has(u.id))];
     });
   };
 
   const removeInvited = (id: string) => {
-    setInvitedUsers(prev => prev.filter(u => u.id !== id));
+    setInvitedUsers((prev) => prev.filter((u) => u.id !== id));
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: CREAM_PAGE, fontFamily: FONT }}>
-
       <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", scrollbarWidth: "none" }} className="hide-scrollbar">
-
-        {/* Info */}
         <SectionBlock>
-          <SectionLabel>Info</SectionLabel>
+          <SectionLabel>{t("sections.info")}</SectionLabel>
           <div style={{ marginBottom: "14px" }}>
-            <FieldLabel>Guild name</FieldLabel>
-            <input type="text" name="guildName" value={formData.guildName} onChange={handleChange} style={inputStyle} />
+            <FieldLabel>{t("fields.groupName")}</FieldLabel>
+            <input type="text" name="groupName" value={formData.groupName} onChange={handleChange} style={inputStyle} />
           </div>
           <div>
-            <FieldLabel>Description</FieldLabel>
+            <FieldLabel>{t("fields.description")}</FieldLabel>
             <RichTextEditor
               value={formData.description}
-              onChange={(val: string) => setFormData(prev => ({ ...prev, description: val }))}
-              placeholder="Describe your guild..."
+              onChange={(val: string) => setFormData((prev) => ({ ...prev, description: val }))}
+              placeholder={t("placeholders.description")}
               minHeight="129px"
             />
           </div>
         </SectionBlock>
-        
+
         {/* Thematic tags */}
         <SectionBlock>
-          <SectionLabel>Thematic tags</SectionLabel>
+          <SectionLabel>{t("sections.thematicTags")}</SectionLabel>
           <div style={{ display: "flex", gap: "16px" }}>
             <div style={{ flex: 1 }}>
-              <FieldLabel>Historical Period</FieldLabel>
+              <FieldLabel>{t("fields.historicalPeriod")}</FieldLabel>
               <StyledDropdown
                 value={formData.historicalPeriod}
-                onChange={(val) => setFormData(prev => ({ ...prev, historicalPeriod: val }))}
-                options={HISTORICAL_PERIODS}
-                placeholder="Select the historical period"
+                onChange={(val) => setFormData((prev) => ({ ...prev, historicalPeriod: val }))}
+                options={historicalPeriods}
+                placeholder={t("placeholders.historicalPeriod")}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <FieldLabel>Region</FieldLabel>
+              <FieldLabel>{t("fields.region")}</FieldLabel>
               <StyledDropdown
                 value={formData.region}
-                onChange={(val) => setFormData(prev => ({ ...prev, region: val }))}
-                options={REGIONS}
-                placeholder="Select the region"
+                onChange={(val) => setFormData((prev) => ({ ...prev, region: val }))}
+                options={regions}
+                placeholder={t("placeholders.region")}
               />
             </div>
             <div style={{ flex: 1 }}>
-              <FieldLabel>Category</FieldLabel>
+              <FieldLabel>{t("fields.category")}</FieldLabel>
               <StyledDropdown
                 value={formData.category}
-                onChange={(val) => setFormData(prev => ({ ...prev, category: val }))}
-                options={GROUP_CATEGORIES}
-                placeholder="Select a category"
+                onChange={(val) => setFormData((prev) => ({ ...prev, category: val }))}
+                options={categories}
+                placeholder={t("placeholders.category")}
               />
             </div>
           </div>
         </SectionBlock>
 
-        {/* ── Invite members ── */}
         <SectionBlock>
-          <SectionLabel>Invite members</SectionLabel>
+          <SectionLabel>{t("sections.inviteMembers")}</SectionLabel>
 
-          {/* Input row — clicking + opens the modal */}
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div style={{ flex: 1, ...inputStyle, padding: "10px 14px", minHeight: "42px", display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", borderRadius: "10.75px" }}>
               {invitedUsers.length === 0 ? (
                 <span style={{ color: "#A09080", fontSize: "14px", fontStyle: "italic", fontFamily: FONT }}>
+                  {t("placeholders.inviteMembers")}
                 </span>
               ) : (
                 invitedUsers.map((user) => (
@@ -353,19 +359,20 @@ export default function GuildForm({
                     <button
                       type="button"
                       onClick={() => removeInvited(user.id)}
+                      title={t("actions.removeMember")}
                       style={{ background: "none", border: "none", cursor: "pointer", color: "#8B7355", fontSize: "12px", padding: 0, lineHeight: 1 }}
                     >
-                      ✕
+                      ×
                     </button>
                   </span>
                 ))
               )}
             </div>
 
-            {/* + button — opens InviteUsersModal */}
             <button
               type="button"
               onClick={() => setShowInviteModal(true)}
+              title={t("actions.addMember")}
               style={{
                 flexShrink: 0,
                 width: "36px",
@@ -390,21 +397,18 @@ export default function GuildForm({
           </div>
         </SectionBlock>
 
-
-        {/* Guild Rules */}
         <SectionBlock isLast>
-          <SectionLabel>Group rules</SectionLabel>
-          <FieldLabel>Rules &amp; Guidelines (Optional)</FieldLabel>
+          <SectionLabel>{t("sections.groupRules")}</SectionLabel>
+          <FieldLabel>{t("fields.rulesGuidelines")}</FieldLabel>
           <RichTextEditor
             value={formData.rules}
-            onChange={(val: string) => setFormData(prev => ({ ...prev, rules: val }))}
-            placeholder="Write your guild rules and guidelines..."
+            onChange={(val: string) => setFormData((prev) => ({ ...prev, rules: val }))}
+            placeholder={t("placeholders.rules")}
             minHeight="129px"
           />
         </SectionBlock>
-      </div>
+      </div >
 
-      {/* Footer */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "16px 32px", backgroundColor: CREAM_PAGE }}>
         <button
           type="button"
@@ -413,7 +417,7 @@ export default function GuildForm({
           onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.7"; }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
         >
-          Cancel
+          {t("actions.cancel")}
         </button>
         <button
           type="button"
@@ -422,17 +426,17 @@ export default function GuildForm({
           onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#5a3822"; }}
           onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ESPRESSO; }}
         >
-          Done
+          {t("actions.done")}
         </button>
       </div>
 
-      {/* ── Invite Users Modal ── */}
       <InviteUsersModal
+        key={showInviteModal ? "invite-open" : "invite-closed"}
         isOpen={showInviteModal}
         onClose={() => setShowInviteModal(false)}
         onConfirm={handleInviteConfirm}
-        alreadyInvited={invitedUsers.map(u => u.id)}
+        alreadyInvited={invitedUsers.map((u) => u.id)}
       />
-    </div>
+    </div >
   );
 }

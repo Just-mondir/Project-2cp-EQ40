@@ -1,25 +1,47 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const SISAL = "#C4A882";
 
-/* Mock list of available groups — in a real app this comes from an API */
-const AVAILABLE_GROUPS = [
-    { id: 1, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-    { id: 2, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-    { id: 3, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-    { id: 4, name: "Monuments of Tipaza", image: "/monuments-of-tipaza.jpg" },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+function getAuthToken() {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("accessToken") || "";
+}
 
 export default function AddGroupsPopup({ onConfirm, onClose }) {
+    const t = useTranslations("auth.groupsPopup");
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState(new Set());
+    const [availableGroups, setAvailableGroups] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    /* Close on Escape key */
+    useEffect(() => {
+        const fetchMyGroups = async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/groups/my-groups/`, {
+                    headers: {
+                        Authorization: `Bearer ${getAuthToken()}`,
+                    },
+                });
+                if (!res.ok) throw new Error("Failed to fetch groups");
+                const data = await res.json();
+                const groups = data.data?.results || data.data || data.results || data;
+                setAvailableGroups(Array.isArray(groups) ? groups : []);
+            } catch (err) {
+                console.error("Error fetching my groups:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMyGroups();
+    }, []);
+
     useEffect(() => {
         const handleKey = (e) => { if (e.key === "Escape") onClose(); };
         window.addEventListener("keydown", handleKey);
@@ -36,17 +58,16 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
     };
 
     const handleConfirm = () => {
-        const groups = AVAILABLE_GROUPS.filter((g) => selected.has(g.id));
+        const groups = availableGroups.filter((g) => selected.has(g.id));
         onConfirm(groups);
         onClose();
     };
 
-    const filtered = AVAILABLE_GROUPS.filter((g) =>
+    const filtered = availableGroups.filter((g) =>
         g.name.toLowerCase().includes(search.toLowerCase())
     );
 
     return (
-        /* ── Backdrop ── */
         <div
             onClick={onClose}
             style={{
@@ -59,7 +80,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                 zIndex: 9999,
             }}
         >
-            {/* ── Card ── */}
             <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -73,10 +93,9 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                     fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
                 }}
             >
-                {/* Checkmark confirm button (top-right) */}
                 <button
                     onClick={handleConfirm}
-                    title="Confirm selection"
+                    title={t("confirmSelection")}
                     style={{
                         position: "absolute",
                         top: "16px",
@@ -101,7 +120,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                     </svg>
                 </button>
 
-                {/* Title */}
                 <h2
                     style={{
                         fontFamily: "var(--font-playfair), 'Playfair Display', serif",
@@ -113,10 +131,9 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                         letterSpacing: "0.01em",
                     }}
                 >
-                    Add groups
+                    {t("title")}
                 </h2>
 
-                {/* Search input */}
                 <p style={{
                     fontSize: "13px",
                     color: ESPRESSO,
@@ -124,14 +141,14 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                     marginBottom: "8px",
                     opacity: 0.8,
                 }}>
-                    Type Group name
+                    {t("typeGroupName")}
                 </p>
                 <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     autoFocus
-                    placeholder="Search groups…"
+                    placeholder={t("searchPlaceholder")}
                     style={{
                         width: "100%",
                         backgroundColor: "#FFFFFF",
@@ -147,11 +164,10 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                         marginBottom: "16px",
                         transition: "box-shadow 0.15s",
                     }}
-                    onFocus={(e) => { e.target.style.boxShadow = `0 0 0 2.5px rgba(139,105,20,0.22)`; }}
+                    onFocus={(e) => { e.target.style.boxShadow = "0 0 0 2.5px rgba(139,105,20,0.22)"; }}
                     onBlur={(e) => { e.target.style.boxShadow = "none"; }}
                 />
 
-                {/* Group list */}
                 <div style={{
                     display: "flex",
                     flexDirection: "column",
@@ -180,7 +196,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                                 }}
                                 onClick={() => toggle(group.id)}
                             >
-                                {/* Group avatar + name */}
                                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                                     <div style={{
                                         width: "40px",
@@ -191,7 +206,7 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                                         backgroundColor: SISAL,
                                     }}>
                                         <img
-                                            src={group.image}
+                                            src={group.profile_picture ? (group.profile_picture.startsWith("http") ? group.profile_picture : `${API_URL}${group.profile_picture}`) : "/heritage-photography.jpg"}
                                             alt={group.name}
                                             style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                             onError={(e) => {
@@ -210,7 +225,6 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                                     </span>
                                 </div>
 
-                                {/* + / ✓ button */}
                                 <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); toggle(group.id); }}
@@ -243,7 +257,12 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                             </div>
                         );
                     })}
-                    {filtered.length === 0 && (
+                    {loading && (
+                        <div style={{ display: "flex", justifyContent: "center", padding: "20px" }}>
+                            <div className="w-6 h-6 border-2 border-t-transparent animate-spin rounded-full" style={{ borderColor: SISAL, borderTopColor: ESPRESSO }} />
+                        </div>
+                    )}
+                    {!loading && filtered.length === 0 && (
                         <p style={{
                             textAlign: "center",
                             color: ESPRESSO,
@@ -251,7 +270,7 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                             fontSize: "13px",
                             padding: "16px 0",
                         }}>
-                            No groups found
+                            {t("noGroupsFound")}
                         </p>
                     )}
                 </div>

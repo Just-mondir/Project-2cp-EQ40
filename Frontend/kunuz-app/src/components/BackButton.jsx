@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export default function BackButton() {
     const router = useRouter();
+    const t = useTranslations("auth.common");
 
     return (
         <button
             onClick={() => router.back()}
+            aria-label={t("back")}
             style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -26,7 +29,7 @@ export default function BackButton() {
             onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
         >
-            <span style={{ fontSize: "20px", display: "inline-block", transform: "translateY(-1px)" }}>←</span> Back
+            <span style={{ fontSize: "20px", display: "inline-block", transform: "translateY(-1px)" }}>←</span> {t("back")}
         </button>
     );
 }

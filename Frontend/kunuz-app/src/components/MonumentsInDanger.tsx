@@ -10,6 +10,17 @@ type Monument = {
   currentStatus: string;
 };
 
+type AlertApiPost = {
+  title?: string;
+  images?: Array<{ image?: string }>;
+  region?: string;
+  location?: string;
+  alert_details?: {
+    urgence_level?: string;
+    current_status?: string;
+  };
+};
+
 const fallbackMonuments: Monument[] = [
   {
     src: "/timgad%201.jpg",
@@ -50,10 +61,10 @@ export default function MonumentsInDanger() {
         if (!res.ok) return;
         const data = await res.json();
 
-        const fetched: Monument[] = (data.results || [])
-          .filter((post: any) => post.images?.[0]?.image)
+        const fetched: Monument[] = ((data.results || []) as AlertApiPost[])
+          .filter((post) => post.images?.[0]?.image)
           .slice(0, 3)
-          .map((post: any) => {
+          .map((post) => {
             const stripHtml = (html: string) => {
               if (!html) return "";
               let result = html;
@@ -64,13 +75,13 @@ export default function MonumentsInDanger() {
               } while (result !== prev);
               return result;
             };
-            const cleanTitle = stripHtml(post.title);
+            const cleanTitle = stripHtml(post.title || "");
 
             // Handle image URL correctly:
             const imgPath = post.images?.[0]?.image || "";
             const imageUrl = imgPath.startsWith("http")
               ? imgPath
-              : `https://res.cloudinary.com/dq3jtxkp/image/upload/${imgPath}`;
+              : `https://res.cloudinary.com/dq3jtkxtp/image/upload/${imgPath}`;
 
             return {
               src: imageUrl || "/fallback-image.jpg",  // Fallback image if URL is not found

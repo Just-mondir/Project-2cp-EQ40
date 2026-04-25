@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import LeftSidebar from "../../components/LeftSidebar";
+//import LeftSidebar from "../../components/LeftSidebar";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
 
@@ -633,7 +633,7 @@ export default function ModeratorUsers() {
 
   return (
     <>
-      <LeftSidebar activePage="home" />
+      
 
       <main
         className="min-h-screen overflow-x-hidden px-4 py-8 sm:px-8 md:pl-24 lg:px-16 lg:pl-28 lg:py-10"

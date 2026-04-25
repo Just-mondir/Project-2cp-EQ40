@@ -6,6 +6,7 @@ import LeftSidebar from "@/components/LeftSidebar";
 import BackButton from "@/components/BackButton";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import PostForm from "@/components/PostForm";
+import { useTranslations } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const getAuthToken = () => {
@@ -66,18 +67,18 @@ const toLocalDatetimeInput = (isoString?: string | null) => {
 };
 
 function EditPostInner() {
+  const t = useTranslations("auth.pages.editPost");
   const router = useRouter();
   const searchParams = useSearchParams();
   const postId = searchParams.get("id");
 
   const [post, setPost] = useState<ApiPost | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(postId));
   const [saving, setSaving] = useState(false);
   const [images, setImages] = useState<ImageItem[]>([]);
 
   useEffect(() => {
     if (!postId) {
-      setLoading(false);
       return;
     }
 
@@ -93,7 +94,7 @@ function EditPostInner() {
         });
 
         if (!res.ok) {
-          throw new Error("Failed to fetch post");
+          throw new Error(t("errors.fetchFailed"));
         }
 
         const data = await res.json();
@@ -108,7 +109,7 @@ function EditPostInner() {
     };
 
     fetchPost();
-  }, [postId]);
+  }, [postId, t]);
 
   const initialValues: PostFormValues = useMemo(() => {
     if (!post) {
@@ -167,10 +168,6 @@ function EditPostInner() {
       isRemote: true,
     }))
     : [];
-
-  useEffect(() => {
-    setImages(initialImages);
-  }, [post]);
 
   const handleCancel = () => router.back();
 
@@ -283,7 +280,7 @@ function EditPostInner() {
       router.push(`/user/${me.data?.username ?? me.username}`);
     } catch (err) {
       console.error("Error updating post:", err);
-      alert("Failed to update post");
+      alert(t("errors.updateFailed"));
     } finally {
       setSaving(false);
     }
@@ -296,7 +293,7 @@ function EditPostInner() {
         style={{ backgroundColor: "var(--background)" }}
       >
         <p style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
-          Loading...
+          {t("loading")}
         </p>
       </div>
     );
@@ -309,17 +306,14 @@ function EditPostInner() {
         style={{ backgroundColor: "var(--background)" }}
       >
         <p style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
-          Post not found
+          {t("notFound")}
         </p>
       </div>
     );
   }
 
   return (
-    <div
-      className="flex h-screen overflow-hidden"
-      style={{ backgroundColor: "var(--background)" }}
-    >
+    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
       <LeftSidebar activePage="add-post" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
@@ -340,7 +334,7 @@ function EditPostInner() {
                   lineHeight: 1.2,
                 }}
               >
-                Edit post
+                {t("title")}
               </h1>
 
               <p
@@ -351,7 +345,7 @@ function EditPostInner() {
                   fontFamily: "var(--font-lato), 'Lato', sans-serif",
                 }}
               >
-                Editing: <span style={{ fontStyle: "italic" }}>{post.title}</span>
+                {t("editingLabel")} <span style={{ fontStyle: "italic" }}>{post.title.replace(/<[^>]*>/g, "")}</span>
               </p>
 
               {saving && (
@@ -363,7 +357,7 @@ function EditPostInner() {
                     fontFamily: "var(--font-lato), 'Lato', sans-serif",
                   }}
                 >
-                  Saving changes...
+                  {t("saving")}
                 </p>
               )}
             </div>
@@ -406,6 +400,7 @@ function EditPostInner() {
 }
 
 export default function EditPostPage() {
+  const t = useTranslations("auth.pages.editPost");
   return (
     <Suspense
       fallback={
@@ -414,7 +409,7 @@ export default function EditPostPage() {
           style={{ backgroundColor: "#F7F5EF" }}
         >
           <p style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
-            Loading...
+            {t("loading")}
           </p>
         </div>
       }

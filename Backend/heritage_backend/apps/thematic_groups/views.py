@@ -1,4 +1,4 @@
-"""Views for thematic groups."""
+""""Views for thematic groups."""
 
 from __future__ import annotations
 
@@ -162,6 +162,7 @@ class GroupUserSearchView(APIView):
 
 class ThematicGroupDetailView(APIView):
     permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def _get_group(self, group_id: str):
         try:
@@ -181,11 +182,36 @@ class ThematicGroupDetailView(APIView):
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
         if not request.user.is_authenticated or not user_is_group_admin(str(request.user.id), group):
             return api_error("Only the group admin can update this group.", status_code=status.HTTP_403_FORBIDDEN)
-        serializer = ThematicGroupWriteSerializer(group, data=request.data, partial=True, context={"request": request})
+
+        data = request.data.copy()
+
+        profile_picture_file = request.FILES.get("profile_picture")
+        if profile_picture_file:
+            data["profile_picture"] = upload_to_cloudinary(profile_picture_file, folder="groups")
+
+        banner_image_file = request.FILES.get("banner_image")
+        if banner_image_file:
+            data["banner_image"] = upload_to_cloudinary(banner_image_file, folder="groups")
+
+        serializer = ThematicGroupWriteSerializer(group, data=data, partial=True, context={"request": request})
         if not serializer.is_valid():
             return api_error("Validation failed.", serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
         group = serializer.save()
         return api_success("Group updated successfully.", ThematicGroupSerializer(group, context={"request": request}).data)
+
+    def delete(self, request: Request, group_id: str) -> Response:
+        group = self._get_group(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not request.user.is_authenticated or not user_is_group_admin(str(request.user.id), group):
+            return api_error("Only the group admin can delete this group.", status_code=status.HTTP_403_FORBIDDEN)
+
+        GroupMembership.objects(group=group).delete()
+        GroupJoinRequest.objects(group=group).delete()
+        GroupInvitation.objects(group=group).delete()
+        group.delete()
+
+        return api_success("Group deleted successfully.", data=None, status_code=status.HTTP_204_NO_CONTENT)
 
 
 class GroupMembersView(APIView):
@@ -262,10 +288,26 @@ class GroupJoinRequestView(APIView):
         join_request = GroupJoinRequest(group=group, requester_id=user_id)
         join_request.save()
 
-        # Send email notification to the group admin
+        # Send email to admin
         try:
             requester_name = getattr(request.user, "display_name", "") or getattr(request.user, "username", "Someone")
             send_join_request_email(group, join_request, requester_name=requester_name)
+        except Exception:
+            pass
+
+        # Send in-app notification to admin
+        try:
+            requester_name = getattr(request.user, "display_name", "") or getattr(request.user, "username", "Someone")
+            notify(
+                event_type="group_join_request",
+                actor_id=user_id,
+                actor_name=requester_name,
+                recipient_id=str(group.admin_id),
+                target_type="group",
+                target_id=str(group.id),
+                group_name=group.name,
+                request_id=str(join_request.id),
+            )
         except Exception:
             pass
 
@@ -297,6 +339,33 @@ class GroupJoinRequestReviewView(APIView):
             existing_membership = GroupMembership.objects(group=group, user_id=join_request.requester_id).first()
             if not existing_membership:
                 GroupMembership(group=group, user_id=join_request.requester_id).save()
+            # Notify user their request was approved
+            try:
+                notify(
+                    event_type="group_join_request_approved",
+                    actor_id=str(request.user.id),
+                    actor_name=group.name,
+                    recipient_id=join_request.requester_id,
+                    target_type="group",
+                    target_id=str(group.id),
+                    group_name=group.name,
+                )
+            except Exception:
+                pass
+        elif status_value == "rejected":
+            # Notify user their request was rejected
+            try:
+                notify(
+                    event_type="group_join_request_rejected",
+                    actor_id=str(request.user.id),
+                    actor_name=group.name,
+                    recipient_id=join_request.requester_id,
+                    target_type="group",
+                    target_id=str(group.id),
+                    group_name=group.name,
+                )
+            except Exception:
+                pass
         return api_success("Join request reviewed successfully.", GroupJoinRequestSerializer(join_request).data)
 
 
@@ -317,14 +386,15 @@ class GroupInvitationCreateView(APIView):
         invitation = GroupInvitation(group=group, sender_id=str(request.user.id), recipient_id=recipient_id)
         invitation.save()
         notify(
-            event_type="group_invite_received",
-            actor_id=str(request.user.id),
-            actor_name=getattr(request.user, "display_name", "Someone"),
-            recipient_id=recipient_id,
-            target_type="group",
-            target_id=str(group.id),
-            group_name=group.name,
-        )
+    event_type="group_invite_received",
+    actor_id=str(request.user.id),
+    actor_name=getattr(request.user, "display_name", "Someone"),
+    recipient_id=recipient_id,
+    target_type="group",
+    target_id=str(group.id),
+    group_name=group.name,
+    invitation_id=str(invitation.id),
+)
         return api_success("Invitation sent successfully.", GroupInvitationSerializer(invitation).data, status_code=status.HTTP_201_CREATED)
 
 
@@ -346,7 +416,23 @@ class GroupInvitationResponseView(APIView):
         if status_value == "accepted":
             pending_request = GroupJoinRequest.objects(group=invitation.group, requester_id=str(request.user.id), status="pending").first()
             if not pending_request:
-                GroupJoinRequest(group=invitation.group, requester_id=str(request.user.id)).save()
+                new_request = GroupJoinRequest(group=invitation.group, requester_id=str(request.user.id))
+                new_request.save()
+                # Notify admin that invited user accepted and is waiting for approval
+                try:
+                    requester_name = getattr(request.user, "display_name", "") or getattr(request.user, "username", "Someone")
+                    notify(
+                        event_type="group_join_request",
+                        actor_id=str(request.user.id),
+                        actor_name=requester_name,
+                        recipient_id=str(invitation.group.admin_id),
+                        target_type="group",
+                        target_id=str(invitation.group.id),
+                        group_name=invitation.group.name,
+                        request_id=str(new_request.id),
+                    )
+                except Exception:
+                    pass
         return api_success("Invitation updated successfully.", GroupInvitationSerializer(invitation).data)
 
 
@@ -500,7 +586,7 @@ class PopularGroupsView(APIView):
 
 class MyGroupsView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request: Request) -> Response:
         memberships = GroupMembership.objects(user_id=str(request.user.id))
         group_ids = []
@@ -516,7 +602,8 @@ class MyGroupsView(APIView):
         page = paginator.paginate_queryset(groups, request)
         serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
-    
+
+
 class SuggestedGroupsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -591,7 +678,6 @@ class GroupJoinRequestEmailReviewView(APIView):
             if not existing:
                 GroupMembership(group=group, user_id=join_request.requester_id).save()
 
-        # Send in-app notification to requester
         event_type = f"group_join_request_{action}"
         notify(
             event_type=event_type,

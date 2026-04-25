@@ -1,30 +1,22 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
+import { useLocaleSettings } from "@/components/LocaleProvider";
 
 const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const SISAL = "#C4A882";
 
-/* ── Month / Year constants ── */
-const MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-];
-const DAYS_OF_WEEK = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-
-/* ── Helper: days in a month ── */
 function daysInMonth(year, month) {
     return new Date(year, month + 1, 0).getDate();
 }
 
-/* ── Helper: first weekday of month (0=Monday … 6=Sunday) ── */
 function firstWeekday(year, month) {
-    const d = new Date(year, month, 1).getDay(); // 0=Sun
-    return d === 0 ? 6 : d - 1; // shift to Mon-start
+    const d = new Date(year, month, 1).getDay();
+    return d === 0 ? 6 : d - 1;
 }
 
-/* ── Small arrow SVG ── */
 function ChevronLeft({ size = 16, color = ESPRESSO }) {
     return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -33,6 +25,7 @@ function ChevronLeft({ size = 16, color = ESPRESSO }) {
         </svg>
     );
 }
+
 function ChevronRight({ size = 16, color = ESPRESSO }) {
     return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -42,58 +35,52 @@ function ChevronRight({ size = 16, color = ESPRESSO }) {
     );
 }
 
-/* ══════════════════════════════════════════════════════
-   AddHistoricalPeriodPopup
-   Same visual language as AddLocationPopup / AddGroupsPopup
-   ══════════════════════════════════════════════════════ */
 export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm, onClose }) {
+    const t = useTranslations("auth.historicalPeriodPopup");
+    const { locale } = useLocaleSettings();
+    const parsedInitialDate = (() => {
+        if (!initialValue) return null;
+        const parts = initialValue.split("/");
+        if (parts.length !== 3) return null;
+        const d = new Date(parts[2], parts[1] - 1, parts[0]);
+        return Number.isNaN(d.getTime()) ? null : d;
+    })();
     const today = new Date();
-    const [viewYear, setViewYear] = useState(today.getFullYear());
-    const [viewMonth, setViewMonth] = useState(today.getMonth());
-    const [selectedDate, setSelectedDate] = useState(null); // Date object
+    const [viewYear, setViewYear] = useState(parsedInitialDate?.getFullYear() ?? today.getFullYear());
+    const [viewMonth, setViewMonth] = useState(parsedInitialDate?.getMonth() ?? today.getMonth());
+    const [selectedDate, setSelectedDate] = useState(parsedInitialDate);
     const [manualInput, setManualInput] = useState(initialValue);
 
-    /* Close on Escape key */
+    const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
+    const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
+    const monthLabel = monthFormatter.format(new Date(viewYear, viewMonth, 1));
+    const dayLabels = Array.from({ length: 7 }, (_, index) => {
+        const monday = new Date(Date.UTC(2024, 0, 1 + index));
+        return weekdayFormatter.format(monday);
+    });
+
     useEffect(() => {
         const handleKey = (e) => { if (e.key === "Escape") onClose(); };
         window.addEventListener("keydown", handleKey);
         return () => window.removeEventListener("keydown", handleKey);
     }, [onClose]);
 
-    /* Parse initial value into a pre-selected date if possible */
-    useEffect(() => {
-        if (initialValue) {
-            // Try DD/MM/YYYY
-            const parts = initialValue.split("/");
-            if (parts.length === 3) {
-                const d = new Date(parts[2], parts[1] - 1, parts[0]);
-                if (!isNaN(d)) {
-                    setSelectedDate(d);
-                    setViewYear(d.getFullYear());
-                    setViewMonth(d.getMonth());
-                }
-            }
-        }
-    }, [initialValue]);
-
-    /* Navigate months */
     const prevMonth = () => {
         if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
         else setViewMonth(viewMonth - 1);
     };
+
     const nextMonth = () => {
         if (viewMonth === 11) { setViewMonth(0); setViewYear(viewYear + 1); }
         else setViewMonth(viewMonth + 1);
     };
 
-    /* Build calendar grid cells */
     const totalDays = daysInMonth(viewYear, viewMonth);
     const startOffset = firstWeekday(viewYear, viewMonth);
     const cells = [];
     for (let i = 0; i < startOffset; i++) cells.push(null);
     for (let d = 1; d <= totalDays; d++) cells.push(d);
 
-    /* Check if a day cell is the selected date */
     const isSelected = (day) => {
         if (!day || !selectedDate) return false;
         return (
@@ -103,7 +90,6 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
         );
     };
 
-    /* Is today */
     const isToday = (day) => {
         if (!day) return false;
         return (
@@ -113,7 +99,6 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
         );
     };
 
-    /* Select a day */
     const pickDay = (day) => {
         const d = new Date(viewYear, viewMonth, day);
         setSelectedDate(d);
@@ -122,7 +107,6 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
         setManualInput(`${dd}/${mm}/${viewYear}`);
     };
 
-    /* Confirm */
     const handleConfirm = () => {
         onConfirm(manualInput);
         onClose();
@@ -141,7 +125,6 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
     };
 
     return (
-        /* ── Backdrop ── */
         <div
             onClick={onClose}
             style={{
@@ -154,7 +137,6 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                 zIndex: 9999,
             }}
         >
-            {/* ── Card ── */}
             <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
@@ -168,10 +150,9 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                     fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
                 }}
             >
-                {/* Checkmark confirm button (top-right) */}
                 <button
                     onClick={handleConfirm}
-                    title="Confirm date"
+                    title={t("confirmDate")}
                     style={{
                         position: "absolute",
                         top: "16px",
@@ -196,7 +177,6 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                     </svg>
                 </button>
 
-                {/* Title */}
                 <h2
                     style={{
                         fontFamily: "var(--font-playfair), 'Playfair Display', serif",
@@ -208,10 +188,9 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                         letterSpacing: "0.01em",
                     }}
                 >
-                    Historical Period
+                    {t("title")}
                 </h2>
 
-                {/* Sub-label */}
                 <p style={{
                     fontSize: "13px",
                     color: ESPRESSO,
@@ -219,17 +198,16 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                     marginBottom: "8px",
                     opacity: 0.8,
                 }}>
-                    Select a date
+                    {t("selectDate")}
                 </p>
 
-                {/* Text input for manual entry */}
                 <input
                     type="text"
                     value={manualInput}
                     onChange={(e) => setManualInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
                     autoFocus
-                    placeholder="DD/MM/YYYY or period name"
+                    placeholder={t("placeholder")}
                     style={{
                         width: "100%",
                         backgroundColor: "#FFFFFF",
@@ -244,11 +222,10 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                         boxSizing: "border-box",
                         transition: "box-shadow 0.15s",
                     }}
-                    onFocus={(e) => { e.target.style.boxShadow = `0 0 0 2.5px rgba(139,105,20,0.22)`; }}
+                    onFocus={(e) => { e.target.style.boxShadow = "0 0 0 2.5px rgba(139,105,20,0.22)"; }}
                     onBlur={(e) => { e.target.style.boxShadow = "none"; }}
                 />
 
-                {/* Divider: or pick from calendar */}
                 <div style={{
                     display: "flex",
                     alignItems: "center",
@@ -263,12 +240,11 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                         fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
                         whiteSpace: "nowrap",
                     }}>
-                        or pick from calendar
+                        {t("orPickFromCalendar")}
                     </span>
                     <div style={{ flex: 1, height: "1px", backgroundColor: SISAL, opacity: 0.5 }} />
                 </div>
 
-                {/* ── Calendar ── */}
                 <div style={{
                     backgroundColor: "#FFFFFF",
                     borderRadius: "12px",
@@ -276,7 +252,6 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                     padding: "16px",
                     boxShadow: "0 2px 8px rgba(67,40,23,0.08)",
                 }}>
-                    {/* Month / Year header */}
                     <div style={{
                         display: "flex",
                         alignItems: "center",
@@ -298,7 +273,7 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                             fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
                             letterSpacing: "0.02em",
                         }}>
-                            {MONTHS[viewMonth]} {viewYear}
+                            {monthLabel} {viewYear}
                         </span>
                         <button
                             type="button" onClick={nextMonth}
@@ -310,15 +285,14 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                         </button>
                     </div>
 
-                    {/* Day-of-week headers */}
                     <div style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(7, 1fr)",
                         gap: "2px",
                         marginBottom: "4px",
                     }}>
-                        {DAYS_OF_WEEK.map((d) => (
-                            <div key={d} style={{
+                        {dayLabels.map((label, index) => (
+                            <div key={`${label}-${index}`} style={{
                                 textAlign: "center",
                                 fontSize: "11px",
                                 fontWeight: 600,
@@ -327,12 +301,11 @@ export default function AddHistoricalPeriodPopup({ initialValue = "", onConfirm,
                                 padding: "4px 0",
                                 fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
                             }}>
-                                {d}
+                                {label}
                             </div>
                         ))}
                     </div>
 
-                    {/* Day cells */}
                     <div style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(7, 1fr)",

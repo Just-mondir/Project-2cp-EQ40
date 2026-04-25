@@ -3,9 +3,13 @@ export const PUBLIC_ROUTE_LIST = [
   "/landingpage",
   "/login",
   "/sign-up",
+  "/signup",
   "/verify-email",
   "/forgot-password",
   "/Moderator-page",
+  "/about",
+  "/guidelines",
+  "/legal",
 ] as const;
 
 export const LIGHT_ONLY_PLATFORM_ROUTE_LIST = [] as const;

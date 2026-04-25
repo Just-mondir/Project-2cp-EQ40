@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import LeftSidebar from "@/components/LeftSidebar";
 import BackButton from "@/components/BackButton";
 import ProfileForm from "@/components/ProfileForm";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 // ← ADDED: get auth token from localStorage
 function getAuthToken(): string {
@@ -15,6 +16,7 @@ function getAuthToken(): string {
 }
 
 export default function EditProfilePage() {
+  const t = useTranslations("auth.pages.editProfile");
   const router = useRouter();
 
   const [profileData, setProfileData] = useState({
@@ -100,38 +102,37 @@ export default function EditProfilePage() {
   };
 
   // ← ADDED: save profile data to backend via PATCH /api/users/me/
-  const handleDone = async (formValues: {
-    firstName: string;
-    lastName: string;
-    biography: string;
-    expertise: string;
-    speciality: string;
-  }) => {
-    try {
-      const res = await fetch(`${API_URL}/api/users/me/`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${getAuthToken()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          first_name: formValues.firstName,
-          last_name: formValues.lastName,
-          bio: formValues.biography,
-          expertise: formValues.expertise,
-          speciality: formValues.speciality,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        console.error("Error updating profile:", err);
-        return;
-      }
-      router.back();
-    } catch (err) {
-      console.error("Error updating profile:", err);
+const handleDone = async (formValues: {
+  firstName: string;
+  lastName: string;
+  biography: string;
+  expertise: string;
+  speciality: string;
+}) => {
+  try {
+    const res = await fetch(`${API_URL}/api/users/me/`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${getAuthToken()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        display_name: `${formValues.firstName} ${formValues.lastName}`.trim(), // ← fix
+        bio: formValues.biography,
+        expertise: formValues.expertise,
+        speciality: formValues.speciality,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      console.error("Backend error details:", JSON.stringify(err));
+      return;
     }
-  };
+    router.back();
+  } catch (err) {
+    console.error("Network error:", err);
+  }
+};
 
   return (
     <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
@@ -164,7 +165,7 @@ export default function EditProfilePage() {
                   lineHeight: 1.2,
                 }}
               >
-                Edit profile
+                {t("title")}
               </h1>
             </div>
 
@@ -187,7 +188,7 @@ export default function EditProfilePage() {
                 {profileData.profileImage ? (
                   <img
                     src={profileData.profileImage}
-                    alt="Profile"
+                    alt={t("imageAlt")}
                     className="w-full h-full object-cover rounded-[10px]"
                   />
                 ) : (
@@ -229,7 +230,7 @@ export default function EditProfilePage() {
                 />
               </div>
               <p style={{ color: "#79747E", fontFamily: "Lato, sans-serif", fontSize: "17px" }}>
-                Upload profile photo
+                {t("uploadPhoto")}
               </p>
             </div>
           </div>
@@ -257,4 +258,5 @@ export default function EditProfilePage() {
       </div>
     </div>
   );
+  
 }

@@ -5,6 +5,17 @@ import { usePathname } from "next/navigation";
 import { isDarkThemeRoute, normalizeThemePathname } from "@/lib/themeRoutes";
 
 type ThemeMode = "light" | "dark";
+type ThemeToggleVariant = "floating" | "inline";
+
+type ThemeToggleProps = {
+  backgroundColor?: string;
+  borderColor?: string;
+  forceVisible?: boolean;
+  foregroundColor?: string;
+  hoverBackgroundColor?: string;
+  shadow?: string;
+  variant?: ThemeToggleVariant;
+};
 
 function SunIcon() {
   return (
@@ -59,28 +70,32 @@ function applyTheme(theme: ThemeMode) {
   document.documentElement.style.colorScheme = isHomeTheme ? theme : "light";
 }
 
-export default function ThemeToggle() {
+export default function ThemeToggle({
+  backgroundColor = "rgba(255, 248, 226, 0.12)",
+  borderColor = "var(--border-soft)",
+  forceVisible = false,
+  foregroundColor = "var(--foreground)",
+  hoverBackgroundColor = "rgba(255, 248, 226, 0.2)",
+  shadow = "none",
+  variant = "floating",
+}: ThemeToggleProps) {
   const pathname = usePathname();
-  const [theme, setTheme] = useState<ThemeMode>("light");
-  const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    if (typeof window !== "undefined") {
+      return window.localStorage.getItem("theme-mode") === "dark" ? "dark" : "light";
+    }
+
+    return "light";
+  });
+  const [hovered, setHovered] = useState(false);
   const normalizedPathname = normalizeThemePathname(pathname || "/");
-  const shouldShowToggle = normalizedPathname === "/home-page";
+  const shouldShowToggle =
+    forceVisible || normalizedPathname === "/home-page" || normalizedPathname === "/home";
+  const isInline = variant === "inline";
 
   useEffect(() => {
-    const storedTheme =
-      typeof window !== "undefined"
-        ? (window.localStorage.getItem("theme-mode") as ThemeMode | null)
-        : null;
-    const nextTheme = storedTheme === "dark" ? "dark" : "light";
-    setTheme(nextTheme);
-    applyTheme(nextTheme);
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
     applyTheme(theme);
-  }, [mounted, pathname, theme]);
+  }, [pathname, theme]);
 
   if (!shouldShowToggle) {
     return null;
@@ -95,14 +110,29 @@ export default function ThemeToggle() {
     applyTheme(nextTheme);
   };
 
+  const toggleLabel =
+    theme === "light" ? "Activate dark mode" : "Activate light mode";
+
   return (
     <button
       type="button"
       onClick={handleToggle}
-      aria-label={theme === "light" ? "Activate dark mode" : "Activate light mode"}
-      title={theme === "light" ? "Activate dark mode" : "Activate light mode"}
-      className="theme-toggle"
-      style={{ opacity: mounted ? 1 : 0 }}
+      aria-label={toggleLabel}
+      title={toggleLabel}
+      className={`theme-toggle${isInline ? " theme-toggle--inline" : ""}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={
+        isInline
+          ? {
+              opacity: 1,
+              color: foregroundColor,
+              borderColor,
+              background: hovered ? hoverBackgroundColor : backgroundColor,
+              boxShadow: shadow,
+            }
+          : { opacity: 1 }
+      }
     >
       <span className="theme-toggle__glow" />
       <span className="theme-toggle__icon">
