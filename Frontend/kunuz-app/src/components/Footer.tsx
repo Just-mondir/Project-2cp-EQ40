@@ -59,7 +59,7 @@ export default function Footer() {
 
         {/* Column 1 */}
         <div className="flex flex-col gap-3 text-lg">
-          <Link href="/about#" className={linkClass}>About the Project</Link>
+          <Link href="/about" className={linkClass}>About the Project</Link>
           <Link href="/#explore" className={linkClass}>Monuments</Link>
           <Link href="/#at-risk" className={linkClass}>Endangered Sites</Link>
         </div>
@@ -67,14 +67,14 @@ export default function Footer() {
         {/* Column 2 */}
         <div className="flex flex-col gap-3 text-lg">
           <Link href="/#events" className={linkClass}>Events</Link>
-          <Link href="/login#" className={linkClass}>Join the Community</Link>
+          <Link href="/login" className={linkClass}>Join the Community</Link>
           <Link href="/#groups" className={linkClass}>Groups</Link>
         </div>
 
         {/* Column 3 */}
         <div className="flex flex-col gap-3 text-lg">
-          <Link href="/guidelines#" className={linkClass}>Guidelines</Link>
-          <Link href="/legal#" className={linkClass}>Legal</Link>
+          <Link href="/guidelines" className={linkClass}>Guidelines</Link>
+          <Link href="/legal" className={linkClass}>Legal</Link>
         </div>
 
       </div>

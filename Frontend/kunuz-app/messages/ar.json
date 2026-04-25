@@ -156,13 +156,18 @@
       "reply": "رد",
       "comments": "التعليقات",
       "annotations": "التعليقات التوضيحية",
-      "dashboard": "لوحة التحكم"
+      "dashboard": "لوحة التحكم",
+      "confirmDeletePost": "هل أنت متأكد أنك تريد حذف هذا المنشور؟",
+      "confirmDeleteComment": "هل أنت متأكد أنك تريد حذف هذا التعليق؟",
+      "confirmDeleteAnnotation": "هل أنت متأكد أنك تريد حذف هذا التوضيح؟",
+      "confirmDeleteReport": "هل أنت متأكد أنك تريد حذف هذا التقرير؟"
     },
     "feed": {
       "actions": {
         "seeMore": "عرض المزيد",
         "seeLess": "عرض أقل",
-        "reportPost": "الإبلاغ عن المنشور",
+        "reportPost": "الإبلاغ عن منشور",
+        "deletePost": "حذف المنشور",
         "editComment": "تعديل التعليق",
         "deleteComment": "حذف التعليق",
         "reportComment": "الإبلاغ عن التعليق",
@@ -715,7 +720,8 @@
         "unknownUser": "غير معروف",
         "history": {
           "noPreviewImage": "لا توجد صورة معاينة",
-          "postedIn": "نُشر في {date}"
+          "postedIn": "نُشر في {date}",
+          "empty": "لا توجد تقارير تاريخية بعد."
         },
         "reportModal": {
           "title": "تقرير تعبئة",

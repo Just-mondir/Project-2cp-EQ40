@@ -50,17 +50,18 @@ function getAuthToken(): string {
   return localStorage.getItem("accessToken") || "";
 }
 
-function getAuthUser():
-  | { id?: string; username?: string; display_name?: string }
-  | null {
+function getAuthUser(): { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean } | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem("authUser");
+    const raw = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
+
+const isModerator = (user: any) => user?.role === "moderator" || user?.role === "admin" || user?.is_staff;
+
 
 async function apiFetch(url: string, options: RequestInit = {}) {
   const token = getAuthToken();
@@ -521,6 +522,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
 
   const handleGemComment = async () => {
     const token = getAuthToken();
@@ -643,7 +645,7 @@ function CommentItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
-                {isOwner ? (
+                {canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
@@ -651,7 +653,8 @@ function CommentItem({
                   >
                     {feedT("actions.deleteComment")}
                   </button>
-                ) : (
+                )}
+                {!canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
@@ -753,9 +756,11 @@ function AnnotationItem({
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = String(getAuthUser()?.id ?? "");
+  const currentUser = getAuthUser();
+  const currentUserId = String(currentUser?.id ?? "");
   const isOwner = currentUserId === String(annotation.user_id);
   const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const canDelete = isOwner || isModerator(currentUser);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1415,9 +1420,28 @@ function PostModal({
 
   if (!post) return null;
 
+  const currentUser = getAuthUser();
+  const isOwner = post && String(currentUser?.id ?? "") === String(post.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
+
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
+
+  const handleDeletePostModal = async () => {
+    if (!window.confirm(feedT("actions.confirmDeletePost") || "Are you sure you want to delete this post?")) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        onClose();
+        window.location.reload();
+      }
+    } catch { }
+  };
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
@@ -1734,8 +1758,19 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
-                <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
+                <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
+                  {canDelete && (
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                      style={{ color: "#7B0000" }}
+                      onClick={handleDeletePostModal}
+                    >
+                      {feedT("actions.deletePost")}
+                    </button>
+                  )}
+                  {!canDelete && (
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
+                  )}
                 </div>
               )}
             </div>
@@ -1926,6 +1961,7 @@ function PostCard({
   onAnnotationClick,
   interaction,
   onInteractionChange,
+  onDelete,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -1933,8 +1969,12 @@ function PostCard({
   onAnnotationClick: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
+  onDelete?: (postId: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
+  const currentUser = getAuthUser();
+  const isOwner = currentUser?.id === post.user_id;
+  const canDelete = isOwner || isModerator(currentUser);
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -2022,7 +2062,18 @@ function PostCard({
           </button>
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
+              {canDelete && (
+                <button
+                  className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 mb-1"
+                  style={{ color: "#7B0000" }}
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(post.id); }}
+                >
+                  {feedT("actions.deletePost")}
+                </button>
+              )}
+              {!canDelete && (
+                <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
+              )}
             </div>
           )}
         </div>
@@ -2144,6 +2195,7 @@ function PostCard({
 
 export default function HomePageRoute() {
   const pageT = useTranslations("auth.pages.events");
+  const tCommon = useTranslations("auth.common");
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
@@ -2182,6 +2234,23 @@ export default function HomePageRoute() {
       commentsCount: post.comments_count ?? 0,
       annotationsCount: post.accepted_annotations_count ?? 0,
     };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm(tCommon("confirmDeletePost"))) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        if (selectedPost?.id === postId) setSelectedPost(null);
+      }
+    } catch (err) {
+      console.error("Delete post error:", err);
+    }
+  };
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
@@ -2341,6 +2410,7 @@ export default function HomePageRoute() {
                           setSelectedPost(post);
                           setSelectedPostTab("annotations");
                         }}
+                        onDelete={handleDeletePost}
                       />
                     </React.Fragment>
                   ))

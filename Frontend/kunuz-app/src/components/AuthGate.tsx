@@ -13,13 +13,16 @@ const PUBLIC_PATHS = new Set([
   "/signup",
   "/verify-email",
   "/forgot-password",
+  "/about",
+  "/guidelines",
+  "/legal",
 ]);
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const mounted = useSyncExternalStore(
-    () => () => {},
+    () => () => { },
     () => true,
     () => false,
   );

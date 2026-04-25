@@ -6,6 +6,9 @@ export const PUBLIC_ROUTE_LIST = [
   "/signup",
   "/verify-email",
   "/forgot-password",
+  "/about",
+  "/guidelines",
+  "/legal",
 ] as const;
 
 export const LIGHT_ONLY_PLATFORM_ROUTE_LIST = [] as const;

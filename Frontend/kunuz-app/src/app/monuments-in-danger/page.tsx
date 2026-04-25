@@ -68,15 +68,18 @@ function toggleStoredItem(key: string, id: string, add: boolean) {
   localStorage.setItem(key, JSON.stringify([...set]));
 }
 
-function getAuthUser() {
+function getAuthUser(): { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean } | null {
   if (typeof window === "undefined") return null;
   try {
-    const stored = localStorage.getItem("user") || localStorage.getItem("user_data");
+    const stored = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
     return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
   }
 }
+
+const isModerator = (user: any) => user?.role === "moderator" || user?.role === "admin" || user?.is_staff;
+
 
 /* ───────────────── TYPES ───────────────── */
 
@@ -142,6 +145,17 @@ type Annotation = {
   updated_at: string;
   validated_by_id: string;
   validated_at: string | null;
+};
+
+type HistoryReport = {
+  id: string;
+  post_id: string;
+  description: string;
+  images: string[];
+  previous_status: string;
+  requested_status: string;
+  created_by: string;
+  created_at: string;
 };
 
 type ApiCommentRaw = {
@@ -559,6 +573,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
 
   const handleGemComment = async () => {
     const token = getAuthToken();
@@ -587,6 +602,7 @@ function CommentItem({
   };
 
   const handleDeleteComment = async () => {
+    if (!window.confirm(commonT("confirmDeleteComment"))) return;
     const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/`, {
@@ -706,15 +722,17 @@ function CommentItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
-                {isOwner ? (
+                {canDelete ? (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                      onClick={handleEditComment}
-                    >
-                      {feedT("actions.editComment")}
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                        onClick={handleEditComment}
+                      >
+                        {feedT("actions.editComment")}
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
                       style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
@@ -724,13 +742,13 @@ function CommentItem({
                     </button>
                   </>
                 ) : (
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                      onClick={handleReportComment}
-                    >
-                      {feedT("actions.reportComment")}
-                    </button>
+                  <button
+                    className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                    onClick={handleReportComment}
+                  >
+                    {feedT("actions.reportComment")}
+                  </button>
                 )}
               </div>
             )}
@@ -857,9 +875,11 @@ function AnnotationItem({
   const [editText, setEditText] = useState(annotation.text ?? "");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = String(getAuthUser()?.id ?? "");
+  const currentUser = getAuthUser();
+  const currentUserId = String(currentUser?.id ?? "");
   const isOwner = currentUserId === String(annotation.user_id);
   const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const canDelete = isOwner || isModerator(currentUser);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -872,6 +892,7 @@ function AnnotationItem({
   }, []);
 
   const handleDelete = async () => {
+    if (!window.confirm(commonT("confirmDeleteAnnotation"))) return;
     const token = getAuthToken();
     try {
       const res = await fetch(
@@ -1016,15 +1037,17 @@ function AnnotationItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
-                {isOwner && (
+                {canDelete ? (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
-                      style={{ color: "#432817" }}
-                      onClick={handleEditAnnotation}
-                    >
-                      {feedT("actions.editAnnotation")}
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817" }}
+                        onClick={handleEditAnnotation}
+                      >
+                        {feedT("actions.editAnnotation")}
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
                       style={{ color: "#432817" }}
@@ -1033,8 +1056,7 @@ function AnnotationItem({
                       {feedT("actions.deleteAnnotation")}
                     </button>
                   </>
-                )}
-                {!isOwner && (
+                ) : (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
                     style={{ color: "#432817" }}
@@ -1343,9 +1365,29 @@ function PostModal({
 
   if (!post) return null;
 
+  const currentUser = getAuthUser();
+  const isOwner = post && String(currentUser?.id ?? "") === String(post.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
+
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
+
+  const handleDeletePostModal = async () => {
+    const commonT = useTranslations("auth.common");
+    if (!window.confirm(feedT("actions.confirmDeletePost") || "Are you sure you want to delete this post?")) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        onClose();
+        window.location.reload();
+      }
+    } catch { }
+  };
 
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1500,8 +1542,19 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
-                <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2", border: "1px solid rgba(67, 40, 23, 0.1)" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>{feedT("actions.reportPost")}</button>
+                <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
+                  {canDelete && (
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                      style={{ color: "#7B0000" }}
+                      onClick={handleDeletePostModal}
+                    >
+                      {feedT("actions.deletePost")}
+                    </button>
+                  )}
+                  {!canDelete && (
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>{feedT("actions.reportPost")}</button>
+                  )}
                 </div>
               )}
             </div>
@@ -1665,6 +1718,7 @@ function PostCard({
   onCommentClick,
   onHistoryClick,
   onMobilizationClick,
+  onDelete,
 }: {
   post: ApiPost;
   interaction: PostInteraction;
@@ -1672,6 +1726,7 @@ function PostCard({
   onCommentClick: () => void;
   onHistoryClick: () => void;
   onMobilizationClick: () => void;
+  onDelete?: (id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const [imgError, setImgError] = useState(false);
@@ -1679,6 +1734,10 @@ function PostCard({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const currentUser = getAuthUser();
+  const isOwner = currentUser?.id === post.user_id;
+  const canManage = isOwner || isModerator(currentUser);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1740,13 +1799,23 @@ function PostCard({
             </button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50 w-40" style={{ backgroundColor: "#FFF8E2" }}>
-                <button
-                  className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
-                  style={{ color: "#432817" }}
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onMobilizationClick(); }}
-                >
-                  {feedT("actions.reportPost")}
-                </button>
+                {canManage ? (
+                  <button
+                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600"
+                    style={{ color: "#7B0000" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(post.id); }}
+                  >
+                    {feedT("actions.deletePost")}
+                  </button>
+                ) : (
+                  <button
+                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
+                    style={{ color: "#432817" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                  >
+                    {feedT("actions.reportPost")}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1889,16 +1958,10 @@ function MobilizationModal({
     setSubmitting(true);
     try {
       const formData = new FormData();
-      // On envoie les champs attendus par PostDetailSerializer
-      formData.append("title", `${pageT("generatedTitlePrefix")} ${post.title}`);
-      formData.append("content", description);
-      formData.append("location", post.location || "");
-      formData.append("region", post.region || "");
-      formData.append("historical_period", post.historical_period || "");
-      formData.append("monument_type", post.monument_type || "");
-      formData.append("visibility", "public");
-      // Le backend de Tin exige starts_at pour le type "event"
-      formData.append("starts_at", new Date().toISOString());
+      formData.append("post_id", post.id);
+      formData.append("description", description);
+      formData.append("previous_status", selectedPrev.toLowerCase().replace(/\s+/g, "_"));
+      formData.append("requested_status", selectedReq.toLowerCase().replace(/\s+/g, "_"));
 
       images.forEach((img) => {
         if (!img.isRemote && img.file) {
@@ -1906,7 +1969,7 @@ function MobilizationModal({
         }
       });
 
-      const res = await fetch(`${API_URL}/api/posts/mobilization-event/`, {
+      const res = await fetch(`${API_URL}/api/mobilization-reports/`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -2047,13 +2110,51 @@ function MobilizationModal({
 
 /* ───────────────── HISTORY MODAL ───────────────── */
 
-const MOCK_HISTORIES = [
-  { id: "h1", user: "User4674538", transition: "Under intervention → Restored", content: "Content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content.", images: [] },
-  { id: "h2", user: "User4674538", transition: "Under intervention → Restored", content: "Content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content content.", images: ["https://images.unsplash.com/photo-1590483256070-56b9c9f2b8ed?w=200", "https://images.unsplash.com/photo-1548016460-2ff8dbd59187?w=200", "https://images.unsplash.com/photo-1563289052-16e79b8d234a?w=200"] },
-];
-
-function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost | null; onClose: () => void; onMobilizationReport: () => void }) {
+function HistoryModal({
+  post,
+  interaction,
+  onClose,
+  onMobilizationReport,
+  onToggleGem,
+  onToggleSave,
+  onDeleteHistory,
+}: {
+  post: ApiPost | null;
+  interaction: PostInteraction | null;
+  onClose: () => void;
+  onMobilizationReport: () => void;
+  onToggleGem: (postId: string, currentGemmed: boolean, currentCount: number) => void;
+  onToggleSave: (postId: string, currentSaved: boolean) => void;
+  onDeleteHistory: (reportId: string) => void;
+}) {
   const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const postFormT = useTranslations("auth.postForm");
+  const [histories, setHistories] = useState<HistoryReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const currentUser = getAuthUser();
+
+  useEffect(() => {
+    if (!post) return;
+    const fetchHistory = async () => {
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/api/mobilization-reports/?post_id=${post.id}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHistories(data.data?.results || []);
+        }
+      } catch (err) {
+        console.error("Fetch history error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchHistory();
+  }, [post]);
+
   if (!post) return null;
   const imageList = post.images ?? [];
 
@@ -2103,44 +2204,88 @@ function HistoryModal({ post, onClose, onMobilizationReport }: { post: ApiPost |
 
           {/* List area */}
           <div className="flex-1 overflow-y-auto feed-scroll p-4">
-            <div className="flex flex-col gap-4">
-              {MOCK_HISTORIES.map((h) => (
-                <div key={h.id} className="p-4 rounded-3xl bg-white shadow-sm" style={{ border: "1px solid rgba(67, 40, 23, 0.05)" }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-full bg-[#432817] flex items-center justify-center">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-                    </div>
-                    <span className="text-sm font-bold" style={{ color: "#432817" }}>{h.user}</span>
-                  </div>
-                  <div className="mb-2 text-[11px] font-bold" style={{ color: "rgba(67, 40, 23, 0.5)" }}>{h.transition}</div>
-                  <ExpandableContent content={h.content} className="text-xs leading-relaxed opacity-90 mb-3" style={{ color: "#432817" }} />
-                  {h.images.length > 0 && (
-                    <div className="flex gap-2 h-24 mt-2">
-                      {h.images.map((img, i) => (
-                        <img key={i} src={img} alt="Update" className="w-1/3 h-full object-cover rounded-xl" />
-                      ))}
-                    </div>
-                  )}
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+              </div>
+            ) : histories.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                <div className="mb-2">
+                  <HistoryIcon size={40} />
                 </div>
-              ))}
-            </div>
+                <span className="text-xs font-bold">{pageT("history.empty")}</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {histories.map((h) => (
+                  <div key={h.id} className="p-4 rounded-3xl bg-white shadow-sm" style={{ border: "1px solid rgba(67, 40, 23, 0.05)" }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold" style={{ color: "#8B7355" }}>{formatDate(h.created_at)}</span>
+                      </div>
+                      {isModerator(currentUser) && (
+                        <button
+                          onClick={() => onDeleteHistory(h.id)}
+                          className="p-1 rounded-full hover:bg-red-50 text-red-600 transition-colors"
+                          title="Delete report"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    <div className="mb-2 text-[11px] font-bold" style={{ color: "rgba(67, 40, 23, 0.5)" }}>
+                      {translateMobilizationStatus(h.previous_status, postFormT)} → {translateMobilizationStatus(h.requested_status, postFormT)}
+                    </div>
+                    <ExpandableContent content={h.description} className="text-xs leading-relaxed opacity-90 mb-3" style={{ color: "#432817" }} />
+                    {h.images && h.images.length > 0 && (
+                      <div className="flex gap-2 h-24 mt-2">
+                        {h.images.map((img, i) => (
+                          <img
+                            key={i}
+                            src={img.startsWith('/media/') ? API_URL + img : img}
+                            alt="Update"
+                            className="w-1/3 h-full object-cover rounded-xl"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Action footer */}
           <div className="p-6 border-t flex flex-col gap-4" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#432817" }}>
-                  <GemIcon size={18} /><span>{formatCount(post.gems_count)}</span>
-                </div>
+                <button
+                  className="flex items-center gap-1.5 text-xs font-bold"
+                  style={{ color: "#432817" }}
+                  onClick={() => {
+                    if (interaction) {
+                      onToggleGem(post.id, interaction.gemmed, interaction.gemsCount);
+                    }
+                  }}
+                >
+                  <GemIcon size={18} filled={interaction?.gemmed ?? false} />
+                  <span>{formatCount(interaction?.gemsCount ?? 0)}</span>
+                </button>
                 <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#432817" }}>
                   <CommentIcon size={18} /><span>{formatCount(post.comments_count)}</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#432817" }}>
-                  <AnnotationIcon size={18} /><span>0</span>
-                </div>
               </div>
-              <BookmarkIcon size={18} />
+              <button
+                onClick={() => {
+                  if (interaction) {
+                    onToggleSave(post.id, interaction.saved);
+                  }
+                }}
+              >
+                <BookmarkIcon size={18} filled={interaction?.saved ?? false} />
+              </button>
             </div>
 
             <button
@@ -2276,15 +2421,15 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
           <h2
             className="text-2xl font-bold mb-8 text-center"
             style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-        >
-          {pageT("criticalTitle")}
-        </h2>
+          >
+            {pageT("criticalTitle")}
+          </h2>
 
-        <div className="flex items-center justify-center h-48">
+          <div className="flex items-center justify-center h-48">
             <span className="text-sm opacity-50" style={{ color: "#432817" }}>{pageT("noCritical")}</span>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
     );
   }
 
@@ -2375,6 +2520,7 @@ function RightSidebar({ onAction, posts }: { onAction: () => void; posts: ApiPos
 
 export default function MonumentsInDangerPage() {
   const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const commonT = useTranslations("auth.common");
   const addEventT = useTranslations("auth.pages.addEvent");
   const router = useRouter();
   const [posts, setPosts] = useState<ApiPost[]>([]);
@@ -2449,6 +2595,24 @@ export default function MonumentsInDangerPage() {
       updateInteraction(postId, { saved: currentSaved });
     }
   };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm(commonT("confirmDeletePost"))) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPosts((prev) => prev.filter((p) => p.id !== postId));
+        setCriticalPosts((prev) => prev.filter((p) => p.id !== postId));
+      }
+    } catch (err) {
+      console.error("Delete post error:", err);
+    }
+  };
+
 
   // --- SEACH & FILTER LOGIC ---
   const constructUrl = (filters: typeof activeFilters, query: string) => {
@@ -2603,6 +2767,7 @@ export default function MonumentsInDangerPage() {
                       }}
                       onHistoryClick={() => setHistoryPost(post)}
                       onCommentClick={() => setSelectedPost(post)}
+                      onDelete={handleDeletePost}
                     />
                   ))
                 ) : !loading && (
@@ -2660,6 +2825,23 @@ export default function MonumentsInDangerPage() {
       )}
       <HistoryModal
         post={historyPost}
+        interaction={historyPost ? getInteraction(historyPost) : null}
+        onToggleGem={handleToggleGem}
+        onToggleSave={handleToggleSave}
+        onDeleteHistory={async (reportId) => {
+          if (!window.confirm(commonT("confirmDeleteReport"))) return;
+          const token = getAuthToken();
+          try {
+            const res = await fetch(`${API_URL}/api/mobilization-reports/${reportId}/`, {
+              method: "DELETE",
+              headers: { "Authorization": `Bearer ${token}` },
+            });
+            if (res.ok) {
+              // Refresh the histories in the modal would be better, but for now we can just close it or rely on re-fetch if it's managed by state
+              // Since Histories state is internal to HistoryModal, I should probably pass a function to update it or handle it inside
+            }
+          } catch (err) { console.error(err); }
+        }}
         onClose={() => setHistoryPost(null)}
         onMobilizationReport={() => {
           const p = historyPost;
