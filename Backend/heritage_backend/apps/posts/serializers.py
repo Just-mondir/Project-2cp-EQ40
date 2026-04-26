@@ -33,6 +33,7 @@ from .models import (
     Gem,
     Post,
     PostImage,
+    Repost,
     Save,
     MobilizationEvent,
 )
@@ -85,6 +86,8 @@ class PostListSerializer(serializers.Serializer):
     accepted_annotations_count = serializers.SerializerMethodField()
     is_gemmed = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
+    is_reposted = serializers.SerializerMethodField()
+    reposts_count = serializers.SerializerMethodField()
     is_available = serializers.SerializerMethodField()
     access_message = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
@@ -142,6 +145,15 @@ class PostListSerializer(serializers.Serializer):
             return False
         return Save.objects(post=obj, user_id=str(request.user.id)).first() is not None
 
+    def get_is_reposted(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return Repost.objects(post=obj, user_id=str(request.user.id)).first() is not None
+
+    def get_reposts_count(self, obj):
+        return Repost.objects(post=obj).count()
+
     def get_is_available(self, obj):
         return True
 
@@ -169,6 +181,8 @@ class PostDetailSerializer(serializers.Serializer):
     accepted_annotations_count = serializers.SerializerMethodField()
     is_gemmed = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
+    is_reposted = serializers.SerializerMethodField()
+    reposts_count = serializers.SerializerMethodField()
     is_available = serializers.SerializerMethodField()
     access_message = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
@@ -227,6 +241,15 @@ class PostDetailSerializer(serializers.Serializer):
         if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
             return False
         return Save.objects(post=obj, user_id=str(request.user.id)).first() is not None
+
+    def get_is_reposted(self, obj):
+        request = self.context.get("request")
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return Repost.objects(post=obj, user_id=str(request.user.id)).first() is not None
+
+    def get_reposts_count(self, obj):
+        return Repost.objects(post=obj).count()
 
     def get_is_available(self, obj):
         return True
@@ -399,6 +422,13 @@ class GemSerializer(serializers.Serializer):
 
 
 class SaveSerializer(serializers.Serializer):
+    id = serializers.CharField(read_only=True)
+    post = serializers.CharField(read_only=True)
+    user_id = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+
+class RepostSerializer(serializers.Serializer):
     id = serializers.CharField(read_only=True)
     post = serializers.CharField(read_only=True)
     user_id = serializers.CharField(read_only=True)

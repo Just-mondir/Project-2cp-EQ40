@@ -39,6 +39,23 @@ class NotificationSerializerTests(SimpleTestCase):
         self.assertEqual(data["actor_profile_picture"], "/media/amina.jpg")
         self.assertEqual(data["event_label"], "liked your post")
 
+    def test_serializer_labels_repost_notifications(self):
+        item = SimpleNamespace(
+            id="abc123",
+            recipient_id="user-1",
+            actor_id="user-2",
+            event_type="repost_on_post",
+            target_type="post",
+            target_id="post-1",
+            message="Amina reposted your post",
+            is_read=False,
+            created_at=timezone.now(),
+        )
+
+        serializer = NotificationSerializer(item)
+
+        self.assertEqual(serializer.data["event_label"], "reposted your post")
+
 
 class NotificationViewSmokeTests(SimpleTestCase):
     def setUp(self):

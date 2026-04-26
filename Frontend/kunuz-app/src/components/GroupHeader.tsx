@@ -86,7 +86,7 @@ export default function GroupHeader({
             alt=""
             aria-hidden="true"
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ filter: "blur(40px) brightness(0.65) saturate(1.1)", transform: "scale(1.3)" }}
+            style={{ filter: "blur(5px) brightness(0.65) saturate(1.1)", transform: "scale(1.3)" }}
           />
         ) : (
           <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #2c1a0e 0%, #5a3a1a 100%)" }} />

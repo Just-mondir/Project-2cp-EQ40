@@ -314,6 +314,8 @@ export default function GroupDetailPage() {
                         gemmed: (post as any).is_gemmed || false,
                         gemsCount: post.gems_count,
                         saved: (post as any).is_saved || false,
+                        reposted: (post as any).is_reposted || false,
+                        repostsCount: (post as any).reposts_count || 0,
                         commentsCount: post.comments_count,
                         annotationsCount: (post as any).accepted_annotations_count || 0
                       }}
@@ -323,6 +325,8 @@ export default function GroupDetailPage() {
                           ...update,
                           is_gemmed: update.gemmed ?? (p as any).is_gemmed,
                           gems_count: update.gemsCount ?? p.gems_count,
+                          is_reposted: update.reposted ?? (p as any).is_reposted,
+                          reposts_count: update.repostsCount ?? (p as any).reposts_count,
                           comments_count: update.commentsCount ?? p.comments_count,
                         } : p));
                       }}
@@ -408,6 +412,8 @@ export default function GroupDetailPage() {
             gemmed: selectedPost.is_gemmed || false,
             gemsCount: selectedPost.gems_count,
             saved: selectedPost.is_saved || false,
+            reposted: selectedPost.is_reposted || false,
+            repostsCount: selectedPost.reposts_count || 0,
             commentsCount: selectedPost.comments_count,
             annotationsCount: selectedPost.accepted_annotations_count || 0
           }}
@@ -417,6 +423,8 @@ export default function GroupDetailPage() {
               ...update,
               is_gemmed: update.gemmed ?? (p as any).is_gemmed,
               gems_count: update.gemsCount ?? p.gems_count,
+              is_reposted: update.reposted ?? (p as any).is_reposted,
+              reposts_count: update.repostsCount ?? (p as any).reposts_count,
               comments_count: update.commentsCount ?? p.comments_count,
             } : p));
             setSelectedPost((prev: any) => prev ? {
@@ -424,6 +432,8 @@ export default function GroupDetailPage() {
               ...update,
               is_gemmed: update.gemmed ?? prev.is_gemmed,
               gems_count: update.gemsCount ?? prev.gems_count,
+              is_reposted: update.reposted ?? prev.is_reposted,
+              reposts_count: update.repostsCount ?? prev.reposts_count,
               comments_count: update.commentsCount ?? prev.comments_count,
             } : null);
           }}

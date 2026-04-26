@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
+import AiPostInsight from "@/components/AiPostInsight";
+import RepostButton from "@/components/RepostButton";
 import LocationWorldCard from "@/components/LocationWorldCard";
 
 const API_URL = "http://127.0.0.1:8000";
@@ -123,6 +125,8 @@ type ApiPost = {
   accepted_annotations_count?: number;
   is_gemmed?: boolean;
   is_saved?: boolean;
+  is_reposted?: boolean;
+  reposts_count?: number;
   images: PostImage[];
   tags?: string[];
   historical_period?: string;
@@ -139,6 +143,8 @@ type PostInteraction = {
   gemmed: boolean;
   gemsCount: number;
   saved: boolean;
+  reposted: boolean;
+  repostsCount: number;
   commentsCount: number;
   annotationsCount: number;
 };
@@ -1242,7 +1248,7 @@ function PostModal({
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const { gemmed, gemsCount, saved } = interaction;
+  const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
 
   const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
 
@@ -1747,10 +1753,24 @@ function PostModal({
               >
                 <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
               </button>
+              <RepostButton
+                key={`${post.id}-${reposted}-${repostsCount}`}
+                postId={post.id}
+                initialReposted={reposted}
+                initialCount={repostsCount}
+                className="flex items-center gap-1 text-xs transition-all"
+                iconSize={14}
+                onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+                  onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+                }}
+              />
             </div>
-            <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
-              <BookmarkIcon size={18} filled={saved} active={saved} />
-            </button>
+            <div className="flex items-center gap-4">
+              <AiPostInsight postId={post.id} title={post.title} />
+              <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
+                <BookmarkIcon size={18} filled={saved} active={saved} />
+              </button>
+            </div>
           </div>
 
           <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">

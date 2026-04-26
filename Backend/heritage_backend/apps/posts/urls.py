@@ -7,16 +7,20 @@ from .views import (
     GemToggleView,
     CommentGemToggleView,
     MySavedPostsView,
+    MyRepostedPostsView,
     PostDetailView,
+    PostAIInsightView,
     PostImageUploadView,
     PostListCreateView,
     SaveToggleView,
+    RepostToggleView,
     MyGemedPostsView,
     UserEventsPostsView,
     UserAlertsPostsView,
     EventsView,
     UpcomingEventsView,
     UserPostsView,
+    UserRepostedPostsView,
     PostImageDeleteView,
     EventFilterView,
     GlobalSearchView,
@@ -52,8 +56,10 @@ urlpatterns = [
 
     # Profile
     path("posts/saved/", MySavedPostsView.as_view(), name="saved-posts"),
+    path("posts/reposts/", MyRepostedPostsView.as_view(), name="reposted-posts"),
     path("posts/gemed/", MyGemedPostsView.as_view(), name="gemed-posts"),
     path("posts/user/<str:username>/", UserPostsView.as_view(), name="user-posts"),
+    path("posts/user/<str:username>/reposts/", UserRepostedPostsView.as_view(), name="user-reposts"),
     path("posts/user/<str:username>/events/", UserEventsPostsView.as_view(), name="user-events"),
     path("posts/user/<str:username>/alerts/", UserAlertsPostsView.as_view(), name="user-alerts"),
 
@@ -62,8 +68,10 @@ urlpatterns = [
     path("posts/comments/<str:pk>/gem/", CommentGemToggleView.as_view(), name="comment-gem"),
 
     path("posts/<str:pk>/images/", PostImageUploadView.as_view(), name="post-images"),
+    path("posts/<str:pk>/ai-insight/", PostAIInsightView.as_view(), name="post-ai-insight"),
     path("posts/<str:pk>/gem/", GemToggleView.as_view(), name="post-gem"),
     path("posts/<str:pk>/save/", SaveToggleView.as_view(), name="post-save"),
+    path("posts/<str:pk>/repost/", RepostToggleView.as_view(), name="post-repost"),
     path("posts/<str:pk>/comments/", CommentListCreateView.as_view(), name="post-comments"),
 
     path("posts/<str:post_id>/annotations/", AnnotationListCreateView.as_view(), name="post-annotations"),

@@ -6,6 +6,8 @@ import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard, Mail, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
+import AiPostInsight from "@/components/AiPostInsight";
+import RepostButton, { RepostIcon } from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
 
@@ -94,6 +96,8 @@ type ApiPost = {
   accepted_annotations_count?: number;
   is_gemmed?: boolean;
   is_saved?: boolean;
+  is_reposted?: boolean;
+  reposts_count?: number;
   images: PostImage[];
   tags?: string[];
   historical_period?: string;
@@ -108,6 +112,8 @@ type PostInteraction = {
   gemmed: boolean;
   gemsCount: number;
   saved: boolean;
+  reposted: boolean;
+  repostsCount: number;
   commentsCount: number;
   annotationsCount: number;
 };
@@ -314,6 +320,8 @@ function mapPost(post: any): ApiPost {
     accepted_annotations_count: post.accepted_annotations_count ?? 0,
     is_gemmed: post.is_gemmed ?? false,
     is_saved: post.is_saved ?? false,
+    is_reposted: post.is_reposted ?? false,
+    reposts_count: post.reposts_count ?? 0,
     images: Array.isArray(post.images) ? post.images : [],
     tags: Array.isArray(post.tags) ? post.tags : [],
     historical_period: post.historical_period ?? "",
@@ -818,7 +826,7 @@ function PostModal({
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
-  const { gemmed, gemsCount, saved } = interaction;
+  const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
   const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
 
   useEffect(() => {
@@ -1164,10 +1172,30 @@ function PostModal({
                 <button className="flex items-center gap-1 text-xs transition-all" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355" }} onClick={() => setActiveTab("annotations")}>
                   <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
                 </button>
+                <RepostButton
+                  key={`${post.id}-${reposted}-${repostsCount}`}
+                  postId={post.id}
+                  initialReposted={reposted}
+                  initialCount={repostsCount}
+                  className="flex items-center gap-1 text-xs transition-all"
+                  style={{ color: "#432817" }}
+                  iconSize={14}
+                  onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+                    onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+                  }}
+                />
               </div>
-              <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
-                <BookmarkIcon size={18} filled={saved} active={saved} />
-              </button>
+              <div className="flex items-center gap-4">
+                <AiPostInsight
+                  postId={post.id}
+                  title={post.title}
+                  buttonClassName="flex items-center gap-1 text-xs transition-all"
+                  buttonStyle={{ color: "#432817" }}
+                />
+                <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
+                  <BookmarkIcon size={18} filled={saved} active={saved} />
+                </button>
+              </div>
             </div>
             <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
               {activeTab === "comments" ? (
@@ -1380,6 +1408,7 @@ function ProfileHeader({
 function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: string; setActiveTab: (t: string) => void; isOwnProfile: boolean }) {
   const tabs = [
     { id: "grid", icon: <GridIcon size={20} /> },
+    { id: "reposts", icon: <RepostIcon size={20} /> },
     ...(isOwnProfile ? [{ id: "gems", icon: <GemIcon size={20} /> }, { id: "saved", icon: <BookmarkIcon size={20} /> }] : []),
     { id: "events", icon: <CalendarIcon size={20} /> },
     { id: "alerts", icon: <DangerIcon size={20} /> },
@@ -1388,7 +1417,7 @@ function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: str
   return (
     <div className="flex items-center justify-between px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
       {tabs.map((tab) => (
-        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="p-3 transition-all duration-200 hover:opacity-70 relative" style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}>
+        <button key={tab.id} title={tab.id === "reposts" ? "Reposts" : tab.id} aria-label={tab.id === "reposts" ? "Reposts" : tab.id} onClick={() => setActiveTab(tab.id)} className="p-3 transition-all duration-200 hover:opacity-70 relative" style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}>
           {tab.icon}
           {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: "#432817" }} />}
         </button>
@@ -1412,7 +1441,7 @@ function PostGridCard({
   const imageList = post.images ?? [];
   const firstImage = imageList[0];
   const imageUrl = firstImage ? (firstImage.image.startsWith("/media/") ? `${API_URL}${firstImage.image}` : firstImage.image) : null;
-  const { gemsCount, commentsCount, annotationsCount } = interaction;
+  const { gemsCount, commentsCount, repostsCount } = interaction;
 
   return (
     <div className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group" style={{ boxShadow: "0 2px 12px rgba(67,40,23,0.1)" }} onClick={onClick}>
@@ -1428,9 +1457,7 @@ function PostGridCard({
         <button className="flex items-center gap-1.5 text-white" onClick={(e) => { e.stopPropagation(); onCommentClick(); }}>
           <CommentIcon size={18} /><span className="font-semibold text-sm">{formatCount(commentsCount)}</span>
         </button>
-        <button className="flex items-center gap-1.5 text-white" onClick={(e) => { e.stopPropagation(); onAnnotationClick(); }}>
-          <AnnotationIcon size={18} /><span className="font-semibold text-sm">{formatCount(annotationsCount)}</span>
-        </button>
+        <div className="flex items-center gap-1.5 text-white"><RepostIcon size={18} /><span className="font-semibold text-sm">{formatCount(repostsCount)}</span></div>
       </div>
       {post.post_type && (
         <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize" style={{ backgroundColor: post.post_type === "alert" ? "#FEE2E2" : post.post_type === "event" ? "#DCFCE7" : post.post_type === "visit" ? "#FFF0E0" : post.post_type === "question" ? "#EEF2FF" : post.post_type === "discovery" ? "#FFFBEB" : "#FFF8E2", color: post.post_type === "alert" ? "#B91C1C" : post.post_type === "event" ? "#15803D" : post.post_type === "visit" ? "#C2570A" : post.post_type === "question" ? "#3730A3" : post.post_type === "discovery" ? "#B45309" : "#432817" }}>
@@ -1485,6 +1512,8 @@ export default function ProfilePage() {
   const [loadingGemmed, setLoadingGemmed] = useState(false);
   const [savedPosts, setSavedPosts] = useState<ApiPost[]>([]);
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [repostedPosts, setRepostedPosts] = useState<ApiPost[]>([]);
+  const [loadingReposts, setLoadingReposts] = useState(false);
   const [eventPosts, setEventPosts] = useState<ApiPost[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [alertPosts, setAlertPosts] = useState<ApiPost[]>([]);
@@ -1511,24 +1540,29 @@ export default function ProfilePage() {
   const params = useParams();
   const viewedUsername = typeof params?.username === "string" ? params.username : loggedInUsername;
   const isOwnProfile = !!loggedInUsername && !!viewedUsername && loggedInUsername === viewedUsername;
+  const visibleTab = !isOwnProfile && (activeTab === "gems" || activeTab === "saved") ? "grid" : activeTab;
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
       gemmed: post.is_gemmed ?? getStoredSet("gemmed_posts").has(post.id),
       gemsCount: post.gems_count,
       saved: post.is_saved ?? getStoredSet("saved_posts").has(post.id),
+      reposted: post.is_reposted ?? false,
+      repostsCount: post.reposts_count ?? 0,
       commentsCount: post.comments_count ?? 0,
       annotationsCount: post.accepted_annotations_count ?? 0,
     };
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
-      const allPostsFlat = [...allPosts, ...gemmedPosts, ...savedPosts, ...eventPosts, ...alertPosts];
+      const allPostsFlat = [...allPosts, ...gemmedPosts, ...savedPosts, ...repostedPosts, ...eventPosts, ...alertPosts];
       const sourcePost = allPostsFlat.find((p) => p.id === postId);
       const existing = prev[postId] ?? {
         gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
         gemsCount: sourcePost?.gems_count ?? 0,
         saved: sourcePost?.is_saved ?? getStoredSet("saved_posts").has(postId),
+        reposted: sourcePost?.is_reposted ?? false,
+        repostsCount: sourcePost?.reposts_count ?? 0,
         commentsCount: sourcePost?.comments_count ?? 0,
         annotationsCount: sourcePost?.accepted_annotations_count ?? 0,
       };
@@ -1540,6 +1574,7 @@ export default function ProfilePage() {
     setAllPosts((prev) => prev.filter((p) => p.id !== postId));
     setGemmedPosts((prev) => prev.filter((p) => p.id !== postId));
     setSavedPosts((prev) => prev.filter((p) => p.id !== postId));
+    setRepostedPosts((prev) => prev.filter((p) => p.id !== postId));
     setEventPosts((prev) => prev.filter((p) => p.id !== postId));
     setAlertPosts((prev) => prev.filter((p) => p.id !== postId));
   };
@@ -1652,7 +1687,7 @@ export default function ProfilePage() {
   }, [viewedUsername]);
 
   useEffect(() => {
-    if (!isOwnProfile || activeTab !== "gems") return;
+    if (!isOwnProfile || visibleTab !== "gems") return;
     const fetch_ = async () => {
       setLoadingGemmed(true);
       try {
@@ -1664,10 +1699,10 @@ export default function ProfilePage() {
       finally { setLoadingGemmed(false); }
     };
     fetch_();
-  }, [activeTab, isOwnProfile]);
+  }, [visibleTab, isOwnProfile]);
 
   useEffect(() => {
-    if (!isOwnProfile || activeTab !== "saved") return;
+    if (!isOwnProfile || visibleTab !== "saved") return;
     const fetch_ = async () => {
       setLoadingSaved(true);
       try {
@@ -1679,10 +1714,28 @@ export default function ProfilePage() {
       finally { setLoadingSaved(false); }
     };
     fetch_();
-  }, [activeTab, isOwnProfile]);
+  }, [visibleTab, isOwnProfile]);
 
   useEffect(() => {
-    if (activeTab !== "events" || !viewedUsername) return;
+    if (visibleTab !== "reposts" || !viewedUsername) return;
+    const fetch_ = async () => {
+      setLoadingReposts(true);
+      try {
+        const endpoint = isOwnProfile
+          ? `${API_URL}/api/posts/reposts/`
+          : `${API_URL}/api/posts/user/${viewedUsername}/reposts/`;
+        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        setRepostedPosts((data.results ?? data).map(mapPost));
+      } catch (err) { console.error(err); }
+      finally { setLoadingReposts(false); }
+    };
+    fetch_();
+  }, [visibleTab, isOwnProfile, viewedUsername]);
+
+  useEffect(() => {
+    if (visibleTab !== "events" || !viewedUsername) return;
     const fetch_ = async () => {
       setLoadingEvents(true);
       try {
@@ -1694,10 +1747,10 @@ export default function ProfilePage() {
       finally { setLoadingEvents(false); }
     };
     fetch_();
-  }, [activeTab, viewedUsername]);
+  }, [visibleTab, viewedUsername]);
 
   useEffect(() => {
-    if (activeTab !== "alerts" || !viewedUsername) return;
+    if (visibleTab !== "alerts" || !viewedUsername) return;
     const fetch_ = async () => {
       setLoadingAlerts(true);
       try {
@@ -1709,11 +1762,7 @@ export default function ProfilePage() {
       finally { setLoadingAlerts(false); }
     };
     fetch_();
-  }, [activeTab, viewedUsername]);
-
-  useEffect(() => {
-    if (!isOwnProfile && (activeTab === "gems" || activeTab === "saved")) setActiveTab("grid");
-  }, [isOwnProfile, activeTab]);
+  }, [visibleTab, viewedUsername]);
 
   const openPost = (post: ApiPost, tab: "comments" | "annotations" = "comments") => {
     setSelectedPost(post);
@@ -1739,29 +1788,36 @@ export default function ProfilePage() {
       <main className="pl-[80px] pr-4">
         <div className="max-w-4xl mx-auto">
           <ProfileHeader profileInfo={profileInfo} isOwnProfile={isOwnProfile} />
-          <ProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
+          <ProfileTabs activeTab={visibleTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
-          {activeTab === "grid" && (
+          {visibleTab === "grid" && (
             loadingPosts ? <Spinner /> :
               allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message="No Posts yet" /> :
                 <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
-          {isOwnProfile && activeTab === "gems" && (
+          {isOwnProfile && visibleTab === "gems" && (
             loadingGemmed ? <Spinner /> :
               gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" /> :
                 <PostsGrid posts={gemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
-          {isOwnProfile && activeTab === "saved" && (
+          {isOwnProfile && visibleTab === "saved" && (
             loadingSaved ? <Spinner /> :
               savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" /> :
                 <PostsGrid posts={savedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
-          {activeTab === "events" && (
+          {visibleTab === "reposts" && (
+            <>
+              {loadingReposts ? <Spinner /> :
+                repostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message="No Reposts yet" /> :
+                  <PostsGrid posts={repostedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />}
+            </>
+          )}
+          {visibleTab === "events" && (
             loadingEvents ? <Spinner /> :
               eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message="No Events yet" /> :
                 <PostsGrid posts={eventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
-          {activeTab === "alerts" && (
+          {visibleTab === "alerts" && (
             loadingAlerts ? <Spinner /> :
               alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message="No Monuments in Danger yet" /> :
                 <PostsGrid posts={alertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />

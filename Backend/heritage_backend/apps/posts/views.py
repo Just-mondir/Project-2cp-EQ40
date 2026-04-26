@@ -1,9 +1,14 @@
 """DRF views for the posts app."""
 from __future__ import annotations
 from datetime import datetime, time
+import json
+import re
+import urllib.error
+import urllib.request
 from rest_framework import status
 import cloudinary.uploader
 from .utils import upload_to_cloudinary
+from django.conf import settings
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser, JSONParser
@@ -14,7 +19,7 @@ from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
 from apps.users.models import User
-from .models import Comment, CommentGem, Gem, Post, PostImage, Save, EventDetails, AlertDetails, Annotation, MobilizationEvent
+from .models import Comment, CommentGem, Gem, Post, PostImage, Repost, Save, EventDetails, AlertDetails, Annotation, MobilizationEvent
 from .serializers import (
     CommentSerializer,
     GemSerializer,
@@ -40,6 +45,147 @@ def _save_post_images(post: Post, image_files) -> None:
     for img in list(image_files)[:allowed]:
         url = upload_to_cloudinary(img, folder="posts")
         PostImage(post=post, image=url).save()
+
+
+def _build_post_insight_prompt(post: Post) -> str:
+    fields = [
+        f"Title: {post.title}",
+        f"Type: {post.post_type}",
+        f"Content: {post.content}",
+        f"Region: {post.region or 'Not specified'}",
+        f"Location: {post.location or 'Not specified'}",
+        f"Historical period: {post.historical_period or 'Not specified'}",
+        f"Monument type: {post.monument_type or 'Not specified'}",
+    ]
+
+    if post.post_type == "alert":
+        alert = AlertDetails.objects(post=post).first()
+        if alert:
+            fields.append(f"Urgency: {alert.urgence_level}")
+            fields.append(f"Current status: {alert.current_status}")
+
+    if post.post_type == "event":
+        event = EventDetails.objects(post=post).first()
+        if event:
+            fields.append(f"Starts at: {event.starts_at}")
+            fields.append(f"Ends at: {event.ends_at or 'Not specified'}")
+
+    return (
+        "You are an expert cultural heritage researcher for an Algerian heritage community app. "
+        "Do deep research using the available search grounding tool, then write a rich but readable "
+        "research note about this post. Focus on historical background, cultural meaning, architectural "
+        "or archaeological details, preservation context, and what a visitor or researcher should notice. "
+        "If the post is brief, use the title, location, region, monument type, and historical period to "
+        "research the likely subject, but clearly avoid claiming uncertain facts as proven. "
+        "Write 500 to 800 words in plain text, no markdown tables. "
+        "Use these sections: Overview, Historical background, Cultural and archaeological significance, "
+        "Details worth noticing, Preservation notes, Further research questions. "
+        "Do not stop after a heading, and do not answer with only a short summary.\n\n"
+        + "\n".join(fields)
+    )
+
+
+def _extract_gemini_text(payload: dict) -> str:
+    candidates = payload.get("candidates") or []
+    parts = []
+    for candidate in candidates:
+        content = candidate.get("content") or {}
+        for part in content.get("parts") or []:
+            text = part.get("text")
+            if text:
+                parts.append(text)
+    return "\n".join(parts).strip()
+
+
+def _extract_gemini_grounding(payload: dict) -> dict:
+    candidates = payload.get("candidates") or []
+    metadata = candidates[0].get("groundingMetadata") if candidates else None
+    if not metadata:
+        return {"sources": [], "search_queries": []}
+
+    sources = []
+    seen = set()
+    for chunk in metadata.get("groundingChunks") or []:
+        web = chunk.get("web") or {}
+        uri = web.get("uri")
+        if not uri or uri in seen:
+            continue
+        seen.add(uri)
+        sources.append({
+            "title": web.get("title") or uri,
+            "uri": uri,
+        })
+
+    return {
+        "sources": sources[:8],
+        "search_queries": metadata.get("webSearchQueries") or [],
+    }
+
+
+def _clean_gemini_insight(text: str) -> str:
+    text = re.sub(r"\s*\[cite:\s*[^\]]+\]", "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+    heading_pattern = re.compile(
+        r"^(Overview|Historical background|Cultural and archaeological significance|"
+        r"Details worth noticing|Preservation notes|Further research questions)\s*$",
+        re.IGNORECASE | re.MULTILINE,
+    )
+    matches = list(heading_pattern.finditer(text))
+    first_overview = None
+    second_overview = None
+
+    for match in matches:
+        if match.group(1).lower() == "overview":
+            if first_overview is None:
+                first_overview = match.start()
+            else:
+                second_overview = match.start()
+                break
+
+    if first_overview is not None and second_overview is not None:
+        text = text[second_overview:].strip()
+
+    return text
+
+
+def _generate_post_insight(post: Post) -> dict:
+    api_key = getattr(settings, "GEMINI_API_KEY", "")
+    if not api_key:
+        raise ValueError("Gemini API key is not configured.")
+
+    model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    body = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": _build_post_insight_prompt(post)}],
+            }
+        ],
+        "tools": [{"google_search": {}}],
+        "generationConfig": {
+            "temperature": 0.25,
+            "maxOutputTokens": 2200,
+        },
+    }
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+
+    text = _clean_gemini_insight(_extract_gemini_text(payload))
+    if not text:
+        raise ValueError("Gemini returned an empty insight.")
+    return {
+        "insight": text,
+        **_extract_gemini_grounding(payload),
+    }
 
 
 class PostListCreateView(APIView):
@@ -227,6 +373,79 @@ class SaveToggleView(APIView):
         return api_success("Post saved.", {"saved": True}, status.HTTP_201_CREATED)
 
 
+class RepostToggleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: str) -> Response:
+        try:
+            post = Post.objects.get(id=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        if repost:
+            repost.delete()
+            return api_success(
+                "Repost removed.",
+                {"reposted": False, "reposts_count": Repost.objects(post=post).count()},
+            )
+
+        Repost(post=post, user_id=str(request.user.id)).save()
+        if post.author_id != str(request.user.id):
+            notify(
+                event_type="repost_on_post",
+                actor_id=str(request.user.id),
+                actor_name=getattr(request.user, "display_name", "Someone"),
+                recipient_id=post.author_id,
+                target_type="post",
+                target_id=str(post.id),
+                post_title=post.title,
+            )
+        return api_success(
+            "Post reposted.",
+            {"reposted": True, "reposts_count": Repost.objects(post=post).count()},
+            status.HTTP_201_CREATED,
+        )
+
+
+class PostAIInsightView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: str) -> Response:
+        try:
+            post = Post.objects.get(id=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        try:
+            research = _generate_post_insight(post)
+        except ValueError as exc:
+            return api_error(str(exc), status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except urllib.error.HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="ignore")
+            return api_error(
+                "Gemini could not generate an insight right now.",
+                {"detail": details[:500]},
+                status.HTTP_502_BAD_GATEWAY,
+            )
+        except Exception as exc:
+            return api_error(
+                "Gemini could not generate an insight right now.",
+                {"detail": str(exc)},
+                status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return api_success(
+            "AI insight generated.",
+            {
+                "insight": research["insight"],
+                "sources": research["sources"],
+                "search_queries": research["search_queries"],
+                "model": getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash"),
+            },
+        )
+
+
 class CommentListCreateView(APIView):
     def get(self, request: Request, pk: str) -> Response:
         try:
@@ -369,6 +588,50 @@ class MySavedPostsView(APIView):
             except Exception:
                 continue
         posts = Post.objects(id__in=post_ids, is_deleted=False)
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class MyRepostedPostsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        reposts = Repost.objects(user_id=str(request.user.id)).order_by("-created_at")
+        post_ids = []
+        for repost in reposts:
+            try:
+                if repost.post:
+                    post_ids.append(repost.post.id)
+            except Exception:
+                continue
+        posts_by_id = {post.id: post for post in Post.objects(id__in=post_ids, is_deleted=False)}
+        posts = [posts_by_id[post_id] for post_id in post_ids if post_id in posts_by_id]
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
+
+
+class UserRepostedPostsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, username: str) -> Response:
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=404)
+        reposts = Repost.objects(user_id=str(user.id)).order_by("-created_at")
+        post_ids = []
+        for repost in reposts:
+            try:
+                if repost.post:
+                    post_ids.append(repost.post.id)
+            except Exception:
+                continue
+        posts_by_id = {post.id: post for post in Post.objects(id__in=post_ids, is_deleted=False)}
+        posts = [posts_by_id[post_id] for post_id in post_ids if post_id in posts_by_id]
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
         serializer = PostListSerializer(page, many=True, context={"request": request})

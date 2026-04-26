@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 EVENT_REGISTRY = {
     "gem_on_post": "{actor} liked your post \"{post_title}\"",
+    "repost_on_post": "{actor} reposted your post \"{post_title}\"",
     "comment_on_post": "{actor} commented on your post \"{post_title}\"",
     "reply_to_comment": "{actor} replied to your comment",
     "gem_on_comment": "{actor} liked your comment",

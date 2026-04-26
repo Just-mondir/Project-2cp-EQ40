@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
+import AiPostInsight from "@/components/AiPostInsight";
+import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import LocationWorldCard from "@/components/LocationWorldCard";
@@ -115,6 +117,10 @@ type ApiPost = {
   location: string;
   gems_count: number;
   comments_count: number;
+  is_gemmed?: boolean;
+  is_saved?: boolean;
+  is_reposted?: boolean;
+  reposts_count?: number;
   images: PostImage[];
   tags?: string[];
   historical_period?: string;
@@ -130,6 +136,8 @@ type PostInteraction = {
   gemmed: boolean;
   gemsCount: number;
   saved: boolean;
+  reposted: boolean;
+  repostsCount: number;
   commentsCount: number;
   annotationsCount: number;
 };
@@ -258,6 +266,10 @@ function normalizeApiPost(raw: any): ApiPost {
     location: String(raw?.location ?? ""),
     gems_count: Number(raw?.gems_count ?? 0),
     comments_count: Number(raw?.comments_count ?? 0),
+    is_gemmed: Boolean(raw?.is_gemmed ?? false),
+    is_saved: Boolean(raw?.is_saved ?? false),
+    is_reposted: Boolean(raw?.is_reposted ?? false),
+    reposts_count: Number(raw?.reposts_count ?? 0),
     images: Array.isArray(raw?.images) ? raw.images : [],
     tags: Array.isArray(raw?.tags) ? raw.tags : [],
     historical_period: String(raw?.historical_period ?? ""),
@@ -1284,7 +1296,7 @@ function PostModal({
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const { gemmed, gemsCount, saved } = interaction;
+  const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
 
   useEffect(() => {
     if (post) {
@@ -1663,10 +1675,30 @@ function PostModal({
               >
                 <AnnotationIcon size={14} /> {formatCount(getAcceptedAnnotationsCount(annotations))}
               </button>
+              <RepostButton
+                key={`${post.id}-${reposted}-${repostsCount}`}
+                postId={post.id}
+                initialReposted={reposted}
+                initialCount={repostsCount}
+                className="flex items-center gap-1 text-xs transition-all"
+                style={{ color: "#432817" }}
+                iconSize={14}
+                onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+                  onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+                }}
+              />
             </div>
-            <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
-              <BookmarkIcon size={18} filled={saved} active={saved} />
-            </button>
+            <div className="flex items-center gap-4">
+              <AiPostInsight
+                postId={post.id}
+                title={post.title}
+                buttonClassName="flex items-center gap-1 text-xs transition-all"
+                buttonStyle={{ color: "#432817" }}
+              />
+              <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
+                <BookmarkIcon size={18} filled={saved} active={saved} />
+              </button>
+            </div>
           </div>
 
           {/* input */}
@@ -1748,7 +1780,7 @@ function PostCard({
   }, []);
 
   const router = useRouter();
-  const { gemmed, gemsCount, saved } = interaction;
+  const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
   const imageList = post.images ?? [];
   const tags = buildTags(post);
 
@@ -1915,14 +1947,31 @@ function PostCard({
           <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
             <AnnotationIcon /><span>0</span>
           </button>
+          <RepostButton
+            key={`${post.id}-${reposted}-${repostsCount}`}
+            postId={post.id}
+            initialReposted={reposted}
+            initialCount={repostsCount}
+            style={{ color: "#432817" }}
+            onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+              onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+            }}
+          />
         </div>
-        <button
-          className="flex items-center gap-1.5 text-xs transition-all"
-          style={{ color: saved ? "#8B6914" : "#432817" }}
-          onClick={(e) => { e.stopPropagation(); onInteractionChange({ saved: !saved }); }}
-        >
-          <BookmarkIcon filled={saved} active={saved} />
-        </button>
+        <div className="flex items-center gap-4">
+          <AiPostInsight
+            postId={post.id}
+            title={post.title}
+            buttonStyle={{ color: "#432817" }}
+          />
+          <button
+            className="flex items-center gap-1.5 text-xs transition-all"
+            style={{ color: saved ? "#8B6914" : "#432817" }}
+            onClick={(e) => { e.stopPropagation(); onInteractionChange({ saved: !saved }); }}
+          >
+            <BookmarkIcon filled={saved} active={saved} />
+          </button>
+        </div>
       </div>
 
     </div>
@@ -2548,11 +2597,24 @@ export default function MonumentsInDangerPage() {
       gemmed: getStoredSet("gemmed_posts").has(post.id),
       gemsCount: post.gems_count,
       saved: getStoredSet("saved_posts").has(post.id),
+      reposted: post.is_reposted ?? false,
+      repostsCount: post.reposts_count ?? 0,
+      commentsCount: post.comments_count ?? 0,
+      annotationsCount: 0,
     };
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
-      const existing = prev[postId] ?? { gemmed: false, gemsCount: 0, saved: false };
+      const sourcePost = posts.find((p) => p.id === postId);
+      const existing = prev[postId] ?? {
+        gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
+        gemsCount: sourcePost?.gems_count ?? 0,
+        saved: sourcePost?.is_saved ?? getStoredSet("saved_posts").has(postId),
+        reposted: sourcePost?.is_reposted ?? false,
+        repostsCount: sourcePost?.reposts_count ?? 0,
+        commentsCount: sourcePost?.comments_count ?? 0,
+        annotationsCount: 0,
+      };
       return { ...prev, [postId]: { ...existing, ...update } };
     });
   };

@@ -146,6 +146,18 @@ class Save(me.Document):
     }
 
 
+class Repost(me.Document):
+    post = me.ReferenceField(Post, required=True)
+    user_id = me.StringField(required=True)
+    created_at = me.DateTimeField(default=timezone.now)
+
+    meta = {
+        "collection": "reposts",
+        "ordering": ["-created_at"],
+        "indexes": [{"fields": ["post", "user_id"], "unique": True}, "user_id"],
+    }
+
+
 class Comment(me.Document):
     post = me.ReferenceField(Post, required=True)
     parent = me.ReferenceField("self", null=True, default=None)

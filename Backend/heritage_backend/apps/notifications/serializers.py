@@ -51,6 +51,7 @@ class NotificationSerializer(serializers.Serializer):
     def get_event_label(self, obj) -> str:
         labels = {
             "gem_on_post": "liked your post",
+            "repost_on_post": "reposted your post",
             "comment_on_post": "commented on your post",
             "reply_to_comment": "replied to your comment",
             "gem_on_comment": "liked your comment",

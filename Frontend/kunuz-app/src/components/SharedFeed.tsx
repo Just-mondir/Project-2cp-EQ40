@@ -4,8 +4,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
+import AiPostInsight from "@/components/AiPostInsight";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import LeftSidebar from "@/components/LeftSidebar";
+import RepostButton from "@/components/RepostButton";
 
 
 const API_URL = "http://127.0.0.1:8000";
@@ -124,6 +126,8 @@ type ApiPost = {
   accepted_annotations_count?: number;
   is_gemmed?: boolean;
   is_saved?: boolean;
+  is_reposted?: boolean;
+  reposts_count?: number;
   images: PostImage[];
   tags?: string[];
   historical_period?: string;
@@ -140,6 +144,8 @@ type PostInteraction = {
   gemmed: boolean;
   gemsCount: number;
   saved: boolean;
+  reposted: boolean;
+  repostsCount: number;
   commentsCount: number;
   annotationsCount: number;
 };
@@ -1243,7 +1249,7 @@ function PostModal({
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const { gemmed, gemsCount, saved } = interaction;
+  const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
 
   const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
 
@@ -1748,10 +1754,24 @@ function PostModal({
               >
                 <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
               </button>
+              <RepostButton
+                key={`${post.id}-${reposted}-${repostsCount}`}
+                postId={post.id}
+                initialReposted={reposted}
+                initialCount={repostsCount}
+                className="flex items-center gap-1 text-xs transition-all"
+                iconSize={14}
+                onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+                  onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+                }}
+              />
             </div>
-            <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
-              <BookmarkIcon size={18} filled={saved} active={saved} />
-            </button>
+            <div className="flex items-center gap-4">
+              <AiPostInsight postId={post.id} title={post.title} buttonClassName="flex items-center gap-1 text-xs transition-all" />
+              <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
+                <BookmarkIcon size={18} filled={saved} active={saved} />
+              </button>
+            </div>
           </div>
 
           <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
@@ -1945,7 +1965,7 @@ function PostCard({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const { gemmed, gemsCount, saved, commentsCount, annotationsCount } = interaction;
+  const { gemmed, gemsCount, saved, reposted, repostsCount, commentsCount, annotationsCount } = interaction;
   const imageList = post.images ?? [];
   const tags = buildTags(post);
 
@@ -2183,10 +2203,22 @@ function PostCard({
             <AnnotationIcon />
             <span>{formatCount(annotationsCount)}</span>
           </button>
+          <RepostButton
+            key={`${post.id}-${reposted}-${repostsCount}`}
+            postId={post.id}
+            initialReposted={reposted}
+            initialCount={repostsCount}
+            onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+              onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+            }}
+          />
         </div>
-        <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
-          <BookmarkIcon filled={saved} active={saved} />
-        </button>
+        <div className="flex items-center gap-4">
+          <AiPostInsight postId={post.id} title={post.title} />
+          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
+            <BookmarkIcon filled={saved} active={saved} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2245,6 +2277,8 @@ export default function CommunitiesPageRoute() {
       raw?.accepted_annotations_count ?? fallback?.accepted_annotations_count ?? 0,
     is_gemmed: raw?.is_gemmed ?? fallback?.is_gemmed ?? false,
     is_saved: raw?.is_saved ?? fallback?.is_saved ?? false,
+    is_reposted: raw?.is_reposted ?? fallback?.is_reposted ?? false,
+    reposts_count: raw?.reposts_count ?? fallback?.reposts_count ?? 0,
     images: Array.isArray(raw?.images) ? raw.images : fallback?.images ?? [],
     tags: Array.isArray(raw?.tags) ? raw.tags : fallback?.tags ?? [],
     historical_period: raw?.historical_period ?? fallback?.historical_period ?? "",
@@ -2261,6 +2295,8 @@ export default function CommunitiesPageRoute() {
       gemmed: post.is_gemmed ?? getStoredSet("gemmed_posts").has(post.id),
       gemsCount: post.gems_count,
       saved: post.is_saved ?? getStoredSet("saved_posts").has(post.id),
+      reposted: post.is_reposted ?? false,
+      repostsCount: post.reposts_count ?? 0,
       commentsCount: post.comments_count ?? 0,
       annotationsCount: post.accepted_annotations_count ?? 0,
     };
@@ -2272,6 +2308,8 @@ export default function CommunitiesPageRoute() {
         gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
         gemsCount: sourcePost?.gems_count ?? 0,
         saved: sourcePost?.is_saved ?? getStoredSet("saved_posts").has(postId),
+        reposted: sourcePost?.is_reposted ?? false,
+        repostsCount: sourcePost?.reposts_count ?? 0,
         commentsCount: sourcePost?.comments_count ?? 0,
         annotationsCount: sourcePost?.accepted_annotations_count ?? 0,
       };
