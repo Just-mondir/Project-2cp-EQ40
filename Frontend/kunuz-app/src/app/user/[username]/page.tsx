@@ -14,7 +14,6 @@ import LocationWorldCard from "@/components/LocationWorldCard";
 import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
 import NotificationModal from "@/components/NotificationModal";
 import ReportPopup from "@/components/Report-popup";
-import submitReport from "@/app/communities/page";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -45,6 +44,35 @@ function stripHtml(html: string): string {
 function getAuthToken(): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+}
+
+type ReportTargetType = "post" | "comment" | "annotation";
+
+async function submitReport(
+  targetType: ReportTargetType,
+  targetId: string,
+  reason: string,
+): Promise<void> {
+  const token = getAuthToken();
+
+  const res = await fetch(`${API_URL}/api/reports/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      target_type: targetType,
+      target_id: targetId,
+      reason,
+    }),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to submit report.");
+  }
 }
 
 function getAuthUser(): { id?: string; username?: string; display_name?: string } | null {

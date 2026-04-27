@@ -8,9 +8,7 @@ import DOMPurify from "dompurify";
 import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import LocationWorldCard from "@/components/LocationWorldCard";
-<<<<<<< HEAD
 import ReportPopup from "@/components/Report-popup";
-=======
 import {
   HISTORICAL_PERIOD_VALUES,
   MONUMENT_TYPE_VALUES,
@@ -23,9 +21,8 @@ import {
   translateRegion,
   translateUrgencyLevel,
 } from "@/lib/authFilterOptions";
->>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = "http://127.0.0.1:8000";
 
 function stripHtmlFallback(html: string): string {
   let result = html;
@@ -57,6 +54,35 @@ const getAuthToken = () => {
   }
   return "";
 };
+
+type ReportTargetType = "post" | "comment" | "annotation";
+
+async function submitReport(
+  targetType: ReportTargetType,
+  targetId: string,
+  reason: string,
+): Promise<void> {
+  const token = getAuthToken();
+
+  const res = await fetch(`${API_URL}/api/reports/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      target_type: targetType,
+      target_id: targetId,
+      reason,
+    }),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(data?.message || "Failed to submit report.");
+  }
+}
 
 function getStoredSet(key: string): Set<string> {
   try {
@@ -653,11 +679,6 @@ function CommentItem({
     } catch { }
   };
 
-<<<<<<< HEAD
-  const handleReportComment = () => {
-    setShowMenu(false);
-    setShowReportPopup(true);
-=======
   const handleReportComment = async () => {
     const reason = window.prompt(feedT("prompts.reportComment"));
     if (!reason || !reason.trim()) return;
@@ -671,7 +692,6 @@ function CommentItem({
         error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
       );
     }
->>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
   };
 
   return (
@@ -971,8 +991,6 @@ function AnnotationItem({
     setIsEditing(false);
   };
 
-<<<<<<< HEAD
-=======
   const handleReport = async () => {
     const reason = window.prompt(feedT("prompts.reportAnnotation"));
     if (!reason || !reason.trim()) return;
@@ -986,7 +1004,6 @@ function AnnotationItem({
     }
   };
 
->>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
     pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
     accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
@@ -1056,8 +1073,6 @@ function AnnotationItem({
                       {feedT("actions.deleteAnnotation")}
                     </button>
                   </>
-<<<<<<< HEAD
-=======
                 ) : (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
@@ -1066,7 +1081,6 @@ function AnnotationItem({
                   >
                     {feedT("actions.reportAnnotation")}
                   </button>
->>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
@@ -1547,23 +1561,6 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
-<<<<<<< HEAD
-                <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2", border: "1px solid rgba(67, 40, 23, 0.1)" }}>
-                  <button
-                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                    style={{ color: "#432817" }}
-                    onClick={() => {
-                      setShowPostMenu(false);
-                      if (!getAuthToken()) {
-                        router.push("/login");
-                        return;
-                      }
-                      setShowReportPopup(true);
-                    }}
-                  >
-                    Report post
-                  </button>
-=======
                 <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
                   {canDelete && (
                     <button
@@ -1577,7 +1574,6 @@ function PostModal({
                   {!canDelete && (
                     <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>{feedT("actions.reportPost")}</button>
                   )}
->>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
                 </div>
               )}
             </div>
@@ -1833,23 +1829,6 @@ function PostCard({
             </button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50 w-40" style={{ backgroundColor: "#FFF8E2" }}>
-<<<<<<< HEAD
-                <button
-                  className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
-                  style={{ color: "#432817" }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    if (!getAuthToken()) {
-                      router.push("/login");
-                      return;
-                    }
-                    setShowReportPopup(true);
-                  }}
-                >
-                  Report post
-                </button>
-=======
                 {canManage ? (
                   <button
                     className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600"
@@ -1867,7 +1846,6 @@ function PostCard({
                     {feedT("actions.reportPost")}
                   </button>
                 )}
->>>>>>> e6ecf94afa6cf43d88dd77df8800a8507fd67c77
               </div>
             )}
           </div>
