@@ -6,7 +6,7 @@ import BackButton from "@/components/BackButton";
 
 export default function InteractionWithPostsPage() {
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
+    <div className="flex h-[100dvh] overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
 
       <LeftSidebar activePage="help" />
 

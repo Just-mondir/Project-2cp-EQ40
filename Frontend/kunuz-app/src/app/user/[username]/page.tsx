@@ -57,6 +57,21 @@ function getAuthUser(): { id?: string; username?: string; display_name?: string 
   }
 }
 
+
+
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
+
 function getRefreshToken(): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem("refreshToken") || "";
@@ -524,6 +539,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
 
   const handleGemComment = async () => {
     const previousGemmed = gemmed;
@@ -614,9 +630,11 @@ function CommentItem({
             <button className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none" style={{ color: "#8B7355" }} onClick={() => setShowMenu(!showMenu)}>...</button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                {isOwner ? (
+                {canDelete ? (
                   <>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditComment}>{feedT("actions.editComment")}</button>
+                    {isOwner && (
+                      <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditComment}>{feedT("actions.editComment")}</button>
+                    )}
                     <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDeleteComment}>{feedT("actions.deleteComment")}</button>
                   </>
                 ) : (
@@ -675,9 +693,11 @@ function AnnotationItem({
   const [editText, setEditText] = useState(annotation.text ?? "");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = String(getAuthUser()?.id ?? "");
+  const currentUser = getAuthUser();
+  const currentUserId = String(currentUser?.id ?? "");
   const isOwner = currentUserId === String(annotation.user_id);
   const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const canDelete = isOwner || isModerator(currentUser);
 
   useEffect(() => { setEditText(annotation.text ?? ""); setIsEditing(false); }, [annotation.id, annotation.text]);
 
@@ -759,13 +779,15 @@ function AnnotationItem({
             <button className="p-0.5 rounded hover:bg-[#E0D5C5] text-sm font-bold" style={{ color: "#8B7355" }} onClick={() => setShowMenu(!showMenu)}>...</button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]" style={{ backgroundColor: "#FFF8E2" }}>
-                {isOwner && (
+                {canDelete && (
                   <>
-                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditAnnotation}>{feedT("actions.editAnnotation")}</button>
+                    {isOwner && (
+                      <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditAnnotation}>{feedT("actions.editAnnotation")}</button>
+                    )}
                     <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDelete}>{feedT("actions.deleteAnnotation")}</button>
                   </>
                 )}
-                {!isOwner && (
+                {!canDelete && (
                   <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportAnnotation}>{feedT("actions.reportAnnotation")}</button>
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
@@ -858,7 +880,11 @@ function PostModal({
 
   if (!post) return null;
 
+  const currentUser = getAuthUser();
+  const moderatorGlobal = isModerator(currentUser);
   const isOwner = post.user_username === loggedInUsername;
+  const canDelete = isOwner || moderatorGlobal;
+  const isModeratorActive = moderatorGlobal;
   const isLoggedIn = !!loggedInUsername;
   const imageList = post.images ?? [];
   const tags = buildTags(post);
@@ -1086,10 +1112,12 @@ function PostModal({
                 </button>
                 {showPostMenu && (
                   <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-                    {isOwner ? (
+                    {canDelete ? (
                       <>
-                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
-                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>{commonT("delete")}</button>
+                        {isOwner && (
+                          <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
+                        )}
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#C0392B]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>{commonT("delete")}</button>
                       </>
                     ) : (
                       <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={() => { setShowPostMenu(false); if (!isLoggedIn) { router.push("/login"); return; } }}>{feedT("actions.reportPost")}</button>
@@ -1299,12 +1327,12 @@ function ProfileHeader({
 
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
       {isOwnProfile && (
-  <div className="absolute top-4 right-6">
-    <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-    </button>
-  </div>
-   )}
+        <div className="absolute top-4 right-6">
+          <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+          </button>
+        </div>
+      )}
 
       {/* ── Popups ── */}
       {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}

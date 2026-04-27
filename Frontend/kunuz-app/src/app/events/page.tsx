@@ -9,6 +9,7 @@ import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import ActionConfirmModal from "@/components/ActionConfirmModal";
 import {
   EVENT_STATUS_VALUES,
   HISTORICAL_PERIOD_VALUES,
@@ -62,7 +63,18 @@ function getAuthUser(): { id?: string; username?: string; display_name?: string;
   }
 }
 
-const isModerator = (user: any) => user?.role === "moderator" || user?.role === "admin" || user?.is_staff;
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
 
 
 async function apiFetch(url: string, options: RequestInit = {}) {
@@ -890,7 +902,7 @@ function AnnotationItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]"
                 style={{ backgroundColor: "#FFF8E2" }}
               >
-                {isOwner && (
+                {canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]"
                     style={{ color: "#432817" }}
@@ -900,7 +912,7 @@ function AnnotationItem({
                   </button>
                 )}
 
-                {!isOwner && (
+                {!canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]"
                     style={{ color: "#432817" }}
@@ -1340,6 +1352,7 @@ function PostModal({
   const [annotationsLoading, setAnnotationsLoading] = useState(false);
 
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [confirmModalAction, setConfirmModalAction] = useState<"delete" | "edit" | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
@@ -1435,7 +1448,6 @@ function PostModal({
   const isContentLong = post.content.length > CONTENT_LIMIT;
 
   const handleDeletePostModal = async () => {
-    if (!window.confirm(feedT("actions.confirmDeletePost") || "Are you sure you want to delete this post?")) return;
     const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
@@ -1766,15 +1778,26 @@ function PostModal({
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
                   {canDelete && (
-                    <button
-                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
-                      style={{ color: "#7B0000" }}
-                      onClick={handleDeletePostModal}
-                    >
-                      {feedT("actions.deletePost")}
-                    </button>
+                    <>
+                      {isOwner && (
+                        <button
+                          className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5"
+                          style={{ color: "var(--foreground)" }}
+                          onClick={(e) => { e.stopPropagation(); setShowPostMenu(false); setConfirmModalAction("edit"); }}
+                        >
+                          {feedT("actions.editPost") || "Edit post"}
+                        </button>
+                      )}
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                        style={{ color: "#7B0000" }}
+                        onClick={(e) => { e.stopPropagation(); setShowPostMenu(false); setConfirmModalAction("delete"); }}
+                      >
+                        {feedT("actions.deletePost")}
+                      </button>
+                    </>
                   )}
-                  {!canDelete && (
+                  {!isModerator && (
                     <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
                   )}
                 </div>
@@ -1974,6 +1997,22 @@ function PostModal({
           </div>
         </div>
       </div>
+      <ActionConfirmModal
+        isOpen={!!confirmModalAction}
+        onClose={() => setConfirmModalAction(null)}
+        onConfirm={() => {
+          if (confirmModalAction === "delete") {
+            handleDeletePostModal();
+          } else if (confirmModalAction === "edit" && post) {
+            router.push(`/edit-post?id=${post.id}`);
+          }
+          setConfirmModalAction(null);
+        }}
+        title={confirmModalAction === "delete" ? "Delete Post" : "Edit Post"}
+        message={confirmModalAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." : "Are you sure you want to edit this post?"}
+        confirmText={confirmModalAction === "delete" ? "Delete" : "Edit"}
+        confirmColor={confirmModalAction === "delete" ? "#C0392B" : "#8B6914"}
+      />
     </div>
   );
 }
@@ -1999,10 +2038,13 @@ function PostCard({
 }) {
   const feedT = useTranslations("auth.feed");
   const currentUser = getAuthUser();
-  const isOwner = currentUser?.id === post.user_id;
-  const canDelete = isOwner || isModerator(currentUser);
+  const isOwner = (currentUser?.id === post?.user_id || (currentUser?.username && (currentUser.username === post?.user_username || currentUser.username === post?.username)));
+  const moderatorGlobal = isModerator(currentUser);
+  const isModeratorActive = moderatorGlobal;
+  const canDelete = isOwner || moderatorGlobal;
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -2089,15 +2131,26 @@ function PostCard({
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
               {canDelete && (
-                <button
-                  className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 mb-1"
-                  style={{ color: "#7B0000" }}
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(post.id); }}
-                >
-                  {feedT("actions.deletePost")}
-                </button>
+                <>
+                  {isOwner && (
+                    <button
+                      className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5 mb-1"
+                      style={{ color: "var(--foreground)" }}
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("edit"); }}
+                    >
+                      {feedT("actions.editPost") || "Edit post"}
+                    </button>
+                  )}
+                  <button
+                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 mb-1"
+                    style={{ color: "#7B0000" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                  >
+                    {feedT("actions.deletePost")}
+                  </button>
+                </>
               )}
-              {!canDelete && (
+              {!isModeratorActive && (
                 <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
               )}
             </div>
@@ -2230,6 +2283,22 @@ function PostCard({
           </button>
         </div>
       </div>
+      <ActionConfirmModal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction === "delete") {
+            onDelete?.(post.id);
+          } else if (confirmAction === "edit") {
+            router.push(`/edit-post?id=${post.id}`);
+          }
+          setConfirmAction(null);
+        }}
+        title={confirmAction === "delete" ? "Delete Post" : "Edit Post"}
+        message={confirmAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." : "Are you sure you want to edit this post?"}
+        confirmText={confirmAction === "delete" ? "Delete" : "Edit"}
+        confirmColor={confirmAction === "delete" ? "#C0392B" : "#8B6914"}
+      />
     </div>
   );
 }
@@ -2255,11 +2324,11 @@ export default function HomePageRoute() {
   });
 
   const handleEventClick = (postId: string) => {
-  const post = posts.find(p => p.id === String(postId));
-  if (post) {
-    setSelectedPost(post);
-    setSelectedPostTab("comments");
-  }
+    const post = posts.find(p => p.id === String(postId));
+    if (post) {
+      setSelectedPost(post);
+      setSelectedPostTab("comments");
+    }
   };
 
   const constructUrl = (filters: typeof activeFilters, query: string) => {
@@ -2289,7 +2358,6 @@ export default function HomePageRoute() {
     };
 
   const handleDeletePost = async (postId: string) => {
-    if (!window.confirm(tCommon("confirmDeletePost"))) return;
     const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
@@ -2299,9 +2367,13 @@ export default function HomePageRoute() {
       if (res.ok) {
         setPosts((prev) => prev.filter((p) => p.id !== postId));
         if (selectedPost?.id === postId) setSelectedPost(null);
+      } else {
+        const errorData = await res.json().catch(() => null);
+        alert(`Failed to delete post. Status: ${res.status}. ${errorData?.message || errorData?.detail || ""}`);
       }
     } catch (err) {
       console.error("Delete post error:", err);
+      alert("An error occurred while deleting the post.");
     }
   };
 

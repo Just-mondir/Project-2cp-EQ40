@@ -119,18 +119,20 @@ export default function GroupOptionsMenu({
   groupName,
   isAdmin,
   isMember,
+  isModerator,
 }: {
   groupId: string;
   groupName: string;
   isAdmin: boolean;
   isMember: boolean;
+  isModerator?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
-const [showLeaveModal, setShowLeaveModal] = useState(false);
-const menuRef = useRef<HTMLDivElement>(null);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
   useEffect(() => {
@@ -144,28 +146,28 @@ const menuRef = useRef<HTMLDivElement>(null);
   }, []);
 
   const handleDelete = async () => {
-  setDeleting(true);
-  const token = getToken();
-  console.log("🔴 Deleting group:", groupId);
-  console.log("🔑 Token:", token ? "exists" : "MISSING");
-  try {
-    const res = await fetch(`${API_URL}/api/groups/${groupId}/`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    console.log("📡 Response status:", res.status);
-    const data = await res.json().catch(() => null);
-    console.log("📡 Response data:", data);
-    if (res.ok || res.status === 204) {
-      router.push("/communities");
+    setDeleting(true);
+    const token = getToken();
+    console.log("🔴 Deleting group:", groupId);
+    console.log("🔑 Token:", token ? "exists" : "MISSING");
+    try {
+      const res = await fetch(`${API_URL}/api/groups/${groupId}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("📡 Response status:", res.status);
+      const data = await res.json().catch(() => null);
+      console.log("📡 Response data:", data);
+      if (res.ok || res.status === 204) {
+        router.push("/communities");
+      }
+    } catch (e) {
+      console.error("❌ Error:", e);
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
     }
-  } catch (e) {
-    console.error("❌ Error:", e);
-  } finally {
-    setDeleting(false);
-    setShowDeleteConfirm(false);
-  }
-};
+  };
 
   // ── Menu items based on role ──
   const adminItems = [
@@ -268,59 +270,59 @@ const menuRef = useRef<HTMLDivElement>(null);
         </svg>
       ),
       onClick: async () => {
-  setOpen(false);
-  const token = getToken();
-  await fetch(`${API_URL}/api/groups/${groupId}/leave/`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  setShowLeaveModal(true);
-},
+        setOpen(false);
+        const token = getToken();
+        await fetch(`${API_URL}/api/groups/${groupId}/leave/`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setShowLeaveModal(true);
+      },
       danger: true,
     },
   ];
 
   const visitorItems = [
-  {
-    label: "Members",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </svg>
-    ),
-    onClick: () => { setOpen(false); router.push(`/group/${groupId}/members`); },
-    danger: false,
-  },
-  {
-    label: "Report group",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-        <line x1="12" y1="9" x2="12" y2="13" />
-        <line x1="12" y1="17" x2="12.01" y2="17" />
-      </svg>
-    ),
-    onClick: () => { setOpen(false); },
-    danger: false,
-  },
-];
+    {
+      label: "Members",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+      onClick: () => { setOpen(false); router.push(`/group/${groupId}/members`); },
+      danger: false,
+    },
+    {
+      label: "Report group",
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      ),
+      onClick: () => { setOpen(false); },
+      danger: false,
+    },
+  ];
 
-const items = isAdmin ? adminItems : isMember ? memberItems : visitorItems;
+  const items = (isAdmin || isModerator) ? adminItems : isMember ? memberItems : visitorItems;
 
   return (
     <>
       <div ref={menuRef} style={{ position: "relative" }}>
         {/* 3-dots trigger button */}
         <button
-  onClick={() => setOpen(o => !o)}
-  className="p-2 rounded-lg transition-colors"
-  style={{ color: "#432817", backgroundColor: "transparent" }}
-  onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--border-soft)"; }}
-  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; }}
->
+          onClick={() => setOpen(o => !o)}
+          className="p-2 rounded-lg transition-colors"
+          style={{ color: "#432817", backgroundColor: "transparent" }}
+          onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--border-soft)"; }}
+          onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; }}
+        >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="5" r="2" />
             <circle cx="12" cy="12" r="2" />
@@ -328,26 +330,26 @@ const items = isAdmin ? adminItems : isMember ? memberItems : visitorItems;
           </svg>
         </button>
 
-        
-          {/* Dropdown menu */}
-{open && (
-  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-    {items.map((item, i) => (
-      <button
-        key={i}
-        onClick={item.onClick}
-        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-        style={{ color: "#432817", fontFamily: "'Lato', sans-serif" }}
-      >
-        {item.label}
-      </button>
-    ))}
-  </div>
-)}
-</div>
+
+        {/* Dropdown menu */}
+        {open && (
+          <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+            {items.map((item, i) => (
+              <button
+                key={i}
+                onClick={item.onClick}
+                className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                style={{ color: "#432817", fontFamily: "'Lato', sans-serif" }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {showLeaveModal && (
-  <LeaveGroupModal onClose={() => { setShowLeaveModal(false); router.push("/communities"); }} />
-)}
+        <LeaveGroupModal onClose={() => { setShowLeaveModal(false); router.push("/communities"); }} />
+      )}
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
         <DeleteConfirmModal

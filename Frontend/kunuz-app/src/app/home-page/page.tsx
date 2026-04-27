@@ -9,6 +9,7 @@ import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import ActionConfirmModal from "@/components/ActionConfirmModal";
 import {
   translateHistoricalPeriod,
   translateMonumentType,
@@ -49,7 +50,7 @@ function getAuthToken(): string {
   return localStorage.getItem("accessToken") || "";
 }
 
-function getAuthUser(): { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean } | null {
+function getAuthUser(): { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean; email?: string } | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
@@ -59,7 +60,18 @@ function getAuthUser(): { id?: string; username?: string; display_name?: string;
   }
 }
 
-const isModerator = (user: any) => user?.role === "moderator" || user?.role === "admin" || user?.is_staff;
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
 
 
 async function apiFetch(url: string, options: RequestInit = {}) {
@@ -2017,7 +2029,7 @@ function RightSidebar({
                 <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{group.desc}</span>
                 <div className="flex items-center gap-1 mt-1.5">
                   <PeopleIcon className="w-3 h-3 text-[var(--accent-gold)]" />
-                  <span className="text-[10px] font-bold" style={{ color: "var(--accent-gold)" }}>
+                  <span className="text-[10px] font-bold" style={{ color: "#432817" }}>
                     {group.membersLabel}
                   </span>
                 </div>
@@ -2050,11 +2062,14 @@ function PostCard({
   onDelete?: (postId: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
-  const currentUser = getAuthUser();
-  const isOwner = currentUser?.id === post.user_id;
-  const canDelete = isOwner || isModerator(currentUser);
+  const user = getAuthUser();
+  const isOwner = user?.id === post.user_id || (user?.username && (user.username === post.user_username || user.username === post.username));
+  const moderatorGlobal = isModerator(user);
+  const isModeratorActive = moderatorGlobal;
+  const canDelete = isOwner || moderatorGlobal;
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -2145,18 +2160,30 @@ function PostCard({
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
               {canDelete && (
-                <button
-                  className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 mb-1"
-                  style={{ color: "#7B0000" }}
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(post.id); }}
-                >
-                  {feedT("actions.deletePost")}
-                </button>
+                <>
+                  {isOwner && (
+                    <button
+                      className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5 mb-1"
+                      style={{ color: "var(--foreground)" }}
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("edit"); }}
+                    >
+                      {feedT("actions.editPost") || "Edit post"}
+                    </button>
+                  )}
+                  <button
+                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 mb-1"
+                    style={{ color: "#7B0000" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                  >
+                    {feedT("actions.deletePost")}
+                  </button>
+                </>
               )}
-              {!canDelete && (
+              {!isModeratorActive && (
                 <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
               )}
             </div>
+
           )}
         </div>
       </div>
@@ -2286,6 +2313,22 @@ function PostCard({
           </button>
         </div>
       </div>
+      <ActionConfirmModal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction === "delete") {
+            onDelete?.(post.id);
+          } else if (confirmAction === "edit") {
+            router.push(`/edit-post?id=${post.id}`);
+          }
+          setConfirmAction(null);
+        }}
+        title={confirmAction === "delete" ? "Delete Post" : "Edit Post"}
+        message={confirmAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." : "Are you sure you want to edit this post?"}
+        confirmText={confirmAction === "delete" ? "Delete" : "Edit"}
+        confirmColor={confirmAction === "delete" ? "#C0392B" : "#8B6914"}
+      />
     </div>
   );
 }
@@ -2428,7 +2471,6 @@ export default function HomePageRoute() {
     };
 
   const handleDeletePost = async (postId: string) => {
-    if (!window.confirm(commonT("confirmDeletePost"))) return;
     const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
@@ -2438,9 +2480,13 @@ export default function HomePageRoute() {
       if (res.ok) {
         setPosts((prev) => prev.filter((p) => p.id !== postId));
         if (selectedPost?.id === postId) setSelectedPost(null);
+      } else {
+        const errorData = await res.json().catch(() => null);
+        alert(`Failed to delete post. Status: ${res.status}. ${errorData?.message || errorData?.detail || ""}`);
       }
     } catch (err) {
       console.error("Delete post error:", err);
+      alert("An error occurred while deleting the post.");
     }
   };
 

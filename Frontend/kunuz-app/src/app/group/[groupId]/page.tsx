@@ -19,9 +19,14 @@ function getToken(): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem("accessToken") || "";
 }
-function getAuthUser(): { id?: string; username?: string } | null {
+function getAuthUser(): { id?: string; username?: string; role?: string; is_staff?: boolean } | null {
   if (typeof window === "undefined") return null;
-  try { return JSON.parse(localStorage.getItem("authUser") || "null"); } catch { return null; }
+  try {
+    const raw = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
 }
 function resolveUrl(src?: string): string {
   if (!src) return "";
@@ -125,13 +130,13 @@ export default function GroupDetailPage() {
     })
       .then(r => r.json())
       .then(data => {
-  const g = data.data ?? data;
-  setGroup(g);
-  setJoinStatus(prev => {
-    if (prev === "pending") return "pending"; // don't override pending
-    return g.is_member ? "member" : "idle";
-  });
-})
+        const g = data.data ?? data;
+        setGroup(g);
+        setJoinStatus(prev => {
+          if (prev === "pending") return "pending"; // don't override pending
+          return g.is_member ? "member" : "idle";
+        });
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [groupId]);
@@ -261,6 +266,15 @@ export default function GroupDetailPage() {
                 groupName={group.name}
                 isAdmin={group.is_admin}
                 isMember={group.is_member}
+                isModerator={(() => {
+                  const user = getAuthUser();
+                  if (!user) return false;
+                  const role = String(user.role || (user as any).user_role || (user as any).Role || (user as any).group_role || "").toLowerCase();
+                  const isStaff = (user as any).is_staff === true || (user as any).is_staff === 1 || (user as any).is_staff === "true" ||
+                    (user as any).is_admin === true || (user as any).is_admin === 1 || (user as any).is_admin === "true" ||
+                    (user as any).is_superuser === true || (user as any).is_moderator === true || (user as any).is_moderator === 1;
+                  return role === "moderator" || role === "admin" || isStaff;
+                })()}
               />
             }
           />
@@ -330,6 +344,9 @@ export default function GroupDetailPage() {
                           comments_count: update.commentsCount ?? p.comments_count,
                         } : p));
                       }}
+                      onDelete={(postId) => {
+                        setPosts(prev => prev.filter(p => p.id !== postId));
+                      }}
                     />
                   ))}
                   {postsLoading && (
@@ -342,26 +359,26 @@ export default function GroupDetailPage() {
               )}
             </div>
 
-          
-              <div className="flex-1 min-w-[320px] max-w-[380px] hidden lg:block sticky top-[60px]">
-                <div
-                  className="rounded-2xl overflow-hidden"
-                  style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 2px 14px rgba(67,40,23,0.08)" }}
-                >
-                  {/* Header */}
-                  <div className="flex items-center justify-between px-5 pt-5 pb-3">
-                    <h2 className="font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                      {fmtCount(group.member_count)} Members
-                    </h2>
-                    <button
+
+            <div className="flex-1 min-w-[320px] max-w-[380px] hidden lg:block sticky top-[60px]">
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 2px 14px rgba(67,40,23,0.08)" }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pt-5 pb-3">
+                  <h2 className="font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                    {fmtCount(group.member_count)} Members
+                  </h2>
+                  <button
                     className="text-[10px] px-4 py-1 rounded-full font-bold transition-colors"
                     style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)", cursor: "pointer" }}
                     onClick={() => router.push(`/group/${groupId}/members`)}>
-                      View all
-                    </button>
-                  </div>
-                
-                 <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+                    View all
+                  </button>
+                </div>
+
+                <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
 
                 {/* Admin */}
                 {adminMember && (
@@ -437,6 +454,9 @@ export default function GroupDetailPage() {
               comments_count: update.commentsCount ?? prev.comments_count,
             } : null);
           }}
+          onDelete={(postId) => {
+            setPosts(prev => prev.filter(p => p.id !== postId));
+          }}
         />
       )}
       {showJoinModal && (
@@ -450,16 +470,16 @@ export default function GroupDetailPage() {
         />
       )}
       {showAddPost && (
-  <GroupAddPostModal
-    groupId={group.id}
-    groupName={group.name}
-    onClose={() => setShowAddPost(false)}
-    onSuccess={() => {
-      setShowAddPost(false);
-      fetchPosts(`${API_URL}/api/groups/${groupId}/posts/`);
-    }}
-  />
-)}
+        <GroupAddPostModal
+          groupId={group.id}
+          groupName={group.name}
+          onClose={() => setShowAddPost(false)}
+          onSuccess={() => {
+            setShowAddPost(false);
+            fetchPosts(`${API_URL}/api/groups/${groupId}/posts/`);
+          }}
+        />
+      )}
     </div>
   );
 }

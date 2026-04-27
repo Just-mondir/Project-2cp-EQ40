@@ -437,26 +437,19 @@ class GoogleAuthSerializer(serializers.Serializer):
         email = self.validated_data["email"]
         google_sub = self.validated_data["google_sub"]
 
-        # Find existing user or create a brand-new one (no profile data copied)
+        # Find existing user or raise error (no automatic creation)
         user = User.objects(email=email).first()
         if user is None:
-            user = User(
-                email=email,
-                is_verified=True,
-                is_active=True,
-                oauth_provider="google",
-                oauth_id=google_sub,
+            raise serializers.ValidationError(
+                {"token": "This Google account is not registered. Please sign up first."}
             )
-            # Set an unusable password (they will never log in with password)
-            user.set_password(None)
-            user.save()
-        else:
-            # If they previously registered with email/password, link OAuth
-            if not user.oauth_provider:
-                User.objects(id=user.id).update_one(
-                    set__oauth_provider="google",
-                    set__oauth_id=google_sub,
-                )
+        
+        # If they previously registered with email/password, link OAuth
+        if not user.oauth_provider:
+            User.objects(id=user.id).update_one(
+                set__oauth_provider="google",
+                set__oauth_id=google_sub,
+            )
 
         refresh = RefreshToken.for_user(user)
         return {

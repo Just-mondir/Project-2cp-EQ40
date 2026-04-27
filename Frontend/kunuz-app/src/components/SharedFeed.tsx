@@ -8,6 +8,8 @@ import AiPostInsight from "@/components/AiPostInsight";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import LeftSidebar from "@/components/LeftSidebar";
 import RepostButton from "@/components/RepostButton";
+import ActionConfirmModal from "@/components/ActionConfirmModal";
+
 
 
 const API_URL = "http://127.0.0.1:8000";
@@ -42,16 +44,40 @@ function getAuthToken(): string {
 }
 
 function getAuthUser():
-  | { id?: string; username?: string; display_name?: string }
+  | { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean; email?: string }
   | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem("authUser");
+    const raw = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
+
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
+
+type HistoryReport = {
+  id: string;
+  post_id: string;
+  description: string;
+  images: string[];
+  previous_status: string;
+  requested_status: string;
+  created_by: string;
+  created_at: string;
+};
 
 async function apiFetch(url: string, options: RequestInit = {}) {
   const token = getAuthToken();
@@ -406,6 +432,13 @@ function PostTags({ tags }: { tags: string[] }) {
     </div>
   );
 }
+const HistoryIcon = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
+    <path d="M12 7v5l4 2" />
+  </svg>
+);
 
 /* ─────────────────── EXPANDABLE CONTENT ─────────────────── */
 
@@ -534,6 +567,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
 
   const handleGemComment = async () => {
     const token = getAuthToken();
@@ -681,15 +715,17 @@ function CommentItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "var(--background)" }}
               >
-                {isOwner ? (
+                {canDelete ? (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]"
-                      style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
-                      onClick={handleEditComment}
-                    >
-                      Edit comment
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]"
+                        style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
+                        onClick={handleEditComment}
+                      >
+                        Edit comment
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-red-500/10"
                       style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
@@ -832,9 +868,11 @@ function AnnotationItem({
   const [editText, setEditText] = useState(annotation.text ?? "");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = String(getAuthUser()?.id ?? "");
-  const isOwner = currentUserId === String(annotation.user_id);
-  const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const currentUser = getAuthUser();
+  const moderatorGlobal = isModerator(currentUser);
+  const isOwner = String(currentUser?.id ?? "") === String(annotation.user_id);
+  const canDelete = isOwner || moderatorGlobal;
+  const isPostAuthor = String(currentUser?.id ?? "") === String(postAuthorId ?? "");
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -928,7 +966,7 @@ function AnnotationItem({
     setIsEditing(false);
   };
 
-  const handleReport = async () => {
+  const handleReportAnnotation = async () => {
     const reason = window.prompt("Why are you reporting this annotation?");
     if (!reason || !reason.trim()) return;
 
@@ -994,15 +1032,17 @@ function AnnotationItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]"
                 style={{ backgroundColor: "var(--background)" }}
               >
-                {isOwner && (
+                {canDelete && (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
-                      style={{ color: "var(--foreground)" }}
-                      onClick={handleEditAnnotation}
-                    >
-                      Edit annotation
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
+                        style={{ color: "var(--foreground)" }}
+                        onClick={handleEditAnnotation}
+                      >
+                        Edit annotation
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-red-500/10"
                       style={{ color: "var(--foreground)" }}
@@ -1012,12 +1052,11 @@ function AnnotationItem({
                     </button>
                   </>
                 )}
-
-                {!isOwner && (
+                {!canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
                     style={{ color: "var(--foreground)" }}
-                    onClick={handleReport}
+                    onClick={handleReportAnnotation}
                   >
                     Report annotation
                   </button>
@@ -1227,14 +1266,26 @@ function PostModal({
   interaction,
   onInteractionChange,
   initialTab = "comments",
+  onDelete,
+  onMobilizationClick,
+  forceIsOwner,
 }: {
   post: ApiPost | null;
   onClose: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
-  initialTab?: "comments" | "annotations";
+  initialTab?: "comments" | "annotations" | "history";
+  onDelete?: (postId: string) => void;
+  onMobilizationClick?: () => void;
+  forceIsOwner?: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
+  const user = getAuthUser();
+  const isOwner = forceIsOwner || (user?.id === post?.user_id || (user?.username && (user.username === post?.user_username || user.username === post?.username)));
+  const moderatorGlobal = isModerator(user);
+  const isGroupAdmin = (post as any)?.is_admin === true || (post as any)?.is_moderator === true;
+  const canDelete = isOwner || moderatorGlobal || isGroupAdmin;
+  const isModeratorActive = moderatorGlobal || isGroupAdmin;
+  const [activeTab, setActiveTab] = useState<"comments" | "annotations" | "history">(initialTab);
 
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState<CommentNode[]>([]);
@@ -1242,6 +1293,8 @@ function PostModal({
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [newAnnotationText, setNewAnnotationText] = useState("");
   const [annotationsLoading, setAnnotationsLoading] = useState(false);
+  const [histories, setHistories] = useState<HistoryReport[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [showPostMenu, setShowPostMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -1252,6 +1305,8 @@ function PostModal({
   const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
 
   const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
+
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | null>(null);
 
   const fetchComments = async (postId: string) => {
     const token = getAuthToken();
@@ -1284,6 +1339,19 @@ function PostModal({
       setAnnotationsLoading(false);
     }
   };
+  const fetchHistory = async (postId: string) => {
+    setHistoryLoading(true);
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/mobilization-reports/?post_id=${postId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setHistories(data.data?.results || []);
+    } catch { } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (post) {
@@ -1303,6 +1371,7 @@ function PostModal({
     if (!post) return;
     fetchComments(post.id);
     fetchAnnotations(post.id);
+    if (post.post_type === "alert") fetchHistory(post.id);
   }, [post]);
 
   useEffect(() => {
@@ -1387,6 +1456,24 @@ function PostModal({
     );
   };
 
+  const handleDeleteHistory = async (reportId: string) => {
+    if (!window.confirm("Are you sure you want to delete this mobilization report?")) return;
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/mobilization-reports/${reportId}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setHistories((prev) => prev.filter((h) => h.id !== reportId));
+      } else {
+        alert("Failed to delete report");
+      }
+    } catch {
+      alert("An error occurred while deleting the report.");
+    }
+  };
+
   const handleGem = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const nextGemmed = !gemmed;
@@ -1403,6 +1490,35 @@ function PostModal({
     } catch {
       onInteractionChange({ gemmed, gemsCount });
       toggleStoredItem("gemmed_posts", post.id, gemmed);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    setConfirmAction("delete");
+  };
+  const handleEditPost = async () => {
+    setConfirmAction("edit");
+  };
+
+  const confirmDelete = async () => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok || res.status === 204) {
+        onClose();
+        onDelete?.(post.id);
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(`Failed to delete post. Status: ${res.status}. Reason: ${data?.detail || data?.message || "Permission denied"}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting post: " + (err instanceof Error ? err.message : "Unknown error"));
+    } finally {
+      setShowPostMenu(false);
     }
   };
 
@@ -1624,8 +1740,30 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--text-muted)"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
               </button>
               {showPostMenu && (
-                <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "var(--background)" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border-soft)" }}>
+                  {canDelete && (
+                    <>
+                      {isOwner && (
+                        <button
+                          className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-[var(--panel-hover)] whitespace-nowrap"
+                          style={{ color: "var(--foreground)" }}
+                          onClick={(e) => { e.stopPropagation(); setShowPostMenu(false); handleEditPost(); }}
+                        >
+                          Edit post
+                        </button>
+                      )}
+                      <button
+                        className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-red-500/10 whitespace-nowrap"
+                        style={{ color: "#ef4444" }}
+                        onClick={(e) => { e.stopPropagation(); setShowPostMenu(false); handleDeletePost(); }}
+                      >
+                        Delete post
+                      </button>
+                    </>
+                  )}
+                  {!isModeratorActive && (
+                    <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowPostMenu(false); }}>Report post</button>
+                  )}
                 </div>
               )}
             </div>
@@ -1685,6 +1823,19 @@ function PostModal({
               <AnnotationIcon size={13} />
               Annotations ({acceptedAnnotationsCount})
             </button>
+            {post.post_type === "alert" && (
+              <button
+                className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                style={{
+                  color: activeTab === "history" ? "var(--foreground)" : "var(--text-muted)",
+                  borderBottom: activeTab === "history" ? "2px solid var(--foreground)" : "2px solid transparent",
+                }}
+                onClick={() => setActiveTab("history")}
+              >
+                <HistoryIcon size={13} />
+                History
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto feed-scroll">
@@ -1732,6 +1883,51 @@ function PostModal({
                 )}
               </div>
             )}
+
+            {activeTab === "history" && (
+              <div className="px-5 py-3 flex flex-col gap-3">
+                {historyLoading ? (
+                  <div className="flex justify-center py-6">
+                    <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
+                  </div>
+                ) : histories.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2">
+                    <HistoryIcon size={28} />
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>No history reports yet.</p>
+                  </div>
+                ) : (
+                  histories.map((h) => (
+                    <div key={h.id} className="p-4 rounded-2xl bg-[var(--panel-bg)] shadow-sm border border-[var(--border-soft)]">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold opacity-60" style={{ color: "var(--foreground)" }}>{formatDate(h.created_at)}</span>
+                        {isModeratorActive && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteHistory(h.id); }}
+                            className="p-1.5 rounded-full hover:bg-red-500/10 transition-colors flex items-center justify-center group"
+                            title="Delete history report"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110 transition-transform">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      <div className="mb-2 text-[10px] font-bold" style={{ color: "#8B6914" }}>
+                        {h.previous_status.replace(/_/g, " ")} → {h.requested_status.replace(/_/g, " ")}
+                      </div>
+                      <p className="text-xs opacity-90 leading-relaxed mb-3" style={{ color: "var(--foreground)" }}>{h.description}</p>
+                      {h.images && h.images.length > 0 && (
+                        <div className="flex gap-2 h-20 overflow-x-auto hide-scrollbar">
+                          {h.images.map((img, i) => (
+                            <img key={i} src={img.startsWith("/media/") ? API_URL + img : img} alt="Status update" className="h-full w-24 object-cover rounded-lg border border-[var(--border-soft)]" />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "var(--border-soft)" }}>
@@ -1754,6 +1950,15 @@ function PostModal({
               >
                 <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
               </button>
+              {post.post_type === "alert" && (
+                <button
+                  className="flex items-center gap-1 text-xs transition-all"
+                  style={{ color: activeTab === "history" ? "var(--foreground)" : "var(--text-muted)" }}
+                  onClick={() => setActiveTab("history")}
+                >
+                  <HistoryIcon size={14} />
+                </button>
+              )}
               <RepostButton
                 key={`${post.id}-${reposted}-${repostsCount}`}
                 postId={post.id}
@@ -1794,7 +1999,7 @@ function PostModal({
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--background)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
               </>
-            ) : (
+            ) : activeTab === "annotations" ? (
               <>
                 <input
                   type="text"
@@ -1813,10 +2018,33 @@ function PostModal({
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--background)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
               </>
+            ) : (
+              <button
+                onClick={onMobilizationClick}
+                className="w-full py-2.5 bg-[#432817] text-white text-xs font-bold rounded-xl shadow-lg transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+              >
+                <span className="text-lg">+</span> Add mobilization report
+              </button>
             )}
           </div>
         </div>
       </div>
+      <ActionConfirmModal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction === "delete") {
+            confirmDelete();
+          } else if (confirmAction === "edit" && post) {
+            router.push(`/edit-post?id=${post.id}`);
+          }
+          setConfirmAction(null);
+        }}
+        title={confirmAction === "delete" ? "Delete Post" : "Edit Post"}
+        message={confirmAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." : "Are you sure you want to edit this post?"}
+        confirmText={confirmAction === "delete" ? "Delete" : "Edit"}
+        confirmColor={confirmAction === "delete" ? "#ef4444" : "#8B6914"}
+      />
     </div>
   );
 }
@@ -1951,6 +2179,8 @@ function PostCard({
   interaction,
   onInteractionChange,
   groupDetails,
+  onDelete,
+  forceIsOwner,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -1959,9 +2189,18 @@ function PostCard({
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   groupDetails?: any;
+  onDelete?: (postId: string) => void;
+  forceIsOwner?: boolean;
 }) {
+  const user = getAuthUser();
+  const isOwner = forceIsOwner || (user?.id === post?.user_id || (user?.username && (user.username === post?.user_username || user.username === post?.username)));
+  const moderatorGlobal = isModerator(user);
+  const isGroupAdmin = (post as any)?.is_admin === true || (post as any)?.is_moderator === true || groupDetails?.is_admin === true || groupDetails?.isAdmin === true;
+  const canDelete = isOwner || moderatorGlobal || isGroupAdmin;
+  const isModeratorActive = moderatorGlobal || isGroupAdmin;
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -1985,6 +2224,37 @@ function PostCard({
     } catch {
       onInteractionChange({ gemmed, gemsCount });
       toggleStoredItem("gemmed_posts", post.id, gemmed);
+    }
+  };
+
+  const handleDeletePost = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmAction("delete");
+  };
+
+  const handleEditPost = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConfirmAction("edit");
+  };
+
+  const confirmDelete = async () => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok || res.status === 204) {
+        onDelete?.(post.id);
+      } else {
+        const data = await res.json();
+        alert(data.message || "Failed to delete post");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred while deleting the post.");
+    } finally {
+      setShowMenu(false);
     }
   };
 
@@ -2093,7 +2363,29 @@ function PostCard({
             </button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
-                <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+                {canDelete && (
+                  <>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap"
+                        style={{ color: "var(--foreground)" }}
+                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); handleEditPost(e); }}
+                      >
+                        Edit post
+                      </button>
+                    )}
+                    <button
+                      className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-red-500/10 whitespace-nowrap"
+                      style={{ color: "#ef4444" }}
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); handleDeletePost(e); }}
+                    >
+                      Delete post
+                    </button>
+                  </>
+                )}
+                {!isModeratorActive && (
+                  <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+                )}
               </div>
             )}
           </div>
@@ -2220,6 +2512,22 @@ function PostCard({
           </button>
         </div>
       </div>
+      <ActionConfirmModal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction === "delete") {
+            confirmDelete();
+          } else if (confirmAction === "edit" && post) {
+            router.push(`/edit-post?id=${post.id}`);
+          }
+          setConfirmAction(null);
+        }}
+        title={confirmAction === "delete" ? "Delete Post" : "Edit Post"}
+        message={confirmAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." : "Are you sure you want to edit this post?"}
+        confirmText={confirmAction === "delete" ? "Delete" : "Edit"}
+        confirmColor={confirmAction === "delete" ? "#ef4444" : "#8B6914"}
+      />
     </div>
   );
 }
@@ -2591,6 +2899,7 @@ export default function CommunitiesPageRoute() {
                       isNew={index >= newPostStart && newPostStart !== -1}
                       interaction={getInteraction(post)}
                       onInteractionChange={(update) => updateInteraction(post.id, update)}
+                      onDelete={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
                       onCommentClick={() => {
                         openPostModal(post, "comments");
                       }}
@@ -2628,6 +2937,7 @@ export default function CommunitiesPageRoute() {
           initialTab={selectedPostTab}
           interaction={getInteraction(selectedPost)}
           onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
+          onDelete={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
           onClose={() => setSelectedPost(null)}
         />
       )}

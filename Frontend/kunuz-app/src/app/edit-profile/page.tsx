@@ -135,7 +135,7 @@ const handleDone = async (formValues: {
 };
 
   return (
-    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
+    <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
 
       {/* Sidebar */}
       <LeftSidebar activePage="edit-profile" />

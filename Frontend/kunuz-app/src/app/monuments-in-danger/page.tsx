@@ -10,6 +10,7 @@ import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import ActionConfirmModal from "@/components/ActionConfirmModal";
 import {
   HISTORICAL_PERIOD_VALUES,
   MONUMENT_TYPE_VALUES,
@@ -80,7 +81,18 @@ function getAuthUser(): { id?: string; username?: string; display_name?: string;
   }
 }
 
-const isModerator = (user: any) => user?.role === "moderator" || user?.role === "admin" || user?.is_staff;
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
 
 
 /* ───────────────── TYPES ───────────────── */
@@ -1275,23 +1287,33 @@ function PostModal({
   interaction,
   onInteractionChange,
   onMobilizationClick,
+  initialTab = "comments",
 }: {
   post: ApiPost | null;
   onClose: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   onMobilizationClick: () => void;
+  initialTab?: "comments" | "annotations" | "history";
+  onDelete?: (postId: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
+  const pageT = useTranslations("auth.pages.monumentsInDanger");
+  const postFormT = useTranslations("auth.postForm");
   const [newComment, setNewComment] = useState("");
   const [newAnnotationText, setNewAnnotationText] = useState("");
   const [showPostMenu, setShowPostMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState<"comments" | "annotations" | "history">(initialTab);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | "delete_history" | null>(null);
+  const [historyToDelete, setHistoryToDelete] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState<"comments" | "annotations">("comments");
   const [comments, setComments] = useState<CommentNode[]>([]);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [histories, setHistories] = useState<HistoryReport[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [annotationsLoading, setAnnotationsLoading] = useState(false);
 
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1303,6 +1325,7 @@ function PostModal({
       setContentExpanded(false);
       fetchComments(post.id);
       fetchAnnotations(post.id);
+      fetchHistory(post.id);
     }
   }, [post?.id]);
 
@@ -1339,6 +1362,20 @@ function PostModal({
         setAnnotations((data.data || data.results || []) as Annotation[]);
       }
     } catch { }
+  };
+
+  const fetchHistory = async (postId: string) => {
+    setHistoryLoading(true);
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/mobilization-reports/?post_id=${postId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setHistories(data.data?.results || []);
+    } catch { } finally {
+      setHistoryLoading(false);
+    }
   };
 
   const handleSubmitComment = async () => {
@@ -1379,26 +1416,62 @@ function PostModal({
 
   const currentUser = getAuthUser();
   const isOwner = post && String(currentUser?.id ?? "") === String(post.user_id);
-  const canDelete = isOwner || isModerator(currentUser);
+  const moderatorGlobal = isModerator(currentUser);
+  const isModeratorActive = moderatorGlobal;
+  const canDelete = isOwner || moderatorGlobal;
 
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = post.content.length > CONTENT_LIMIT;
 
   const handleDeletePostModal = async () => {
-    const commonT = useTranslations("auth.common");
-    if (!window.confirm(feedT("actions.confirmDeletePost") || "Are you sure you want to delete this post?")) return;
+    if (!post) return;
+    if (onDelete) {
+      await onDelete(post.id);
+      onClose();
+    } else {
+      const token = getAuthToken();
+      try {
+        const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok || res.status === 204) {
+          onClose();
+        } else {
+          const errorData = await res.json().catch(() => null);
+          alert(`Failed to delete post. Status: ${res.status}. Reason: ${errorData?.detail || errorData?.message || "Unknown error"}`);
+        }
+      } catch (err) {
+        alert("Error deleting post: " + (err instanceof Error ? err.message : "Unknown error"));
+      }
+    }
+    setConfirmAction(null);
+  };
+
+  const handleDeleteHistory = (reportId: string) => {
+    setHistoryToDelete(reportId);
+    setConfirmAction("delete_history");
+  };
+
+  const confirmDeleteHistory = async (reportId: string) => {
     const token = getAuthToken();
     try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+      const res = await fetch(`${API_URL}/api/mobilization-reports/${reportId}/`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        onClose();
-        window.location.reload();
+        setHistories((prev) => prev.filter((h) => h.id !== reportId));
+      } else {
+        alert("Failed to delete report");
       }
-    } catch { }
+    } catch {
+      alert("Error deleting report");
+    } finally {
+      setHistoryToDelete(null);
+      setConfirmAction(null);
+    }
   };
 
   const handleGem = async (e: React.MouseEvent) => {
@@ -1556,15 +1629,26 @@ function PostModal({
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
                   {canDelete && (
-                    <button
-                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
-                      style={{ color: "#7B0000" }}
-                      onClick={handleDeletePostModal}
-                    >
-                      {feedT("actions.deletePost")}
-                    </button>
+                    <>
+                      {isOwner && (
+                        <button
+                          className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5"
+                          style={{ color: "var(--foreground)" }}
+                          onClick={(e) => { e.stopPropagation(); setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}
+                        >
+                          {feedT("actions.editPost") || "Edit post"}
+                        </button>
+                      )}
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]"
+                        style={{ color: "#7B0000" }}
+                        onClick={(e) => { e.stopPropagation(); setShowPostMenu(false); setConfirmAction("delete"); }}
+                      >
+                        {feedT("actions.deletePost")}
+                      </button>
+                    </>
                   )}
-                  {!canDelete && (
+                  {!isModeratorActive && (
                     <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>{feedT("actions.reportPost")}</button>
                   )}
                 </div>
@@ -1619,6 +1703,17 @@ function PostModal({
               <AnnotationIcon size={13} />
               {feedT("tabs.annotations", { count: getAcceptedAnnotationsCount(annotations) })}
             </button>
+            <button
+              className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              style={{
+                color: activeTab === "history" ? "#432817" : "#8B7355",
+                borderBottom: activeTab === "history" ? "2px solid #432817" : "2px solid transparent",
+              }}
+              onClick={() => setActiveTab("history")}
+            >
+              <HistoryIcon size={13} />
+              History
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto hide-scrollbar">
@@ -1636,7 +1731,7 @@ function PostModal({
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : activeTab === "annotations" ? (
                 <div className="flex flex-col gap-4">
                   {annotations.length > 0 ? (
                     annotations.map((a) => (
@@ -1649,6 +1744,51 @@ function PostModal({
                         {feedT("empty.annotations")}
                       </p>
                     </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {historyLoading ? (
+                    <div className="flex justify-center py-10">
+                      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+                    </div>
+                  ) : histories.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                      <div className="mb-2">
+                        <HistoryIcon size={40} />
+                      </div>
+                      <span className="text-xs font-bold">No history reports yet.</span>
+                    </div>
+                  ) : (
+                    histories.map((h) => (
+                      <div key={h.id} className="p-4 rounded-3xl bg-white shadow-sm" style={{ border: "1px solid rgba(67, 40, 23, 0.05)" }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold" style={{ color: "#8B7355" }}>{formatDate(h.created_at)}</span>
+                          {(isModeratorActive || (currentUser && String(currentUser.id) === String(h.created_by))) && (
+                            <button
+                              onClick={() => handleDeleteHistory(h.id)}
+                              className="p-1 rounded-full hover:bg-red-500/10 transition-colors"
+                              title="Delete history report"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        <div className="mb-2 text-[11px] font-bold" style={{ color: "rgba(67, 40, 23, 0.5)" }}>
+                          {translateMobilizationStatus(h.previous_status, postFormT)} → {translateMobilizationStatus(h.requested_status, postFormT)}
+                        </div>
+                        <ExpandableContent content={h.description} className="text-xs leading-relaxed opacity-90 mb-3" style={{ color: "#432817" }} />
+                        {h.images && h.images.length > 0 && (
+                          <div className="flex gap-2 h-24 mt-2">
+                            {h.images.map((img, i) => (
+                              <img key={i} src={img.startsWith('/media/') ? API_URL + img : img} alt="Update" className="w-1/3 h-full object-cover rounded-xl" />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
               )}
@@ -1718,7 +1858,7 @@ function PostModal({
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
               </>
-            ) : (
+            ) : activeTab === "annotations" ? (
               <>
                 <input
                   type="text"
@@ -1733,11 +1873,48 @@ function PostModal({
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 </button>
               </>
+            ) : (
+              <button
+                onClick={onMobilizationClick}
+                className="w-full py-3 bg-[#432817] text-white text-sm font-bold rounded-2xl shadow-lg transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+              >
+                <span className="text-xl font-medium">+</span> {pageT("addMobilizationReport")}
+              </button>
             )}
           </div>
         </div>
       </div>
-    </div>
+      <ActionConfirmModal
+        isOpen={!!confirmAction}
+        onClose={() => {
+          setConfirmAction(null);
+          setHistoryToDelete(null);
+        }}
+        onConfirm={() => {
+          if (confirmAction === "delete") {
+            handleDeletePostModal();
+          } else if (confirmAction === "delete_history" && historyToDelete) {
+            confirmDeleteHistory(historyToDelete);
+          }
+          setConfirmAction(null);
+        }}
+        title={
+          confirmAction === "delete" ? "Delete Post" :
+            "Delete History Report"
+        }
+        message={
+          confirmAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." :
+            "Are you sure you want to delete this mobilization report? This action cannot be undone."
+        }
+        confirmText={
+          confirmAction === "delete" ? "Delete" :
+            "Delete"
+        }
+        confirmColor={
+          confirmAction === "delete" || confirmAction === "delete_history" ? "#C0392B" : "#8B6914"
+        }
+      />
+    </div >
   );
 }
 
@@ -1763,6 +1940,7 @@ function PostCard({
   const feedT = useTranslations("auth.feed");
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -1831,17 +2009,29 @@ function PostCard({
             </button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50 w-40" style={{ backgroundColor: "#FFF8E2" }}>
-                {canManage ? (
+                {canManage && (
+                  <>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5"
+                        style={{ color: "var(--foreground)" }}
+                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); router.push(`/edit-post?id=${post.id}`); }}
+                      >
+                        {feedT("actions.editPost") || "Edit post"}
+                      </button>
+                    )}
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600"
+                      style={{ color: "#7B0000" }}
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                    >
+                      {feedT("actions.deletePost")}
+                    </button>
+                  </>
+                )}
+                {!isModerator(currentUser) && (
                   <button
-                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600"
-                    style={{ color: "#7B0000" }}
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete?.(post.id); }}
-                  >
-                    {feedT("actions.deletePost")}
-                  </button>
-                ) : (
-                  <button
-                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
+                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
                     style={{ color: "#432817" }}
                     onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
                   >
@@ -1973,6 +2163,20 @@ function PostCard({
           </button>
         </div>
       </div>
+      <ActionConfirmModal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction === "delete") {
+            onDelete?.(post.id);
+          }
+          setConfirmAction(null);
+        }}
+        title={"Delete Post"}
+        message={"Are you sure you want to delete this post? This action cannot be undone."}
+        confirmText={"Delete"}
+        confirmColor={"#C0392B"}
+      />
 
     </div>
   );
@@ -2513,10 +2717,10 @@ function RightSidebar({ onAction, onPostClick, posts }: { onAction: () => void; 
 
             return (
               <div
-  key={post.id}
-  className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
-  onClick={() => onPostClick(post)}
->
+                key={post.id}
+                className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
+                onClick={() => onPostClick(post)}
+              >
                 {/* Thumbnail on left */}
                 <div className="flex-shrink-0">
                   <img src={imageUrl} alt={stripHtml(post.title)} className="w-12 h-12 rounded-full object-cover shrink-0 shadow-sm" />
@@ -2577,6 +2781,7 @@ export default function MonumentsInDangerPage() {
   const [criticalPosts, setCriticalPosts] = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
+  const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations" | "history">("comments");
   const [showFilter, setShowFilter] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isMobilizationOpen, setIsMobilizationOpen] = useState(false);
@@ -2660,19 +2865,27 @@ export default function MonumentsInDangerPage() {
   };
 
   const handleDeletePost = async (postId: string) => {
-    if (!window.confirm(commonT("confirmDeletePost"))) return;
     const token = getAuthToken();
+    const sId = String(postId);
     try {
-      const res = await fetch(`${API_URL}/api/posts/${postId}/`, {
+      const res = await fetch(`${API_URL}/api/posts/${sId}/`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` },
       });
-      if (res.ok) {
-        setPosts((prev) => prev.filter((p) => p.id !== postId));
-        setCriticalPosts((prev) => prev.filter((p) => p.id !== postId));
+      if (res.ok || res.status === 204) {
+        setPosts((prev) => prev.filter((p) => String(p.id) !== sId));
+        setCriticalPosts((prev) => prev.filter((p) => String(p.id) !== sId));
+        if (selectedPost && String(selectedPost.id) === sId) {
+          setSelectedPost(null);
+        }
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        const msg = errorData.detail || errorData.message || "You might not have permission to delete this post.";
+        alert(`Failed to delete post: ${msg} (Status: ${res.status})`);
       }
     } catch (err) {
       console.error("Delete post error:", err);
+      alert("Error connecting to server. Please check your internet connection.");
     }
   };
 
@@ -2771,7 +2984,7 @@ export default function MonumentsInDangerPage() {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
+      <div className="flex h-[100dvh] overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
         <LeftSidebar activePage="monuments" />
         <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
@@ -2828,8 +3041,8 @@ export default function MonumentsInDangerPage() {
                         setMobilizationPost(post);
                         setIsMobilizationOpen(true);
                       }}
-                      onHistoryClick={() => setHistoryPost(post)}
-                      onCommentClick={() => setSelectedPost(post)}
+                      onHistoryClick={() => { setSelectedPost(post); setSelectedPostTab("history"); }}
+                      onCommentClick={() => { setSelectedPost(post); setSelectedPostTab("comments"); }}
                       onDelete={handleDeletePost}
                     />
                   ))
@@ -2849,11 +3062,11 @@ export default function MonumentsInDangerPage() {
                   )
                 }
               </main>
-              <RightSidebar 
-  onAction={() => router.push("/add-event")} 
-  onPostClick={(post) => setSelectedPost(post)}
-  posts={criticalPosts} 
-/>
+              <RightSidebar
+                onAction={() => router.push("/add-event")}
+                onPostClick={(post) => setSelectedPost(post)}
+                posts={criticalPosts}
+              />
             </div>
 
           </div>
@@ -2863,6 +3076,7 @@ export default function MonumentsInDangerPage() {
       {selectedPost && (
         <PostModal
           post={selectedPost}
+          initialTab={selectedPostTab}
           interaction={getInteraction(selectedPost)}
           onInteractionChange={(upd) => {
             const current = getInteraction(selectedPost);
@@ -2877,6 +3091,7 @@ export default function MonumentsInDangerPage() {
             setMobilizationPost(currentPost);
             setIsMobilizationOpen(true);
           }}
+          onDelete={handleDeletePost}
         />
       )}
 

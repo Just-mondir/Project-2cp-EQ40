@@ -50,16 +50,29 @@ function getAuthToken(): string {
 }
 
 function getAuthUser():
-  | { id?: string; username?: string; display_name?: string }
+  | { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean; email?: string }
   | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem("authUser");
+    const raw = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
+
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
 
 async function apiFetch(url: string, options: RequestInit = {}) {
   const token = getAuthToken();
@@ -1978,10 +1991,18 @@ function PostCard({
   onAnnotationClick: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
+  onDelete?: (postId: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
+  const user = getAuthUser();
+  const isOwner = (user?.id === post?.user_id || (user?.username && (user.username === post?.user_username || user.username === post?.username)));
+  const moderatorGlobal = isModerator(user);
+  const isModeratorActive = moderatorGlobal;
+  const canDelete = isOwner || moderatorGlobal;
+
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -2071,7 +2092,29 @@ function PostCard({
           </button>
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 py-2 px-4 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
-              <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
+              {canDelete && (
+                <>
+                  {isOwner && (
+                    <button
+                      className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5 mb-1"
+                      style={{ color: "var(--foreground)" }}
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("edit"); }}
+                    >
+                      {feedT("actions.editPost") || "Edit post"}
+                    </button>
+                  )}
+                  <button
+                    className="block w-full text-left py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 mb-1"
+                    style={{ color: "#7B0000" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                  >
+                    {feedT("actions.deletePost")}
+                  </button>
+                </>
+              )}
+              {!isModeratorActive && (
+                <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
+              )}
             </div>
           )}
         </div>

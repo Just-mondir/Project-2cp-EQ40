@@ -166,7 +166,7 @@ if (invitedUsers && invitedUsers.length > 0) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: "#F7F5EF" }}>
+    <div className="flex h-[100dvh] overflow-hidden" style={{ backgroundColor: "#F7F5EF" }}>
       <LeftSidebar activePage="create-group" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">

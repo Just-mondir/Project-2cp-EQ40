@@ -143,7 +143,7 @@ export default function AddPostPage() {
   };
 
   return (
-    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
+    <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
       <LeftSidebar activePage="add-post" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">

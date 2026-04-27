@@ -41,10 +41,15 @@ export default function LoginPage() {
       // Check if the user still needs to complete their profile
       const user = response.user as Record<string, unknown> | undefined;
       router.push("/home-page");
-    } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "Login failed.";
-      setError(message);
+    } catch (submitError: any) {
+      const message = submitError instanceof Error ? submitError.message : "Login failed.";
+
+      // Customize error message for non-existent accounts
+      if (message.toLowerCase().includes("no account found") || message.toLowerCase().includes("user not found")) {
+        setError("This account doesn't exist. Please sign up to create a new account.");
+      } else {
+        setError(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -153,34 +158,34 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-  <label
-    htmlFor="password"
-    className="text-base lg:text-[18px] font-normal"
-    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-  >
-    Password
-  </label>
+                  <label
+                    htmlFor="password"
+                    className="text-base lg:text-[18px] font-normal"
+                    style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                  >
+                    Password
+                  </label>
 
-  <div className="relative">
-    <input
-      id="password"
-      type={showPassword ? "text" : "password"}
-      value={password}
-      onChange={(e) => setPassword(e.target.value)}
-      required
-      className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 pr-11 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
-    />
-    <button
-      type="button"
-      onClick={() => setShowPassword((v) => !v)}
-      className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center"
-      style={{ background: "none", border: "none", cursor: "pointer", color: "#8B7355" }}
-      tabIndex={-1}
-    >
-      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-    </button>
-  </div>
-</div>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 pr-11 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center"
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#8B7355" }}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
 
                 <div className="flex items-center justify-between">
                   <label
@@ -241,8 +246,8 @@ export default function LoginPage() {
                   >
                     {isGoogleLoading ? (
                       <svg className="animate-spin w-6 h-6" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#432817" strokeWidth="4"/>
-                        <path className="opacity-75" fill="#432817" d="M4 12a8 8 0 018-8v8z"/>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#432817" strokeWidth="4" />
+                        <path className="opacity-75" fill="#432817" d="M4 12a8 8 0 018-8v8z" />
                       </svg>
                     ) : (
                       <Image

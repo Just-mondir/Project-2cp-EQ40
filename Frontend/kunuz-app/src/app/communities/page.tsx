@@ -8,6 +8,10 @@ import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import MyGroupsModal from "@/components/MyGroupsModal";
+import SuggestedGroupsModal from "@/components/SuggestedGroupsModal";
+import ActionConfirmModal from "@/components/ActionConfirmModal";
+
 
 
 //const API_URL =
@@ -44,16 +48,29 @@ function getAuthToken(): string {
 }
 
 function getAuthUser():
-  | { id?: string; username?: string; display_name?: string }
+  | { id?: string; username?: string; display_name?: string; role?: string; is_staff?: boolean; email?: string }
   | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem("authUser");
+    const raw = localStorage.getItem("user") || localStorage.getItem("user_data") || localStorage.getItem("authUser");
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
+
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
 
 async function apiFetch(url: string, options: RequestInit = {}) {
   const token = getAuthToken();
@@ -394,6 +411,15 @@ const AnnotationIcon = ({ className = "", size = 18 }) => (
   </svg>
 );
 
+const PeopleIcon = ({ className = "", size = 12 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
 /* ─────────────────── TAGS ─────────────────── */
 
 function PostTags({ tags }: { tags: string[] }) {
@@ -536,6 +562,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
 
   const handleGemComment = async () => {
     const token = getAuthToken();
@@ -683,15 +710,17 @@ function CommentItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50"
                 style={{ backgroundColor: "var(--background)" }}
               >
-                {isOwner ? (
+                {canDelete ? (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]"
-                      style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
-                      onClick={handleEditComment}
-                    >
-                      Edit comment
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]"
+                        style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
+                        onClick={handleEditComment}
+                      >
+                        Edit comment
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-red-500/10"
                       style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
@@ -834,9 +863,11 @@ function AnnotationItem({
   const [editText, setEditText] = useState(annotation.text ?? "");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const currentUserId = String(getAuthUser()?.id ?? "");
+  const currentUser = getAuthUser();
+  const currentUserId = String(currentUser?.id ?? "");
   const isOwner = currentUserId === String(annotation.user_id);
   const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const canDelete = isOwner || isModerator(currentUser);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -996,15 +1027,17 @@ function AnnotationItem({
                 className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]"
                 style={{ backgroundColor: "var(--background)" }}
               >
-                {isOwner && (
+                {canDelete && (
                   <>
-                    <button
-                      className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
-                      style={{ color: "var(--foreground)" }}
-                      onClick={handleEditAnnotation}
-                    >
-                      Edit annotation
-                    </button>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
+                        style={{ color: "var(--foreground)" }}
+                        onClick={handleEditAnnotation}
+                      >
+                        Edit annotation
+                      </button>
+                    )}
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-red-500/10"
                       style={{ color: "var(--foreground)" }}
@@ -1014,12 +1047,11 @@ function AnnotationItem({
                     </button>
                   </>
                 )}
-
-                {!isOwner && (
+                {!canDelete && (
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
                     style={{ color: "var(--foreground)" }}
-                    onClick={handleReport}
+                    onClick={handleReportAnnotation}
                   >
                     Report annotation
                   </button>
@@ -1229,12 +1261,14 @@ export function PostModal({
   interaction,
   onInteractionChange,
   initialTab = "comments",
+  onDelete,
 }: {
   post: ApiPost | null;
   onClose: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
+  onDelete?: (postId: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
 
@@ -1248,12 +1282,19 @@ export function PostModal({
   const [showPostMenu, setShowPostMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "edit" | null>(null);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
 
   const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
+
+  const user = getAuthUser();
+  const isOwner = (user?.id === post?.user_id || (user?.username && (user.username === post?.user_username || user.username === post?.username)));
+  const moderatorGlobal = isModerator(user);
+  const canDelete = isOwner || moderatorGlobal;
+  const isModeratorActive = moderatorGlobal;
 
   const fetchComments = async (postId: string) => {
     const token = getAuthToken();
@@ -1387,6 +1428,26 @@ export function PostModal({
     setAnnotations((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: "rejected" } : a))
     );
+  };
+
+  const handleDeletePostModal = async () => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok || res.status === 204) {
+        onClose();
+        onDelete?.(post.id);
+      } else {
+        alert("Failed to delete post");
+      }
+    } catch {
+      alert("Error deleting post");
+    } finally {
+      setConfirmAction(null);
+    }
   };
 
   const handleGem = async (e: React.MouseEvent) => {
@@ -1627,7 +1688,12 @@ export function PostModal({
               </button>
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "var(--background)" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                  {canDelete && (
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "#ef4444" }} onClick={() => setConfirmAction("delete")}>Delete post</button>
+                  )}
+                  {!isModeratorActive && (
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                  )}
                 </div>
               )}
             </div>
@@ -1635,6 +1701,14 @@ export function PostModal({
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
           </div>
+
+          <ActionConfirmModal
+            isOpen={!!confirmAction}
+            onClose={() => setConfirmAction(null)}
+            onConfirm={handleDeletePostModal}
+            title="Delete Post"
+            message="Are you sure you want to delete this post? This action cannot be undone."
+          />
 
           {imageList.length > 0 && (
             <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "var(--border-soft)" }}>
@@ -1897,17 +1971,31 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
 
 /* ─────────────────── RIGHT SIDEBAR ─────────────────── */
 
-function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: { groups: Group[]; myGroups?: Group[]; onSelectGroup: (group: Group) => void; onCreateGroup: () => void }) {
+function RightSidebar({
+  groups,
+  myGroups = [],
+  onSelectGroup,
+  onCreateGroup,
+  onViewAllMyGroups,
+  onViewAllSuggestedGroups
+}: {
+  groups: Group[];
+  myGroups?: Group[];
+  onSelectGroup: (group: Group) => void;
+  onCreateGroup: () => void;
+  onViewAllMyGroups: () => void;
+  onViewAllSuggestedGroups: () => void;
+}) {
   const router = useRouter();
   return (
     <aside className="w-[350px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
-  <div className="sticky top-0 h-full flex flex-col">
-    {/* Header: title + Create button */}
-    <div className="flex justify-between items-center mb-5 flex-shrink-0">
+      <div className="sticky top-0 h-full flex flex-col">
+        {/* Header: title + Create button */}
+        <div className="flex justify-between items-center mb-5 flex-shrink-0">
           <h2 className="text-xl font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Groups</h2>
           <button
             className="text-[11px] px-3 py-1.5 rounded-full font-bold transition-colors hover:opacity-90"
-            style={{ backgroundColor: "#6B3E26", color: "var(--panel-bg)" }}
+            style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
             onClick={onCreateGroup}
           >
             Create new group
@@ -1915,23 +2003,32 @@ function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: {
         </div>
 
         <div
-  className="flex flex-col gap-6 overflow-y-auto pb-20 rounded-2xl p-4"
-  style={{
-    scrollbarWidth: "none",
-    msOverflowStyle: "none",
-    backgroundColor: "var(--panel-bg)",
-    boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
-  }}
->
+          className="flex flex-col gap-6 overflow-y-auto pb-20 rounded-2xl p-4"
+          style={{
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            backgroundColor: "var(--panel-bg)",
+            boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
+          }}
+        >
           {/* Your Groups Section */}
           {myGroups.length > 0 && (
             <div>
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Your Groups</h3>
-                <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "rgba(107, 62, 38, 0.1)", color: "#6B3E26" }}>{myGroups.length}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "rgba(107, 62, 38, 0.1)", color: "#6B3E26" }}>{myGroups.length}</span>
+                  <button
+                    onClick={onViewAllMyGroups}
+                    className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-80"
+                    style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
+                  >
+                    View all
+                  </button>
+                </div>
               </div>
               <div className="flex flex-col gap-2">
-                {myGroups.slice(0, 5).map((group) => (
+                {myGroups.slice(0, 4).map((group) => (
                   <div
                     key={group.id}
                     className="flex gap-3 py-2 px-1 items-center rounded-xl transition-colors hover:bg-[var(--panel-hover)] cursor-pointer"
@@ -1956,17 +2053,23 @@ function RightSidebar({ groups, myGroups = [], onSelectGroup, onCreateGroup }: {
               </div>
             </div>
           )}
-           <div style={{ borderTop: "1px solid var(--border-soft)" }} />
+          <div style={{ borderTop: "1px solid var(--border-soft)" }} />
           {/* Suggested Groups Section */}
           <div>
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Suggested Groups</h3>
-              <button className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors" style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}>View all</button>
+              <button
+                onClick={onViewAllSuggestedGroups}
+                className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-80"
+                style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
+              >
+                View all
+              </button>
             </div>
             <div className="flex flex-col gap-2">
               {groups
                 .filter(g => !myGroups.some(mg => mg.id === g.id))
-                .slice(0, 10).map((group) => (
+                .slice(0, 4).map((group) => (
                   <div key={group.id} className="flex gap-3 py-2 px-1 items-center rounded-xl transition-colors">
                     <img
                       src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
@@ -2003,6 +2106,7 @@ export function PostCard({
   interaction,
   onInteractionChange,
   groupDetails,
+  onDelete,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -2011,12 +2115,36 @@ export function PostCard({
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   groupDetails?: any;
+  onDelete?: (postId: string) => void;
 }) {
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [confirmAction, setConfirmAction] = useState<"edit" | "delete" | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+  const user = getAuthUser();
+  const isOwner = user?.id === post.user_id || (user?.username && (user.username === post.user_username || user.username === post.username));
+  const moderatorGlobal = isModerator(user);
+  const isGroupAdmin = (post as any)?.is_admin === true || (post as any)?.is_moderator === true || groupDetails?.is_admin === true || groupDetails?.isAdmin === true;
+  const canDelete = isOwner || moderatorGlobal || isGroupAdmin;
+  const isModeratorActive = moderatorGlobal || isGroupAdmin;
+
+  const handleDelete = async () => {
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok || res.status === 204) {
+        setShowMenu(false);
+        setConfirmAction(null);
+        onDelete?.(post.id);
+      }
+    } catch { }
+  };
+
   const { gemmed, gemsCount, saved, reposted, repostsCount, commentsCount, annotationsCount } = interaction;
   const imageList = post.images ?? [];
   const tags = buildTags(post);
@@ -2145,12 +2273,51 @@ export function PostCard({
             </button>
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
-                <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+                {canDelete && (
+                  <>
+                    {isOwner && (
+                      <button
+                        className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap"
+                        style={{ color: "var(--foreground)" }}
+                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("edit"); }}
+                      >
+                        Edit post
+                      </button>
+                    )}
+                    <button
+                      className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-red-500/10 whitespace-nowrap"
+                      style={{ color: "#ef4444" }}
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                    >
+                      Delete post
+                    </button>
+                  </>
+                )}
+                {!isModeratorActive && (
+                  <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <ActionConfirmModal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          if (confirmAction === "delete") {
+            handleDelete();
+          } else if (confirmAction === "edit" && post) {
+            router.push(`/edit-post?id=${post.id}`);
+          }
+          setConfirmAction(null);
+        }}
+        title={confirmAction === "delete" ? "Delete Post" : "Edit Post"}
+        message={confirmAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." : "Are you sure you want to edit this post?"}
+        confirmText={confirmAction === "delete" ? "Delete" : "Edit"}
+        confirmColor={confirmAction === "delete" ? "#ef4444" : "#8B6914"}
+      />
 
       <div className="px-5 pb-2">
         <LocationWorldCard
@@ -2288,9 +2455,11 @@ export default function CommunitiesPageRoute() {
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
   const [showFilter, setShowFilter] = useState(false);
+  const [isMyGroupsModalOpen, setIsMyGroupsModalOpen] = useState(false);
+  const [isSuggestedGroupsModalOpen, setIsSuggestedGroupsModalOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<{ users: any[]; posts: ApiPost[] } | null>(null);
+  const [searchResults, setSearchResults] = useState<{ users: any[]; posts: ApiPost[]; groups?: any[] } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/groups/posts/`);
@@ -2451,6 +2620,21 @@ export default function CommunitiesPageRoute() {
     } catch { }
   };
 
+  const handleDeletePost = (postId: string) => {
+    const sId = String(postId);
+    setPosts((prev) => prev.filter((p) => String(p.id) !== sId));
+    setSearchResults((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        posts: prev.posts.filter((p) => String(p.id) !== sId),
+      };
+    });
+    if (String(selectedPost?.id) === sId) {
+      setSelectedPost(null);
+    }
+  };
+
   const handleApplyFilter = async (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => {
     const hasFilter = Object.values(filters).some((v) => v !== "");
     if (!hasFilter) {
@@ -2553,7 +2737,7 @@ export default function CommunitiesPageRoute() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
-                  placeholder="Search posts, users..."
+                  placeholder="Search posts, groups..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -2597,6 +2781,26 @@ export default function CommunitiesPageRoute() {
                           ))}
                         </div>
                       )}
+                      {searchResults?.groups && searchResults.groups.length > 0 && (
+                        <div className="px-4 pt-3 pb-1">
+                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Groups</p>
+                          {searchResults.groups.map((group) => (
+                            <button
+                              key={group.id}
+                              className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
+                              onMouseDown={() => { window.location.href = `/group/${group.id}`; }}
+                            >
+                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--border-soft)" }}>
+                                <PeopleIcon size={14} />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{group.name}</p>
+                                <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{group.description?.replace(/<[^>]*>/g, "").slice(0, 40)}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {searchResults?.posts && searchResults.posts.length > 0 && (
                         <div className="px-4 pt-2 pb-3">
                           <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Posts</p>
@@ -2617,7 +2821,7 @@ export default function CommunitiesPageRoute() {
                           ))}
                         </div>
                       )}
-                      {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (
+                      {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (!searchResults.groups || searchResults.groups.length === 0) && (
                         <div className="flex flex-col items-center py-6 gap-1">
                           <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>No results for "{searchQuery}"</p>
                         </div>
@@ -2650,6 +2854,7 @@ export default function CommunitiesPageRoute() {
                       isNew={index >= newPostStart && newPostStart !== -1}
                       interaction={getInteraction(post)}
                       onInteractionChange={(update) => updateInteraction(post.id, update)}
+                      onDelete={handleDeletePost}
                       onCommentClick={() => {
                         openPostModal(post, "comments");
                       }}
@@ -2671,6 +2876,8 @@ export default function CommunitiesPageRoute() {
                 myGroups={myGroups}
                 onSelectGroup={() => { }}
                 onCreateGroup={() => router.push("/create-group")}
+                onViewAllMyGroups={() => setIsMyGroupsModalOpen(true)}
+                onViewAllSuggestedGroups={() => setIsSuggestedGroupsModalOpen(true)}
               />
             </div>
           </div>
@@ -2684,8 +2891,19 @@ export default function CommunitiesPageRoute() {
           interaction={getInteraction(selectedPost)}
           onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
           onClose={() => setSelectedPost(null)}
+          onDelete={handleDeletePost}
         />
       )}
+      <MyGroupsModal
+        isOpen={isMyGroupsModalOpen}
+        onClose={() => setIsMyGroupsModalOpen(false)}
+        groups={myGroups}
+      />
+      <SuggestedGroupsModal
+        isOpen={isSuggestedGroupsModalOpen}
+        onClose={() => setIsSuggestedGroupsModalOpen(false)}
+        groups={groups.filter(g => !myGroups.some(mg => mg.id === g.id))}
+      />
     </>
   );
 }

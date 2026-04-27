@@ -125,7 +125,7 @@ if (groupId && invitedUsers && invitedUsers.length > 0) {
 };
 
   return (
-    <div className="legacy-theme-page-shell flex h-screen overflow-hidden">
+    <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
       <LeftSidebar activePage="create-group" />
 
       <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
