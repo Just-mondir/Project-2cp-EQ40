@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLocaleSettings } from "@/components/LocaleProvider";
+
 
 type NotificationItem = {
   id: string;
@@ -238,6 +240,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
 export default function NotificationPanel({ onClose }: { onClose: () => void }) {
   const t = useTranslations("auth.notificationPanel");
   const { locale } = useLocaleSettings();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -255,8 +258,51 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     if (absSeconds < 86400) return rtf.format(Math.round(diffSeconds / 3600), "hour");
     return rtf.format(Math.round(diffSeconds / 86400), "day");
   }, [rtf, t]);
+  const navigateFromNotification = async (notification: NotificationItem) => {
+  const { event_type, target_id } = notification;
+
+  if (event_type === "gem_on_post" || event_type === "repost_on_post") {
+  // Scroll to post in feed, no modal
+  sessionStorage.setItem("highlight_post_id", target_id);
+  router.push("/home-page");
+
+  } else if (event_type === "comment_on_post") {
+  // Open post modal with comments
+  sessionStorage.setItem("open_post_id", target_id);
+  sessionStorage.setItem("open_post_tab", "comments");
+  router.push("/home-page");
+
+ } else if (event_type === "reply_to_comment" || event_type === "gem_on_comment") {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/comments/${target_id}/`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const commentData = data?.data ?? data;
+      const postId = typeof commentData?.post === "string"
+        ? commentData.post
+        : String(commentData?.post?.id ?? commentData?.post?._id ?? "");
+      if (postId) {
+        sessionStorage.setItem("open_post_id", postId);
+        sessionStorage.setItem("open_post_tab", "comments");
+        router.push("/home-page");
+      }
+    } catch { }
+
+  } else if (
+    event_type === "group_join_request" ||
+    event_type === "group_join_request_approved" ||
+    event_type === "group_join_request_rejected" ||
+    event_type === "group_invite_received"
+  ) {
+    router.push(`/group/${target_id}`);
+  }
+  // ← NO onClose() call anywhere — this was causing the logout
+};
 
   const buildHeaders = () => {
+  
     const token = getAuthToken();
     const nextHeaders = new Headers();
     if (token) {
@@ -317,10 +363,11 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const markAsRead = async (id: string) => {
+const markAsRead = async (id: string) => {
     const token = getAuthToken();
     if (!token) return;
 
+    const notification = notifications.find(n => n.id === id);
     setNotifications((current) => current.map((item) => (item.id === id ? { ...item, is_read: true } : item)));
     try {
       await fetch(`${API_URL}/api/notifications/${id}/read/`, {
@@ -330,6 +377,10 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
       await fetchNotifications();
     } catch {
       await fetchNotifications();
+    }
+
+    if (notification) {
+      await navigateFromNotification(notification);
     }
   };
 

@@ -2017,7 +2017,7 @@ function RightSidebar({
             <div
               key={i}
               className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5"
-              style={{ width: "100%", boxShadow: "0 8px 22px rgba(67,40,23,0.08)", backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}
+              style={{ width: "100%", boxShadow: "0 8px 22px rgba(67,40,23,0.08)", backgroundColor:  "var(--light)", border: "1px solid var(--border-soft)" }}
               onClick={() => {
                 const raw = (group as any)._raw;
                 if (raw?.id) router.push(`/group/${raw.id}`);
@@ -2406,6 +2406,55 @@ export default function HomePageRoute() {
     fetchGroups();
   }, []);
 
+  // Handle notification navigation
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    // Case 1: open post modal (comment/reply/gem on comment)
+    const postId = sessionStorage.getItem("open_post_id");
+    const tab = (sessionStorage.getItem("open_post_tab") || "comments") as "comments" | "annotations";
+
+    if (postId) {
+      sessionStorage.removeItem("open_post_id");
+      sessionStorage.removeItem("open_post_tab");
+
+      fetch(`${API_URL}/api/posts/${postId}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(res => res.json())
+        .then(data => {
+          const raw = data?.data ?? data;
+          if (raw?.id) {
+            setSelectedPost(normalizeApiPost(raw));
+            setSelectedPostTab(tab);
+          }
+        })
+        .catch(() => {});
+      return;
+    }
+
+    // Case 2: highlight post in feed (gem on post / repost)
+    const highlightId = sessionStorage.getItem("highlight_post_id");
+    if (highlightId) {
+      sessionStorage.removeItem("highlight_post_id");
+
+      // Wait for posts to load then scroll to it
+      const tryScroll = (attempts = 0) => {
+        const el = document.getElementById(`post-${highlightId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.style.outline = "3px solid #8B6914";
+          el.style.borderRadius = "12px";
+          setTimeout(() => { el.style.outline = ""; }, 2000);
+        } else if (attempts < 10) {
+          setTimeout(() => tryScroll(attempts + 1), 300);
+        }
+      };
+      tryScroll();
+    }
+  }, []);
+
   const groups = useMemo<GroupCard[]>(
     () => {
       if (apiGroups.length > 0) {
@@ -2732,7 +2781,7 @@ export default function HomePageRoute() {
         <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
             <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
-              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
+              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor:  "var(--light)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
@@ -2815,8 +2864,8 @@ export default function HomePageRoute() {
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} title={t("guilds.title")} />
                 {posts.map((post, index) => (
-                  <React.Fragment key={`${post.id}-${index}`}>
-                    <PostCard
+  <div id={`post-${post.id}`} key={`${post.id}-${index}`}>
+    <PostCard
                       post={post}
                       isNew={index >= newPostStart && newPostStart !== -1}
                       interaction={getInteraction(post)}
@@ -2829,7 +2878,7 @@ export default function HomePageRoute() {
                       }}
                       onDelete={handleDeletePost}
                     />
-                  </React.Fragment>
+  </div>
                 ))}
                 {loading && (
                   <div className="flex justify-center py-6">

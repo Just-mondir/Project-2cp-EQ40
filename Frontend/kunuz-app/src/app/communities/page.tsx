@@ -2836,9 +2836,6 @@ export default function CommunitiesPageRoute() {
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} />
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
-                    Community Feed
-                  </h2>
                 </div>
                 {posts.length === 0 && !loading && (
                   <div className="flex flex-col items-center py-20 text-center">

@@ -2718,7 +2718,8 @@ function RightSidebar({ onAction, onPostClick, posts }: { onAction: () => void; 
             return (
               <div
                 key={post.id}
-                className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
+                className="rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] cursor-pointer"
+                style={{ backgroundColor: "var(--light)", border: "1px solid var(--border-soft)" }}
                 onClick={() => onPostClick(post)}
               >
                 {/* Thumbnail on left */}

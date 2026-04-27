@@ -542,6 +542,15 @@ class CommentDetailView(APIView):
         except Comment.DoesNotExist:
             return None
 
+    def get(self, request: Request, pk: str) -> Response:
+        comment = self._get_comment(pk)
+        if not comment:
+            return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
+        return api_success(
+            "Comment retrieved.",
+            CommentSerializer(comment, context={"request": request}).data,
+        )
+
     def patch(self, request: Request, pk: str) -> Response:
         comment = self._get_comment(pk)
         if not comment:
