@@ -551,12 +551,14 @@ function CommentItem({
   onRefresh,
   onDelete,
   isReply = false,
+  isGroupAdmin = false,
 }: {
   comment: CommentNode;
   postId: string;
   onRefresh?: () => void;
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
+  isGroupAdmin?: boolean;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -589,7 +591,7 @@ function CommentItem({
 
   const currentUser = getAuthUser();
   const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
-  const canDelete = isOwner || isModerator(currentUser);
+  const canDelete = isOwner || isModerator(currentUser) || isGroupAdmin;
 
   const handleGemComment = async () => {
     const token = getAuthToken();
@@ -1293,6 +1295,7 @@ function PostModal({
   onDelete,
   onMobilizationClick,
   forceIsOwner,
+  isGroupAdmin = false,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -1302,13 +1305,13 @@ function PostModal({
   onDelete?: (postId: string) => void;
   onMobilizationClick?: () => void;
   forceIsOwner?: boolean;
+  isGroupAdmin?: boolean;
 }) {
   const feedT = useTranslations("auth.feed");
   const locale = useLocale();
   const user = getAuthUser();
   const isOwner = forceIsOwner || (user?.id === post?.user_id || (user?.username && (user.username === post?.user_username || user.username === post?.username)));
   const moderatorGlobal = isModerator(user);
-  const isGroupAdmin = (post as any)?.is_admin === true || (post as any)?.is_moderator === true;
   const canDelete = isOwner || moderatorGlobal || isGroupAdmin;
   const isModeratorActive = moderatorGlobal || isGroupAdmin;
   const [activeTab, setActiveTab] = useState<"comments" | "annotations" | "history">(initialTab);
@@ -1391,14 +1394,14 @@ function PostModal({
         scrollEl.scrollLeft = 0;
       }
     }
-  }, [post, initialTab]);
+  },  [post?.id, initialTab]);
 
   useEffect(() => {
-    if (!post) return;
-    fetchComments(post.id);
-    fetchAnnotations(post.id);
-    if (post.post_type === "alert") fetchHistory(post.id);
-  }, [post]);
+  if (!post) return;
+  fetchComments(post.id);
+  fetchAnnotations(post.id);
+  if (post.post_type === "alert") fetchHistory(post.id);
+}, [post?.id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1615,6 +1618,7 @@ function PostModal({
           onRefresh={() => fetchComments(post.id)}
           onDelete={handleDeleteComment}
           isReply={level > 0}
+          isGroupAdmin={isGroupAdmin}
         />
         {replies.length > 0 && (
           <div className="flex flex-col gap-2 mt-2">

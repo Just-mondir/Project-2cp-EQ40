@@ -260,7 +260,115 @@ function MembersList({
     </div>
   );
 }
+function RemoveMemberModal({
+  member,
+  onConfirm,
+  onCancel,
+  removing,
+}: {
+  member: Member;
+  onConfirm: () => void;
+  onCancel: () => void;
+  removing: boolean;
+}) {
+  const FONT = "var(--font-lato), 'Lato', sans-serif";
+  const RED = "#C0392B";
 
+  return (
+    <>
+      <div
+        onClick={onCancel}
+        style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 200 }}
+      />
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}
+        onClick={onCancel}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: "#FFF8E2",
+            borderRadius: "20px",
+            padding: "36px 32px 28px",
+            width: "400px",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            animation: "popIn 0.22s cubic-bezier(0.34,1.56,0.64,1)",
+            fontFamily: FONT,
+          }}
+        >
+          {/* Icon */}
+          <div style={{
+            width: "64px", height: "64px", borderRadius: "50%",
+            border: `1.5px solid ${RED}`,
+            backgroundColor: "rgba(192,57,43,0.07)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            marginBottom: "16px",
+          }}>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="18" y1="8" x2="23" y2="13" />
+              <line x1="23" y1="8" x2="18" y2="13" />
+            </svg>
+          </div>
+
+          {/* Title */}
+          <p style={{ margin: "0 0 6px", color: "#432817", fontFamily: FONT, fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
+            Remove member?
+          </p>
+
+          {/* Subtitle */}
+          <p style={{ margin: "0 0 24px", color: "#8B7355", fontFamily: FONT, fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
+            Are you sure you want to remove<br />
+            <span style={{ fontWeight: 700, color: "#432817" }}>
+              {member.display_name || member.username}
+            </span>{" "}
+            from this group?
+          </p>
+
+          {/* Confirm button */}
+          <button
+            onClick={onConfirm}
+            disabled={removing}
+            style={{
+              width: "100%", height: "50px", borderRadius: "10px", border: "none",
+              backgroundColor: removing ? "rgba(192,57,43,0.5)" : RED,
+              color: "#FFFFFF", fontFamily: FONT, fontWeight: 700, fontSize: "16px",
+              cursor: removing ? "not-allowed" : "pointer",
+              transition: "background 0.18s", marginTop: "6px",
+            }}
+            onMouseEnter={(e) => { if (!removing) e.currentTarget.style.backgroundColor = "#a93226"; }}
+            onMouseLeave={(e) => { if (!removing) e.currentTarget.style.backgroundColor = RED; }}
+          >
+            {removing ? "Removing…" : "Remove"}
+          </button>
+
+          {/* Cancel button */}
+          <button
+            onClick={onCancel}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: "#432817", fontFamily: FONT, fontWeight: 600,
+              fontSize: "15px", marginTop: "12px", opacity: 0.75,
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes popIn {
+          from { transform: scale(0.88); opacity: 0; }
+          to   { transform: scale(1);    opacity: 1; }
+        }
+      `}</style>
+    </>
+  );
+}
 /* ───────────────── MAIN PAGE ───────────────── */
 export default function GroupMembersPage() {
   const router = useRouter();
@@ -275,7 +383,7 @@ export default function GroupMembersPage() {
   const [joining, setJoining] = useState(false);
   const [joinStatus, setJoinStatus] = useState<"idle" | "pending" | "member">("idle");
   const [removing, setRemoving] = useState<string | null>(null);
-
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
   /* fetch group */
   useEffect(() => {
     if (!groupId) return;
@@ -308,22 +416,25 @@ export default function GroupMembersPage() {
   }, [groupId]);
 
   /* remove member */
-  const handleRemove = async (memberId: string) => {
-    if (!groupId) return;
-    setRemoving(memberId);
-    const token = getToken();
-    try {
-      const res = await fetch(`${API_URL}/api/groups/${groupId}/members/${memberId}/`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setMembers(prev => prev.filter(m => m.id !== memberId));
-        if (group) setGroup(prev => prev ? { ...prev, member_count: prev.member_count - 1 } : prev);
-      }
-    } catch (e) { console.error(e); }
-    finally { setRemoving(null); }
-  };
+  const handleRemove = async () => {
+  if (!groupId || !memberToRemove) return;
+  setRemoving(memberToRemove.id);
+  const token = getToken();
+  try {
+    const res = await fetch(`${API_URL}/api/groups/${groupId}/members/${memberToRemove.id}/`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setMembers(prev => prev.filter(m => m.id !== memberToRemove.id));
+      if (group) setGroup(prev => prev ? { ...prev, member_count: prev.member_count - 1 } : prev);
+    }
+  } catch (e) { console.error(e); }
+  finally {
+    setRemoving(null);
+    setMemberToRemove(null);
+  }
+};
 
   const handleJoin = async () => {
     if (!group || joining) return;
@@ -379,12 +490,23 @@ export default function GroupMembersPage() {
             totalCount={group.member_count}
             currentUserIsAdmin={group.is_admin}
             onViewProfile={(username) => router.push(`/user/${username}`)}
-            onRemove={group.is_admin ? handleRemove : undefined}
+            onRemove={group.is_admin ? (id) => {
+  const m = members.find(m => m.id === id);
+  if (m) setMemberToRemove(m);
+} : undefined}
             removing={removing}
             loading={loadingMembers}
           />
         </div>
       </main>
+      {memberToRemove && (
+  <RemoveMemberModal
+    member={memberToRemove}
+    onConfirm={handleRemove}
+    onCancel={() => setMemberToRemove(null)}
+    removing={!!removing}
+  />
+)}
     </div>
   );
 }

@@ -491,6 +491,7 @@ export default function GroupDetailPage() {
           onDelete={(postId) => {
             setPosts(prev => prev.filter(p => p.id !== postId));
           }}
+          isGroupAdmin={group?.is_admin ?? false}
         />
       )}
       {showJoinModal && (

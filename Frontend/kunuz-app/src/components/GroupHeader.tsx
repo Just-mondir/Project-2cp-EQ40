@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 
 /* ─── types (same as page) ─── */
@@ -56,6 +56,57 @@ type GroupHeaderProps = {
   GroupeMenuComponent: React.ReactNode;
 };
 
+
+  function DescriptionBlock({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const ref = React.useRef<HTMLParagraphElement>(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (el) setIsClamped(el.scrollHeight > el.clientHeight);
+  }, [text]);
+
+  return (
+    <div className="max-w-6xl mx-auto px-10 py-6">
+      <h2 className="font-bold mb-3" style={{ fontSize: 20, color: "var(--foreground)" }}>
+        Description
+      </h2>
+      <p
+        ref={ref}
+        className="leading-relaxed opacity-90"
+        style={{
+          fontSize: 16,
+          color: "var(--text-muted)",
+          display: "-webkit-box",
+          WebkitLineClamp: expanded ? undefined : 2,
+          WebkitBoxOrient: "vertical",
+          overflow: expanded ? "visible" : "hidden",
+        } as React.CSSProperties}
+      >
+        {text}
+        {expanded && (
+          <button
+            className="ml-2 text-sm font-semibold"
+            style={{ color: "#8B6914", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+            onClick={() => setExpanded(false)}
+          >
+            See less
+          </button>
+        )}
+      </p>
+      {!expanded && isClamped && (
+        <button
+          className="text-sm font-semibold"
+          style={{ color: "#8B6914", background: "none", border: "none", padding: 0, cursor: "pointer", marginTop: "-2px" }}
+          onClick={() => setExpanded(true)}
+        >
+          See more
+        </button>
+      )}
+    </div>
+  );
+}
 export default function GroupHeader({
   group,
   members,
@@ -139,10 +190,7 @@ export default function GroupHeader({
       </div>
 
       {/* Description */}
-      <div className="max-w-6xl mx-auto px-10 py-6">
-        <h2 className="localized-container-title font-bold mb-3" style={{ fontSize: 20, color: "var(--foreground)" }}>{t("community.description")}</h2>
-        <p className="leading-relaxed opacity-90" style={{ fontSize: 16, color: "var(--text-muted)" }}>{group.description}</p>
-      </div>
+<DescriptionBlock text={group.description} />
 
       {/* ── Tabs + Actions ── */}
       <div

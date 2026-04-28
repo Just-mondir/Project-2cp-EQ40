@@ -569,7 +569,22 @@ class CommentDetailView(APIView):
         if not comment:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        if comment.user_id != str(request.user.id) and not _is_moderator(request.user):
+        is_owner = comment.user_id == str(request.user.id)
+        is_mod = _is_moderator(request.user)
+
+        # Check if requester is admin of the group this post belongs to
+        is_group_admin = False
+        try:
+            from apps.posts.models import Post
+            from apps.thematic_groups.models import ThematicGroup
+            post = Post.objects.get(id=comment.post.id)
+            if post.group_id:
+                group = ThematicGroup.objects.get(id=post.group_id)
+                is_group_admin = str(group.admin_id) == str(request.user.id)
+        except Exception:
+            pass
+
+        if not (is_owner or is_mod or is_group_admin):
             return api_error("You can only delete your own comments.", status_code=status.HTTP_403_FORBIDDEN)
 
         replies = Comment.objects(parent=comment)
