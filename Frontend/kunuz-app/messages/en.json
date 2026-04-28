@@ -162,6 +162,22 @@
       "confirmDeleteAnnotation": "Are you sure you want to delete this annotation?",
       "confirmDeleteReport": "Are you sure you want to delete this report?"
     },
+    "aiResearch": {
+      "title": "Deep AI Research",
+      "buttonTitle": "AI research",
+      "buttonLabel": "Generate deep AI research about this post",
+      "closeLabel": "Close AI research",
+      "loading": "Researching this post with Gemini...",
+      "error": "Could not generate AI research.",
+      "sources": "Sources"
+    },
+    "locationCard": {
+      "title": "World Card",
+      "mapTitle": "Map of {location}",
+      "description": "Explore this location on the map or open it directly in Google Maps.",
+      "openMap": "Open Map",
+      "defaultLocation": "Algeria"
+    },
     "feed": {
       "actions": {
         "seeMore": "See more",
@@ -670,6 +686,70 @@
             "posts": "Posts"
           },
           "noResults": "No results for \"{query}\""
+        },
+        "community": {
+          "feedTitle": "Community Feed",
+          "showAll": "Show All",
+          "noPostsTitle": "No posts found",
+          "noPostsDescription": "Be the first to share something in this community!",
+          "groupsTitle": "Groups",
+          "createGroup": "Create new group",
+          "suggestedGroups": "Suggested Groups",
+          "yourGroups": "Your Groups",
+          "viewAll": "View all",
+          "members": "{count} members",
+          "membersTitle": "Members",
+          "noMembers": "No members",
+          "admin": "Admin",
+          "viewProfile": "View profile",
+          "remove": "Remove",
+          "removing": "Removing...",
+          "loadingMembers": "Loading members...",
+          "groupRules": "Group Rules",
+          "details": "Details",
+          "category": "Category",
+          "region": "Region",
+          "period": "Period",
+          "editGroup": "Edit group",
+          "deleteGroup": "Delete group",
+          "reportGroup": "Report group",
+          "leaveGroup": "Leave group",
+          "deleteGroupTitle": "Delete Group",
+          "deleteGroupMessage": "Are you sure you want to delete {groupName}? This action cannot be undone.",
+          "deleteGroupConfirm": "Yes, delete group",
+          "deletingGroup": "Deleting...",
+          "joinRequestTitle": "Join request sent",
+          "joinRequestMessage": "Thank you! Waiting for admin approval.",
+          "leftGroupTitle": "You left the group",
+          "leftGroupMessage": "You have successfully left this group.",
+          "close": "Close",
+          "rules": {
+            "shareRoman": "Share content related to Roman monuments and archaeology.",
+            "includeContext": "Include historical context when posting monuments or artifacts.",
+            "respectAccuracy": "Respect accuracy and cite sources when possible.",
+            "encourageDiscussion": "Encourage discussion on preservation and restoration.",
+            "noOffTopic": "No off-topic posts or unrelated promotion."
+          },
+          "values": {
+            "ancientCivilizations": "Ancient Civilizations",
+            "romanPeriod": "Roman period"
+          },
+          "posts": "{count} Posts",
+          "managedBy": "Managed by {name}",
+          "description": "Description",
+          "tabs": {
+            "posts": "Posts",
+            "questions": "Questions",
+            "about": "About",
+            "myPosts": "My posts"
+          },
+          "addPost": "+ Post",
+          "invite": "+ Invite",
+          "requestSent": "Request sent",
+          "joining": "Joining...",
+          "join": "Join",
+          "visit": "Visit",
+          "postedIn": "posted in {date}"
         }
       },
       "events": {
@@ -798,6 +878,19 @@
       "userProfile": {
         "actions": {
           "editProfile": "Edit profile"
+        },
+        "stats": {
+          "posts": "Posts",
+          "likes": "Likes",
+          "events": "Events"
+        },
+        "empty": {
+          "posts": "No posts yet",
+          "treasure": "Your Treasure is empty",
+          "collection": "Your Collection is empty",
+          "reposts": "No reposts yet",
+          "events": "No events yet",
+          "alerts": "No monuments in danger yet"
         },
         "modals": {
           "deletePost": {

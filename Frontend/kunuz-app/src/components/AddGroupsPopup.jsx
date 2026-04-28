@@ -215,8 +215,8 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                                             }}
                                         />
                                     </div>
-                                    <span style={{
-                                        color: ESPRESSO,
+                                    <span className="localized-container-title" style={{
+                                        color: "var(--foreground)",
                                         fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif",
                                         fontWeight: 600,
                                         fontSize: "14px",

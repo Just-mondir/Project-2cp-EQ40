@@ -45,6 +45,21 @@ function stripHtml(html: string): string {
   return doc.body.textContent || "";
 }
 
+function isArabicText(html: string): boolean {
+  const text = stripHtml(html).trim();
+  const firstStrongChar = text.match(/[A-Za-zÀ-ÖØ-öø-ÿ\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/)?.[0];
+  return Boolean(firstStrongChar && /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(firstStrongChar));
+}
+
+function getUserContentDirectionStyle(html: string): React.CSSProperties {
+  const isArabic = isArabicText(html);
+  return {
+    direction: isArabic ? "rtl" : "ltr",
+    textAlign: isArabic ? "right" : "left",
+    unicodeBidi: "plaintext",
+  };
+}
+
 function getAuthToken(): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem("accessToken") || "";
@@ -809,8 +824,8 @@ function CommentItem({
           </div>
         ) : (
           <div
-            className="text-sm leading-relaxed prose prose-sm max-w-none"
-            style={{ color: "#432817" }}
+            className="user-generated-content text-sm leading-relaxed prose prose-sm max-w-none"
+            style={{ color: "#432817", ...getUserContentDirectionStyle(comment.content) }}
           >
             {stripHtml(comment.content)}
           </div>
@@ -1148,7 +1163,7 @@ function AnnotationItem({
             </div>
           </div>
         ) : annotation.text ? (
-          <p className="text-xs" style={{ color: "#432817" }}>
+          <p className="user-generated-content text-xs" style={{ color: "#432817", ...getUserContentDirectionStyle(annotation.text) }}>
             {annotation.text}
           </p>
         ) : null}
@@ -1664,7 +1679,7 @@ function PostModal({
           iconSize={13}
           buttonClassName="mb-1"
         />
-        <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+        <h3 dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content text-base font-bold" style={{ color: "#432817", ...getUserContentDirectionStyle(post.title) }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </div>
 
       {post.post_type === "event" && post.event_details && (
@@ -1695,7 +1710,7 @@ function PostModal({
         );
       })()}
 
-      <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
+      <p className="user-generated-content text-sm leading-relaxed flex-1" style={{ color: "#432817", ...getUserContentDirectionStyle(post.content) }}>{post.content}</p>
 
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4">
@@ -1767,15 +1782,15 @@ function PostModal({
                 iconSize={13}
                 buttonClassName="mb-1"
               />
-              <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+              <h3 dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content text-base font-bold" style={{ color: "#432817", ...getUserContentDirectionStyle(post.title) }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
               {isContentLong && !contentExpanded ? (
-                <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                <p className="user-generated-content text-xs leading-relaxed mt-1" style={{ color: "#432817", ...getUserContentDirectionStyle(post.content) }}>
                   {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
                   <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
                 </p>
               ) : (
-                <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                <div className="user-generated-content text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817", ...getUserContentDirectionStyle(post.content) }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
               )}
               {isContentLong && contentExpanded && (
                 <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
@@ -1962,7 +1977,7 @@ function MobileGroupsStrip({
   const router = useRouter();
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{title}</h3>
+      <h3 className="localized-container-title text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{title}</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -1988,7 +2003,7 @@ function MobileGroupsStrip({
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="text-[10px] font-bold text-center leading-tight line-clamp-1" style={{ color: "#432817" }}>
+            <span className="localized-container-title text-[10px] font-bold text-center leading-tight line-clamp-1" style={{ color: "var(--foreground)" }}>
               {group.name}
             </span>
           </div>
@@ -2011,7 +2026,7 @@ function RightSidebar({
   return (
     <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{title}</h2>
+        <h2 className="localized-container-title text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{title}</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
           {groups.slice(0, 5).map((group, i) => (
             <div
@@ -2025,9 +2040,9 @@ function RightSidebar({
             >
               <img src={group.image} alt={group.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 shadow-sm" style={{ borderColor: "var(--panel-elevated)" }} />
               <div className="flex flex-col justify-center min-w-0">
-                <span className="font-bold text-sm truncate" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{group.desc}</span>
-                <div className="flex items-center gap-1 mt-1.5">
+                <span className="localized-container-title font-bold text-sm truncate" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                <span className="localized-container-text text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{group.desc}</span>
+                <div className="localized-member-count flex items-center gap-1 mt-1.5">
                   <PeopleIcon className="w-3 h-3 text-[var(--accent-gold)]" />
                   <span className="text-[10px] font-bold" style={{ color: "#432817" }}>
                     {group.membersLabel}
@@ -2200,11 +2215,11 @@ function PostCard({
 
       <PostDetailBadge post={post} />
 
-      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
-        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+      <h3 dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817", ...getUserContentDirectionStyle(post.title) }}>
+        <div dir={isArabicText(post.title) ? "rtl" : "ltr"} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </h3>
 
-      <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
+      <ExpandableContent content={post.content} className="user-generated-content px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817", ...getUserContentDirectionStyle(post.content) }} />
       <PostTags tags={tags} />
 
       {imageList.length > 0 && (
@@ -2842,8 +2857,8 @@ export default function HomePageRoute() {
                                 <CommentIcon size={12} />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold truncate" style={{ color: "var(--foreground)" }}>{post.title?.replace(/<[^>]*>/g, "")}</p>
-                                <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{post.content?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
+                                <p dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content text-xs font-bold truncate" style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(post.title) }}>{post.title?.replace(/<[^>]*>/g, "")}</p>
+                                <p className="user-generated-content text-[10px] truncate" style={{ color: "var(--text-muted)", ...getUserContentDirectionStyle(post.content) }}>{post.content?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
                               </div>
                             </button>
                           ))}

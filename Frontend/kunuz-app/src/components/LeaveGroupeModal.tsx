@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 const FONT = "var(--font-lato), 'Lato', sans-serif";
 const RED = "#C0392B";
 
@@ -8,6 +10,7 @@ interface LeaveGroupModalProps {
 }
 
 export default function LeaveGroupModal({ onClose }: LeaveGroupModalProps) {
+  const t = useTranslations("auth.pages.home");
   return (
     <>
       {/* Backdrop */}
@@ -24,7 +27,8 @@ export default function LeaveGroupModal({ onClose }: LeaveGroupModalProps) {
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            backgroundColor: "#FFF8E2",
+            backgroundColor: "var(--panel-bg)",
+            border: "1px solid var(--border-soft)",
             borderRadius: "20px",
             padding: "36px 32px 28px",
             width: "400px",
@@ -52,13 +56,13 @@ export default function LeaveGroupModal({ onClose }: LeaveGroupModalProps) {
           </div>
 
           {/* Title */}
-          <p style={{ margin: "0 0 6px", color: "#432817", fontFamily: FONT, fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-            You left the group
+          <p style={{ margin: "0 0 6px", color: "var(--foreground)", fontFamily: FONT, fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
+            {t("community.leftGroupTitle")}
           </p>
 
           {/* Subtitle */}
-          <p style={{ margin: "0 0 24px", color: "#8B7355", fontFamily: FONT, fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-            You have successfully left this group.
+          <p style={{ margin: "0 0 24px", color: "var(--text-muted)", fontFamily: FONT, fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
+            {t("community.leftGroupMessage")}
           </p>
 
           {/* Close button */}
@@ -73,7 +77,7 @@ export default function LeaveGroupModal({ onClose }: LeaveGroupModalProps) {
             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#a93226"; }}
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = RED; }}
           >
-            Close
+            {t("community.close")}
           </button>
         </div>
       </div>

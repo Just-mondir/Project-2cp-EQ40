@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -59,6 +60,7 @@ export default function AiPostInsight({
   buttonClassName?: string;
   buttonStyle?: React.CSSProperties;
 }) {
+  const t = useTranslations("auth.aiResearch");
   const [open, setOpen] = useState(false);
   const [insight, setInsight] = useState("");
   const [sources, setSources] = useState<AiInsightSource[]>([]);
@@ -76,12 +78,12 @@ export default function AiPostInsight({
     try {
       const res = await apiFetch(`${API_URL}/api/posts/${postId}/ai-insight/`, { method: "POST" });
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Could not generate AI research.");
+      if (!res.ok) throw new Error(data?.message || t("error"));
 
       setInsight(String(data?.data?.insight ?? ""));
       setSources(Array.isArray(data?.data?.sources) ? data.data.sources : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not generate AI research.");
+      setError(err instanceof Error ? err.message : t("error"));
     } finally {
       setLoading(false);
     }
@@ -103,7 +105,7 @@ export default function AiPostInsight({
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide" style={{ color: "#8B6914" }}>
                 <AiInsightIcon size={16} />
-                Deep AI Research
+                {t("title")}
               </div>
               <h3 className="mt-1 truncate text-lg font-bold" style={{ color: "var(--foreground)" }}>
                 {stripHtml(title)}
@@ -113,7 +115,7 @@ export default function AiPostInsight({
               className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/5"
               style={{ color: "var(--foreground)" }}
               onClick={() => setOpen(false)}
-              aria-label="Close AI research"
+              aria-label={t("closeLabel")}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
@@ -126,7 +128,7 @@ export default function AiPostInsight({
             {loading ? (
               <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 text-sm" style={{ color: "var(--text-muted)" }}>
                 <div className="h-8 w-8 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
-                Researching this post with Gemini...
+                {t("loading")}
               </div>
             ) : error ? (
               <div className="rounded-xl px-4 py-3 text-sm" style={{ backgroundColor: "#FDE8E8", color: "#8B1E1E" }}>
@@ -139,7 +141,7 @@ export default function AiPostInsight({
                 </div>
                 {sources.length > 0 && (
                   <div className="mt-6 rounded-xl px-4 py-3" style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
-                    <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "#8B6914" }}>Sources</h4>
+                    <h4 className="mb-2 text-xs font-bold uppercase tracking-wide" style={{ color: "#8B6914" }}>{t("sources")}</h4>
                     <div className="flex flex-col gap-2">
                       {sources.map((source, index) => (
                         <a key={`${source.uri}-${index}`} href={source.uri} target="_blank" rel="noreferrer" className="text-sm font-semibold underline-offset-2 hover:underline" style={{ color: "var(--foreground)", overflowWrap: "anywhere" }}>
@@ -164,8 +166,8 @@ export default function AiPostInsight({
         className={buttonClassName}
         style={{ color: open ? "#8B6914" : "var(--foreground)", ...buttonStyle }}
         onClick={handleClick}
-        title="AI research"
-        aria-label="Generate deep AI research about this post"
+        title={t("buttonTitle")}
+        aria-label={t("buttonLabel")}
       >
         <AiInsightIcon />
         <span>AI</span>

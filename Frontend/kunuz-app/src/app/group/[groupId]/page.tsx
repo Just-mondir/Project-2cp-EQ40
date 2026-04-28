@@ -12,6 +12,8 @@ import GroupHeader from "@/components/GroupHeader";  // ← ADDED
 import JoinRequestSentModal from "@/components/JoinRequestModel";
 import InviteUsersModal, { type User } from "@/components/InviteUsersModal";
 import GroupAddPostModal from "@/components/GroupAddPostModal";
+import { useLocale, useTranslations } from "next-intl";
+import { localizeLocationLabel } from "@/components/LocationWorldCard";
 const API_URL = "http://127.0.0.1:8000";
 
 /* ─── helpers ─── */
@@ -43,6 +45,37 @@ function fmtDate(d: string) {
 }
 function fmtCount(n: number) {
   return n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+}
+
+function normalizeGroupText(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function translateGroupRules(rules: string, t: ReturnType<typeof useTranslations>) {
+  const ruleKeys: Record<string, string> = {
+    "share content related to roman monuments and archaeology.": "community.rules.shareRoman",
+    "include historical context when posting monuments or artifacts.": "community.rules.includeContext",
+    "respect accuracy and cite sources when possible.": "community.rules.respectAccuracy",
+    "encourage discussion on preservation and restoration.": "community.rules.encourageDiscussion",
+    "no off-topic posts or unrelated promotion.": "community.rules.noOffTopic",
+  };
+
+  return rules
+    .split(/\r?\n/)
+    .map((line) => {
+      const key = ruleKeys[normalizeGroupText(line)];
+      return key ? t(key as any) : line;
+    })
+    .join("\n");
+}
+
+function translateGroupValue(value: string, t: ReturnType<typeof useTranslations>) {
+  const valueKeys: Record<string, string> = {
+    "ancient civilizations": "community.values.ancientCivilizations",
+    "roman period": "community.values.romanPeriod",
+  };
+  const key = valueKeys[normalizeGroupText(value)];
+  return key ? t(key as any) : value;
 }
 
 /* ─── types ─── */
@@ -104,6 +137,8 @@ function Avatar({ src, size }: { src?: string; size: number }) {
 export default function GroupDetailPage() {
   const { groupId } = useParams<{ groupId: string }>();
   const router = useRouter();
+  const t = useTranslations("auth.pages.home");
+  const locale = useLocale();
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -288,20 +323,20 @@ export default function GroupDetailPage() {
                 <div className="max-w-xl">
                   {group.rules && (
                     <div className="mb-6 p-4 rounded-2xl" style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)" }}>
-                      <h3 className="font-bold mb-2 text-sm" style={{ color: "var(--foreground)" }}>Group Rules</h3>
-                      <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-muted)" }}>{group.rules}</p>
+                      <h3 className="localized-container-title font-bold mb-2 text-sm" style={{ color: "var(--foreground)" }}>{t("community.groupRules")}</h3>
+                      <p className="localized-container-text text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-muted)" }}>{translateGroupRules(group.rules, t)}</p>
                     </div>
                   )}
                   <div className="p-4 rounded-2xl" style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)" }}>
-                    <h3 className="font-bold mb-3 text-sm" style={{ color: "var(--foreground)" }}>Details</h3>
+                    <h3 className="localized-container-title font-bold mb-3 text-sm" style={{ color: "var(--foreground)" }}>{t("community.details")}</h3>
                     {[
-                      { label: "Category", value: group.category },
-                      { label: "Region", value: group.region },
-                      { label: "Period", value: group.historical_period },
+                      { label: t("community.category"), value: translateGroupValue(group.category, t) },
+                      { label: t("community.region"), value: localizeLocationLabel(group.region, locale) },
+                      { label: t("community.period"), value: translateGroupValue(group.historical_period, t) },
                     ].filter(d => d.value).map(d => (
                       <div key={d.label} className="flex justify-between py-2 border-b last:border-0 text-sm" style={{ borderColor: "var(--border-soft)" }}>
-                        <span style={{ color: "var(--text-muted)" }}>{d.label}</span>
-                        <span className="font-semibold" style={{ color: "var(--foreground)" }}>{d.value}</span>
+                        <span className="localized-container-title" style={{ color: "var(--text-muted)" }}>{d.label}</span>
+                        <span className="localized-container-text font-semibold" style={{ color: "var(--foreground)" }}>{d.value}</span>
                       </div>
                     ))}
                   </div>
@@ -313,7 +348,7 @@ export default function GroupDetailPage() {
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border-soft)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
                       </svg>
-                      <p className="mt-4 font-semibold" style={{ color: "var(--text-muted)" }}>No posts yet</p>
+                      <p className="mt-4 font-semibold" style={{ color: "var(--text-muted)" }}>{t("community.noPostsTitle")}</p>
                     </div>
                   )}
                   {posts.map((post, idx) => (
@@ -359,7 +394,6 @@ export default function GroupDetailPage() {
               )}
             </div>
 
-
             <div className="flex-1 min-w-[320px] max-w-[380px] hidden lg:block sticky top-[60px]">
               <div
                 className="rounded-2xl overflow-hidden"
@@ -368,13 +402,13 @@ export default function GroupDetailPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-5 pb-3">
                   <h2 className="font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                    {fmtCount(group.member_count)} Members
+                    <span className="localized-member-count">{t("community.members", { count: fmtCount(group.member_count) })}</span>
                   </h2>
                   <button
                     className="text-[10px] px-4 py-1 rounded-full font-bold transition-colors"
                     style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)", cursor: "pointer" }}
                     onClick={() => router.push(`/group/${groupId}/members`)}>
-                    View all
+                    {t("community.viewAll")}
                   </button>
                 </div>
 
@@ -387,7 +421,7 @@ export default function GroupDetailPage() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="8" r="4" /><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       </svg>
-                      <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Admin</span>
+                      <span className="localized-container-title text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>{t("community.admin")}</span>
                     </div>
                     <MemberRow member={adminMember} router={router} />
                   </div>
@@ -401,7 +435,7 @@ export default function GroupDetailPage() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
-                    <span className="text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>Members</span>
+                    <span className="localized-container-title text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>{t("community.membersTitle")}</span>
                   </div>
                   {regularMembers.length > 0 ? (
                     regularMembers.slice(0, 20).map(m => <MemberRow key={m.id} member={m} router={router} />)
@@ -410,7 +444,7 @@ export default function GroupDetailPage() {
                       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border-soft)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
                       </svg>
-                      <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--text-muted)" }}>No members</p>
+                      <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--text-muted)" }}>{t("community.noMembers")}</p>
                     </div>
                   )}
                 </div>
@@ -485,6 +519,7 @@ export default function GroupDetailPage() {
 }
 
 function MemberRow({ member, router }: { member: Member; router: ReturnType<typeof useRouter> }) {
+  const t = useTranslations("auth.pages.home");
   return (
     <div
       className="flex items-center gap-4 py-3 px-2 rounded-xl transition-colors cursor-pointer"
@@ -502,12 +537,12 @@ function MemberRow({ member, router }: { member: Member; router: ReturnType<type
       </div>
       <button
         className="text-[10px] px-3 py-1 rounded-full font-bold flex-shrink-0 transition-colors"
-        style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)" }}
-        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#d5c9b5'; }}
+        style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
+        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--panel-hover)'; }}
         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--border-soft)'; }}
         onClick={e => { e.stopPropagation(); router.push(`/user/${member.username}`); }}
       >
-        View profile
+        {t("community.viewProfile")}
       </button>
 
     </div>

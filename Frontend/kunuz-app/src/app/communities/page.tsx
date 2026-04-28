@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
@@ -440,6 +441,7 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
+  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -452,7 +454,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? "See less" : "See more"}
+          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
         </button>
       )}
     </div>
@@ -476,6 +478,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
+  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -486,7 +489,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -495,7 +498,16 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 
   if (post.post_type === "alert" && post.alert_details) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const statusKeyMap: Record<string, string> = {
+      restored: "statuses.restored",
+      under_intervention: "statuses.underIntervention",
+      destroyed: "statuses.destroyed",
+      alert: "statuses.alert",
+    };
+    const statusLabel = statusKeyMap[post.alert_details.current_status]
+      ? feedT(statusKeyMap[post.alert_details.current_status] as any)
+      : post.alert_details.current_status;
+    const urgencyKey = post.alert_details.urgence_level as "low" | "medium" | "high" | "critical";
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -505,9 +517,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{feedT(`urgency.${urgencyKey}` as any)}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -533,6 +545,7 @@ function CommentItem({
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
 }) {
+  const feedT = useTranslations("auth.feed");
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
@@ -661,7 +674,7 @@ function CommentItem({
   };
 
   const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
+    const reason = window.prompt(feedT("prompts.reportComment"));
     if (!reason || !reason.trim()) return;
 
     try {
@@ -858,6 +871,7 @@ function AnnotationItem({
   onReject: (id: string) => void;
   onRefresh?: () => void;
 }) {
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
@@ -962,22 +976,22 @@ function AnnotationItem({
   };
 
   const handleReport = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
+    const reason = window.prompt(feedT("prompts.reportAnnotation"));
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("annotation", annotation.id, reason.trim());
       setShowMenu(false);
-      window.alert("Reported successfully");
+      window.alert(feedT("feedback.annotationReported"));
     } catch {
-      window.alert("Failed to report");
+      window.alert(feedT("feedback.annotationReportFailed"));
     }
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -1286,6 +1300,7 @@ export function PostModal({
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+  const feedT = useTranslations("auth.feed");
   const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
 
   const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
@@ -1624,7 +1639,7 @@ export function PostModal({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
+            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
             <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
           </div>
         </div>
@@ -1632,14 +1647,23 @@ export function PostModal({
 
       {post.post_type === "alert" && post.alert_details && (() => {
         const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
-        const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
+        const statusKeyMap: Record<string, string> = {
+          restored: "statuses.restored",
+          under_intervention: "statuses.underIntervention",
+          destroyed: "statuses.destroyed",
+          alert: "statuses.alert",
+        };
+        const statusLabel = statusKeyMap[post.alert_details!.current_status]
+          ? feedT(statusKeyMap[post.alert_details!.current_status] as any)
+          : post.alert_details!.current_status;
+        const urgencyKey = post.alert_details!.urgence_level as "low" | "medium" | "high" | "critical";
         return (
           <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
+              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>{feedT("labels.alert")} · {feedT(`urgency.${urgencyKey}` as any)}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
             </div>
           </div>
@@ -1689,10 +1713,10 @@ export function PostModal({
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "var(--background)" }}>
                   {canDelete && (
-                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "#ef4444" }} onClick={() => setConfirmAction("delete")}>Delete post</button>
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "#ef4444" }} onClick={() => setConfirmAction("delete")}>{feedT("actions.deletePost")}</button>
                   )}
                   {!isModeratorActive && (
-                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
                   )}
                 </div>
               )}
@@ -1725,13 +1749,13 @@ export function PostModal({
               {isContentLong && !contentExpanded ? (
                 <p className="text-xs leading-relaxed mt-1" style={{ color: "var(--foreground)" }}>
                   {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
+                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
                 </p>
               ) : (
                 <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
               )}
               {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
               )}
 
 
@@ -1748,7 +1772,7 @@ export function PostModal({
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              Comments ({comments.length})
+              {feedT("tabs.comments", { count: comments.length })}
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
@@ -1759,7 +1783,7 @@ export function PostModal({
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              Annotations ({acceptedAnnotationsCount})
+              {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
             </button>
           </div>
 
@@ -1770,7 +1794,7 @@ export function PostModal({
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <CommentIcon size={28} className="opacity-30" />
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      No comments yet. Be the first to comment!
+                      {feedT("empty.comments")}
                     </p>
                   </div>
                 ) : (
@@ -1790,7 +1814,7 @@ export function PostModal({
                 ) : annotations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <AnnotationIcon size={28} className="opacity-30" />
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>No annotations yet. Be the first to annotate!</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{feedT("empty.annotations")}</p>
                   </div>
                 ) : (
                   annotations.map((annotation) => (
@@ -1855,7 +1879,7 @@ export function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add a comment"
+                  placeholder={feedT("placeholders.comment")}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }}
@@ -1874,7 +1898,7 @@ export function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add an annotation"
+                  placeholder={feedT("placeholders.annotation")}
                   value={newAnnotationText}
                   onChange={(e) => setNewAnnotationText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }}
@@ -1901,9 +1925,10 @@ export function PostModal({
 
 function MobileGroupsStrip({ groups }: { groups: Group[] }) {
   const router = useRouter();
+  const t = useTranslations("auth.pages.home");
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>Popular Groups</h3>
+      <h3 className="localized-container-title text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{t("guilds.title")}</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -1925,7 +1950,7 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
                 className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2"
               />
               <span
-                className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
+                className="localized-container-title text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
                 style={{
                   color: "var(--foreground)",
                   fontFamily: "var(--font-lato)",
@@ -1937,7 +1962,7 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
                 {group.name}
               </span>
               <span
-                className="text-[8px] text-center leading-tight line-clamp-2 mb-2"
+                className="localized-container-text text-[8px] text-center leading-tight line-clamp-2 mb-2"
                 style={{
                   color: "var(--text-muted)",
                   fontFamily: "var(--font-lato)",
@@ -1947,20 +1972,20 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
               >
                 {group.description?.replace(/<[^>]*>/g, "")}
               </span>
-              <span className="flex items-center gap-1 text-[9px] font-medium" style={{ color: "#8B6914" }}>
+              <span className="localized-member-count flex items-center gap-1 text-[9px] font-medium" style={{ color: "#8B6914" }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                {formatCount(group.member_count || 0)}
+                {t("community.members", { count: formatCount(group.member_count || 0) })}
               </span>
               <button
                 className="mt-3 w-full text-[9px] py-1.5 rounded-full font-bold transition-colors hover:opacity-90"
                 style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
                 onClick={() => router.push(`/group/${group.id}`)}
-              >Visit</button>
+              >{t("community.visit")}</button>
             </div>
           </div>
         ))}
@@ -1987,18 +2012,19 @@ function RightSidebar({
   onViewAllSuggestedGroups: () => void;
 }) {
   const router = useRouter();
+  const t = useTranslations("auth.pages.home");
   return (
     <aside className="w-[350px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
         {/* Header: title + Create button */}
         <div className="flex justify-between items-center mb-5 flex-shrink-0">
-          <h2 className="text-xl font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Groups</h2>
+          <h2 className="localized-container-title text-xl font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{t("community.groupsTitle")}</h2>
           <button
             className="text-[11px] px-3 py-1.5 rounded-full font-bold transition-colors hover:opacity-90"
-            style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
+            style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
             onClick={onCreateGroup}
           >
-            Create new group
+            {t("community.createGroup")}
           </button>
         </div>
 
@@ -2015,15 +2041,15 @@ function RightSidebar({
           {myGroups.length > 0 && (
             <div>
               <div className="flex justify-between items-center mb-3">
-                <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Your Groups</h3>
+                <h3 className="localized-container-title text-sm font-bold" style={{ color: "var(--foreground)" }}>{t("community.yourGroups")}</h3>
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "rgba(107, 62, 38, 0.1)", color: "#6B3E26" }}>{myGroups.length}</span>
                   <button
                     onClick={onViewAllMyGroups}
                     className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-80"
-                    style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
+                    style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
                   >
-                    View all
+                    {t("community.viewAll")}
                   </button>
                 </div>
               </div>
@@ -2040,14 +2066,14 @@ function RightSidebar({
                       className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
                     />
                     <div className="flex flex-col justify-center min-w-0 flex-1">
-                      <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                      <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
+                      <span className="localized-container-title font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                      <span className="localized-member-count text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{t("community.members", { count: formatCount(group.member_count || 0) })}</span>
                     </div>
                     <button
                       className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90 flex-shrink-0"
                       style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
                       onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
-                    >Visit</button>
+                    >{t("community.visit")}</button>
                   </div>
                 ))}
               </div>
@@ -2057,13 +2083,13 @@ function RightSidebar({
           {/* Suggested Groups Section */}
           <div>
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Suggested Groups</h3>
+              <h3 className="localized-container-title text-sm font-bold" style={{ color: "var(--foreground)" }}>{t("community.suggestedGroups")}</h3>
               <button
                 onClick={onViewAllSuggestedGroups}
                 className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-80"
-                style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
+                style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
               >
-                View all
+                {t("community.viewAll")}
               </button>
             </div>
             <div className="flex flex-col gap-2">
@@ -2077,14 +2103,14 @@ function RightSidebar({
                       className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
                     />
                     <div className="flex flex-col justify-center min-w-0 flex-1">
-                      <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                      <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
+                      <span className="localized-container-title font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                      <span className="localized-member-count text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{t("community.members", { count: formatCount(group.member_count || 0) })}</span>
                     </div>
                     <button
                       className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90"
                       style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
                       onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
-                    >Visit</button>
+                    >{t("community.visit")}</button>
                   </div>
                 ))}
             </div>
@@ -2117,6 +2143,8 @@ export function PostCard({
   groupDetails?: any;
   onDelete?: (postId: string) => void;
 }) {
+  const feedT = useTranslations("auth.feed");
+  const t = useTranslations("auth.pages.home");
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -2265,7 +2293,7 @@ export function PostCard({
 
         <div className="flex items-center gap-3">
           <p className="text-[10px] whitespace-nowrap opacity-60" style={{ color: "var(--text-muted)" }}>
-            posted in {formatDate(post.created_at)}
+            {t("community.postedIn", { date: formatDate(post.created_at) })}
           </p>
           <div className="relative">
             <button className="p-1 rounded transition-colors hover:bg-black/5" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
@@ -2281,7 +2309,7 @@ export function PostCard({
                         style={{ color: "var(--foreground)" }}
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("edit"); }}
                       >
-                        Edit post
+                        {feedT("actions.editPost")}
                       </button>
                     )}
                     <button
@@ -2289,12 +2317,12 @@ export function PostCard({
                       style={{ color: "#ef4444" }}
                       onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
                     >
-                      Delete post
+                      {feedT("actions.deletePost")}
                     </button>
                   </>
                 )}
                 {!isModeratorActive && (
-                  <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>Report post</button>
+                  <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
                 )}
               </div>
             )}
@@ -2447,6 +2475,7 @@ export function PostCard({
 
 export default function CommunitiesPageRoute() {
   const router = useRouter();
+  const t = useTranslations("auth.pages.home");
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
@@ -2737,7 +2766,7 @@ export default function CommunitiesPageRoute() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
-                  placeholder="Search posts, groups..."
+                  placeholder={t("search.placeholder")}
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -2763,7 +2792,7 @@ export default function CommunitiesPageRoute() {
                     <div className="max-h-[400px] overflow-y-auto feed-scroll">
                       {searchResults?.users && searchResults.users.length > 0 && (
                         <div className="px-4 pt-3 pb-1">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Users</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.users")}</p>
                           {searchResults.users.map((user) => (
                             <button
                               key={user.id}
@@ -2803,7 +2832,7 @@ export default function CommunitiesPageRoute() {
                       )}
                       {searchResults?.posts && searchResults.posts.length > 0 && (
                         <div className="px-4 pt-2 pb-3">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Posts</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.posts")}</p>
                           {searchResults.posts.map((post) => (
                             <button
                               key={post.id}
@@ -2823,7 +2852,7 @@ export default function CommunitiesPageRoute() {
                       )}
                       {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (!searchResults.groups || searchResults.groups.length === 0) && (
                         <div className="flex flex-col items-center py-6 gap-1">
-                          <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>No results for "{searchQuery}"</p>
+                          <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>{t("search.noResults", { query: searchQuery })}</p>
                         </div>
                       )}
                     </div>
@@ -2836,11 +2865,14 @@ export default function CommunitiesPageRoute() {
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} />
                 <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
+                    {t("community.feedTitle")}
+                  </h2>
                 </div>
                 {posts.length === 0 && !loading && (
                   <div className="flex flex-col items-center py-20 text-center">
-                    <p className="font-bold text-lg" style={{ color: "var(--text-muted)" }}>No posts found</p>
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>Be the first to share something in this community!</p>
+                    <p className="font-bold text-lg" style={{ color: "var(--text-muted)" }}>{t("community.noPostsTitle")}</p>
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>{t("community.noPostsDescription")}</p>
                   </div>
                 )}
                 {posts.map((post, index) => (

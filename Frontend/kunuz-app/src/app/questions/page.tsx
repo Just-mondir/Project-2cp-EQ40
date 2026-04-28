@@ -1910,7 +1910,7 @@ function MobileGroupsStrip({
 }) {
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{title}</h3>
+      <h3 className="localized-container-title text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{title}</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -1930,7 +1930,7 @@ function MobileGroupsStrip({
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="text-[10px] font-bold text-center leading-tight line-clamp-1" style={{ color: "#432817" }}>
+            <span className="localized-container-title text-[10px] font-bold text-center leading-tight line-clamp-1" style={{ color: "var(--foreground)" }}>
               {group.name}
             </span>
           </div>
@@ -1952,15 +1952,15 @@ function RightSidebar({
   return (
     <aside className="w-[300px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{title}</h2>
+        <h2 className="localized-container-title text-base font-bold mb-5 flex-shrink-0" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{title}</h2>
         <div className="flex flex-col gap-3 flex-shrink-0">
           {groups.slice(0, 5).map((group, i) => (
             <div key={i} className="flex gap-4 py-3.5 px-3 rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5" style={{ width: "100%", boxShadow: "0 8px 22px rgba(67,40,23,0.08)", backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
               <img src={group.image} alt={group.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 shadow-sm" style={{ borderColor: "var(--panel-elevated)" }} />
               <div className="flex flex-col justify-center min-w-0">
-                <span className="font-bold text-sm truncate" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                <span className="text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{group.desc}</span>
-                <div className="flex items-center gap-1 mt-1.5">
+                <span className="localized-container-title font-bold text-sm truncate" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                <span className="localized-container-text text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{group.desc}</span>
+                <div className="localized-member-count flex items-center gap-1 mt-1.5">
                   <PeopleIcon className="w-3 h-3 text-[var(--accent-gold)]" />
                   <span className="text-[10px] font-bold" style={{ color: "var(--accent-gold)" }}>
                     {group.membersLabel}

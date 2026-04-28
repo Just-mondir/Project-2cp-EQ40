@@ -4,9 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import LeftSidebar from "@/components/LeftSidebar";
 import GroupHeader from "@/components/GroupHeader";
+import { useTranslations } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
 function getToken() { return typeof window !== "undefined" ? localStorage.getItem("accessToken") || "" : ""; }
+function fmtCount(n: number) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+}
 
 /* ───────────────── TYPES ───────────────── */
 type GroupDetail = {
@@ -74,6 +78,7 @@ function MemberRow({
   onRemove?: (id: string) => void;
   removing?: string | null;
 }) {
+  const t = useTranslations("auth.pages.home");
   const isBeingRemoved = removing === member.id;
 
   return (
@@ -113,7 +118,7 @@ function MemberRow({
             cursor: "pointer", whiteSpace: "nowrap",
           }}
         >
-          View profile
+          {t("community.viewProfile")}
         </button>
 
        {currentUserIsAdmin && !member.is_admin && onRemove && (
@@ -130,7 +135,7 @@ function MemberRow({
       whiteSpace: "nowrap",
     }}
   >
-    {isBeingRemoved ? "Removing…" : "Remove"}
+    {isBeingRemoved ? t("community.removing") : t("community.remove")}
   </button>
 )}
       </div>
@@ -143,7 +148,7 @@ function SectionLabel({ icon, label }: { icon: React.ReactNode; label: string })
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 14px 4px" }}>
       {icon}
-      <span style={{ fontFamily: "Lato, sans-serif", fontWeight: 600, fontSize: "12px", color: "#8B7355", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+      <span className="localized-container-title" style={{ fontFamily: "Lato, sans-serif", fontWeight: 600, fontSize: "12px", color: "#8B7355", textTransform: "uppercase", letterSpacing: "0.1em" }}>
         {label}
       </span>
     </div>
@@ -168,6 +173,7 @@ function MembersList({
   removing?: string | null;
   loading: boolean;
 }) {
+  const t = useTranslations("auth.pages.home");
   const adminMember = members.find(m => m.is_admin);
   const regularMembers = members.filter(m => !m.is_admin);
 
@@ -182,13 +188,13 @@ function MembersList({
       {/* Header */}
       <div style={{ borderBottom: "1px solid #D8C8B1", paddingBottom: "12px", marginBottom: "12px" }}>
         <span style={{ fontFamily: "Lato, sans-serif", fontWeight: 700, fontSize: "18px", color: "#432817" }}>
-          {totalCount} Members
+          <span className="localized-member-count">{t("community.members", { count: fmtCount(totalCount) })}</span>
         </span>
       </div>
 
       {loading ? (
         <div style={{ textAlign: "center", padding: "40px 0", color: "#8B7355", fontSize: "14px" }}>
-          Loading members…
+          {t("community.loadingMembers")}
         </div>
       ) : (
         <>
@@ -196,7 +202,7 @@ function MembersList({
           {adminMember && (
             <div style={{ marginBottom: "8px" }}>
               <SectionLabel
-                label="Admin"
+                label={t("community.admin")}
                 icon={
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="8" r="4" /><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -221,7 +227,7 @@ function MembersList({
           {regularMembers.length > 0 && (
             <div>
               <SectionLabel
-                label="Members"
+                label={t("community.membersTitle")}
                 icon={
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B7355" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
@@ -246,7 +252,7 @@ function MembersList({
 
           {members.length === 0 && (
             <div style={{ textAlign: "center", padding: "40px 0", color: "#8B7355", fontSize: "14px" }}>
-              No members yet.
+              {t("community.noMembers")}
             </div>
           )}
         </>

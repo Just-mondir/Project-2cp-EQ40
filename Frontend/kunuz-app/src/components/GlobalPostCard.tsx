@@ -34,6 +34,21 @@ function stripHtml(html: string): string {
   return doc.body.textContent || "";
 }
 
+function isArabicText(html: string): boolean {
+  const text = stripHtml(html).trim();
+  const firstStrongChar = text.match(/[A-Za-zÀ-ÖØ-öø-ÿ\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/)?.[0];
+  return Boolean(firstStrongChar && /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(firstStrongChar));
+}
+
+function getUserContentDirectionStyle(html: string): React.CSSProperties {
+  const isArabic = isArabicText(html);
+  return {
+    direction: isArabic ? "rtl" : "ltr",
+    textAlign: isArabic ? "right" : "left",
+    unicodeBidi: "plaintext",
+  };
+}
+
 function getAuthToken(): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem("accessToken") || "";
@@ -411,6 +426,7 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
+  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -423,7 +439,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? "See less" : "See more"}
+          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
         </button>
       )}
     </div>
@@ -447,6 +463,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
+  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -457,7 +474,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -465,8 +482,10 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
   }
 
   if (post.post_type === "alert" && post.alert_details) {
-    const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    const urgencyKey = post.alert_details.urgence_level;
+    const level = URGENCY_COLORS[urgencyKey] ?? URGENCY_COLORS.medium;
+    const statusKey = post.alert_details.current_status === "under_intervention" ? "underIntervention" : post.alert_details.current_status;
+    const statusLabel = feedT(`statuses.${statusKey}` as any);
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -476,9 +495,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{feedT(`urgency.${urgencyKey}` as any)}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -504,6 +523,8 @@ function CommentItem({
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
@@ -631,16 +652,16 @@ function CommentItem({
   };
 
   const handleReportComment = async () => {
-    const reason = window.prompt("Why are you reporting this comment?");
+    const reason = window.prompt(feedT("prompts.reportComment"));
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("comment", comment.id, reason.trim());
       setShowMenu(false);
-      window.alert("Comment reported successfully.");
+      window.alert(feedT("feedback.commentReported"));
     } catch (error) {
       window.alert(
-        error instanceof Error ? error.message : "Failed to report comment."
+        error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
       );
     }
   };
@@ -687,14 +708,14 @@ function CommentItem({
                       style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                       onClick={handleEditComment}
                     >
-                      Edit comment
+                      {feedT("actions.editComment")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-red-500/10"
                       style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                       onClick={handleDeleteComment}
                     >
-                      Delete comment
+                      {feedT("actions.deleteComment")}
                     </button>
                   </>
                 ) : (
@@ -703,7 +724,7 @@ function CommentItem({
                     style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                     onClick={handleReportComment}
                   >
-                    Report comment
+                    {feedT("actions.reportComment")}
                   </button>
                 )}
               </div>
@@ -730,21 +751,21 @@ function CommentItem({
                 style={{ backgroundColor: "var(--foreground)", color: "var(--background)" }}
                 onClick={handleSaveEditedComment}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
                 onClick={handleCancelEditComment}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
         ) : (
           <div
-            className="text-sm leading-relaxed prose prose-sm max-w-none"
-            style={{ color: "var(--foreground)" }}
+            className="user-generated-content text-sm leading-relaxed prose prose-sm max-w-none"
+            style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(comment.content) }}
           >
             {stripHtml(comment.content)}
           </div>
@@ -769,7 +790,7 @@ function CommentItem({
               <polyline points="9 14 4 9 9 4" />
               <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
             </svg>
-            <span>Reply</span>
+            <span>{commonT("reply")}</span>
           </button>
         </div>
 
@@ -777,7 +798,7 @@ function CommentItem({
           <div className="flex items-center gap-2 mt-2">
             <input
               type="text"
-              placeholder="Write a reply..."
+              placeholder={feedT("placeholders.reply")}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               onKeyDown={(e) => {
@@ -826,6 +847,8 @@ function AnnotationItem({
   onReject: (id: string) => void;
   onRefresh?: () => void;
 }) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
@@ -928,22 +951,22 @@ function AnnotationItem({
   };
 
   const handleReport = async () => {
-    const reason = window.prompt("Why are you reporting this annotation?");
+    const reason = window.prompt(feedT("prompts.reportAnnotation"));
     if (!reason || !reason.trim()) return;
 
     try {
       await submitReport("annotation", annotation.id, reason.trim());
       setShowMenu(false);
-      window.alert("Reported successfully");
+      window.alert(feedT("feedback.annotationReported"));
     } catch {
-      window.alert("Failed to report");
+      window.alert(feedT("feedback.annotationReportFailed"));
     }
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -1000,14 +1023,14 @@ function AnnotationItem({
                       style={{ color: "var(--foreground)" }}
                       onClick={handleEditAnnotation}
                     >
-                      Edit annotation
+                      {feedT("actions.editAnnotation")}
                     </button>
                     <button
                       className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-red-500/10"
                       style={{ color: "var(--foreground)" }}
                       onClick={handleDelete}
                     >
-                      Delete annotation
+                      {feedT("actions.deleteAnnotation")}
                     </button>
                   </>
                 )}
@@ -1018,7 +1041,7 @@ function AnnotationItem({
                     style={{ color: "var(--foreground)" }}
                     onClick={handleReport}
                   >
-                    Report annotation
+                    {feedT("actions.reportAnnotation")}
                   </button>
                 )}
 
@@ -1029,7 +1052,7 @@ function AnnotationItem({
                       style={{ color: "#5C7A3E" }}
                       onClick={handleAccept}
                     >
-                      Accept
+                      {commonT("accept")}
                     </button>
 
                     <button
@@ -1037,7 +1060,7 @@ function AnnotationItem({
                       style={{ color: "#C0392B" }}
                       onClick={handleReject}
                     >
-                      Reject
+                      {commonT("reject")}
                     </button>
                   </>
                 )}
@@ -1065,19 +1088,19 @@ function AnnotationItem({
                 style={{ backgroundColor: "var(--foreground)", color: "var(--background)" }}
                 onClick={handleSaveEditedAnnotation}
               >
-                Save
+                {commonT("save")}
               </button>
               <button
                 className="px-3 py-1.5 rounded-lg text-xs font-bold"
                 style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
                 onClick={handleCancelEditAnnotation}
               >
-                Cancel
+                {commonT("cancel")}
               </button>
             </div>
           </div>
         ) : annotation.text ? (
-          <p className="text-xs" style={{ color: "var(--foreground)" }}>
+          <p className="user-generated-content text-xs" style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(annotation.text) }}>
             {annotation.text}
           </p>
         ) : null}
@@ -1233,6 +1256,7 @@ function PostModal({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
 }) {
+  const feedT = useTranslations("auth.feed");
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
 
   const [newComment, setNewComment] = useState("");
@@ -1551,7 +1575,7 @@ function PostModal({
           iconSize={13}
           buttonClassName="mb-1"
         />
-        <h3 className="text-base font-bold" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+        <h3 dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content text-base font-bold" style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(post.title) }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </div>
 
       {post.post_type === "event" && post.event_details && (
@@ -1560,7 +1584,7 @@ function PostModal({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
+            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
             <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
           </div>
         </div>
@@ -1575,14 +1599,14 @@ function PostModal({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
+              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>{feedT("labels.alert")} · {feedT(`urgency.${post.alert_details!.urgence_level}` as any)}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
             </div>
           </div>
         );
       })()}
 
-      <p className="text-sm leading-relaxed flex-1" style={{ color: "var(--foreground)" }}>{post.content}</p>
+      <p className="user-generated-content text-sm leading-relaxed flex-1" style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(post.content) }}>{post.content}</p>
 
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4">
@@ -1624,7 +1648,7 @@ function PostModal({
               </button>
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "var(--background)" }}>
-                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>Report post</button>
+                  <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
                 </div>
               )}
             </div>
@@ -1643,18 +1667,18 @@ function PostModal({
                 iconSize={13}
                 buttonClassName="mb-1"
               />
-              <h3 className="text-base font-bold" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+              <h3 dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content text-base font-bold" style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(post.title) }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
               {isContentLong && !contentExpanded ? (
-                <p className="text-xs leading-relaxed mt-1" style={{ color: "var(--foreground)" }}>
+                <p className="user-generated-content text-xs leading-relaxed mt-1" style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(post.content) }}>
                   {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
+                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
                 </p>
               ) : (
-                <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                <div className="user-generated-content text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "var(--foreground)", ...getUserContentDirectionStyle(post.content) }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
               )}
               {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
+                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
               )}
 
 
@@ -1671,7 +1695,7 @@ function PostModal({
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              Comments ({comments.length})
+              {feedT("tabs.comments", { count: comments.length })}
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
@@ -1682,7 +1706,7 @@ function PostModal({
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              Annotations ({acceptedAnnotationsCount})
+              {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
             </button>
           </div>
 
@@ -1693,7 +1717,7 @@ function PostModal({
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <CommentIcon size={28} className="opacity-30" />
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      No comments yet. Be the first to comment!
+                      {feedT("empty.comments")}
                     </p>
                   </div>
                 ) : (
@@ -1713,7 +1737,7 @@ function PostModal({
                 ) : annotations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <AnnotationIcon size={28} className="opacity-30" />
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>No annotations yet. Be the first to annotate!</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{feedT("empty.annotations")}</p>
                   </div>
                 ) : (
                   annotations.map((annotation) => (
@@ -1778,7 +1802,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add a comment"
+                  placeholder={feedT("placeholders.comment")}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }}
@@ -1797,7 +1821,7 @@ function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder="Add an annotation"
+                  placeholder={feedT("placeholders.annotation")}
                   value={newAnnotationText}
                   onChange={(e) => setNewAnnotationText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }}

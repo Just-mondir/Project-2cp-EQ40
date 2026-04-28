@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 
 /* ─── types (same as page) ─── */
 type GroupDetail = {
@@ -67,6 +68,7 @@ export default function GroupHeader({
   onTabChange,
   GroupeMenuComponent,
 }: GroupHeaderProps) {
+  const t = useTranslations("auth.pages.home");
   const avatarUrl = resolveUrl(group.profile_picture);
   const adminMember = members.find(m => m.is_admin);
 
@@ -123,16 +125,13 @@ export default function GroupHeader({
               {group.name}
             </h1>
             <div className="flex items-center gap-4 mt-2.5">
-              <span style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>{fmtCount(group.member_count)} members</span>
+              <span className="localized-member-count" style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>{t("community.members", { count: fmtCount(group.member_count) })}</span>
               <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 20 }}>·</span>
-              <span style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>{fmtCount(group.post_count)} Posts</span>
+              <span style={{ fontSize: 16, color: "rgba(255,255,255,0.9)", fontWeight: 600 }}>{t("community.posts", { count: fmtCount(group.post_count) })}</span>
             </div>
             {adminMember && (
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.75)", marginTop: 8 }}>
-                Managed by{" "}
-                <span style={{ fontWeight: 700, color: "rgba(255,255,255,1)" }}>
-                  {adminMember.display_name || adminMember.username}
-                </span>
+                {t("community.managedBy", { name: adminMember.display_name || adminMember.username })}
               </p>
             )}
           </div>
@@ -141,7 +140,7 @@ export default function GroupHeader({
 
       {/* Description */}
       <div className="max-w-6xl mx-auto px-10 py-6">
-        <h2 className="font-bold mb-3" style={{ fontSize: 20, color: "var(--foreground)" }}>Discription</h2>
+        <h2 className="localized-container-title font-bold mb-3" style={{ fontSize: 20, color: "var(--foreground)" }}>{t("community.description")}</h2>
         <p className="leading-relaxed opacity-90" style={{ fontSize: 16, color: "var(--text-muted)" }}>{group.description}</p>
       </div>
 
@@ -150,22 +149,23 @@ export default function GroupHeader({
         className="flex items-center px-10 border-b-2 border-transparent sticky top-0 z-10 max-w-6xl mx-auto w-full"
         style={{ backgroundColor: "var(--background)" }}
       >
-        {tabs.map(t => (
+        {tabs.map(tabId => (
           <button
-            key={t}
+            key={tabId}
             className="mr-14 py-6 font-bold capitalize transition-all relative"
             style={{
               fontFamily: "var(--font-lato), sans-serif",
               fontSize: 22,
-              color: tab === t ? "#432817" : "rgba(67, 40, 23, 0.45)",
+              color: tab === tabId ? "var(--foreground)" : "var(--text-muted)",
+              opacity: tab === tabId ? 1 : 0.72,
             }}
-            onClick={() => onTabChange(t)}
+            onClick={() => onTabChange(tabId)}
           >
-            {t}
-            {tab === t && (
+            {tabId === "my posts" ? t("community.tabs.myPosts") : t(`community.tabs.${tabId}` as any)}
+            {tab === tabId && (
               <div
                 className="absolute bottom-0 left-0 right-0 h-[4px] rounded-t-full"
-                style={{ backgroundColor: "#432817" }}
+                style={{ backgroundColor: "var(--foreground)" }}
               />
             )}
           </button>
@@ -175,19 +175,19 @@ export default function GroupHeader({
   {group.is_member && (
     <button
       className="text-lg font-bold px-8 py-2.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-      style={{ backgroundColor: "var(--border-soft)", color: "#432817", boxShadow: "0 4px 12px rgba(67,40,23,0.1)" }}
+      style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)", boxShadow: "0 4px 12px rgba(67,40,23,0.1)" }}
       onClick={onAddPost}
     >
-      + Post
+      {t("community.addPost")}
     </button>
   )}
   <button
     className="text-lg font-bold px-8 py-2.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-    style={{ backgroundColor: "#432817", color: "#e8d9c0", boxShadow: "0 4px 12px rgba(67,40,23,0.2)", opacity: joinStatus === "pending" ? 0.6 : 1 }}
+    style={{ backgroundColor: "var(--foreground)", color: "var(--background)", boxShadow: "0 4px 12px rgba(67,40,23,0.2)", opacity: joinStatus === "pending" ? 0.6 : 1 }}
     onClick={group.is_member ? onInvite : onJoin}
     disabled={joining || joinStatus === "pending"}
   >
-    {group.is_member ? "+ Invite" : joinStatus === "pending" ? "Request sent" : joining ? "Joining..." : "Join"}
+    {group.is_member ? t("community.invite") : joinStatus === "pending" ? t("community.requestSent") : joining ? t("community.joining") : t("community.join")}
   </button>
   {GroupeMenuComponent}
 </div>

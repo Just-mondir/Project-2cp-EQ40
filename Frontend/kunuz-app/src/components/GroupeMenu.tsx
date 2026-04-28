@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import LeaveGroupModal from "@/components/LeaveGroupeModal";
+import { useTranslations } from "next-intl";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -35,6 +36,7 @@ function DeleteConfirmModal({
   onCancel: () => void;
   deleting: boolean;
 }) {
+  const t = useTranslations("auth.pages.home");
   return (
     <>
       <Backdrop onClick={onCancel} />
@@ -42,7 +44,8 @@ function DeleteConfirmModal({
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            backgroundColor: "#FFF8E2",
+            backgroundColor: "var(--panel-bg)",
+            border: "1px solid var(--border-soft)",
             borderRadius: "20px",
             padding: "36px 32px 28px",
             width: "400px",
@@ -69,11 +72,11 @@ function DeleteConfirmModal({
             </svg>
           </div>
 
-          <p style={{ margin: "0 0 6px", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-            Delete Group
+          <p style={{ margin: "0 0 6px", color: "var(--foreground)", fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
+            {t("community.deleteGroupTitle")}
           </p>
-          <p style={{ margin: "0 0 24px", color: "#8B7355", fontFamily: "'Lato', sans-serif", fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-            Are you sure you want to delete <strong>{groupName}</strong>? This action cannot be undone.
+          <p style={{ margin: "0 0 24px", color: "var(--text-muted)", fontFamily: "'Lato', sans-serif", fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
+            {t("community.deleteGroupMessage", { groupName })}
           </p>
 
           {/* Delete button */}
@@ -91,15 +94,15 @@ function DeleteConfirmModal({
             onMouseEnter={(e) => { if (!deleting) e.currentTarget.style.backgroundColor = "#a93226"; }}
             onMouseLeave={(e) => { if (!deleting) e.currentTarget.style.backgroundColor = "#C0392B"; }}
           >
-            {deleting ? "Deleting..." : "Yes, delete group"}
+            {deleting ? t("community.deletingGroup") : t("community.deleteGroupConfirm")}
           </button>
 
           {/* Cancel */}
           <button
             onClick={onCancel}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#432817", fontFamily: "'Lato', sans-serif", fontWeight: 600, fontSize: "15px", marginTop: "12px", opacity: 0.75 }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--foreground)", fontFamily: "'Lato', sans-serif", fontWeight: 600, fontSize: "15px", marginTop: "12px", opacity: 0.75 }}
           >
-            Cancel
+            {t("community.close")}
           </button>
         </div>
       </div>
@@ -128,6 +131,7 @@ export default function GroupOptionsMenu({
   isModerator?: boolean;
 }) {
   const router = useRouter();
+  const t = useTranslations("auth.pages.home");
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -172,7 +176,7 @@ export default function GroupOptionsMenu({
   // ── Menu items based on role ──
   const adminItems = [
     {
-      label: "Edit group",
+      label: t("community.editGroup"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -183,7 +187,7 @@ export default function GroupOptionsMenu({
       danger: false,
     },
     {
-      label: "Delete group",
+      label: t("community.deleteGroup"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="3 6 5 6 21 6" />
@@ -196,7 +200,7 @@ export default function GroupOptionsMenu({
       danger: true,
     },
     {
-      label: "About",
+      label: t("community.tabs.about"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" />
@@ -208,7 +212,7 @@ export default function GroupOptionsMenu({
       danger: false,
     },
     {
-      label: "Members",
+      label: t("community.membersTitle"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -224,7 +228,7 @@ export default function GroupOptionsMenu({
 
   const memberItems = [
     {
-      label: "About",
+      label: t("community.tabs.about"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" />
@@ -236,7 +240,7 @@ export default function GroupOptionsMenu({
       danger: false,
     },
     {
-      label: "Members",
+      label: t("community.membersTitle"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -249,7 +253,7 @@ export default function GroupOptionsMenu({
       danger: false,
     },
     {
-      label: "Report group",
+      label: t("community.reportGroup"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -261,7 +265,7 @@ export default function GroupOptionsMenu({
       danger: false,
     },
     {
-      label: "Leave group",
+      label: t("community.leaveGroup"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -284,7 +288,7 @@ export default function GroupOptionsMenu({
 
   const visitorItems = [
     {
-      label: "Members",
+      label: t("community.membersTitle"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -297,7 +301,7 @@ export default function GroupOptionsMenu({
       danger: false,
     },
     {
-      label: "Report group",
+      label: t("community.reportGroup"),
       icon: (
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
@@ -319,8 +323,8 @@ export default function GroupOptionsMenu({
         <button
           onClick={() => setOpen(o => !o)}
           className="p-2 rounded-lg transition-colors"
-          style={{ color: "#432817", backgroundColor: "transparent" }}
-          onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--border-soft)"; }}
+          style={{ color: "var(--foreground)", backgroundColor: "transparent" }}
+          onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--panel-hover)"; }}
           onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -330,16 +334,15 @@ export default function GroupOptionsMenu({
           </svg>
         </button>
 
-
         {/* Dropdown menu */}
         {open && (
-          <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
             {items.map((item, i) => (
               <button
                 key={i}
                 onClick={item.onClick}
-                className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
-                style={{ color: "#432817", fontFamily: "'Lato', sans-serif" }}
+                className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]"
+                style={{ color: item.danger ? "#C0392B" : "var(--foreground)", fontFamily: "'Lato', sans-serif" }}
               >
                 {item.label}
               </button>

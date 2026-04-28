@@ -8,7 +8,7 @@ import { LOCALE_LABELS, type AppLocale } from "@/lib/i18n";
 const LOCALE_OPTIONS = Object.entries(LOCALE_LABELS) as Array<[AppLocale, string]>;
 
 export default function LanguageSwitcher() {
-  const { direction, locale, setLocale } = useLocaleSettings();
+  const { locale, setLocale } = useLocaleSettings();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -29,7 +29,7 @@ export default function LanguageSwitcher() {
     <div
       ref={containerRef}
       className="relative"
-      dir={direction}
+      dir="ltr"
     >
       <button
         type="button"
@@ -81,7 +81,7 @@ export default function LanguageSwitcher() {
                   fontFamily: "var(--font-lato), sans-serif",
                 }}
               >
-                <span>{label}</span>
+                <span dir="auto">{label}</span>
                 <span
                   className="inline-flex h-5 w-5 items-center justify-center rounded-full"
                   style={{

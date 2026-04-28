@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 const FONT = "var(--font-lato), 'Lato', sans-serif";
 const GREEN = "#168F66";
 
@@ -8,6 +10,7 @@ interface JoinRequestSentModalProps {
 }
 
 export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalProps) {
+  const t = useTranslations("auth.pages.home");
   return (
     <>
       {/* Backdrop */}
@@ -24,7 +27,8 @@ export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalPr
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            backgroundColor: "#FFF8E2",
+            backgroundColor: "var(--panel-bg)",
+            border: "1px solid var(--border-soft)",
             borderRadius: "20px",
             padding: "36px 32px 28px",
             width: "400px",
@@ -50,13 +54,13 @@ export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalPr
           </div>
 
           {/* Title */}
-          <p style={{ margin: "0 0 6px", color: "#432817", fontFamily: FONT, fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-            Join request sent
+          <p style={{ margin: "0 0 6px", color: "var(--foreground)", fontFamily: FONT, fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
+            {t("community.joinRequestTitle")}
           </p>
 
           {/* Subtitle */}
-          <p style={{ margin: "0 0 24px", color: "#8B7355", fontFamily: FONT, fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-            Thank you!<br />Waiting for admin approval.
+          <p style={{ margin: "0 0 24px", color: "var(--text-muted)", fontFamily: FONT, fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
+            {t("community.joinRequestMessage")}
           </p>
 
           {/* Close button */}
@@ -71,7 +75,7 @@ export default function JoinRequestSentModal({ onClose }: JoinRequestSentModalPr
             onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#117a57"; }}
             onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = GREEN; }}
           >
-            Close
+            {t("community.close")}
           </button>
         </div>
       </div>

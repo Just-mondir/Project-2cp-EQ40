@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 
 type LocationWorldCardProps = {
   location?: string;
@@ -14,6 +15,42 @@ type LocationWorldCardProps = {
   buttonStyle?: CSSProperties;
 };
 
+const LOCATION_TRANSLATIONS: Record<string, Record<string, string>> = {
+  fr: {
+    Algeria: "Algérie",
+    "southeastern Algeria": "sud-est de l'Algérie",
+    "southern Algeria": "sud de l'Algérie",
+    "northern Algeria": "nord de l'Algérie",
+    "eastern Algeria": "est de l'Algérie",
+    "western Algeria": "ouest de l'Algérie",
+    "central Algeria": "centre de l'Algérie",
+    "Illizi Province": "wilaya d'Illizi",
+    Province: "wilaya",
+  },
+  ar: {
+    Algeria: "الجزائر",
+    Djanet: "جانيت",
+    Illizi: "إليزي",
+    "southeastern Algeria": "جنوب شرق الجزائر",
+    "southern Algeria": "جنوب الجزائر",
+    "northern Algeria": "شمال الجزائر",
+    "eastern Algeria": "شرق الجزائر",
+    "western Algeria": "غرب الجزائر",
+    "central Algeria": "وسط الجزائر",
+    "Illizi Province": "ولاية إليزي",
+    Province: "ولاية",
+  },
+};
+
+export function localizeLocationLabel(value: string, locale: string) {
+  const translations = LOCATION_TRANSLATIONS[locale];
+  if (!translations) return value;
+
+  return Object.entries(translations).sort(([a], [b]) => b.length - a.length).reduce((label, [source, translated]) => {
+    return label.replace(new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), translated);
+  }, value);
+}
+
 export default function LocationWorldCard({
   location,
   region,
@@ -24,8 +61,11 @@ export default function LocationWorldCard({
   buttonClassName = "",
   buttonStyle,
 }: LocationWorldCardProps) {
+  const t = useTranslations("auth.locationCard");
+  const locale = useLocale();
   const [isOpen, setIsOpen] = useState(false);
-  const label = (location || region || "Algeria").trim();
+  const label = (location || region || t("defaultLocation")).trim();
+  const displayLabel = localizeLocationLabel(label, locale);
 
   const mapUrl = useMemo(
     () => `https://maps.google.com/maps?q=${encodeURIComponent(label)}&z=6&output=embed`,
@@ -68,7 +108,7 @@ export default function LocationWorldCard({
           <circle cx="12" cy="10" r="3" />
         </svg>
         <span className={textClassName} style={textStyle}>
-          {label}
+          {displayLabel}
         </span>
       </button>
 
@@ -92,10 +132,10 @@ export default function LocationWorldCard({
                   className="text-[11px] font-black uppercase tracking-wider"
                   style={{ color: "#8B7355" }}
                 >
-                  World Card
+                  {t("title")}
                 </p>
                 <h3 className="text-xl font-bold mt-1" style={{ color: "#432817" }}>
-                  {label}
+                  {displayLabel}
                 </h3>
               </div>
               <button
@@ -126,7 +166,7 @@ export default function LocationWorldCard({
               >
                 <iframe
                   src={mapUrl}
-                  title={`Map of ${label}`}
+                  title={t("mapTitle", { location: displayLabel })}
                   className="h-[360px] w-full border-0"
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
@@ -135,7 +175,7 @@ export default function LocationWorldCard({
 
               <div className="mt-4 flex items-center justify-between gap-3">
                 <p className="text-sm" style={{ color: "#6B5A47" }}>
-                  Explore this location on the map or open it directly in Google Maps.
+                  {t("description")}
                 </p>
                 <a
                   href={mapsLink}
@@ -144,7 +184,7 @@ export default function LocationWorldCard({
                   className="shrink-0 rounded-xl px-4 py-2 text-sm font-bold transition-transform hover:-translate-y-0.5"
                   style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
                 >
-                  Open Map
+                  {t("openMap")}
                 </a>
               </div>
             </div>

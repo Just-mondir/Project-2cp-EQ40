@@ -162,6 +162,22 @@
       "confirmDeleteAnnotation": "Êtes-vous sûr de vouloir supprimer cette annotation ?",
       "confirmDeleteReport": "Êtes-vous sûr de vouloir supprimer ce rapport ?"
     },
+    "aiResearch": {
+      "title": "Recherche IA approfondie",
+      "buttonTitle": "Recherche IA",
+      "buttonLabel": "Générer une recherche IA approfondie sur cette publication",
+      "closeLabel": "Fermer la recherche IA",
+      "loading": "Recherche de cette publication avec Gemini...",
+      "error": "Impossible de générer la recherche IA.",
+      "sources": "Sources"
+    },
+    "locationCard": {
+      "title": "Carte du lieu",
+      "mapTitle": "Carte de {location}",
+      "description": "Explorez ce lieu sur la carte ou ouvrez-le directement dans Google Maps.",
+      "openMap": "Ouvrir la carte",
+      "defaultLocation": "Algérie"
+    },
     "feed": {
       "actions": {
         "seeMore": "Voir plus",
@@ -670,6 +686,70 @@
             "posts": "Publications"
           },
           "noResults": "Aucun r\u00e9sultat pour \"{query}\""
+        },
+        "community": {
+          "feedTitle": "Fil de la communaut\u00e9",
+          "showAll": "Tout afficher",
+          "noPostsTitle": "Aucune publication trouv\u00e9e",
+          "noPostsDescription": "Soyez le premier \u00e0 partager quelque chose dans cette communaut\u00e9 !",
+          "groupsTitle": "Groupes",
+          "createGroup": "Cr\u00e9er un nouveau groupe",
+          "suggestedGroups": "Groupes sugg\u00e9r\u00e9s",
+          "yourGroups": "Vos groupes",
+          "viewAll": "Tout voir",
+          "members": "{count} membres",
+          "membersTitle": "Membres",
+          "noMembers": "Aucun membre",
+          "admin": "Admin",
+          "viewProfile": "Voir le profil",
+          "remove": "Retirer",
+          "removing": "Retrait...",
+          "loadingMembers": "Chargement des membres...",
+          "groupRules": "Règles du groupe",
+          "details": "Détails",
+          "category": "Catégorie",
+          "region": "Région",
+          "period": "Période",
+          "editGroup": "Modifier le groupe",
+          "deleteGroup": "Supprimer le groupe",
+          "reportGroup": "Signaler le groupe",
+          "leaveGroup": "Quitter le groupe",
+          "deleteGroupTitle": "Supprimer le groupe",
+          "deleteGroupMessage": "Voulez-vous vraiment supprimer {groupName} ? Cette action est irréversible.",
+          "deleteGroupConfirm": "Oui, supprimer le groupe",
+          "deletingGroup": "Suppression...",
+          "joinRequestTitle": "Demande d'adhésion envoyée",
+          "joinRequestMessage": "Merci ! En attente de l'approbation de l'administrateur.",
+          "leftGroupTitle": "Vous avez quitté le groupe",
+          "leftGroupMessage": "Vous avez quitté ce groupe avec succès.",
+          "close": "Fermer",
+          "rules": {
+            "shareRoman": "Partagez du contenu lié aux monuments romains et à l'archéologie.",
+            "includeContext": "Ajoutez un contexte historique lorsque vous publiez des monuments ou des artefacts.",
+            "respectAccuracy": "Respectez l'exactitude et citez les sources lorsque c'est possible.",
+            "encourageDiscussion": "Encouragez les discussions sur la préservation et la restauration.",
+            "noOffTopic": "Pas de publications hors sujet ni de promotion sans rapport."
+          },
+          "values": {
+            "ancientCivilizations": "Civilisations anciennes",
+            "romanPeriod": "Période romaine"
+          },
+          "posts": "{count} publications",
+          "managedBy": "G\u00e9r\u00e9 par {name}",
+          "description": "Description",
+          "tabs": {
+            "posts": "Publications",
+            "questions": "Questions",
+            "about": "\u00c0 propos",
+            "myPosts": "Mes publications"
+          },
+          "addPost": "+ Publication",
+          "invite": "+ Inviter",
+          "requestSent": "Demande envoy\u00e9e",
+          "joining": "Adh\u00e9sion...",
+          "join": "Rejoindre",
+          "visit": "Visiter",
+          "postedIn": "publi\u00e9 le {date}"
         }
       },
       "events": {
@@ -798,6 +878,19 @@
       "userProfile": {
         "actions": {
           "editProfile": "Modifier le profil"
+        },
+        "stats": {
+          "posts": "Publications",
+          "likes": "J'aime",
+          "events": "\u00c9v\u00e9nements"
+        },
+        "empty": {
+          "posts": "Aucune publication pour le moment",
+          "treasure": "Votre tr\u00e9sor est vide",
+          "collection": "Votre collection est vide",
+          "reposts": "Aucun republication pour le moment",
+          "events": "Aucun \u00e9v\u00e9nement pour le moment",
+          "alerts": "Aucun monument en danger pour le moment"
         },
         "modals": {
           "deletePost": {

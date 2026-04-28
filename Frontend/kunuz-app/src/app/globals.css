@@ -238,26 +238,6 @@ html[data-locale-direction="rtl"] .authenticated-app-shell {
 }
 
 html[data-locale-direction="rtl"] .authenticated-app-shell :is(
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  p,
-  label,
-  legend,
-  figcaption,
-  blockquote,
-  .truncate,
-  [class*="line-clamp-"]
-) {
-  direction: rtl;
-  text-align: right;
-  unicode-bidi: plaintext;
-}
-
-html[data-locale-direction="rtl"] .authenticated-app-shell :is(
   input[type="text"],
   input[type="search"],
   input[type="email"],
@@ -1041,5 +1021,17 @@ html[data-theme="dark"][data-theme-scope="home"] .rich-text-editor__select:hover
 html[data-theme="dark"][data-theme-scope="home"] .post-upload-slot:hover {
   border-color: rgba(246, 234, 210, 0.32) !important;
   background-color: rgba(255, 248, 226, 0.06) !important;
+}
+
+html[data-locale-direction="rtl"] .localized-container-title,
+html[data-locale-direction="rtl"] .localized-container-text,
+html[data-locale-direction="rtl"] .localized-member-count {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+}
+
+html[data-locale-direction="rtl"] .localized-member-count {
+  justify-content: flex-end;
 }
 

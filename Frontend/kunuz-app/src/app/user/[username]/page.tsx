@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard, Mail, Lock } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton, { RepostIcon } from "@/components/RepostButton";
@@ -17,6 +17,29 @@ import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/compone
 import NotificationModal from "@/components/NotificationModal";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+
+const PROFILE_TAG_TRANSLATIONS: Record<string, Record<string, string>> = {
+  fr: {
+    Amateur: "Amateur",
+    Student: "Étudiant",
+    Researcher: "Chercheur",
+    Historian: "Historien",
+    "Tour Guide": "Guide touristique",
+    Architect: "Architecte",
+  },
+  ar: {
+    Amateur: "هاو",
+    Student: "طالب",
+    Researcher: "باحث",
+    Historian: "مؤرخ",
+    "Tour Guide": "مرشد سياحي",
+    Architect: "مهندس معماري",
+  },
+};
+
+function translateProfileTag(tag: string, locale: string) {
+  return PROFILE_TAG_TRANSLATIONS[locale]?.[tag] ?? tag;
+}
 
 function stripHtmlFallback(html: string): string {
   let result = html;
@@ -1249,6 +1272,7 @@ function PostModal({
   );
 }
 function BioText({ bio }: { bio: string }) {
+  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const lines = 2;
   const isLong = bio.length > 120;
@@ -1273,7 +1297,7 @@ function BioText({ bio }: { bio: string }) {
           style={{ color: "#8B6914", background: "none", border: "none", padding: 0, cursor: "pointer" }}
           onClick={() => setExpanded(prev => !prev)}
         >
-          {expanded ? "See less" : "See more"}
+          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
         </button>
       )}
     </div>
@@ -1293,6 +1317,7 @@ function ProfileHeader({
   const addPostT = useTranslations("auth.pages.addPost");
   const editProfileT = useTranslations("auth.pages.editProfile");
   const userPageT = useTranslations("auth.pages.userProfile");
+  const locale = useLocale();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [showDashboardModal, setShowDashboardModal] = useState(false);
@@ -1395,24 +1420,24 @@ function ProfileHeader({
           <div className="flex items-center gap-6 mb-4">
             <div className="flex items-center gap-1.5">
               <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.posts_count}</span>
-              <span className="text-sm" style={{ color: "#8B7355" }}>Posts</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.posts")}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.likes_count}</span>
-              <span className="text-sm" style={{ color: "#8B7355" }}>Likes</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.likes")}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.events_count}</span>
-              <span className="text-sm" style={{ color: "#8B7355" }}>Events</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.events")}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3 mb-4">
             {profileInfo.expertise && (
-              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.expertise}</span>
+              <span className="text-sm" style={{ color: "#432817" }}>#{translateProfileTag(profileInfo.expertise, locale)}</span>
             )}
             {profileInfo.speciality && (
-              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.speciality}</span>
+              <span className="text-sm" style={{ color: "#432817" }}>#{translateProfileTag(profileInfo.speciality, locale)}</span>
             )}
           </div>
 
@@ -1529,6 +1554,7 @@ function PostsGrid({
 /* ───────────────── MAIN PAGE ───────────────── */
 
 export default function ProfilePage() {
+  const userPageT = useTranslations("auth.pages.userProfile");
   const [loggedInUsername, setLoggedInUsername] = useState("");
   const [activeTab, setActiveTab] = useState("grid");
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
@@ -1820,34 +1846,34 @@ export default function ProfilePage() {
 
           {visibleTab === "grid" && (
             loadingPosts ? <Spinner /> :
-              allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message="No Posts yet" /> :
+              allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message={userPageT("empty.posts")} /> :
                 <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && visibleTab === "gems" && (
             loadingGemmed ? <Spinner /> :
-              gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message="Your Treasure is empty" /> :
+              gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message={userPageT("empty.treasure")} /> :
                 <PostsGrid posts={gemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && visibleTab === "saved" && (
             loadingSaved ? <Spinner /> :
-              savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message="Your Collection is empty" /> :
+              savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message={userPageT("empty.collection")} /> :
                 <PostsGrid posts={savedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {visibleTab === "reposts" && (
             <>
               {loadingReposts ? <Spinner /> :
-                repostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message="No Reposts yet" /> :
+                repostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message={userPageT("empty.reposts")} /> :
                   <PostsGrid posts={repostedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />}
             </>
           )}
           {visibleTab === "events" && (
             loadingEvents ? <Spinner /> :
-              eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message="No Events yet" /> :
+              eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message={userPageT("empty.events")} /> :
                 <PostsGrid posts={eventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {visibleTab === "alerts" && (
             loadingAlerts ? <Spinner /> :
-              alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message="No Monuments in Danger yet" /> :
+              alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message={userPageT("empty.alerts")} /> :
                 <PostsGrid posts={alertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
         </div>
