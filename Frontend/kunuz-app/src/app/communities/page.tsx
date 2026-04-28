@@ -1065,9 +1065,9 @@ function AnnotationItem({
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
                     style={{ color: "var(--foreground)" }}
-                    onClick={handleReportAnnotation}
-                  >
-                    Report annotation
+                        onClick={handleReport}
+                      >
+                        {feedT("actions.reportAnnotation")}
                   </button>
                 )}
 

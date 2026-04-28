@@ -1772,8 +1772,7 @@ function PostModal({
             </button>
           </div>
 
-          {imageList.length > 0 && (
-            <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+          <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "var(--border-soft)" }}>
               <LocationWorldCard
                 location={post.location}
                 region={post.region}
@@ -1795,10 +1794,7 @@ function PostModal({
               {isContentLong && contentExpanded && (
                 <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
               )}
-
-
-            </div>
-          )}
+          </div>
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <button
@@ -2215,11 +2211,11 @@ function PostCard({
 
       <PostDetailBadge post={post} />
 
-      <h3 dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817", ...getUserContentDirectionStyle(post.title) }}>
+      <h3 dir={isArabicText(post.title) ? "rtl" : "ltr"} className="user-generated-content px-4 md:px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817", ...getUserContentDirectionStyle(post.title) }}>
         <div dir={isArabicText(post.title) ? "rtl" : "ltr"} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </h3>
 
-      <ExpandableContent content={post.content} className="user-generated-content px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817", ...getUserContentDirectionStyle(post.content) }} />
+      <ExpandableContent content={post.content} className="user-generated-content px-4 md:px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817", ...getUserContentDirectionStyle(post.content) }} />
       <PostTags tags={tags} />
 
       {imageList.length > 0 && (

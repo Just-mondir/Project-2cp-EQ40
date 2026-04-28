@@ -1845,5 +1845,5 @@ function PostModal({
 }
 
 
-export { PostCard as GlobalPostCard, PostModal as GlobalPostModal };
+export { PostModal as GlobalPostModal };
 export type { ApiPost, PostInteraction };

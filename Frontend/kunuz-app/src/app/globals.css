@@ -238,6 +238,26 @@ html[data-locale-direction="rtl"] .authenticated-app-shell {
 }
 
 html[data-locale-direction="rtl"] .authenticated-app-shell :is(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  label,
+  legend,
+  figcaption,
+  blockquote,
+  .truncate,
+  [class*="line-clamp-"]
+) {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
+}
+
+html[data-locale-direction="rtl"] .authenticated-app-shell :is(
   input[type="text"],
   input[type="search"],
   input[type="email"],
