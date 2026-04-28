@@ -1052,7 +1052,7 @@ function PostModal({
   };
 
   const LeftPanel = imageList.length > 0 ? (
-    <div className="w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
+    <div className="flex w-full md:w-1/2 h-[250px] md:h-full flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
       <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
         {imageList.map((img) => {
           const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
@@ -1089,7 +1089,7 @@ function PostModal({
       )}
     </div>
   ) : (
-    <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
+    <div className="hidden md:flex w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
       <div className="mb-1">
         <LocationWorldCard
           location={post.location}
@@ -1114,11 +1114,11 @@ function PostModal({
   return (
     <>
       <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title={userPageT("modals.deletePost.title")} message={userPageT("modals.deletePost.message")} primaryAction={{ label: userPageT("modals.deletePost.confirm"), onClick: confirmDeletePost }} secondaryAction={{ label: userPageT("modals.deletePost.cancel"), onClick: () => setShowDeleteModal(false) }} />
-      <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] h-full md:h-[90vh] rounded-none md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
           {LeftPanel}
-          <div className="w-1/2 flex flex-col" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="w-full md:w-1/2 flex flex-col flex-1 h-full min-h-0" style={{ backgroundColor: "#FFF8E2" }}>
             <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
               <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
               <div className="ml-3 flex-1">
@@ -1152,39 +1152,38 @@ function PostModal({
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-            {imageList.length > 0 && (
-              <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-                <LocationWorldCard
-                  location={post.location}
-                  region={post.region}
-                  textStyle={{ color: "#8B7355" }}
-                  iconColor="#8B7355"
-                  iconSize={13}
-                  buttonClassName="mb-1"
-                />
-                <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-                {isContentLong && !contentExpanded ? (
-                  <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
-                    {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
-                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
-                  </p>
-                ) : (
-                  <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-                )}
-                {isContentLong && contentExpanded && (
-                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
-                )}
-              </div>
-            )}
-            <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
-                <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
-              </button>
-              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
-                <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
-              </button>
-            </div>
             <div className="flex-1 overflow-y-auto feed-scroll">
+              <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+                  <LocationWorldCard
+                    location={post.location}
+                    region={post.region}
+                    textStyle={{ color: "#8B7355" }}
+                    iconColor="#8B7355"
+                    iconSize={13}
+                    buttonClassName="mb-1"
+                  />
+                  <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+                  {isContentLong && !contentExpanded ? (
+                    <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                      {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
+                      <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+                    </p>
+                  ) : (
+                    <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                  )}
+                  {isContentLong && contentExpanded && (
+                    <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+                  )}
+                </div>
+
+              <div className="sticky top-0 z-10 flex border-b flex-shrink-0" style={{ backgroundColor: "#FFF8E2", borderColor: "#E0D5C5" }}>
+                <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
+                  <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
+                </button>
+                <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
+                  <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
+                </button>
+              </div>
               {activeTab === "comments" && (
                 <div className="px-5 py-3 flex flex-col gap-3">
                   {topLevelComments.length === 0 ? (
@@ -1394,7 +1393,7 @@ function ProfileHeader({
         secondaryAction={{ label: userPageT("modals.deleteAccount.cancel"), onClick: () => setShowDeleteAccountModal(false) }}
       />
 
-      <div className="flex items-start gap-8">
+      <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-8">
         <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
           {profileInfo.profile_picture ? (
             <img
@@ -1409,7 +1408,7 @@ function ProfileHeader({
           )}
         </div>
 
-        <div className="flex flex-col items-start">
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
           <h1 className="text-2xl font-bold mb-1" style={{ color: "#432817" }}>
             {profileInfo.display_name || profileInfo.username || "User"}
           </h1>
@@ -1447,9 +1446,9 @@ function ProfileHeader({
       </div>
 
       {isOwnProfile && (
-        <div className="flex items-center justify-center gap-3 mt-6">
-          <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>{addPostT("title")}</button>
-          <button onClick={() => router.push("/edit-profile")} className="text-sm font-semibold hover:opacity-90" style={{ backgroundColor: "#432817", color: "#FFF8E2", borderRadius: "8px", width: "400px", height: "40px" }}>{editProfileT("title")}</button>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 w-full max-w-[812px] mx-auto">
+          <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90 w-full flex-1 h-[40px] rounded-lg" style={{ backgroundColor: "#432817", color: "#FFF8E2" }}>{addPostT("title")}</button>
+          <button onClick={() => router.push("/edit-profile")} className="text-sm font-semibold hover:opacity-90 w-full flex-1 h-[40px] rounded-lg" style={{ backgroundColor: "#432817", color: "#FFF8E2" }}>{editProfileT("title")}</button>
         </div>
       )}
     </div>
@@ -1468,7 +1467,7 @@ function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: str
   ];
 
   return (
-    <div className="flex items-center justify-between px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
+    <div className="flex items-center justify-between px-4 md:px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
       {tabs.map((tab) => (
         <button key={tab.id} title={tab.id === "reposts" ? "Reposts" : tab.id} aria-label={tab.id === "reposts" ? "Reposts" : tab.id} onClick={() => setActiveTab(tab.id)} className="p-3 transition-all duration-200 hover:opacity-70 relative" style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}>
           {tab.icon}
@@ -1536,7 +1535,7 @@ function PostsGrid({
   onAnnotationClick: (p: ApiPost) => void;
 }) {
   return (
-    <div className="grid grid-cols-4 gap-3 px-4 pb-8">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 px-4 pb-8">
       {posts.map((post) => (
         <PostGridCard
           key={post.id}
@@ -1839,7 +1838,7 @@ export default function ProfilePage() {
 
       <LeftSidebar activePage={isOwnProfile ? "profile" : ""} />
 
-      <main className="pl-[80px] pr-4">
+      <main className="md:pl-[80px] px-4 pb-16 md:pb-0">
         <div className="max-w-4xl mx-auto">
           <ProfileHeader profileInfo={profileInfo} isOwnProfile={isOwnProfile} />
           <ProfileTabs activeTab={visibleTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />

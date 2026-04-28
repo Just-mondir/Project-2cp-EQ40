@@ -1426,25 +1426,21 @@ function PostModal({
 
   const handleDeletePostModal = async () => {
     if (!post) return;
-    if (onDelete) {
-      await onDelete(post.id);
-      onClose();
-    } else {
-      const token = getAuthToken();
-      try {
-        const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok || res.status === 204) {
-          onClose();
-        } else {
-          const errorData = await res.json().catch(() => null);
-          alert(`Failed to delete post. Status: ${res.status}. Reason: ${errorData?.detail || errorData?.message || "Unknown error"}`);
-        }
-      } catch (err) {
-        alert("Error deleting post: " + (err instanceof Error ? err.message : "Unknown error"));
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok || res.status === 204) {
+        onClose();
+        window.location.reload();
+      } else {
+        const errorData = await res.json().catch(() => null);
+        alert(`Failed to delete post. Status: ${res.status}. Reason: ${errorData?.detail || errorData?.message || "Unknown error"}`);
       }
+    } catch (err) {
+      alert("Error deleting post: " + (err instanceof Error ? err.message : "Unknown error"));
     }
     setConfirmAction(null);
   };
@@ -1542,7 +1538,7 @@ function PostModal({
   };
 
   const LeftPanel = imageList.length > 0 ? (
-    <div className="w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
+    <div className="hidden md:flex w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
       <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
         {imageList.map((img) => {
           const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
@@ -1579,7 +1575,7 @@ function PostModal({
       )}
     </div>
   ) : (
-    <div className="w-1/2 flex-shrink-0 flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
+    <div className="hidden md:flex w-1/2 flex-shrink-0 flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
       <LocationWorldCard
         location={post.location}
         region={post.region}

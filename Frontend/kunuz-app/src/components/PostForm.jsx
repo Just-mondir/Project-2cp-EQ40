@@ -436,11 +436,10 @@ export default function PostForm({
         style={{
           flex: 1,
           overflowY: "auto",
-          padding: "24px 32px",
           scrollbarWidth: "none",
           msOverflowStyle: "none",
         }}
-        className="hide-scrollbar"
+        className="hide-scrollbar p-4 md:px-8 md:py-6"
       >
         <SectionBlock>
           <SectionLabel>{t("sections.info")}</SectionLabel>
@@ -473,7 +472,7 @@ export default function PostForm({
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              style={{ ...inputStyle, width: "263px" }}
+              style={{ ...inputStyle, flex: 1, minWidth: 0 }}
               placeholder={t("placeholders.location")}
               ref={withFocus}
             />
@@ -537,7 +536,7 @@ export default function PostForm({
             </div>
           )}
 
-          {postType === "In Danger" && (
+          {(postType === "In Danger" || postType === "Alert") && (
             <>
               <div
                 style={{ marginBottom: "18px", animation: "fadeIn 0.2s ease" }}
@@ -565,8 +564,8 @@ export default function PostForm({
             </>
           )}
 
-          <div style={{ display: "flex", gap: "16px", marginBottom: "18px" }}>
-            <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginBottom: "18px" }}>
+            <div style={{ flex: "1 1 min(100%, 200px)" }}>
               <FieldLabel>{t("fields.historicalPeriod")}</FieldLabel>
               <StyledDropdown
                 value={historicalPeriod}
@@ -575,7 +574,7 @@ export default function PostForm({
                 placeholder={t("placeholders.historicalPeriod")}
               />
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: "1 1 min(100%, 200px)" }}>
               <FieldLabel>{t("fields.region")}</FieldLabel>
               <StyledDropdown
                 value={region}
@@ -599,8 +598,8 @@ export default function PostForm({
           {postType === "Event" && (
             <div style={{ marginTop: "24px" }}>
               <FieldLabel>{t("fields.eventTime")} <span style={{ color: "red" }}>*</span></FieldLabel>
-              <div style={{ display: "flex", gap: "16px", marginTop: "12px" }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginTop: "12px" }}>
+                <div style={{ flex: "1 1 min(100%, 200px)" }}>
                   <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>{t("fields.startTime")}</div>
                   <input
                     type="datetime-local"
@@ -609,7 +608,7 @@ export default function PostForm({
                     style={{ ...inputStyle, border: "1px solid rgba(196,168,130,0.4)" }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: "1 1 min(100%, 200px)" }}>
                   <div style={{ fontSize: "13px", color: ESPRESSO, marginBottom: "6px", fontWeight: "600", fontFamily: FONT }}>{t("fields.endTime")}</div>
                   <input
                     type="datetime-local"
@@ -736,9 +735,11 @@ export default function PostForm({
             alignItems: "center",
             justifyContent: "flex-end",
             gap: "12px",
-            padding: "16px 32px",
+            padding: "16px 20px",
+            mdPadding: "16px 32px", // Just for reference, I'll use a class if needed
             backgroundColor: CREAM_PAGE,
           }}
+          className="post-form-footer px-5 md:px-8"
         >
           <button
             type="button"

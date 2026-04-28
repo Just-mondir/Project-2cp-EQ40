@@ -78,6 +78,8 @@ export default function AddGroupsPopup({ onConfirm, onClose }) {
                 alignItems: "center",
                 justifyContent: "center",
                 zIndex: 9999,
+                overflowY: "auto",
+                padding: "20px 0",
             }}
         >
             <div

@@ -146,13 +146,13 @@ export default function AddPostPage() {
     <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
       <LeftSidebar activePage="add-post" />
 
-      <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
-        <div className="px-8 pt-6 pb-2 flex-shrink-0">
+      <div className="flex flex-col flex-1 overflow-hidden ml-0 md:ml-[68px]">
+        <div className="px-4 md:px-8 pt-4 md:pt-6 pb-2 flex-shrink-0">
           <BackButton />
         </div>
 
-        <div className="flex flex-1 overflow-hidden px-8 pb-8 gap-6">
-          <div className="w-[300px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden px-4 md:px-8 pb-8 gap-6">
+          <div className="w-full lg:w-[300px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
             <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
               <h1
                 className="post-page-title"
@@ -182,11 +182,11 @@ export default function AddPostPage() {
             </div>
 
             <div
-              className="flex-1 overflow-hidden"
+              className="h-[300px] lg:flex-1 overflow-hidden"
               style={{
                 backgroundColor: "#F7F5EF",
                 borderRadius: 0,
-                marginTop: "43px",
+                marginTop: "10px",
               }}
             >
               <ImageUploadPanel

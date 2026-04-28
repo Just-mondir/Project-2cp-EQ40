@@ -1621,7 +1621,7 @@ function PostModal({
 
   const LeftPanel = imageList.length > 0 ? (
     <div
-      className="w-1/2 flex-shrink-0 relative overflow-hidden"
+      className="hidden md:flex w-1/2 flex-shrink-0 relative overflow-hidden"
       style={{ backgroundColor: "#000" }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -1678,7 +1678,7 @@ function PostModal({
       )}
     </div>
   ) : (
-    <div className="w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
+    <div className="hidden md:flex w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
       <div className="mb-1">
         <LocationWorldCard
           location={post.location}
@@ -1808,8 +1808,7 @@ function PostModal({
             </button>
           </div>
 
-          {imageList.length > 0 && (
-            <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+          <div className={`px-5 pt-3 pb-3 border-b flex-shrink-0 ${imageList.length === 0 ? "block md:hidden" : ""}`} style={{ borderColor: "#E0D5C5" }}>
               <LocationWorldCard
                 location={post.location}
                 region={post.region}
@@ -1834,7 +1833,6 @@ function PostModal({
 
 
             </div>
-          )}
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <button

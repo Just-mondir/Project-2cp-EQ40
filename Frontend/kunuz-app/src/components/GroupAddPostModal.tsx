@@ -86,11 +86,11 @@ export default function GroupAddPostModal({
       <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-[#F7F5EF] rounded-2xl overflow-hidden flex"
+          className="bg-[#F7F5EF] rounded-2xl overflow-hidden flex flex-col md:flex-row"
           style={{ width: "900px", maxWidth: "95vw", height: "85vh", boxShadow: "0 24px 64px rgba(0,0,0,0.28)" }}
         >
           {/* Left — image upload */}
-          <div className="w-[260px] flex-shrink-0 border-r border-[rgba(0,0,0,0.1)] flex flex-col">
+          <div className="w-full md:w-[260px] h-[200px] md:h-auto flex-shrink-0 border-b md:border-b-0 md:border-r border-[rgba(0,0,0,0.1)] flex flex-col">
             <div className="px-6 pt-6 pb-4">
               <h2 style={{ fontFamily: "var(--font-lato), 'Lato', sans-serif", fontSize: 22, fontWeight: 700, color: "#432817" }}>
                 Post in

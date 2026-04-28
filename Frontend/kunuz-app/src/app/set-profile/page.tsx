@@ -21,7 +21,8 @@ const randomSuffix = () => Math.random().toString(36).substring(2, 6);
 type ApiResponseBody = {
   message?: string;
   errors?: Record<string, unknown>;
-  data?: Record<string, unknown>;
+  data?: Record<string, any>;
+  success?: boolean;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -75,7 +76,7 @@ const isUsernameConflictResponse = (body: unknown): boolean => {
   if (!isRecord(body)) {
     return false;
   }
-  const usernameError = pickFirstErrorMessage(body.errors?.username);
+  const usernameError = pickFirstErrorMessage((body as ApiResponseBody).errors?.username);
   if (!usernameError) {
     return false;
   }

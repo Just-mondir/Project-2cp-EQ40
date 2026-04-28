@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-export default function BackButton() {
+export default function BackButton({ bgColor = "#FFFFFF" }) {
     const router = useRouter();
     const t = useTranslations("auth.common");
 
@@ -15,7 +15,7 @@ export default function BackButton() {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
-                backgroundColor: "#FFFFFF",
+                backgroundColor: bgColor,
                 borderRadius: "9999px",
                 border: "none",
                 color: "#432817",
