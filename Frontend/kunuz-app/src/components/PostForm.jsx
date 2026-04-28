@@ -29,18 +29,11 @@ const inputStyle = {
 
 function SectionBlock({ children, isLast = false }) {
   return (
-    <div
-      style={{ marginBottom: isLast ? "16px" : "32px", position: "relative" }}
-    >
+    <div className={`relative ${isLast ? "mb-2 md:mb-4" : "mb-3 md:mb-8"}`}>
       {children}
       {!isLast && (
         <div
-          style={{
-            width: "100%",
-            height: "1px",
-            backgroundColor: "rgba(0, 0, 0, 0.1)",
-            marginTop: "32px",
-          }}
+          className="w-full h-px bg-black/10 mt-3 md:mt-8"
         />
       )}
     </div>
@@ -49,15 +42,14 @@ function SectionBlock({ children, isLast = false }) {
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ marginBottom: "16px" }}>
+    <div className="mb-2 md:mb-4">
       <h3
+        className="text-xs md:text-[18px]"
         style={{
           color: ESPRESSO,
           fontFamily: FONT,
           fontWeight: 700,
-          fontSize: "18px",
           letterSpacing: "0.01em",
-          marginBottom: "8px",
         }}
       >
         {children}
@@ -76,12 +68,11 @@ function SectionLabel({ children }) {
 function FieldLabel({ children }) {
   return (
     <p
+      className="text-[9px] md:text-[12px] mb-1 md:mb-1.5"
       style={{
         color: ESPRESSO,
         fontFamily: FONT,
         fontWeight: 600,
-        fontSize: "12px",
-        marginBottom: "6px",
       }}
     >
       {children}
@@ -103,15 +94,13 @@ function PillGroup({ options, value, onChange, variant = "default" }) {
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
-            className="post-form-pill"
+            className="post-form-pill text-[9px] md:text-[13px] px-2.5 py-1 md:px-[16px] md:py-[6px]"
             data-option={opt.value}
             data-active={active ? "true" : "false"}
             style={{
               display: "inline-flex",
               alignItems: "center",
-              padding: "6px 16px",
               borderRadius: "9999px",
-              fontSize: "13px",
               fontFamily: FONT,
               fontWeight: 400,
               cursor: "pointer",
@@ -424,10 +413,10 @@ export default function PostForm({
 
   return (
     <div
+      className="flex-none md:flex-1 md:h-full"
       style={{
         display: "flex",
         flexDirection: "column",
-        height: "100%",
         backgroundColor: "#F7F5EF",
         fontFamily: FONT,
       }}
@@ -622,110 +611,110 @@ export default function PostForm({
             </div>
           )}
         </SectionBlock>
-       {!hideVisibility && (
-        <SectionBlock isLast={true}>
-          <SectionLabel>{t("sections.postVisibility")} <span style={{ color: "red" }}>*</span></SectionLabel>
+        {!hideVisibility && (
+          <SectionBlock isLast={true}>
+            <SectionLabel>{t("sections.postVisibility")} <span style={{ color: "red" }}>*</span></SectionLabel>
 
 
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div
-              style={{
-                flex: 1,
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                gap: "8px",
-                padding: "12px",
-                backgroundColor: "#ffffff",
-                borderRadius: "8px",
-                border: "1px solid #ffffff",
-                boxShadow: "0 1px 4px rgba(67,40,23,0.06)",
-                minHeight: "46px",
-              }}
-            >
-              {selectedGroups.map((group, i) => (
-                <span
-                  key={group.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "4px 12px",
-                    borderRadius: "9999px",
-                    fontSize: "14px",
-                    fontFamily: FONT,
-                    fontWeight: 400,
-                    backgroundColor: CREAM_PAGE,
-                    border: `1px solid #C4A882`,
-                    color: ESPRESSO,
-                  }}
-                >
-                  {group.name}
-                  <button
-                    type="button"
-                    onClick={() => removeGroup(i)}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "12px",
+                  backgroundColor: "#ffffff",
+                  borderRadius: "8px",
+                  border: "1px solid #ffffff",
+                  boxShadow: "0 1px 4px rgba(67,40,23,0.06)",
+                  minHeight: "46px",
+                }}
+              >
+                {selectedGroups.map((group, i) => (
+                  <span
+                    key={group.id}
                     style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: 0,
                       display: "flex",
                       alignItems: "center",
-                      fontSize: "16px",
+                      gap: "6px",
+                      padding: "4px 12px",
+                      borderRadius: "9999px",
+                      fontSize: "14px",
+                      fontFamily: FONT,
+                      fontWeight: 400,
+                      backgroundColor: CREAM_PAGE,
+                      border: `1px solid #C4A882`,
                       color: ESPRESSO,
-                      lineHeight: 1,
                     }}
-                    title={t("actions.removeGroup")}
                   >
-                    &times;
-                  </button>
-                </span>
-              ))}
-            </div>
+                    {group.name}
+                    <button
+                      type="button"
+                      onClick={() => removeGroup(i)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: "16px",
+                        color: ESPRESSO,
+                        lineHeight: 1,
+                      }}
+                      title={t("actions.removeGroup")}
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
 
-            <button
-              type="button"
-              onClick={() => setShowGroupsPopup(true)}
-              style={{
-                flexShrink: 0,
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                border: "1px solid #C4A882",
-                backgroundColor: "transparent",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "background-color 0.15s",
-                pointerEvents: "auto",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  "rgba(196,168,130,0.20)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-              title={t("actions.addGroup")}
-            >
-              <svg
-                width="13"
-                height="13"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={ESPRESSO}
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+              <button
+                type="button"
+                onClick={() => setShowGroupsPopup(true)}
+                style={{
+                  flexShrink: 0,
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  border: "1px solid #C4A882",
+                  backgroundColor: "transparent",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  transition: "background-color 0.15s",
+                  pointerEvents: "auto",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    "rgba(196,168,130,0.20)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+                title={t("actions.addGroup")}
               >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-          </div>
-        </SectionBlock>
-      )}
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={ESPRESSO}
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            </div>
+          </SectionBlock>
+        )}
       </div>
 
       {showFooter && (

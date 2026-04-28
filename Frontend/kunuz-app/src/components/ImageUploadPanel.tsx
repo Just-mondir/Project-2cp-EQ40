@@ -121,8 +121,8 @@ export default function ImageUploadPanel({
       }}
     >
       <div
-        className="grid grid-cols-2 gap-3 p-3 pb-2"
-        style={{ gridTemplateRows: "repeat(3, 130px)" }}
+        className="flex flex-row md:grid md:grid-cols-2 gap-2 md:gap-3 p-2 md:p-3 pb-2 overflow-x-auto md:overflow-visible snap-x md:auto-rows-[130px] w-full"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}
       >
         {[...Array(5)].map((_, idx) => {
           if (idx < images.length) {
@@ -130,7 +130,7 @@ export default function ImageUploadPanel({
             return (
               <div
                 key={idx}
-                className="image-upload-card relative rounded-xl overflow-hidden shadow-sm post-image-card"
+                className="image-upload-card relative rounded-[10px] md:rounded-xl overflow-hidden shadow-sm post-image-card flex-shrink-0 snap-center w-[54px] h-[54px] md:w-full md:h-full"
                 style={{ backgroundColor: "var(--panel-elevated)" }}
               >
                 <img
@@ -168,7 +168,7 @@ export default function ImageUploadPanel({
               <button
                 key="upload"
                 onClick={() => inputRef.current?.click()}
-                className="image-upload-slot rounded-xl flex flex-col items-center justify-center post-upload-slot cursor-pointer"
+                className="image-upload-slot rounded-[10px] md:rounded-xl flex flex-col items-center justify-center post-upload-slot cursor-pointer flex-shrink-0 snap-center w-[54px] h-[54px] md:w-full md:h-full"
                 style={{
                   border: "1px dashed rgba(0, 0, 0, 0.2)",
                   backgroundColor: "transparent",
@@ -196,7 +196,7 @@ export default function ImageUploadPanel({
             return (
               <div
                 key={`empty-${idx}`}
-                className="image-upload-empty rounded-xl"
+                className="image-upload-empty rounded-[10px] md:rounded-xl flex-shrink-0 snap-center w-[54px] h-[54px] md:w-full md:h-full hidden md:block"
                 style={{
                   border: "1px dashed rgba(0, 0, 0, 0.15)",
                   backgroundColor: "transparent",

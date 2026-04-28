@@ -55,15 +55,15 @@ export default function Header() {
     >
       {/* ── Main bar ── */}
       <div
-        className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
-        style={{ height: "52px" }}
+        className="flex w-full items-center justify-between px-3 sm:px-4 md:px-6 lg:px-12"
+        style={{ height: "clamp(48px, 8vh, 64px)" }}
       >
         {/* Logo */}
         <Link
           href="/#hero"
           onClick={handleLogoClick}
           className="flex flex-shrink-0 items-end"
-          style={{ marginBottom: "-14px", marginLeft: "10px" }}
+          style={{ marginBottom: "clamp(-8px, -1.5vh, -14px)", marginLeft: "clamp(4px, 2vw, 10px)" }}
         >
           <Image
             src="/kunuz-logo.svg"
@@ -71,23 +71,23 @@ export default function Header() {
             width={144}
             height={99}
             style={{
-              height: "76px",
+              height: "clamp(48px, 7vh, 76px)",
               width: "auto",
               filter: scrolled
                 ? "none"
-                : "brightness(0) saturate(100%) invert(97%) sepia(10%) saturate(500%) hue-rotate(340deg) brightness(105%)", // 👈 converts to #FFF8E2 (cream)
+                : "brightness(0) saturate(100%) invert(97%) sepia(10%) saturate(500%) hue-rotate(340deg) brightness(105%)",
             }}
             priority
           />
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-4 lg:gap-8 xl:gap-13">
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-2 lg:gap-4 xl:gap-6">
           {NAV_LINKS.map((label) => (
             <Link
               key={label}
               href={NAV_HREFS[label]}
-              className="group relative whitespace-nowrap text-[14px] md:text-[16px] lg:text-[19px] xl:text-[23px] font-bold transition-colors duration-200"
+              className="group relative whitespace-nowrap text-[clamp(12px,1.8vw,20px)] font-bold transition-colors duration-200"
               style={{
                 fontFamily: "var(--font-lato)",
                 color: scrolled ? "var(--brown)" : "var(--cream)",
@@ -105,7 +105,7 @@ export default function Header() {
         {/* Sign Up — desktop */}
         <Link
           href="/sign-up"
-          className="hidden cursor-pointer md:flex flex-shrink-0 rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
+          className="hidden cursor-pointer md:flex flex-shrink-0 rounded-full border-2 px-clamp px-[clamp(12px,2vw,24px)] py-[clamp(6px,1vh,10px)] text-[clamp(11px,1.5vw,16px)] font-bold transition-all duration-300"
           style={{
             borderColor: scrolled ? "var(--brown)" : "var(--cream)",
             color: scrolled ? "var(--brown)" : "var(--cream)",
@@ -121,34 +121,33 @@ export default function Header() {
         {/* Hamburger + Dropdown — mobile */}
         <div
           className="md:hidden relative"
-          onMouseEnter={() => setMobileOpen(true)}
-          onMouseLeave={() => setMobileOpen(false)}
+          onClick={() => setMobileOpen(!mobileOpen)}
         >
           {/* Hamburger */}
           <button
             type="button"
-            className="flex flex-col justify-center gap-[5px] p-2 cursor-pointer"
+            className="flex flex-col justify-center gap-[4px] p-2 cursor-pointer"
             aria-label="Toggle menu"
           >
             <span
-              className="block h-[2px] w-6 rounded transition-all duration-300"
+              className="block h-[2.5px] w-5 sm:w-6 rounded transition-all duration-300"
               style={{
                 backgroundColor: scrolled ? "var(--brown)" : "var(--cream)",
-                transform: mobileOpen ? "translateY(7px) rotate(45deg)" : "none",
+                transform: mobileOpen ? "translateY(6px) rotate(45deg)" : "none",
               }}
             />
             <span
-              className="block h-[2px] w-6 rounded transition-all duration-200"
+              className="block h-[2.5px] w-5 sm:w-6 rounded transition-all duration-200"
               style={{
                 backgroundColor: scrolled ? "var(--brown)" : "var(--cream)",
                 opacity: mobileOpen ? 0 : 1,
               }}
             />
             <span
-              className="block h-[2px] w-6 rounded transition-all duration-300"
+              className="block h-[2.5px] w-5 sm:w-6 rounded transition-all duration-300"
               style={{
                 backgroundColor: scrolled ? "var(--brown)" : "var(--cream)",
-                transform: mobileOpen ? "translateY(-7px) rotate(-45deg)" : "none",
+                transform: mobileOpen ? "translateY(-6px) rotate(-45deg)" : "none",
               }}
             />
           </button>
@@ -158,17 +157,18 @@ export default function Header() {
             className="absolute right-0 top-full overflow-hidden transition-all duration-300 rounded-2xl"
             style={{
               backgroundColor: "var(--panel-bg)",
-              maxHeight: mobileOpen ? "320px" : "0px",
+              maxHeight: mobileOpen ? "auto" : "0px",
+              opacity: mobileOpen ? 1 : 0,
               boxShadow: mobileOpen ? "0 8px 24px rgba(0,0,0,0.10)" : "none",
-              minWidth: "200px",
+              minWidth: "180px",
             }}
           >
-            <nav className="flex flex-col gap-1 px-6 pb-5 pt-2">
+            <nav className="flex flex-col gap-0 px-4 py-3 sm:px-6">
               {NAV_LINKS.map((label) => (
                 <Link
                   key={label}
                   href={NAV_HREFS[label]}
-                  className="border-b py-3 text-[16px] font-medium transition-colors duration-200 text-[var(--brown)] hover:text-[#8B6343]"
+                  className="border-b py-2.5 sm:py-3 text-[14px] sm:text-[16px] font-medium transition-colors duration-200 text-[var(--brown)] hover:text-[#8B6343]"
                   style={{
                     fontFamily: "var(--font-lato)",
                     borderColor: "rgba(59,42,26,0.10)",
@@ -178,9 +178,9 @@ export default function Header() {
                   {label}
                 </Link>
               ))}
-              <button
-                type="button"
-                className="mt-3 w-fit rounded-full border-2 px-6 py-2 text-[15px] font-bold transition-all duration-300 cursor-pointer"
+              <Link
+                href="/sign-up"
+                className="mt-2 sm:mt-3 w-fit rounded-full border-2 px-4 sm:px-6 py-1.5 sm:py-2 text-[13px] sm:text-[15px] font-bold transition-all duration-300 cursor-pointer inline-block"
                 style={{
                   borderColor: "var(--brown)",
                   color: "var(--brown)",
@@ -191,9 +191,10 @@ export default function Header() {
                 }}
                 onMouseEnter={() => setSignUpMobileHovered(true)}
                 onMouseLeave={() => setSignUpMobileHovered(false)}
+                onClick={() => setMobileOpen(false)}
               >
                 Sign Up
-              </button>
+              </Link>
             </nav>
           </div>
         </div>

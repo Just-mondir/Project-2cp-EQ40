@@ -106,7 +106,7 @@ export default function MonumentsInDanger() {
   return (
     <section
       id="at-risk"
-      className="relative w-full min-h-[650px] md:min-h-[720px] scroll-mt-24"
+      className="relative w-full min-h-[600px] sm:min-h-[700px] md:min-h-[720px] lg:min-h-[750px] scroll-mt-24"
       style={{ backgroundColor: "#FFF8E2" }}
     >
       <div className="absolute inset-y-0 left-0 w-full md:w-1/2 overflow-hidden">
@@ -136,36 +136,36 @@ export default function MonumentsInDanger() {
           }}
         />
       </div>
-      <div className="relative z-10 w-full px-8 lg:px-16 py-16 md:py-20 lg:py-24 flex justify-center">
-        <div className="max-w-7xl w-full flex flex-col gap-12 lg:gap-16">
+      <div className="relative z-10 w-full px-4 sm:px-6 md:px-8 lg:px-16 py-8 sm:py-12 md:py-16 lg:py-20 xl:py-24 flex justify-center">
+        <div className="max-w-7xl w-full flex flex-col gap-6 sm:gap-8 md:gap-12 lg:gap-16">
           <div className="max-w-2xl text-center mx-auto">
             <h2
-              className="font-bold text-[32px] md:text-[36px] lg:text-[44px] xl:text-[56px] leading-tight text-[#2C1A0E] mb-5"
+              className="font-bold text-[clamp(24px,6vw,56px)] leading-tight text-[#2C1A0E] mb-3 sm:mb-4 md:mb-5"
               style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}
             >
               Monuments In Danger
             </h2>
-            <p className="text-base md:text-lg lg:text-xl text-[#2C1A0E] opacity-80">
+            <p className="text-[clamp(13px,2.5vw,21px)] text-[#2C1A0E] opacity-80">
               Discover endangered heritage sites and help preserve them.
             </p>
           </div>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-10 lg:gap-16">
-            <div className="max-w-md lg:max-w-lg text-left">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 md:gap-10 lg:gap-16">
+            <div className="max-w-sm md:max-w-md lg:max-w-lg text-center md:text-left w-full md:w-auto">
               <h3
-                className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#2C1A0E] mb-4"
+                className="text-[clamp(20px,5vw,40px)] font-bold text-[#2C1A0E] mb-2 sm:mb-3 md:mb-4"
                 style={{ transition: "opacity 0.4s ease" }}
               >
                 {active.name}
               </h3>
               <p
-                className="text-base md:text-lg lg:text-xl text-[#2C1A0E] leading-relaxed"
+                className="text-[clamp(14px,2vw,21px)] text-[#2C1A0E] leading-relaxed mb-2 sm:mb-3"
                 style={{ transition: "opacity 0.4s ease" }}
               >
                 Located in{" "}
                 <span className="font-bold">{active.boldLocation}</span>,
                 Algeria
               </p>
-              <p className="mt-3 text-base md:text-lg lg:text-xl text-[#2C1A0E]">
+              <p className="text-[clamp(14px,2vw,21px)] text-[#2C1A0E]">
                 <span className="font-bold capitalize">
                   Urgence Level: {active.urgenceLevel}
                 </span>
@@ -176,13 +176,12 @@ export default function MonumentsInDanger() {
               </p>
             </div>
             <div
-              className="flex flex-row items-end justify-center gap-3 sm:gap-5 lg:gap-6 flex-nowrap"
-              style={{ overflowX: "auto", paddingBottom: "8px" }}
+              className="flex flex-row items-end justify-center gap-2 sm:gap-3 md:gap-4 lg:gap-6 flex-nowrap overflow-x-auto pb-2 w-full md:w-auto"
             >
               {monuments.map((monument, idx) => (
                 <div
                   key={idx}
-                  className="relative w-[120px] sm:w-[160px] md:w-[200px] lg:w-[220px] h-[200px] sm:h-[260px] md:h-[310px] lg:h-[340px] rounded-3xl flex-shrink-0 overflow-hidden"
+                  className="relative w-[90px] sm:w-[120px] md:w-[160px] lg:w-[220px] h-[150px] sm:h-[200px] md:h-[260px] lg:h-[340px] rounded-2xl sm:rounded-3xl flex-shrink-0 overflow-hidden cursor-pointer"
                   style={{
                     transformOrigin: "center bottom",
                     transform: activeIndex === idx ? "scale(1.02)" : "scale(1)",
@@ -198,6 +197,7 @@ export default function MonumentsInDanger() {
                         : "brightness(0.7)",
                   }}
                   onMouseEnter={() => setActiveIndex(idx)}
+                  onClick={() => setActiveIndex(idx)}
                 >
                   <img
                     src={monument.src}

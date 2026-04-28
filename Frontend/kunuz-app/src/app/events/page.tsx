@@ -1020,10 +1020,10 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
 
   return (
     <div
-      className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
-      style={{ backgroundColor: "var(--background)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--brown)" }}
+      className={`absolute top-[65px] right-4.5 w-[300px] md:w-[340px] z-[60] overflow-hidden transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
+      style={{ backgroundColor: "var(--background)", borderRadius: "24px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--brown)" }}
     >
-      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
+      <div className="px-5 py-3 md:px-6 md:py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
@@ -1144,13 +1144,23 @@ function MobileEventsStrip() {
     <div className="lg:hidden px-4 py-4">
       <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>{pageT("upcomingTitle")}</h3>
       <div
-        className="flex gap-3 overflow-x-auto pb-2"
+        className="flex gap-3 overflow-x-auto pb-4"
         style={{
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
           WebkitOverflowScrolling: "touch"
         }}
       >
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          .flex.gap-3.overflow-x-auto::-webkit-scrollbar {
+            height: 6px;
+            display: block;
+            background: transparent;
+          }
+          .flex.gap-3.overflow-x-auto::-webkit-scrollbar-thumb {
+            background: rgba(67, 40, 23, 0.2);
+            border-radius: 999px;
+          }
+        `}} />
         {loading ? (
           <div className="flex justify-center py-4 w-full">
             <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
@@ -1678,7 +1688,7 @@ function PostModal({
       )}
     </div>
   ) : (
-    <div className="hidden md:flex w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
+    <div className="hidden md:flex w-1/2 flex-shrink-0 flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
       <div className="mb-1">
         <LocationWorldCard
           location={post.location}
@@ -1750,13 +1760,13 @@ function PostModal({
     </div >
   );
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
-        <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
+        <div className="w-full md:w-1/2 flex flex-col overflow-hidden h-full" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
             <div className="ml-3 flex-1">
@@ -1809,30 +1819,30 @@ function PostModal({
           </div>
 
           <div className={`px-5 pt-3 pb-3 border-b flex-shrink-0 ${imageList.length === 0 ? "block md:hidden" : ""}`} style={{ borderColor: "#E0D5C5" }}>
-              <LocationWorldCard
-                location={post.location}
-                region={post.region}
-                textStyle={{ color: "#8B7355" }}
-                iconColor="#8B7355"
-                iconSize={13}
-                buttonClassName="mb-1"
-              />
-              <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+            <LocationWorldCard
+              location={post.location}
+              region={post.region}
+              textStyle={{ color: "#8B7355" }}
+              iconColor="#8B7355"
+              iconSize={13}
+              buttonClassName="mb-1"
+            />
+            <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
-              {isContentLong && !contentExpanded ? (
-                <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
-                  {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
-                </p>
-              ) : (
-                <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-              )}
-              {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
-              )}
+            {isContentLong && !contentExpanded ? (
+              <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
+                <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+              </p>
+            ) : (
+              <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+            )}
+            {isContentLong && contentExpanded && (
+              <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+            )}
 
 
-            </div>
+          </div>
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <button
@@ -2102,7 +2112,7 @@ function PostCard({
 
   return (
     <div
-      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
+      className={`md:rounded-xl mb-2 sm:mb-5 border-b border-black/5 md:border-b-0 md:border-transparent transition-all duration-200 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
       style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
       onClick={onCommentClick}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
@@ -2484,11 +2494,11 @@ export default function HomePageRoute() {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
+      <div className="flex h-[100dvh] overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
         <LeftSidebar activePage="events" />
-        <div className="flex h-full w-full max-w-[1300px] md:ml-[80px] pb-16 md:pb-0">
+        <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
+            <div className="sticky top-0 z-40 px-4 md:px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
               <form onSubmit={handleSearch} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
@@ -2512,7 +2522,7 @@ export default function HomePageRoute() {
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-0 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileEventsStrip />
                 {posts.length === 0 && !loading ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">

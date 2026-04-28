@@ -105,11 +105,11 @@ function EventCard({ item }: { item: EventItem }) {
 
   return (
     <div
-      className="rounded-2xl h-[130px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)]"
+      className="rounded-2xl h-[110px] sm:h-[130px] md:h-[140px] lg:h-[150px] flex flex-row items-stretch overflow-hidden transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)]"
       style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}
     >
       {hasImage && (
-        <div className="relative h-full shrink-0 w-[140px] sm:w-[160px] md:w-[180px] lg:w-[200px]">
+        <div className="relative h-full shrink-0 w-[100px] sm:w-[140px] md:w-[160px] lg:w-[200px]">
           <img
             src={item.imageUrl}
             alt={item.title}
@@ -119,15 +119,15 @@ function EventCard({ item }: { item: EventItem }) {
       )}
 
       <div
-        className={`${lato.className} flex-1 px-5 lg:px-6 py-4 flex flex-col justify-between`}
+        className={`${lato.className} flex-1 px-3 sm:px-4 md:px-5 lg:px-6 py-3 sm:py-4 flex flex-col justify-between`}
         style={!hasImage ? { borderLeft: "4px solid var(--border-soft)" } : undefined}
       >
         <div>
-          <h3 className="font-bold text-base lg:text-lg mb-1" style={{ color: "var(--foreground)" }}>
+          <h3 className="font-bold text-sm sm:text-base md:text-lg mb-0.5 sm:mb-1 line-clamp-1" style={{ color: "var(--foreground)" }}>
             {item.title}
           </h3>
           <p
-            className="font-normal text-xs lg:text-sm leading-relaxed overflow-hidden"
+            className="font-normal text-xs sm:text-xs md:text-sm leading-relaxed overflow-hidden hidden sm:block"
             style={{
               color: "var(--text-soft)",
               display: "-webkit-box",
@@ -139,18 +139,18 @@ function EventCard({ item }: { item: EventItem }) {
           </p>
         </div>
 
-        <div className="flex flex-row items-center justify-between">
-          <div className="flex flex-row items-center gap-4" style={{ color: "var(--text-muted)" }}>
-            <span className="flex items-center gap-1.5 text-xs lg:text-sm">
-              <PinIcon className="w-3.5 h-3.5" />
-              {item.location}
+        <div className="flex flex-row items-center justify-between gap-2">
+          <div className="flex flex-row items-center gap-2 sm:gap-3 md:gap-4 min-w-0" style={{ color: "var(--text-muted)" }}>
+            <span className="flex items-center gap-1 text-xs sm:text-xs md:text-sm line-clamp-1 whitespace-nowrap">
+              <PinIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+              <span className="hidden sm:inline">{item.location}</span>
             </span>
-            <span className="flex items-center gap-1.5 text-xs lg:text-sm">
-              <ClockIcon className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1 text-xs sm:text-xs md:text-sm whitespace-nowrap">
+              <ClockIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
               {item.date}
             </span>
           </div>
-          <CalendarIcon className="w-9 h-9 lg:w-10 lg:h-10 text-[var(--foreground)]" />
+          <CalendarIcon className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 text-[var(--foreground)] flex-shrink-0" />
         </div>
       </div>
     </div>
@@ -215,17 +215,17 @@ export default function UpcomingEvents() {
   return (
     <section
       id="events"
-      className="w-full py-24 md:py-28 lg:py-32 px-8 lg:px-24 xl:px-32 scroll-mt-24"
-      style={{ backgroundColor: "var(--background)", minHeight: "80vh" }}
+      className="w-full py-12 sm:py-16 md:py-24 lg:py-28 xl:py-32 px-4 sm:px-6 md:px-8 lg:px-24 xl:px-32 scroll-mt-24"
+      style={{ backgroundColor: "var(--background)", minHeight: "auto" }}
     >
       <h2
-        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-center mb-14 lg:mb-20"
+        className="font-bold text-[clamp(24px,6vw,44px)] text-center mb-8 sm:mb-10 md:mb-14 lg:mb-20"
         style={{ fontFamily: "var(--font-lato), system-ui, sans-serif", color: "var(--foreground)" }}
       >
         Upcoming Events
       </h2>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
         {events.map((item, idx) => (
           <EventCard key={`${item.title}-${idx}`} item={item} />
         ))}

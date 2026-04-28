@@ -142,9 +142,9 @@ export default function LeftSidebar({
   useEffect(() => {
     fetchUnreadCount();
     const interval = setInterval(() => {
-  const token = localStorage.getItem("accessToken");
-  if (token) fetchUnreadCount();
-}, 30000); // 30s is enough, no need to hammer every 5s
+      const token = localStorage.getItem("accessToken");
+      if (token) fetchUnreadCount();
+    }, 30000); // 30s is enough, no need to hammer every 5s
 
     const handleUpdate = (e) => {
       const newCount = Number(e.detail);
@@ -512,6 +512,7 @@ export default function LeftSidebar({
         }}
       >
         {navItems.map((item) => {
+          if (item.key === "add-post") return null;
           const isActive = activePage === item.key;
           const strokeCol = isActive ? navActiveIcon : iconDefault;
           const fillCol = isActive ? navActiveIcon : "none";

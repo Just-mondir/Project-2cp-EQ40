@@ -138,18 +138,17 @@ export default function AddEventPage() {
             <LeftSidebar activePage="monuments" variant="add-post" />
 
             <div className="flex flex-col flex-1 overflow-hidden ml-0 md:ml-[68px]">
-                <div className="px-8 pt-6 pb-2 flex-shrink-0">
+                <div className="px-4 md:px-8 pt-2 md:pt-6 pb-1 md:pb-2 flex-shrink-0">
                     <BackButton />
                 </div>
 
-                <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden px-4 md:px-8 pb-8 gap-6">
-                    <div className="w-full lg:w-[300px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
-                        <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
+                <div className="flex flex-col md:flex-row flex-1 overflow-y-auto md:overflow-hidden px-4 md:px-8 pb-32 md:pb-8 gap-2 md:gap-6 w-full feed-scroll">
+                    <div className="w-full md:w-[300px] flex flex-col flex-shrink-0 md:overflow-hidden post-panel-left">
+                        <div className="pb-1 md:pb-4 flex-shrink-0" style={{ marginTop: "4px" }}>
                             <h1
-                                className="post-page-title"
+                                className="post-page-title text-[18px] md:text-[30px]"
                                 style={{
                                     fontFamily: "var(--font-lato), 'Lato', sans-serif",
-                                    fontSize: "30px",
                                     fontWeight: 700,
                                     color: "#432817",
                                     lineHeight: 1.2,
@@ -173,11 +172,11 @@ export default function AddEventPage() {
                         </div>
 
                         <div
-                            className="h-[300px] lg:flex-1 overflow-hidden"
+                            className="h-[150px] md:h-auto md:min-h-0 md:flex-1 overflow-hidden shrink-0"
                             style={{
                                 backgroundColor: "#F7F5EF",
                                 borderRadius: 0,
-                                marginTop: "10px",
+                                marginTop: "8px",
                             }}
                         >
                             <ImageUploadPanel
@@ -188,7 +187,7 @@ export default function AddEventPage() {
                     </div>
 
                     <div
-                        className="flex-1 overflow-hidden flex flex-col post-panel-right post-form-panel"
+                        className="flex-none md:flex-1 overflow-visible md:overflow-hidden flex flex-col post-panel-right post-form-panel md:min-h-0"
                         style={{
                             backgroundColor: "#F7F5EF",
                             borderRadius: 0,

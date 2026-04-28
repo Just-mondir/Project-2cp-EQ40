@@ -11,6 +11,7 @@ export default function BackButton({ bgColor = "#FFFFFF" }) {
         <button
             onClick={() => router.back()}
             aria-label={t("back")}
+            className="text-sm md:text-base px-4 py-1.5 md:px-6 md:py-2"
             style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -21,9 +22,7 @@ export default function BackButton({ bgColor = "#FFFFFF" }) {
                 color: "#432817",
                 fontFamily: "var(--font-lato), 'Lato', sans-serif",
                 fontWeight: 600,
-                fontSize: "16px",
                 cursor: "pointer",
-                padding: "8px 24px",
                 boxShadow: "0 1px 4px rgba(67,40,23,0.10)",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.8"; }}

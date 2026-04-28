@@ -1218,32 +1218,32 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
 
   return (
     <div
-      className={`absolute top-[65px] right-4.5 w-[340px] z-[60] overflow-hidden transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
-      style={{ backgroundColor: "var(--background)", borderRadius: "28px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--brown)" }}
+      className={`absolute top-[65px] right-4.5 w-[300px] md:w-[340px] z-[60] overflow-hidden transition-all duration-400 cubic-bezier(0.16, 1, 0.3, 1) origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"}`}
+      style={{ backgroundColor: "var(--background)", borderRadius: "24px", boxShadow: "0 25px 60px rgba(67,40,23,0.2)", border: "1.5px solid var(--brown)" }}
     >
-      <div className="px-6 py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
+      <div className="px-5 py-3 md:px-6 md:py-4 border-b flex items-center justify-between" style={{ borderColor: "rgba(67, 40, 23, 0.1)" }}>
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
+          <div className="w-6 h-6 md:w-7 md:h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: "var(--brown)" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--cream)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="md:w-[14px] md:h-[14px]"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
           </div>
-          <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>{filtersT("title")}</h3>
+          <h3 className="text-[10px] md:text-xs font-black uppercase tracking-wider" style={{ color: "var(--brown)", fontFamily: "var(--font-lato)" }}>{filtersT("title")}</h3>
         </div>
         <button onClick={onClose} className="p-1 rounded-full hover:bg-black/5 transition-colors">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="md:w-[16px] md:h-[16px]"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       </div>
       <div className="flex flex-col max-h-[50vh]">
-        <div className="flex-1 overflow-y-auto px-6 py-5 feed-scroll">
-          <div className="flex flex-col gap-5">
+        <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-5 feed-scroll">
+          <div className="flex flex-col gap-4 md:gap-5">
             {filters.map((filter) => (
-              <div key={filter.label} className="flex flex-col gap-2">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--brown)" }}>{filter.label}</label>
+              <div key={filter.label} className="flex flex-col gap-1.5 md:gap-2">
+                <label className="text-[8px] md:text-[9px] font-black uppercase tracking-[0.2em] opacity-60" style={{ color: "var(--brown)" }}>{filter.label}</label>
                 <div className="relative group w-full">
                   <select
                     value={selectedFilters[filter.key as keyof typeof selectedFilters]}
                     onChange={(e) => handleSelectChange(filter.key, e.target.value)}
-                    className="w-full text-[11px] px-4 py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
-                    style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "14px", color: "var(--brown)", fontWeight: "700" }}
+                    className="w-full text-[10px] md:text-[11px] px-3 py-2 md:px-4 md:py-3 outline-none cursor-pointer appearance-none transition-all duration-300"
+                    style={{ backgroundColor: "var(--light)", border: "1.5px solid rgba(67, 40, 23, 0.2)", borderRadius: "12px", color: "var(--brown)", fontWeight: "700" }}
                   >
                     {filter.options.map((opt) => (
                       <option key={opt} value={opt}>
@@ -1270,9 +1270,9 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
           </div>
         </div>
       </div>
-      <div className="px-5 py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
-        <button onClick={handleReset} className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>{filtersT("reset")}</button>
-        <button onClick={handleApply} className="flex-[2] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>{filtersT("apply")}</button>
+      <div className="px-4 py-3 md:px-5 md:py-4 flex gap-2 border-t" style={{ backgroundColor: "var(--light)", borderColor: "rgba(67, 40, 23, 0.1)" }}>
+        <button onClick={handleReset} className="flex-1 py-2 md:py-2.5 rounded-[10px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:bg-black/5" style={{ border: "1.5px solid var(--brown)", color: "var(--brown)" }}>{filtersT("reset")}</button>
+        <button onClick={handleApply} className="flex-[2] py-2 md:py-2.5 rounded-[10px] text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all duration-200 hover:shadow-lg shadow-[#432817]/20 border border-transparent" style={{ backgroundColor: "var(--brown)", color: "var(--cream)" }}>{filtersT("apply")}</button>
       </div>
     </div>
   );
@@ -1288,6 +1288,7 @@ function PostModal({
   onInteractionChange,
   onMobilizationClick,
   initialTab = "comments",
+  onDelete,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -1575,7 +1576,7 @@ function PostModal({
       )}
     </div>
   ) : (
-    <div className="hidden md:flex w-1/2 flex-shrink-0 flex flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
+    <div className="hidden md:flex w-1/2 flex-shrink-0 flex-col p-6 overflow-y-auto feed-scroll" style={{ backgroundColor: "#F5EFE0" }}>
       <LocationWorldCard
         location={post.location}
         region={post.region}
@@ -1603,7 +1604,7 @@ function PostModal({
         {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
-        <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
+        <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
             <div className="ml-3 flex-1 min-w-0">
@@ -1973,7 +1974,7 @@ function PostCard({
 
   return (
     <div
-      className="rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer"
+      className="md:rounded-xl mb-2 sm:mb-5 border-b border-black/5 md:border-b-0 transition-all duration-200 md:hover:-translate-y-0.5 cursor-pointer"
       style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
       onClick={onCommentClick}
     >
@@ -2241,7 +2242,7 @@ function MobilizationModal({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 overflow-hidden backdrop-blur-sm px-4">
-      <div className="bg-[#F7F5EF] w-[950px] max-w-full max-h-[90vh] rounded-[32px] overflow-hidden shadow-2xl flex flex-col pt-4 pb-8 relative border border-white/20">
+      <div className="bg-[#F7F5EF] w-[950px] max-w-full max-h-[90vh] h-[90vh] md:h-auto rounded-2xl md:rounded-[32px] overflow-hidden shadow-2xl flex flex-col pt-4 pb-4 md:pb-8 relative border border-white/20">
         {/* Header */}
         <div className="flex items-center justify-between px-8 mb-6">
           <button
@@ -2254,7 +2255,7 @@ function MobilizationModal({
             <span className="text-sm font-bold opacity-80 group-hover:opacity-100">{commonT("back")}</span>
           </button>
 
-          <h2 className="text-3xl text-[#432817] font-bold tracking-tight text-center flex-1 pr-16" style={{ fontFamily: "var(--font-lato), sans-serif" }}>
+          <h2 className="text-xl md:text-3xl text-[#432817] font-bold tracking-tight text-center flex-1 pr-16" style={{ fontFamily: "var(--font-lato), sans-serif" }}>
             {pageT("title")}
           </h2>
         </div>
@@ -2262,23 +2263,23 @@ function MobilizationModal({
         <div className="flex-1 min-h-0 px-4 md:px-8 flex flex-col md:flex-row gap-6 md:gap-8 overflow-y-auto md:overflow-visible">
           {/* Left: Image Upload Preview */}
           <div className="flex-[0.7] flex flex-col gap-4 min-h-0 overflow-y-auto pr-2 feed-scroll">
-            <label className="text-sm font-bold text-[#432817]">
+            <label className="text-xs md:text-sm font-bold text-[#432817]">
               {pageT("documentationPhotos")}
             </label>
-            <div className="flex-1 overflow-hidden" style={{ minHeight: "400px" }}>
+            <div className="flex-1 overflow-hidden min-h-[160px] md:min-h-[400px]">
               <ImageUploadPanel initialImages={[]} onImagesChange={setImages} />
             </div>
           </div>
 
           {/* Right: Form */}
-          <div className="flex-1 flex flex-col gap-6 bg-white p-8 rounded-[40px] shadow-sm border border-[#432817]/5 overflow-y-auto feed-scroll">
+          <div className="flex-1 flex flex-col gap-4 md:gap-6 bg-white p-4 md:p-8 rounded-2xl md:rounded-[40px] shadow-sm border border-[#432817]/5 flex-shrink-0">
             {/* Description */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-bold text-[#432817]">
+              <label className="text-xs md:text-sm font-bold text-[#432817]">
                 {pageT("description")}
               </label>
               <textarea
-                className="w-full h-32 p-4 bg-[#F7F5EF]/50 border-2 border-transparent rounded-[24px] resize-none text-sm outline-none focus:border-[#C4A882] focus:bg-white transition-all shadow-inner"
+                className="w-full h-24 md:h-32 p-3 md:p-4 bg-[#F7F5EF]/50 border-2 border-transparent rounded-[16px] md:rounded-[24px] resize-none text-xs md:text-sm outline-none focus:border-[#C4A882] focus:bg-white transition-all shadow-inner"
                 placeholder={pageT("descriptionPlaceholder")}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -2287,16 +2288,16 @@ function MobilizationModal({
             </div>
 
             {/* Previous Status */}
-            <div className="flex flex-col gap-3">
-              <label className="text-sm font-bold text-[#432817]">
+            <div className="flex flex-col gap-2 md:gap-3">
+              <label className="text-xs md:text-sm font-bold text-[#432817]">
                 {pageT("previousStatus")}<span style={{ color: "red" }}>*</span>
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 md:gap-2">
                 {options.map(opt => (
                   <button
                     key={opt}
                     onClick={() => setSelectedPrev(opt)}
-                    className={`px-5 py-2 text-[11px] font-bold rounded-full transition-all border-2 ${selectedPrev === opt
+                    className={`px-3 py-1.5 md:px-5 md:py-2 text-[10px] md:text-[11px] font-bold rounded-full transition-all border-2 ${selectedPrev === opt
                       ? 'bg-[#432817] border-[#432817] text-white shadow-md'
                       : 'bg-transparent border-[#432817]/10 text-[#432817] hover:border-[#432817]/30'
                       }`}
@@ -2308,16 +2309,16 @@ function MobilizationModal({
             </div>
 
             {/* Current Status */}
-            <div className="flex flex-col gap-3">
-              <label className="text-sm font-bold text-[#432817]">
+            <div className="flex flex-col gap-2 md:gap-3">
+              <label className="text-xs md:text-sm font-bold text-[#432817]">
                 {pageT("newStatus")} <span style={{ color: "red" }}>*</span>
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 md:gap-2">
                 {options.map(opt => (
                   <button
                     key={opt}
                     onClick={() => setSelectedReq(opt)}
-                    className={`px-5 py-2 text-[11px] font-bold rounded-full transition-all border-2 ${selectedReq === opt
+                    className={`px-3 py-1.5 md:px-5 md:py-2 text-[10px] md:text-[11px] font-bold rounded-full transition-all border-2 ${selectedReq === opt
                       ? 'bg-[#432817] border-[#432817] text-white shadow-md'
                       : 'bg-transparent border-[#432817]/10 text-[#432817] hover:border-[#432817]/30'
                       }`}
@@ -2329,17 +2330,17 @@ function MobilizationModal({
             </div>
 
             {/* Footer buttons */}
-            <div className="mt-auto flex justify-end gap-3 pt-6 border-t border-[#432817]/5">
+            <div className="mt-auto flex justify-end gap-2 md:gap-3 pt-4 md:pt-6 border-t border-[#432817]/5 shrink-0">
               <button
                 onClick={onClose}
-                className="px-8 py-3 rounded-2xl font-bold text-sm text-[#432817] hover:bg-[#432817]/5 transition-colors"
+                className="px-4 md:px-8 py-2 md:py-3 rounded-[12px] md:rounded-2xl font-bold text-xs md:text-sm text-[#432817] hover:bg-[#432817]/5 transition-colors"
               >
                 {commonT("cancel")}
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="px-10 py-3 rounded-2xl font-bold text-sm text-white bg-[#432817] hover:scale-[1.03] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#432817]/20"
+                className="px-6 md:px-10 py-2 md:py-3 rounded-[12px] md:rounded-2xl font-bold text-xs md:text-sm text-white bg-[#432817] hover:scale-[1.03] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#432817]/20"
               >
                 {submitting ? (
                   <div className="flex items-center gap-2">
@@ -2564,7 +2565,7 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
     <div className="lg:hidden px-4 py-4">
       <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>{pageT("criticalTitle")}</h3>
       <div
-        className="flex gap-3 overflow-x-auto pb-2"
+        className="flex flex-nowrap gap-3 overflow-x-auto pb-4 w-full snap-x"
         style={{
           scrollbarWidth: "none",
           msOverflowStyle: "none",
@@ -2581,7 +2582,7 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
           return (
             <div
               key={post.id}
-              className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
+              className="flex-shrink-0 snap-center cursor-pointer transition-all duration-200 hover:scale-105"
               style={{ width: "140px" }}
             >
               <div className="flex flex-col">
@@ -2985,7 +2986,7 @@ export default function MonumentsInDangerPage() {
         <LeftSidebar activePage="monuments" />
         <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
+            <div className="sticky top-0 z-40 px-4 md:px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
               <form onSubmit={handleSearchSubmit} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
@@ -3008,19 +3009,18 @@ export default function MonumentsInDangerPage() {
               <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} onApply={handleApplyFilters} />
             </div>
 
-            {/* Mobile Add Mobilization Event Button */}
-            <div className="lg:hidden px-4 py-3 flex justify-center">
-              <button
-                onClick={() => router.push("/add-event")}
-                className="px-8 py-2.5 bg-[#432817] text-white text-sm font-medium rounded-xl shadow-lg transition-transform hover:-translate-y-0.5"
-                style={{ fontFamily: "var(--font-lato), sans-serif" }}
-              >
-                + {addEventT("title")}
-              </button>
-            </div>
-
             <div className="flex flex-1 overflow-hidden">
-              <main className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+              <main className="flex-1 overflow-y-auto feed-scroll px-0 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                {/* Mobile Add Mobilization Event Button */}
+                <div className="lg:hidden px-4 py-3 flex justify-center items-center w-full">
+                  <button
+                    onClick={() => router.push("/add-event")}
+                    className="w-[90%] md:w-auto px-8 py-3 bg-[#432817] text-white text-sm font-bold rounded-2xl shadow-lg transition-transform hover:-translate-y-0.5"
+                    style={{ fontFamily: "var(--font-lato), sans-serif" }}
+                  >
+                    + {addEventT("title")}
+                  </button>
+                </div>
                 <MobileMonumentsStrip posts={criticalPosts} />
                 {posts.length > 0 ? (
                   posts.map((post) => (

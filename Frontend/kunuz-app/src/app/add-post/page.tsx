@@ -151,7 +151,7 @@ export default function AddPostPage() {
           <BackButton />
         </div>
 
-        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden px-4 md:px-8 pb-8 gap-6">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden px-4 md:px-8 pb-32 lg:pb-8 gap-6 feed-scroll">
           <div className="w-full lg:w-[300px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
             <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
               <h1
@@ -197,7 +197,7 @@ export default function AddPostPage() {
           </div>
 
           <div
-            className="flex-1 overflow-hidden flex flex-col post-panel-right post-form-panel"
+            className="flex-none lg:flex-1 overflow-visible lg:overflow-hidden flex flex-col post-panel-right post-form-panel lg:min-h-0"
             style={{
               backgroundColor: "#F7F5EF",
               borderRadius: 0,

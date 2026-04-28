@@ -73,18 +73,18 @@ function StepCard({ step }: { step: Step }) {
 
   return (
     <div
-      className="border border-[#2C1A0E]/100 p-8 lg:p-10 flex flex-col items-center text-center gap-6 lg:gap-8 transition-transform duration-300 ease-out hover:scale-105"
+      className="border border-[#2C1A0E]/100 p-4 sm:p-6 md:p-8 lg:p-10 flex flex-col items-center text-center gap-4 sm:gap-5 md:gap-6 lg:gap-8 transition-transform duration-300 ease-out hover:scale-105"
       style={{ borderWidth: "1.5px", fontFamily: 'var(--font-lato), system-ui, sans-serif', backgroundColor: '#F7F5EF', borderRadius: '20px', boxShadow: '0 6px 24px 0 rgba(44,26,14,0.13)' }}
     >
-      <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-[#2C1A0E] flex items-center justify-center shadow-md">
-        <IconComponent className="w-8 h-8 lg:w-10 lg:h-10" />
+      <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-full bg-[#2C1A0E] flex items-center justify-center shadow-md">
+        <IconComponent className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10" />
       </div>
 
       <div>
-        <h3 className="font-bold text-base lg:text-lg text-[#2C1A0E] mb-2" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>
+        <h3 className="font-bold text-sm sm:text-base md:text-lg text-[#2C1A0E] mb-2" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>
           {step.stepLabel}
         </h3>
-        <p className="font-normal text-sm lg:text-base text-[#2C1A0E] leading-relaxed" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>
+        <p className="font-normal text-xs sm:text-sm md:text-base text-[#2C1A0E] leading-relaxed" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>
           {step.description}
         </p>
       </div>
@@ -96,17 +96,17 @@ export default function HowDoesItWork() {
   return (
     <section
       id="help"
-      className="w-full py-24 md:py-28 lg:py-32 px-8 lg:px-24 xl:px-32 scroll-mt-24"
-      style={{ backgroundColor: "#FFF8E2", minHeight: "80vh" }}
+      className="w-full py-12 sm:py-16 md:py-24 lg:py-28 xl:py-32 px-4 sm:px-6 md:px-8 lg:px-24 xl:px-32 scroll-mt-24"
+      style={{ backgroundColor: "#FFF8E2", minHeight: "auto" }}
     >
       <h2
-        className="font-bold text-[32px] md:text-[36px] lg:text-[44px] text-[#2C1A0E] text-center mb-16 lg:mb-20"
+        className="font-bold text-[clamp(24px,6vw,44px)] text-[#2C1A0E] text-center mb-8 sm:mb-12 md:mb-16 lg:mb-20"
         style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}
       >
         How Does It Work
       </h2>
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-14">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 md:gap-10 lg:gap-14">
         {steps.map((step) => (
           <StepCard key={step.stepLabel} step={step} />
         ))}
