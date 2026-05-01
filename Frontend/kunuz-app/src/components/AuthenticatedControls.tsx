@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import DaltonismToggle from "@/components/DaltonismToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ThemeToggle from "@/components/ThemeToggle";
 import { normalizeThemePathname } from "@/lib/themeRoutes";
@@ -8,10 +9,10 @@ import { normalizeThemePathname } from "@/lib/themeRoutes";
 export default function AuthenticatedControls() {
   const pathname = usePathname();
   const normalizedPathname = normalizeThemePathname(pathname || "/");
-  const shouldShowControls =
+  const shouldShowThemeControls =
     normalizedPathname === "/home-page" || normalizedPathname === "/home";
 
-  if (!shouldShowControls) {
+  if (!shouldShowThemeControls) {
     return null;
   }
 
@@ -20,14 +21,17 @@ export default function AuthenticatedControls() {
       className="fixed top-[18px] z-[110] flex items-center gap-3"
       style={{ insetInlineEnd: "18px" }}
     >
-      <LanguageSwitcher />
-      <ThemeToggle
-        forceVisible
-        variant="inline"
-        backgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
-        hoverBackgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
-        shadow="var(--theme-toggle-shadow)"
-      />
+      {shouldShowThemeControls && <LanguageSwitcher />}
+      <DaltonismToggle />
+      {shouldShowThemeControls && (
+        <ThemeToggle
+          forceVisible
+          variant="inline"
+          backgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
+          hoverBackgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
+          shadow="var(--theme-toggle-shadow)"
+        />
+      )}
     </div>
   );
 }

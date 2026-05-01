@@ -18,6 +18,19 @@ const PUBLIC_PATHS = new Set([
   "/legal",
 ]);
 
+const DALTONISM_MODES = ["deuteranopia", "protanopia", "tritanopia"] as const;
+
+function applyDaltonismForRoute(isPublicRoute: boolean) {
+  const root = document.documentElement;
+  DALTONISM_MODES.forEach(mode => root.classList.remove(`daltonism-${mode}`));
+  if (isPublicRoute) return;
+
+  const storedMode = localStorage.getItem("daltonism-mode");
+  if (storedMode === "deuteranopia" || storedMode === "protanopia" || storedMode === "tritanopia") {
+    root.classList.add(`daltonism-${storedMode}`);
+  }
+}
+
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -40,6 +53,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace("/");
     }
   }, [mounted, isAuthenticated, isPublicRoute, router]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    applyDaltonismForRoute(isPublicRoute);
+  }, [mounted, isPublicRoute, pathname]);
 
   // Hide protected content during initial SSR and hydration to prevent flash
   if (!mounted && !isPublicRoute) {
