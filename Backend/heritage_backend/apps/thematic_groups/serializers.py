@@ -16,7 +16,7 @@ from apps.posts.serializers import PostDetailSerializer, PostListSerializer
 from apps.users.models import User
 
 from .models import GroupInvitation, GroupJoinRequest, GroupMembership, ThematicGroup
-from .services import user_is_group_admin, user_is_group_member
+from .services import user_can_access_group, user_is_group_admin, user_is_group_member
 
 
 def _get_user(user_id: str) -> User | None:
@@ -92,7 +92,7 @@ class ThematicGroupSerializer(serializers.Serializer):
         request = self.context.get("request")
         if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
             return False
-        return user_is_group_member(str(request.user.id), obj)
+        return user_can_access_group(str(request.user.id), obj)
 
     def get_is_admin(self, obj) -> bool:
         request = self.context.get("request")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import timedelta
 
 from bson import ObjectId
 from bson.errors import InvalidId
@@ -19,11 +20,12 @@ from apps.core.responses import api_error, api_success
 from apps.posts.models import Post, PostImage
 from apps.posts.utils import upload_to_cloudinary
 from apps.notifications.registry import notify
+from apps.reports.models import Report
 from apps.users.models import User
 from django.conf import settings
 import os
 
-from .models import GroupInvitation, GroupJoinRequest, GroupMembership, ThematicGroup
+from .models import GroupChatMessage, GroupChatMute, GroupInvitation, GroupJoinRequest, GroupMembership, ThematicGroup
 from .serializers import (
     GroupActionSerializer,
     GroupInvitationResponseSerializer,
@@ -92,6 +94,40 @@ def _save_group_section_post_images(post: Post, image_files) -> None:
     for image in list(image_files)[:allowed]:
         url = upload_to_cloudinary(image, folder="posts")
         PostImage(post=post, image=url).save()
+
+
+def _is_group_chat_muted(group: ThematicGroup, user_id: str) -> bool:
+    mute = GroupChatMute.objects(group=group, user_id=str(user_id)).first()
+    if not mute:
+        return False
+    if mute.muted_forever:
+        return True
+    return bool(mute.muted_until and mute.muted_until > timezone.now())
+
+
+def _notify_group_chat_members(group: ThematicGroup, message: GroupChatMessage, actor) -> None:
+    recipient_ids = {str(group.admin_id)}
+    for membership in GroupMembership.objects(group=group):
+        recipient_ids.add(str(membership.user_id))
+
+    actor_id = str(actor.id)
+    actor_name = getattr(actor, "display_name", "") or getattr(actor, "username", "Someone")
+    preview = message.text[:120] if message.text else ("Voice message" if getattr(message, "audio", "") else "Photo")
+
+    for recipient_id in recipient_ids:
+        if recipient_id == actor_id or _is_group_chat_muted(group, recipient_id):
+            continue
+        notify(
+            event_type="group_chat_message",
+            actor_id=actor_id,
+            actor_name=actor_name,
+            recipient_id=recipient_id,
+            target_type="group_chat",
+            target_id=str(group.id),
+            group_name=group.name,
+            message_id=str(message.id),
+            message_preview=preview,
+        )
 
 
 class ThematicGroupListCreateView(APIView):
@@ -551,6 +587,331 @@ class GroupUserPostListView(APIView):
         page = paginator.paginate_queryset(posts, request)
         serializer = GroupPostListSerializer(page, many=True, context={"request": request})
         return paginator.get_paginated_response(serializer.data)
+
+
+class GroupChatMessageListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def _serialize_message(self, message: GroupChatMessage, request: Request | None = None) -> dict:
+        try:
+            user = User.objects.get(id=message.user_id)
+        except Exception:
+            user = None
+        username = getattr(user, "username", "") if user else ""
+        display_name = (getattr(user, "display_name", "") or username) if user else ""
+        profile_picture = getattr(user, "profile_picture", "") if user else ""
+        reply_data = None
+
+        if getattr(message, "reply_to", None):
+            reply = message.reply_to
+            try:
+                reply_user = User.objects.get(id=reply.user_id)
+            except Exception:
+                reply_user = None
+            reply_data = {
+                "id": str(reply.id),
+                "user_id": reply.user_id,
+                "user_display_name": (getattr(reply_user, "display_name", "") or getattr(reply_user, "username", "")) if reply_user else "",
+                "text": reply.text,
+                "image": reply.image,
+                "audio": getattr(reply, "audio", ""),
+                "is_deleted": bool(getattr(reply, "is_deleted", False)),
+            }
+
+        requester_id = str(request.user.id) if request and request.user.is_authenticated else ""
+        gem_user_ids = list(getattr(message, "gem_user_ids", []) or [])
+        is_deleted = bool(getattr(message, "is_deleted", False))
+
+        return {
+            "id": str(message.id),
+            "group_id": str(message.group.id),
+            "user_id": message.user_id,
+            "user_username": username,
+            "user_display_name": display_name,
+            "user_profile_picture": profile_picture,
+            "text": "" if is_deleted else message.text,
+            "image": "" if is_deleted else message.image,
+            "audio": "" if is_deleted else getattr(message, "audio", ""),
+            "reply_to": reply_data,
+            "gems_count": len(gem_user_ids),
+            "is_gemmed": requester_id in gem_user_ids,
+            "is_pinned": bool(getattr(message, "pinned_at", None)),
+            "pinned_by_id": getattr(message, "pinned_by_id", ""),
+            "is_deleted": is_deleted,
+            "edited_at": getattr(message, "edited_at", None),
+            "created_at": message.created_at,
+        }
+
+    def get(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can access the chat.", status_code=status.HTTP_403_FORBIDDEN)
+
+        messages = GroupChatMessage.objects(group=group).order_by("-created_at")[:80]
+        data = [self._serialize_message(message, request) for message in reversed(list(messages))]
+        return api_success("Group chat messages retrieved successfully.", data)
+
+    def post(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can chat in this group.", status_code=status.HTTP_403_FORBIDDEN)
+
+        text = str(request.data.get("text", "")).strip()
+        reply_to_id = str(request.data.get("reply_to", "")).strip()
+        image_file = request.FILES.get("image")
+        audio_file = request.FILES.get("audio")
+        image_url = ""
+        audio_url = ""
+        reply_to = None
+
+        if image_file:
+            image_url = upload_to_cloudinary(image_file, folder="group-chat")
+        if audio_file:
+            audio_url = upload_to_cloudinary(audio_file, folder="group-chat-audio", resource_type="auto")
+
+        if not text and not image_url and not audio_url:
+            return api_error("Message text, image, or audio is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        if reply_to_id:
+            try:
+                reply_to = GroupChatMessage.objects.get(id=reply_to_id, group=group, is_deleted=False)
+            except Exception:
+                return api_error("Reply target not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        message = GroupChatMessage(
+            group=group,
+            user_id=str(request.user.id),
+            reply_to=reply_to,
+            text=text[:2000],
+            image=image_url,
+            audio=audio_url,
+        )
+        message.save()
+        _notify_group_chat_members(group, message, request.user)
+
+        return api_success("Group chat message sent successfully.", self._serialize_message(message, request), status_code=status.HTTP_201_CREATED)
+
+
+class GroupChatMessageDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_message(self, group_id: str, message_id: str):
+        group = get_group_by_id(group_id)
+        if not group:
+            return None, None
+        try:
+            message = GroupChatMessage.objects.get(id=message_id, group=group)
+        except Exception:
+            return group, None
+        return group, message
+
+    def patch(self, request: Request, group_id: str, message_id: str) -> Response:
+        group, message = self._get_message(group_id, message_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not message or getattr(message, "is_deleted", False):
+            return api_error("Message not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can edit chat messages.", status_code=status.HTTP_403_FORBIDDEN)
+        if message.user_id != str(request.user.id):
+            return api_error("You can only edit your own messages.", status_code=status.HTTP_403_FORBIDDEN)
+
+        text = str(request.data.get("text", "")).strip()
+        if not text:
+            return api_error("Message text is required.", status_code=status.HTTP_400_BAD_REQUEST)
+        message.text = text[:2000]
+        message.edited_at = timezone.now()
+        message.save()
+        return api_success("Message updated.", GroupChatMessageListCreateView()._serialize_message(message, request))
+
+    def delete(self, request: Request, group_id: str, message_id: str) -> Response:
+        group, message = self._get_message(group_id, message_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not message or getattr(message, "is_deleted", False):
+            return api_error("Message not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can delete chat messages.", status_code=status.HTTP_403_FORBIDDEN)
+        if message.user_id != str(request.user.id) and not user_is_group_admin(str(request.user.id), group):
+            return api_error("You can only delete your own messages.", status_code=status.HTTP_403_FORBIDDEN)
+
+        message.text = ""
+        message.image = ""
+        message.audio = ""
+        message.is_deleted = True
+        message.pinned_by_id = ""
+        message.pinned_at = None
+        message.save()
+        return api_success("Message deleted.", GroupChatMessageListCreateView()._serialize_message(message, request))
+
+
+class GroupChatMessageGemView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, group_id: str, message_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can gem chat messages.", status_code=status.HTTP_403_FORBIDDEN)
+        try:
+            message = GroupChatMessage.objects.get(id=message_id, group=group, is_deleted=False)
+        except Exception:
+            return api_error("Message not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        user_id = str(request.user.id)
+        gem_user_ids = list(message.gem_user_ids or [])
+        if user_id in gem_user_ids:
+            gem_user_ids = [item for item in gem_user_ids if item != user_id]
+            liked = False
+        else:
+            gem_user_ids.append(user_id)
+            liked = True
+        message.gem_user_ids = gem_user_ids
+        message.save()
+        return api_success("Message gem toggled.", {"liked": liked, "gems_count": len(gem_user_ids)})
+
+
+class GroupChatMessagePinView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, group_id: str, message_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can pin chat messages.", status_code=status.HTTP_403_FORBIDDEN)
+        try:
+            message = GroupChatMessage.objects.get(id=message_id, group=group, is_deleted=False)
+        except Exception:
+            return api_error("Message not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        if getattr(message, "pinned_at", None):
+            message.pinned_by_id = ""
+            message.pinned_at = None
+        else:
+            message.pinned_by_id = str(request.user.id)
+            message.pinned_at = timezone.now()
+        message.save()
+        return api_success("Message pin toggled.", GroupChatMessageListCreateView()._serialize_message(message, request))
+
+
+class GroupChatMessageReportView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, group_id: str, message_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can report chat messages.", status_code=status.HTTP_403_FORBIDDEN)
+        try:
+            message = GroupChatMessage.objects.get(id=message_id, group=group, is_deleted=False)
+        except Exception:
+            return api_error("Message not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if message.user_id == str(request.user.id):
+            return api_error("You cannot report your own message.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        reason = str(request.data.get("reason", "")).strip()
+        if len(reason) < 10:
+            return api_error("Reason must be at least 10 characters.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        target_id = str(message.id)
+        existing = Report.objects(
+            reporter_id=str(request.user.id),
+            target_type="group_chat_message",
+            target_id=target_id,
+            status="pending",
+        ).first()
+        if existing:
+            return api_error("You already have a pending report for this message.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        report = Report(
+            reporter_id=str(request.user.id),
+            target_type="group_chat_message",
+            target_id=target_id,
+            reason=reason[:1000],
+        )
+        report.save()
+
+        actor_name = getattr(request.user, "display_name", "") or getattr(request.user, "username", "Someone")
+        notify(
+            event_type="group_chat_message_reported",
+            actor_id=str(request.user.id),
+            actor_name=actor_name,
+            recipient_id=str(group.admin_id),
+            target_type="group_chat_report",
+            target_id=str(group.id),
+            group_name=group.name,
+            report_id=str(report.id),
+            message_id=target_id,
+            message_preview=(message.text[:120] if message.text else ("Voice message" if getattr(message, "audio", "") else "Photo")),
+        )
+        return api_success("Message report sent to the group admin.", {"id": str(report.id)}, status_code=status.HTTP_201_CREATED)
+
+
+class GroupChatMuteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    DURATIONS = {
+        "1h": timedelta(hours=1),
+        "8h": timedelta(hours=8),
+        "24h": timedelta(hours=24),
+    }
+
+    def _serialize_mute(self, mute: GroupChatMute | None) -> dict:
+        if not mute:
+            return {"is_muted": False, "muted_until": None, "muted_forever": False}
+        is_muted = mute.muted_forever or bool(mute.muted_until and mute.muted_until > timezone.now())
+        return {
+            "is_muted": is_muted,
+            "muted_until": mute.muted_until,
+            "muted_forever": mute.muted_forever,
+        }
+
+    def get(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can mute chat notifications.", status_code=status.HTTP_403_FORBIDDEN)
+        mute = GroupChatMute.objects(group=group, user_id=str(request.user.id)).first()
+        return api_success("Group chat mute status retrieved.", self._serialize_mute(mute))
+
+    def post(self, request: Request, group_id: str) -> Response:
+        group = get_group_by_id(group_id)
+        if not group:
+            return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
+        if not user_can_access_group(str(request.user.id), group):
+            return api_error("Only group members can mute chat notifications.", status_code=status.HTTP_403_FORBIDDEN)
+
+        duration = str(request.data.get("duration", "")).strip()
+        mute = GroupChatMute.objects(group=group, user_id=str(request.user.id)).first()
+
+        if duration == "off":
+            if mute:
+                mute.delete()
+            return api_success("Group chat notifications unmuted.", self._serialize_mute(None))
+
+        if not mute:
+            mute = GroupChatMute(group=group, user_id=str(request.user.id))
+
+        if duration in {"forever", "until_changed"}:
+            mute.muted_forever = True
+            mute.muted_until = None
+        elif duration in self.DURATIONS:
+            mute.muted_forever = False
+            mute.muted_until = timezone.now() + self.DURATIONS[duration]
+        else:
+            return api_error("Invalid mute duration.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        mute.save()
+        return api_success("Group chat notifications muted.", self._serialize_mute(mute))
 
 
 class GroupsPostsView(APIView):

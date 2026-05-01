@@ -379,7 +379,7 @@ export default function GroupMembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loadingGroup, setLoadingGroup] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(true);
-  const [tab, setTab] = useState<"posts" | "questions" | "about" | "my posts">("posts");
+  const [tab, setTab] = useState<"posts" | "questions" | "chat" | "about" | "my posts">("posts");
   const [joining, setJoining] = useState(false);
   const [joinStatus, setJoinStatus] = useState<"idle" | "pending" | "member">("idle");
   const [removing, setRemoving] = useState<string | null>(null);
@@ -450,7 +450,7 @@ export default function GroupMembersPage() {
     finally { setJoining(false); }
   };
 
-  const handleTabChange = (t: "posts" | "questions" | "about" | "my posts") => {
+  const handleTabChange = (t: "posts" | "questions" | "chat" | "about" | "my posts") => {
     setTab(t);
     if (t !== "posts") router.push(`/group/${groupId}?tab=${t}`);
     else router.push(`/group/${groupId}`);

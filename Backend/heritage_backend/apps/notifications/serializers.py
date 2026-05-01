@@ -59,6 +59,8 @@ class NotificationSerializer(serializers.Serializer):
             "group_join_request_approved": "approved your group request",
             "group_join_request_rejected": "rejected your group request",
             "group_join_request": "wants to join your group",  # ← ADD HERE
+            "group_chat_message": "sent a message in a group",
+            "group_chat_message_reported": "reported a message in your group",
             "badge_request_reviewed": "reviewed your badge request",
             "user_banned": "banned your account",
             "user_suspended": "suspended your account",

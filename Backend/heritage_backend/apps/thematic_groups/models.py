@@ -150,3 +150,45 @@ class GroupInvitation(me.Document):
             {"fields": ["group", "recipient_id", "status"], "unique": True},
         ],
     }
+
+
+class GroupChatMessage(me.Document):
+    """Chat message shared between accepted members of a thematic group."""
+
+    group = me.ReferenceField(ThematicGroup, required=True)
+    user_id = me.StringField(required=True)
+    reply_to = me.ReferenceField("self", null=True, default=None)
+    text = me.StringField(default="")
+    image = me.StringField(default="")
+    audio = me.StringField(default="")
+    gem_user_ids = me.ListField(me.StringField(), default=list)
+    pinned_by_id = me.StringField(default="")
+    pinned_at = me.DateTimeField(null=True, default=None)
+    is_deleted = me.BooleanField(default=False)
+    edited_at = me.DateTimeField(null=True, default=None)
+    created_at = me.DateTimeField(default=timezone.now)
+
+    meta = {
+        "collection": "group_chat_messages",
+        "ordering": ["created_at"],
+        "indexes": ["group", "user_id", "created_at"],
+    }
+
+
+class GroupChatMute(me.Document):
+    """Notification mute setting for a user's group chat."""
+
+    group = me.ReferenceField(ThematicGroup, required=True)
+    user_id = me.StringField(required=True)
+    muted_until = me.DateTimeField(null=True, default=None)
+    muted_forever = me.BooleanField(default=False)
+    updated_at = me.DateTimeField(default=timezone.now)
+
+    meta = {
+        "collection": "group_chat_mutes",
+        "indexes": [{"fields": ["group", "user_id"], "unique": True}],
+    }
+
+    def save(self, *args, **kwargs):
+        self.updated_at = timezone.now()
+        return super().save(*args, **kwargs)

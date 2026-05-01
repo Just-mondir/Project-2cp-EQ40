@@ -7,13 +7,14 @@ import logging
 from rest_framework import serializers
 
 from apps.posts.models import Annotation, Comment, Post
+from apps.thematic_groups.models import GroupChatMessage
 from apps.users.models import User
 
 from .models import MobilizationReport, Report
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_TARGET_TYPES = {"post", "comment", "annotation", "user", "event"}
+ALLOWED_TARGET_TYPES = {"post", "comment", "annotation", "user", "event", "group_chat_message"}
 
 
 class ReportSerializer(serializers.Serializer):
@@ -52,7 +53,7 @@ class ReportCreateSerializer(serializers.Serializer):
                 {
                     "target_type": (
                         "target_type must be one of: "
-                        "post, comment, annotation, user, event."
+                        "post, comment, annotation, user, event, group_chat_message."
                     )
                 }
             )
@@ -117,6 +118,14 @@ class ReportCreateSerializer(serializers.Serializer):
 
         elif target_type == "event":
             logger.info("Event existence check skipped (events app not built yet).")
+
+        elif target_type == "group_chat_message":
+            try:
+                GroupChatMessage.objects.get(id=target_id, is_deleted=False)
+            except Exception:
+                raise serializers.ValidationError(
+                    {"target_id": "Group chat message not found."}
+                )
 
         if Report.objects(
             reporter_id=reporter_id,

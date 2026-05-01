@@ -297,6 +297,8 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     event_type === "group_invite_received"
   ) {
     router.push(`/group/${target_id}`);
+  } else if (event_type === "group_chat_message" || event_type === "group_chat_message_reported") {
+    router.push(`/group/${target_id}?tab=chat`);
   }
   // ← NO onClose() call anywhere — this was causing the logout
 };

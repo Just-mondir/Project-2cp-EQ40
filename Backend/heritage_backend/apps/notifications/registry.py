@@ -17,6 +17,8 @@ EVENT_REGISTRY = {
     "group_join_request": "{actor} wants to join {group_name}",  
     "group_join_request_approved": "Your request to join {group_name} was approved",
     "group_join_request_rejected": "Your request to join {group_name} was rejected",
+    "group_chat_message": "{actor} sent a message in {group_name}",
+    "group_chat_message_reported": "{actor} reported a message in {group_name}",
     "badge_request_reviewed": "Your badge request was reviewed",
     "user_banned": "A moderator banned your account",
     "user_suspended": "A moderator suspended your account",
