@@ -4,10 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-const PLATFORM_BROWN = "#432817";
-const PLATFORM_BEIGE = "#F6EAD2";
-const PLATFORM_BROWN_MUTED = "#8B7355";
-const PLATFORM_BEIGE_MUTED = "#BFAF96";
+const SAVE_ACTIVE_COLOR = "#8B6914";
 
 function getAuthToken(): string {
   if (typeof window === "undefined") return "";
@@ -24,22 +21,6 @@ function resolveProfilePictureUrl(profilePicture?: string): string {
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
   if (value.startsWith("/")) return `${API_URL}${value}`;
   return value;
-}
-
-function useIsDarkTheme() {
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    const syncTheme = () => setIsDarkTheme(root.dataset.theme === "dark");
-    syncTheme();
-    const observer = new MutationObserver(syncTheme);
-    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
-
-  return isDarkTheme;
 }
 
 function RepostIcon({ size = 18, active = false }: { size?: number; active?: boolean }) {
@@ -59,7 +40,6 @@ function RepostIcon({ size = 18, active = false }: { size?: number; active?: boo
       <path d="M3 11V9a3 3 0 0 1 3-3h15" />
       <path d="M7 22l-4-4 4-4" />
       <path d="M21 13v2a3 3 0 0 1-3 3H3" />
-      {active && <path d="m9 12.5 2.1 2.1L15.5 10" strokeWidth="2.35" />}
     </svg>
   );
 }
@@ -232,9 +212,8 @@ export default function RepostButton({
   const [showUsers, setShowUsers] = useState(false);
   const longPressedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isDarkTheme = useIsDarkTheme();
-  const activeColor = isDarkTheme ? PLATFORM_BEIGE : PLATFORM_BROWN;
-  const inactiveColor = isDarkTheme ? PLATFORM_BEIGE_MUTED : PLATFORM_BROWN_MUTED;
+  const activeColor = SAVE_ACTIVE_COLOR;
+  const inactiveColor = style?.color ?? "var(--foreground, #432817)";
 
   const clearPressTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);

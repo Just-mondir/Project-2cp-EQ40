@@ -15,7 +15,7 @@ import GroupAddPostModal from "@/components/GroupAddPostModal";
 import { useTranslations } from "next-intl";
 import { useLocaleSettings } from "@/components/LocaleProvider";
 import { localizeLocationLabel } from "@/components/LocationWorldCard";
-import { Copy, Flag, Mic, Pencil, Pin, PinOff, Reply, Square, Trash2, type LucideIcon } from "lucide-react";
+import { Copy, Flag, Mic, Pause, Pencil, Pin, PinOff, Play, Reply, Square, Trash2, type LucideIcon } from "lucide-react";
 const API_URL = "http://127.0.0.1:8000";
 
 /* ─── helpers ─── */
@@ -316,8 +316,11 @@ const CHAT_TEXT = {
     addPhoto: "Add photo",
     recordVoice: "Record voice message",
     stopRecording: "Stop recording",
+    pauseRecording: "Pause recording",
+    resumeRecording: "Resume recording",
     removeVoice: "Remove voice message",
     recording: "Recording...",
+    paused: "Paused",
     sendMessage: "Send message",
   },
   fr: {
@@ -359,8 +362,11 @@ const CHAT_TEXT = {
     addPhoto: "Ajouter une photo",
     recordVoice: "Enregistrer un message vocal",
     stopRecording: "Arreter l'enregistrement",
+    pauseRecording: "Mettre en pause",
+    resumeRecording: "Reprendre",
     removeVoice: "Retirer le message vocal",
     recording: "Enregistrement...",
+    paused: "En pause",
     sendMessage: "Envoyer le message",
   },
   ar: {
@@ -411,9 +417,15 @@ const CHAT_TEXT = {
 type ChatText = typeof CHAT_TEXT.en;
 
 function getChatText(locale: string) {
-  if (locale?.toLowerCase().startsWith("ar")) return CHAT_TEXT.ar;
-  if (locale?.toLowerCase().startsWith("fr")) return CHAT_TEXT.fr;
+  if (locale?.toLowerCase().startsWith("ar")) return { ...CHAT_TEXT.en, ...CHAT_TEXT.ar };
+  if (locale?.toLowerCase().startsWith("fr")) return { ...CHAT_TEXT.en, ...CHAT_TEXT.fr };
   return CHAT_TEXT.en;
+}
+
+function formatVoiceDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function formatChatMuteLabel(status: ChatMuteStatus, text: ChatText, locale: string) {
@@ -849,6 +861,8 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [messageToDelete, setMessageToDelete] = useState<ChatMessage | null>(null);
@@ -862,7 +876,9 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
   const recorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioStreamRef = useRef<MediaStream | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const chatListRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollToBottomRef = useRef(true);
+  const isChatNearBottomRef = useRef(true);
   const authUser = getAuthUser();
   const canChat = group.is_member || group.is_admin;
   const imagePreview = React.useMemo(() => imageFile ? URL.createObjectURL(imageFile) : "", [imageFile]);
@@ -893,6 +909,20 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
     }
   }, [group.id, canChat]);
 
+  const scrollChatToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const list = chatListRef.current;
+    if (!list) return;
+    list.scrollTo({ top: list.scrollHeight, behavior });
+  }, []);
+
+  const scrollToChatMessage = (messageId?: string) => {
+    if (!messageId) return;
+    const list = chatListRef.current;
+    const element = document.getElementById(`chat-message-${messageId}`);
+    if (!list || !element) return;
+    list.scrollTo({ top: element.offsetTop - list.offsetTop - 80, behavior: "smooth" });
+  };
+
   useEffect(() => {
     fetchMessages();
     const interval = window.setInterval(() => fetchMessages(true), 5000);
@@ -914,8 +944,17 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
   }, [group.id, canChat]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages.length]);
+    if (shouldScrollToBottomRef.current || isChatNearBottomRef.current) {
+      scrollChatToBottom(shouldScrollToBottomRef.current ? "smooth" : "auto");
+      shouldScrollToBottomRef.current = false;
+    }
+  }, [messages.length, scrollChatToBottom]);
+
+  useEffect(() => {
+    if (!recording || recordingPaused) return;
+    const timer = window.setInterval(() => setRecordingSeconds(seconds => seconds + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [recording, recordingPaused]);
 
   useEffect(() => {
     return () => {
@@ -969,11 +1008,14 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
       if (editingMessage) {
         updateMessage(editingMessage.id, created);
       } else {
+        shouldScrollToBottomRef.current = true;
         setMessages(prev => [...prev, created]);
       }
       setMessageText("");
       setImageFile(null);
       setAudioFile(null);
+      setRecordingSeconds(0);
+      setRecordingPaused(false);
       setReplyTo(null);
       setEditingMessage(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -985,7 +1027,7 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
   };
 
   const copyMessage = async (message: ChatMessage) => {
-    const value = message.text || (message.image ? resolveUrl(message.image) : "") || (message.audio ? resolveUrl(message.audio) : "");
+    const value = message.text.trim();
     if (!value) return;
     await navigator.clipboard?.writeText(value);
     setOpenMenuId(null);
@@ -1011,12 +1053,27 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
         audioStreamRef.current = null;
         recorderRef.current = null;
         setRecording(false);
+        setRecordingPaused(false);
       };
       recorder.start();
       setAudioFile(null);
+      setRecordingSeconds(0);
+      setRecordingPaused(false);
       setRecording(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start voice recording.");
+    }
+  };
+
+  const togglePauseVoiceRecording = () => {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+    if (recorder.state === "recording") {
+      recorder.pause();
+      setRecordingPaused(true);
+    } else if (recorder.state === "paused") {
+      recorder.resume();
+      setRecordingPaused(false);
     }
   };
 
@@ -1151,6 +1208,9 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
     <section
       className="relative flex h-[620px] flex-col overflow-hidden rounded-2xl"
       style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 2px 14px rgba(67,40,23,0.08)" }}
+      onClick={() => {
+        if (openMenuId) setOpenMenuId(null);
+      }}
     >
       <div className="flex items-center gap-3 px-5 py-4 border-b" style={{ borderColor: "var(--border-soft)" }}>
         <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}>
@@ -1211,7 +1271,7 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
                 key={message.id}
                 className="min-w-[180px] max-w-[230px] rounded-xl px-3 py-2 text-left"
                 style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}
-                onClick={() => document.getElementById(`chat-message-${message.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                onClick={() => scrollToChatMessage(message.id)}
               >
                 <p className="m-0 truncate text-[11px] font-bold" style={{ color: "var(--foreground)" }}>
                   {message.user_display_name || message.user_username}
@@ -1225,7 +1285,14 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div
+        ref={chatListRef}
+        className="flex-1 overflow-y-auto px-5 py-4"
+        onScroll={(event) => {
+          const target = event.currentTarget;
+          isChatNearBottomRef.current = target.scrollHeight - target.scrollTop - target.clientHeight < 120;
+        }}
+      >
         {loading ? (
           <div className="flex h-full items-center justify-center">
             <div className="w-7 h-7 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
@@ -1278,7 +1345,7 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
                             backgroundColor: isMine ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.05)",
                             borderColor: isMine ? "var(--background)" : "var(--foreground)",
                           }}
-                          onClick={() => document.getElementById(`chat-message-${message.reply_to?.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                          onClick={() => scrollToChatMessage(message.reply_to?.id)}
                         >
                           <span className="block truncate text-[11px] font-black opacity-80">
                             {message.reply_to.user_display_name || chatText.replyFallback}
@@ -1329,10 +1396,11 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
                         <div
                           className={`absolute top-6 z-[90] w-36 overflow-hidden rounded-lg py-1.5 shadow-2xl ${isMine ? "right-0" : "left-0"}`}
                           style={{ backgroundColor: "var(--panel-bg)", border: "1px solid rgba(255,255,255,0.12)" }}
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <ChatAction icon={GemIcon} active={message.is_gemmed} label={message.is_gemmed ? chatText.removeGem : chatText.gem} onClick={() => { toggleGemMessage(message); setOpenMenuId(null); }} />
                           <ChatAction icon={Reply} label={chatText.reply} onClick={() => startReply(message)} />
-                          <ChatAction icon={Copy} label={chatText.copy} onClick={() => copyMessage(message)} />
+                          {message.text.trim() && <ChatAction icon={Copy} label={chatText.copy} onClick={() => copyMessage(message)} />}
                           <ChatAction icon={message.is_pinned ? PinOff : Pin} label={message.is_pinned ? chatText.unpin : chatText.pin} onClick={() => togglePinMessage(message)} />
                           {isMine && <ChatAction icon={Pencil} label={chatText.edit} onClick={() => startEdit(message)} />}
                           {!isMine && <ChatAction icon={Flag} label={chatText.report} onClick={() => reportMessage(message)} />}
@@ -1350,7 +1418,6 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
                 </div>
               );
             })}
-            <div ref={bottomRef} />
           </div>
         )}
       </div>
@@ -1387,17 +1454,34 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
           </div>
           <div className="min-w-0 flex-1">
             <p className="m-0 text-xs font-bold" style={{ color: "var(--foreground)" }}>
-              {recording ? chatText.recording : chatText.voice}
+              {recording ? (recordingPaused ? chatText.paused : chatText.recording) : chatText.voice}
+              <span className="ml-2 font-black tabular-nums" style={{ color: "var(--text-muted)" }}>
+                {formatVoiceDuration(recordingSeconds)}
+              </span>
             </p>
             {audioPreview && <audio controls src={audioPreview} className="mt-1 block w-full max-w-[280px]" />}
           </div>
+          {recording && (
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-full"
+              style={{ backgroundColor: "var(--panel-bg)", color: "var(--foreground)" }}
+              onClick={togglePauseVoiceRecording}
+              aria-label={recordingPaused ? chatText.resumeRecording : chatText.pauseRecording}
+            >
+              {recordingPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} fill="currentColor" />}
+            </button>
+          )}
           <button
             type="button"
             className="flex h-8 w-8 items-center justify-center rounded-full"
             style={{ color: "var(--foreground)" }}
             onClick={() => {
               if (recording) stopVoiceRecording();
-              setAudioFile(null);
+              else {
+                setAudioFile(null);
+                setRecordingSeconds(0);
+              }
             }}
             aria-label={recording ? chatText.stopRecording : chatText.removeVoice}
           >
