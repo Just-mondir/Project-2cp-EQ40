@@ -15,7 +15,7 @@ import GroupAddPostModal from "@/components/GroupAddPostModal";
 import { useTranslations } from "next-intl";
 import { useLocaleSettings } from "@/components/LocaleProvider";
 import { localizeLocationLabel } from "@/components/LocationWorldCard";
-import { Copy, Flag, Mic, Pause, Pencil, Pin, PinOff, Play, Reply, Square, Trash2, type LucideIcon } from "lucide-react";
+import { Copy, Mic, Pause, Pencil, Pin, PinOff, Play, Reply, Square, Trash2, type LucideIcon } from "lucide-react";
 const API_URL = "http://127.0.0.1:8000";
 
 /* ─── helpers ─── */
@@ -1403,7 +1403,6 @@ function GroupChatSection({ group, messagesKey }: { group: GroupDetail; messages
                           {message.text.trim() && <ChatAction icon={Copy} label={chatText.copy} onClick={() => copyMessage(message)} />}
                           <ChatAction icon={message.is_pinned ? PinOff : Pin} label={message.is_pinned ? chatText.unpin : chatText.pin} onClick={() => togglePinMessage(message)} />
                           {isMine && <ChatAction icon={Pencil} label={chatText.edit} onClick={() => startEdit(message)} />}
-                          {!isMine && <ChatAction icon={Flag} label={chatText.report} onClick={() => reportMessage(message)} />}
                           {canDeleteMessage && <ChatAction icon={Trash2} danger label={chatText.delete} onClick={() => requestDeleteMessage(message)} />}
                         </div>
                       )}
