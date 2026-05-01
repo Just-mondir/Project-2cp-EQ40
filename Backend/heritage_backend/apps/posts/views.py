@@ -352,6 +352,36 @@ class GemToggleView(APIView):
         return api_success("Gem added.", {"liked": True, "gems_count": post.gems_count}, status.HTTP_201_CREATED)
 
 
+class PostGemUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, pk: str) -> Response:
+        try:
+            post = Post.objects.get(id=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        gems = Gem.objects(post=post).order_by("-created_at")
+        user_ids = [gem.user_id for gem in gems if gem.user_id]
+        users_by_id = {str(user.id): user for user in User.objects(id__in=user_ids)}
+        users = []
+
+        for user_id in user_ids:
+            user = users_by_id.get(str(user_id))
+            if not user:
+                continue
+            users.append({
+                "id": str(user.id),
+                "username": user.username or "",
+                "display_name": user.display_name or user.username or "",
+                "profile_picture": user.profile_picture or "",
+                "badge": user.badge or "",
+                "expertise": user.expertise or "",
+            })
+
+        return api_success("Post gem users retrieved.", {"count": len(users), "users": users})
+
+
 class CommentGemToggleView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -419,6 +449,36 @@ class RepostToggleView(APIView):
             {"reposted": True, "reposts_count": Repost.objects(post=post).count()},
             status.HTTP_201_CREATED,
         )
+
+
+class PostRepostUsersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request, pk: str) -> Response:
+        try:
+            post = Post.objects.get(id=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        reposts = Repost.objects(post=post).order_by("-created_at")
+        user_ids = [repost.user_id for repost in reposts if repost.user_id]
+        users_by_id = {str(user.id): user for user in User.objects(id__in=user_ids)}
+        users = []
+
+        for user_id in user_ids:
+            user = users_by_id.get(str(user_id))
+            if not user:
+                continue
+            users.append({
+                "id": str(user.id),
+                "username": user.username or "",
+                "display_name": user.display_name or user.username or "",
+                "profile_picture": user.profile_picture or "",
+                "badge": user.badge or "",
+                "expertise": user.expertise or "",
+            })
+
+        return api_success("Post repost users retrieved.", {"count": len(users), "users": users})
 
 
 class PostAIInsightView(APIView):

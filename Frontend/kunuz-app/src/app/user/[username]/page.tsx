@@ -7,6 +7,7 @@ import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard
 import { useLocale, useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 import RepostButton, { RepostIcon } from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
@@ -1213,9 +1214,9 @@ function PostModal({
             </div>
             <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
               <div className="flex items-center gap-4">
-                <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+                <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
                   <GemIcon size={14} filled={gemmed} active={gemmed} />{formatCount(gemsCount)}
-                </button>
+                </LongPressGemButton>
                 <button className="flex items-center gap-1 text-xs transition-all" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }} onClick={() => setActiveTab("comments")}>
                   <CommentIcon size={14} /> {formatCount(comments.length)}
                 </button>

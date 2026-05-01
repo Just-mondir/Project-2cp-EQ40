@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 import LocationWorldCard, { localizeLocationLabel } from "@/components/LocationWorldCard";
 import LeftSidebar from "@/components/LeftSidebar";
 import RepostButton from "@/components/RepostButton";
@@ -1962,10 +1963,10 @@ function PostModal({
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "var(--border-soft)" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onClick={handleGem}>
+              <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onGemClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
-              </button>
+              </LongPressGemButton>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "comments" ? "var(--foreground)" : "var(--text-muted)" }}
@@ -2503,10 +2504,10 @@ function PostCard({
 
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "var(--panel-hover)" }}>
         <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onClick={handleGem}>
+          <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onGemClick={handleGem}>
             <GemIcon filled={gemmed} active={gemmed} />
             <span>{formatCount(gemsCount)}</span>
-          </button>
+          </LongPressGemButton>
           <button
             className="flex items-center gap-1.5 text-xs transition-colors hover:text-[var(--accent-gold)] cursor-pointer"
             style={{ color: "var(--foreground)" }}

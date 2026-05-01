@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
@@ -1870,10 +1871,10 @@ function PostModal({
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+              <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
-              </button>
+              </LongPressGemButton>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }}
@@ -2276,10 +2277,10 @@ function PostCard({
 
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+          <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
             <GemIcon filled={gemmed} active={gemmed} />
             <span>{formatCount(gemsCount)}</span>
-          </button>
+          </LongPressGemButton>
           <button
             className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
             style={{ color: "#432817" }}
