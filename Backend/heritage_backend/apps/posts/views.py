@@ -419,10 +419,19 @@ class SaveToggleView(APIView):
 class RepostToggleView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request: Request, pk: str) -> Response:
+    def _get_post(self, pk: str):
         try:
-            post = Post.objects.get(id=pk, is_deleted=False)
+            return Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
+            return None
+
+    def _clean_description(self, value) -> str:
+        description = str(value or "")
+        return re.sub(r"<[^>]*>", "", description).strip()[:500]
+
+    def post(self, request: Request, pk: str) -> Response:
+        post = self._get_post(pk)
+        if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
         repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
@@ -433,7 +442,8 @@ class RepostToggleView(APIView):
                 {"reposted": False, "reposts_count": Repost.objects(post=post).count()},
             )
 
-        Repost(post=post, user_id=str(request.user.id)).save()
+        description = self._clean_description(request.data.get("description", ""))
+        Repost(post=post, user_id=str(request.user.id), description=description).save()
         if post.author_id != str(request.user.id):
             notify(
                 event_type="repost_on_post",
@@ -446,8 +456,52 @@ class RepostToggleView(APIView):
             )
         return api_success(
             "Post reposted.",
-            {"reposted": True, "reposts_count": Repost.objects(post=post).count()},
+            {
+                "reposted": True,
+                "reposts_count": Repost.objects(post=post).count(),
+                "repost_description": description,
+            },
             status.HTTP_201_CREATED,
+        )
+
+    def patch(self, request: Request, pk: str) -> Response:
+        post = self._get_post(pk)
+        if not post:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        if not repost:
+            return api_error("Repost not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost.description = self._clean_description(request.data.get("description", ""))
+        repost.save()
+        return api_success(
+            "Repost description updated.",
+            {
+                "reposted": True,
+                "reposts_count": Repost.objects(post=post).count(),
+                "repost_description": repost.description,
+            },
+        )
+
+    def delete(self, request: Request, pk: str) -> Response:
+        post = self._get_post(pk)
+        if not post:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        if not repost:
+            return api_error("Repost not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost.description = ""
+        repost.save()
+        return api_success(
+            "Repost description removed.",
+            {
+                "reposted": True,
+                "reposts_count": Repost.objects(post=post).count(),
+                "repost_description": "",
+            },
         )
 
 
@@ -705,9 +759,10 @@ class MyRepostedPostsView(APIView):
                 continue
         posts_by_id = {post.id: post for post in Post.objects(id__in=post_ids, is_deleted=False)}
         posts = [posts_by_id[post_id] for post_id in post_ids if post_id in posts_by_id]
+        reposts_by_post_id = {str(repost.post.id): repost for repost in reposts if getattr(repost, "post", None)}
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context={"request": request, "reposts_by_post_id": reposts_by_post_id})
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -729,9 +784,10 @@ class UserRepostedPostsView(APIView):
                 continue
         posts_by_id = {post.id: post for post in Post.objects(id__in=post_ids, is_deleted=False)}
         posts = [posts_by_id[post_id] for post_id in post_ids if post_id in posts_by_id]
+        reposts_by_post_id = {str(repost.post.id): repost for repost in reposts if getattr(repost, "post", None)}
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context={"request": request, "reposts_by_post_id": reposts_by_post_id})
         return paginator.get_paginated_response(serializer.data)
 
 

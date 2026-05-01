@@ -41,7 +41,7 @@ export default function LanguageSwitcher() {
         className="theme-toggle theme-toggle--inline"
         style={{
           opacity: 1,
-          boxShadow: "var(--theme-toggle-shadow)",
+          boxShadow: "none",
         }}
       >
         <span className="theme-toggle__glow" />

@@ -137,6 +137,8 @@ type ApiPost = {
   is_saved?: boolean;
   is_reposted?: boolean;
   reposts_count?: number;
+  repost_description?: string;
+  reposted_at?: string | null;
   images: PostImage[];
   tags?: string[];
   historical_period?: string;
@@ -361,6 +363,8 @@ function mapPost(post: any): ApiPost {
     is_saved: post.is_saved ?? false,
     is_reposted: post.is_reposted ?? false,
     reposts_count: post.reposts_count ?? 0,
+    repost_description: post.repost_description ?? "",
+    reposted_at: post.reposted_at ?? null,
     images: Array.isArray(post.images) ? post.images : [],
     tags: Array.isArray(post.tags) ? post.tags : [],
     historical_period: post.historical_period ?? "",
@@ -845,7 +849,7 @@ function AnnotationItem({
 /* ───────────────── POST MODAL ───────────────── */
 
 function PostModal({
-  post, onClose, interaction, onInteractionChange, onDeletePost, loggedInUsername, initialTab = "comments",
+  post, onClose, interaction, onInteractionChange, onDeletePost, loggedInUsername, initialTab = "comments", canManageRepostDescription = false, onRepostDescriptionChange,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -854,6 +858,8 @@ function PostModal({
   onDeletePost: (postId: string) => void;
   loggedInUsername: string;
   initialTab?: "comments" | "annotations";
+  canManageRepostDescription?: boolean;
+  onRepostDescriptionChange?: (postId: string, description: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -868,6 +874,11 @@ function PostModal({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
+  const [repostDescriptionExpanded, setRepostDescriptionExpanded] = useState(false);
+  const [editingRepostDescription, setEditingRepostDescription] = useState(false);
+  const [repostDescriptionDraft, setRepostDescriptionDraft] = useState("");
+  const [savingRepostDescription, setSavingRepostDescription] = useState(false);
+  const [showDeleteRepostDescriptionModal, setShowDeleteRepostDescriptionModal] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -882,6 +893,9 @@ function PostModal({
       setAnnotations([]);
       setComments([]);
       setCurrentImageIndex(0);
+      setRepostDescriptionExpanded(false);
+      setEditingRepostDescription(false);
+      setRepostDescriptionDraft(post.repost_description ?? "");
     }
   }, [post, initialTab]);
 
@@ -913,6 +927,8 @@ function PostModal({
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = stripHtml(post.content).length > CONTENT_LIMIT;
+  const repostDescriptionText = stripHtml(post.repost_description ?? "");
+  const isRepostDescriptionLong = repostDescriptionText.length > 250;
 
   const fetchComments = async (postId: string) => {
     try {
@@ -996,6 +1012,49 @@ function PostModal({
   };
 
   const handleDeletePost = () => { setShowPostMenu(false); setShowDeleteModal(true); };
+
+  const updateRepostDescription = async (description: string) => {
+    if (!post) return;
+    setSavingRepostDescription(true);
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/repost/`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to update repost description.");
+      const nextDescription = data?.data?.repost_description ?? description;
+      onRepostDescriptionChange?.(post.id, nextDescription);
+      setRepostDescriptionDraft(nextDescription);
+      setEditingRepostDescription(false);
+    } catch {
+      alert("Failed to update repost description.");
+    } finally {
+      setSavingRepostDescription(false);
+    }
+  };
+
+  const deleteRepostDescription = async () => {
+    if (!post) return;
+    setSavingRepostDescription(true);
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/repost/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to delete repost description.");
+      onRepostDescriptionChange?.(post.id, "");
+      setRepostDescriptionDraft("");
+      setEditingRepostDescription(false);
+      setShowDeleteRepostDescriptionModal(false);
+    } catch {
+      alert("Failed to delete repost description.");
+    } finally {
+      setSavingRepostDescription(false);
+    }
+  };
 
   const confirmDeletePost = async () => {
     setShowDeleteModal(false);
@@ -1115,6 +1174,15 @@ function PostModal({
   return (
     <>
       <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title={userPageT("modals.deletePost.title")} message={userPageT("modals.deletePost.message")} primaryAction={{ label: userPageT("modals.deletePost.confirm"), onClick: confirmDeletePost }} secondaryAction={{ label: userPageT("modals.deletePost.cancel"), onClick: () => setShowDeleteModal(false) }} />
+      <NotificationModal
+        isOpen={showDeleteRepostDescriptionModal}
+        onClose={() => setShowDeleteRepostDescriptionModal(false)}
+        type="error"
+        title="Delete repost description"
+        message="Are you sure you want to delete this repost description? The repost will stay on your profile."
+        primaryAction={{ label: "Delete", onClick: deleteRepostDescription }}
+        secondaryAction={{ label: "Cancel", onClick: () => setShowDeleteRepostDescriptionModal(false) }}
+      />
       <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
         <div className="absolute inset-0 bg-black/40" />
         <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] h-full md:h-[90vh] rounded-none md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
@@ -1155,6 +1223,94 @@ function PostModal({
             </div>
             <div className="flex-1 overflow-y-auto feed-scroll">
               <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+                  {post.repost_description && (
+                    <div className="mb-3 rounded-xl px-3 py-2.5" style={{ backgroundColor: "#F0E8CC", border: "1px solid #E0D5C5" }}>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide" style={{ color: "#8B6914" }}>
+                          <RepostIcon size={13} active />
+                          Repost description
+                        </div>
+                        {canManageRepostDescription && !editingRepostDescription && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="text-[11px] font-black hover:underline disabled:opacity-60"
+                              style={{ color: "#432817" }}
+                              onClick={() => {
+                                setRepostDescriptionDraft(post.repost_description ?? "");
+                                setEditingRepostDescription(true);
+                              }}
+                              disabled={savingRepostDescription}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="text-[11px] font-black hover:underline disabled:opacity-60"
+                              style={{ color: "#C0392B" }}
+                              onClick={() => setShowDeleteRepostDescriptionModal(true)}
+                              disabled={savingRepostDescription}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {editingRepostDescription ? (
+                        <div className="mt-2">
+                          <textarea
+                            value={repostDescriptionDraft}
+                            onChange={(e) => setRepostDescriptionDraft(e.target.value.slice(0, 500))}
+                            rows={4}
+                            className="w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
+                            style={{ backgroundColor: "#FFF8E2", color: "#432817", border: "1px solid #E0D5C5" }}
+                          />
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-[11px]" style={{ color: "#8B7355" }}>{repostDescriptionDraft.length}/500</span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                className="rounded-full px-3 py-1.5 text-xs font-bold disabled:opacity-60"
+                                style={{ color: "#432817" }}
+                                onClick={() => {
+                                  setEditingRepostDescription(false);
+                                  setRepostDescriptionDraft(post.repost_description ?? "");
+                                }}
+                                disabled={savingRepostDescription}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-full px-3 py-1.5 text-xs font-black disabled:opacity-60"
+                                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
+                                onClick={() => updateRepostDescription(repostDescriptionDraft)}
+                                disabled={savingRepostDescription || !repostDescriptionDraft.trim()}
+                              >
+                                {savingRepostDescription ? "Saving..." : "Save"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="m-0 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "#432817" }}>
+                          {isRepostDescriptionLong && !repostDescriptionExpanded
+                            ? `${repostDescriptionText.slice(0, 250)}... `
+                            : repostDescriptionText}
+                          {isRepostDescriptionLong && (
+                            <button
+                              type="button"
+                              className="font-black hover:underline"
+                              style={{ color: "#8B6914" }}
+                              onClick={() => setRepostDescriptionExpanded(value => !value)}
+                            >
+                              {repostDescriptionExpanded ? "See less" : "See more"}
+                            </button>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <LocationWorldCard
                     location={post.location}
                     region={post.region}
@@ -1823,6 +1979,14 @@ export default function ProfilePage() {
     setSelectedPostTab(tab);
   };
 
+  const updateRepostDescriptionInLists = (postId: string, description: string) => {
+    const applyDescription = (post: ApiPost) => (
+      post.id === postId ? { ...post, repost_description: description } : post
+    );
+    setSelectedPost(prev => prev && prev.id === postId ? { ...prev, repost_description: description } : prev);
+    setRepostedPosts(prev => prev.map(applyDescription));
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--background)", fontFamily: "var(--font-lato)" }}>
       {selectedPost && (
@@ -1834,6 +1998,8 @@ export default function ProfilePage() {
           onDeletePost={deletePostFromLists}
           onClose={() => setSelectedPost(null)}
           loggedInUsername={loggedInUsername}
+          canManageRepostDescription={isOwnProfile && visibleTab === "reposts"}
+          onRepostDescriptionChange={updateRepostDescriptionInLists}
         />
       )}
 

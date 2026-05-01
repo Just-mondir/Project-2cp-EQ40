@@ -194,7 +194,11 @@ select {
   color: var(--foreground);
   border-color: var(--border-soft);
   background: linear-gradient(135deg, var(--surface-strong), var(--surface));
-  box-shadow: var(--theme-toggle-shadow);
+  box-shadow: none;
+}
+
+.daltonism-toggle .theme-toggle__glow {
+  display: none;
 }
 
 .daltonism-toggle--active {
