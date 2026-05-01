@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import PostQuizButton from "@/components/PostQuizButton";
 import RepostButton from "@/components/RepostButton";
 import LocationWorldCard from "@/components/LocationWorldCard";
 
@@ -1791,6 +1792,7 @@ function PostModal({
             </div>
             <div className="flex items-center gap-4">
               <AiPostInsight postId={post.id} title={post.title} />
+              <PostQuizButton postId={post.id} title={post.title} />
               <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
                 <BookmarkIcon size={18} filled={saved} active={saved} />
               </button>

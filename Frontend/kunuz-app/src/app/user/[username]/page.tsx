@@ -7,6 +7,7 @@ import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard
 import { useLocale, useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import PostQuizButton from "@/components/PostQuizButton";
 import { LongPressGemButton } from "@/components/GemUsersModal";
 import RepostButton, { RepostIcon } from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
@@ -1394,6 +1395,12 @@ function PostModal({
               </div>
               <div className="flex items-center gap-4">
                 <AiPostInsight
+                  postId={post.id}
+                  title={post.title}
+                  buttonClassName="flex items-center gap-1 text-xs transition-all"
+                  buttonStyle={{ color: "#432817" }}
+                />
+                <PostQuizButton
                   postId={post.id}
                   title={post.title}
                   buttonClassName="flex items-center gap-1 text-xs transition-all"
