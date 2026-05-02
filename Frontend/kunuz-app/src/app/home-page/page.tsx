@@ -4,13 +4,18 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import PostQuizButton from "@/components/PostQuizButton";
 import { LongPressGemButton } from "@/components/GemUsersModal";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import ActionConfirmModal from "@/components/ActionConfirmModal";
+import { PostsSkeletonList } from "@/components/PostSkeletons";
+import { usePosts } from "@/hooks/usePosts";
+import { fetchJson } from "@/lib/apiClient";
 import {
   translateHistoricalPeriod,
   translateMonumentType,
@@ -317,6 +322,8 @@ function UserAvatar({
       <img
         src={imageUrl}
         alt="Profile picture"
+        loading="lazy"
+        decoding="async"
         className="rounded-full object-cover flex-shrink-0"
         style={{ width: size, height: size }}
       />
@@ -1173,6 +1180,8 @@ function AnnotationItem({
           <img
             src={imageUrl}
             alt="annotation"
+            loading="lazy"
+            decoding="async"
             className="mt-2 rounded-lg max-w-full"
             style={{ maxHeight: 160, objectFit: "cover" }}
           />
@@ -1639,7 +1648,7 @@ function PostModal({
                 </>
               ) : null}
               {imageUrl ? (
-                <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+                <img src={imageUrl} alt={post.title} loading="lazy" decoding="async" className="relative z-10 w-full h-full object-contain" />
               ) : null}
             </div>
           );
@@ -1909,6 +1918,12 @@ function PostModal({
                 buttonClassName="flex items-center gap-1 text-xs transition-all"
                 buttonStyle={{ color: "#432817" }}
               />
+              <PostQuizButton
+                postId={post.id}
+                title={post.title}
+                buttonClassName="flex items-center gap-1 text-xs transition-all"
+                buttonStyle={{ color: "#432817" }}
+              />
               <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
                 <BookmarkIcon size={18} filled={saved} active={saved} />
               </button>
@@ -1997,6 +2012,8 @@ function MobileGroupsStrip({
               <img
                 src={group.image}
                 alt={group.name}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -2035,7 +2052,7 @@ function RightSidebar({
                 if (raw?.id) router.push(`/group/${raw.id}`);
               }}
             >
-              <img src={group.image} alt={group.name} className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 shadow-sm" style={{ borderColor: "var(--panel-elevated)" }} />
+              <img src={group.image} alt={group.name} loading="lazy" decoding="async" className="w-[48px] h-[48px] rounded-full object-cover flex-shrink-0 border-2 shadow-sm" style={{ borderColor: "var(--panel-elevated)" }} />
               <div className="flex flex-col justify-center min-w-0">
                 <span className="localized-container-title font-bold text-sm truncate" style={{ color: "var(--foreground)" }}>{group.name}</span>
                 <span className="localized-container-text text-xs leading-tight mt-0.5 line-clamp-2" style={{ color: "var(--text-muted)" }}>{group.desc}</span>
@@ -2244,7 +2261,7 @@ function PostCard({
                         </>
                       ) : null}
                       {imageUrl ? (
-                        <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
+                        <img src={imageUrl} alt={post.title} loading="lazy" decoding="async" className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
                       ) : null}
                     </div>
                   );
@@ -2320,6 +2337,11 @@ function PostCard({
             title={post.title}
             buttonStyle={{ color: "#432817" }}
           />
+          <PostQuizButton
+            postId={post.id}
+            title={post.title}
+            buttonStyle={{ color: "#432817" }}
+          />
           <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
             <BookmarkIcon filled={saved} active={saved} />
           </button>
@@ -2350,6 +2372,20 @@ function PostCard({
 const CACHE_KEY = "home_posts_cache";
 const CACHE_NEXT_KEY = "home_posts_next";
 const CACHE_SCROLL_KEY = "home_posts_scroll";
+const GROUPS_CACHE_KEY = "home_popular_groups_cache";
+const GROUPS_CACHE_TTL = 10 * 60 * 1000;
+
+type GroupsPayload = {
+  data?: { results?: Group[] } | Group[];
+  results?: Group[];
+};
+
+function unwrapGroups(payload: GroupsPayload | Group[] | null | undefined): Group[] {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.data)) return payload.data;
+  return payload.data?.results ?? payload.results ?? [];
+}
 const MAX_CACHED_POSTS = 60; // ~3 pages
 
 function savePostsToCache(posts: ApiPost[], nextUrl: string | null) {
@@ -2382,12 +2418,34 @@ function loadScrollPosition(): number {
   return Number(sessionStorage.getItem(CACHE_SCROLL_KEY) || 0);
 }
 
+function saveGroupsToCache(groups: Group[]) {
+  if (typeof window === "undefined" || groups.length === 0) return;
+  try {
+    localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify({ groups, savedAt: Date.now() }));
+  } catch { }
+}
+
+function loadGroupsFromCache(): Group[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const cached = JSON.parse(localStorage.getItem(GROUPS_CACHE_KEY) || "null") as
+      | { groups?: Group[]; savedAt?: number }
+      | null;
+    if (!cached?.groups?.length || !cached.savedAt) return [];
+    if (Date.now() - cached.savedAt > GROUPS_CACHE_TTL) return [];
+    return cached.groups;
+  } catch {
+    return [];
+  }
+}
+
 /* ─────────────────── MAIN PAGE ─────────────────── */
 
 export default function HomePageRoute() {
   const t = useTranslations("auth.pages.home");
   const commonT = useTranslations("auth.common");
-  const [posts, setPosts] = useState<ApiPost[]>([]);
+  const initialHomeCache = useMemo(() => loadPostsFromCache(), []);
+  const [posts, setPosts] = useState<ApiPost[]>(() => initialHomeCache?.posts ?? []);
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
@@ -2400,23 +2458,56 @@ export default function HomePageRoute() {
   const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts/`);
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
-  const [apiGroups, setApiGroups] = useState<Group[]>([]);
-  const [cacheRestored, setCacheRestored] = useState(false);
+  const [apiGroups, setApiGroups] = useState<Group[]>(() => loadGroupsFromCache());
+  const popularGroupsQuery = useQuery({
+    queryKey: ["groups", "popular"],
+    queryFn: async () => unwrapGroups(await fetchJson<GroupsPayload | Group[]>("/groups/popular/")),
+    initialData: () => {
+      const cached = loadGroupsFromCache();
+      return cached.length > 0 ? cached : undefined;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+  const initialHomeNextUrl =
+    initialHomeCache?.nextUrl &&
+      initialHomeCache.nextUrl !== "__react-query-next-page__"
+      ? initialHomeCache.nextUrl
+      : null;
+  const canHydrateReactQueryFromCache = Boolean(initialHomeCache?.posts.length && initialHomeNextUrl);
+  const homeFeedQuery = usePosts<ApiPost>("home", {
+    enabled: !activeFilters,
+    pageSize: 10,
+    initialPage: canHydrateReactQueryFromCache && initialHomeCache
+      ? { results: initialHomeCache.posts, next: initialHomeNextUrl }
+      : undefined,
+    prefetchNextPage: true,
+    prefetchPages: 5,
+  });
 
   const fetchGroups = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/groups/popular/`);
-      const data = await res.json();
-      const groupData = data.data?.results || data.data || data.results || data;
-      setApiGroups(Array.isArray(groupData) ? groupData : []);
+      const groupData = unwrapGroups(await fetchJson<GroupsPayload | Group[]>("/groups/popular/"));
+      if (groupData.length > 0) {
+        setApiGroups(groupData);
+        saveGroupsToCache(groupData);
+      }
     } catch (err) {
       console.error("Error fetching groups:", err);
     }
   };
 
   useEffect(() => {
+    const groupData = unwrapGroups(popularGroupsQuery.data);
+    if (groupData.length === 0) return;
+    setApiGroups(groupData);
+    saveGroupsToCache(groupData);
+  }, [popularGroupsQuery.data]);
+
+  useEffect(() => {
+    if (apiGroups.length > 0 || popularGroupsQuery.isFetching) return;
     fetchGroups();
-  }, []);
+  }, [apiGroups.length, popularGroupsQuery.isFetching]);
 
   // Handle notification navigation
   useEffect(() => {
@@ -2479,14 +2570,7 @@ export default function HomePageRoute() {
           _raw: g,
         }));
       }
-      return GROUP_DEFINITIONS.map((group) => ({
-        desc: t(`guilds.items.${group.key}.description`),
-        image: group.image,
-        members: group.members,
-        membersLabel: t("guilds.members", { count: group.members }),
-        name: t(`guilds.items.${group.key}.name`),
-        _raw: null,
-      }));
+      return [];
     },
     [t, apiGroups],
   );
@@ -2581,49 +2665,55 @@ export default function HomePageRoute() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFeedLoadingMore = activeFilters
+    ? loading
+    : Boolean(homeFeedQuery.hasNextPage && homeFeedQuery.isFetchingNextPage);
 
   /* ── Restore posts from sessionStorage cache on mount ── */
   useEffect(() => {
-    const cached = loadPostsFromCache();
-    if (cached && cached.posts.length > 0) {
-      const restored = cached.posts.map((p, i) => ({ ...p, _key: i }));
-      setPosts(restored);
-      setNextUrl(cached.nextUrl);
-      setCacheRestored(true);
+    if (activeFilters) return;
+    const formatted = homeFeedQuery.posts.map((post, index) => ({
+      ...normalizeApiPost(post),
+      _key: index,
+    }));
+    setPosts((prev) => {
+      if (prev.length === 0) return formatted;
 
-      // Restore scroll position after render
-      requestAnimationFrame(() => {
-        const scrollPos = loadScrollPosition();
-        if (feedRef.current && scrollPos > 0) {
-          feedRef.current.scrollTop = scrollPos;
-        }
+      const incomingById = new Map(formatted.map((post) => [post.id, post]));
+      const mergedExisting = prev.map((post, index) => {
+        const incoming = incomingById.get(post.id);
+        return incoming ? { ...incoming, _key: post._key ?? index } : post;
       });
+      const existingIds = new Set(prev.map((post) => post.id));
+      const additions = formatted
+        .filter((post) => !existingIds.has(post.id))
+        .map((post, index) => ({ ...post, _key: mergedExisting.length + index }));
 
-      // Background refresh: silently re-fetch page 1 to pick up new posts
-      (async () => {
-        try {
-          const res = await apiFetch(`${API_URL}/api/posts/`);
-          if (!res.ok) return;
-          const data = await res.json();
-          const freshPosts: ApiPost[] = (Array.isArray(data.results) ? data.results : [])
-            .map((post: any, i: number) => ({ ...normalizeApiPost(post), _key: i }));
-          if (freshPosts.length > 0) {
-            setPosts(prev => {
-              // Merge: replace cached page-1 posts with fresh ones, keep rest
-              const existingIds = new Set(freshPosts.map(p => p.id));
-              const remaining = prev.filter(p => !existingIds.has(p.id));
-              const merged = [...freshPosts, ...remaining].map((p, i) => ({ ...p, _key: i }));
-              savePostsToCache(merged, typeof data.next === "string" && data.next ? data.next : null);
-              return merged;
-            });
-            if (typeof data.next === "string" && data.next) {
-              setNextUrl(data.next);
-            }
-          }
-        } catch { /* silent */ }
-      })();
-    }
-  }, []);
+      return additions.length > 0 ? [...mergedExisting, ...additions] : mergedExisting;
+    });
+    setNextUrl(homeFeedQuery.hasNextPage ? "__react-query-next-page__" : null);
+    setLoading(homeFeedQuery.isFetchingNextPage);
+  }, [
+    activeFilters,
+    homeFeedQuery.posts,
+    homeFeedQuery.hasNextPage,
+    homeFeedQuery.isFetchingNextPage,
+  ]);
+
+  useEffect(() => {
+    if (activeFilters) return;
+    requestAnimationFrame(() => {
+      const scrollPos = loadScrollPosition();
+      if (feedRef.current && scrollPos > 0) {
+        feedRef.current.scrollTop = scrollPos;
+      }
+    });
+  }, [activeFilters]);
+
+  useEffect(() => {
+    if (activeFilters || posts.length === 0) return;
+    savePostsToCache(posts, homeFeedQuery.hasNextPage ? "__react-query-next-page__" : null);
+  }, [activeFilters, posts, homeFeedQuery.hasNextPage]);
 
   /* ── Save scroll position on scroll ── */
   useEffect(() => {
@@ -2730,9 +2820,14 @@ export default function HomePageRoute() {
     const observer = new IntersectionObserver(
       async (entries) => {
         if (!entries[0].isIntersecting || loading || !nextUrl) return;
-        // Skip fetch if we just restored from cache and still have posts
-        if (cacheRestored && posts.length > 0) {
-          setCacheRestored(false);
+        if (!activeFilters) {
+          if (!homeFeedQuery.hasNextPage) {
+            setNextUrl(null);
+            return;
+          }
+          if (!homeFeedQuery.isFetchingNextPage) {
+            await homeFeedQuery.fetchNextPage();
+          }
           return;
         }
         try {
@@ -2779,12 +2874,20 @@ export default function HomePageRoute() {
           setLoading(false);
         }
       },
-      { threshold: 1.0 }
+      { rootMargin: "1800px 0px", threshold: 0.01 }
     );
 
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length, cacheRestored]);
+  }, [
+    nextUrl,
+    loading,
+    posts.length,
+    activeFilters,
+    homeFeedQuery.hasNextPage,
+    homeFeedQuery.isFetchingNextPage,
+    homeFeedQuery.fetchNextPage,
+  ]);
 
   return (
     <>
@@ -2875,6 +2978,9 @@ export default function HomePageRoute() {
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} title={t("guilds.title")} />
+                {homeFeedQuery.isInitialLoading && !activeFilters && posts.length === 0 && (
+                  <PostsSkeletonList count={3} />
+                )}
                 {posts.map((post, index) => (
                   <div id={`post-${post.id}`} key={`${post.id}-${index}`}>
                     <PostCard
@@ -2892,7 +2998,7 @@ export default function HomePageRoute() {
                     />
                   </div>
                 ))}
-                {loading && (
+                {isFeedLoadingMore && (
                   <div className="flex justify-center py-6">
                     <div className="w-8 h-8 rounded-full border-3 border-t-transparent loader-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "var(--accent-gold)" }} />
                   </div>

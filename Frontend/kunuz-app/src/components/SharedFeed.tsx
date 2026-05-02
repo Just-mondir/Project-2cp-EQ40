@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import PostQuizButton from "@/components/PostQuizButton";
 import { LongPressGemButton } from "@/components/GemUsersModal";
 import LocationWorldCard, { localizeLocationLabel } from "@/components/LocationWorldCard";
 import LeftSidebar from "@/components/LeftSidebar";
@@ -2004,6 +2005,7 @@ function PostModal({
             </div>
             <div className="flex items-center gap-4">
               <AiPostInsight postId={post.id} title={post.title} buttonClassName="flex items-center gap-1 text-xs transition-all" />
+              <PostQuizButton postId={post.id} title={post.title} buttonClassName="flex items-center gap-1 text-xs transition-all" />
               <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
                 <BookmarkIcon size={18} filled={saved} active={saved} />
               </button>
@@ -2542,6 +2544,7 @@ function PostCard({
         </div>
         <div className="flex items-center gap-4">
           <AiPostInsight postId={post.id} title={post.title} />
+          <PostQuizButton postId={post.id} title={post.title} />
           <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
             <BookmarkIcon filled={saved} active={saved} />
           </button>

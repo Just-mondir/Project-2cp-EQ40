@@ -29,7 +29,7 @@ export default function AuthenticatedControls() {
           variant="inline"
           backgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
           hoverBackgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
-          shadow="var(--theme-toggle-shadow)"
+          shadow="none"
         />
       )}
     </div>

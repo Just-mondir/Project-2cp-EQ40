@@ -12,6 +12,8 @@ import LocationWorldCard from "@/components/LocationWorldCard";
 import MyGroupsModal from "@/components/MyGroupsModal";
 import SuggestedGroupsModal from "@/components/SuggestedGroupsModal";
 import ActionConfirmModal from "@/components/ActionConfirmModal";
+import { PostsSkeletonList } from "@/components/PostSkeletons";
+import { usePosts } from "@/hooks/usePosts";
 
 
 
@@ -2493,6 +2495,21 @@ export default function CommunitiesPageRoute() {
   const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/groups/posts/`);
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+  const communitiesFeedQuery = usePosts<ApiPost>("groups", {
+    enabled: !activeFilters,
+    pageSize: 10,
+    prefetchNextPage: true,
+    prefetchPages: 5,
+  });
+  const displayedPosts = useMemo(
+    () => !activeFilters
+      ? communitiesFeedQuery.posts.map((post, index) => ({
+        ...normalizeApiPost(post),
+        _key: index,
+      }))
+      : posts,
+    [activeFilters, communitiesFeedQuery.posts, posts],
+  );
 
 
   const fetchGroups = async () => {
@@ -2526,7 +2543,8 @@ export default function CommunitiesPageRoute() {
     fetchMyGroups();
   }, []);
 
-  const normalizeApiPost = (raw: any, fallback?: ApiPost): ApiPost => ({
+  function normalizeApiPost(raw: any, fallback?: ApiPost): ApiPost {
+    return {
     id: String(raw?.id ?? fallback?.id ?? ""),
     user_id: raw?.user_id ?? fallback?.user_id ?? "",
     user_display_name: raw?.user_display_name ?? fallback?.user_display_name ?? "",
@@ -2554,7 +2572,8 @@ export default function CommunitiesPageRoute() {
     alert_details: raw?.alert_details ?? fallback?.alert_details ?? null,
     event_details: raw?.event_details ?? fallback?.event_details ?? null,
     _key: fallback?._key,
-  });
+    };
+  }
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -2569,7 +2588,7 @@ export default function CommunitiesPageRoute() {
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
-      const sourcePost = posts.find((p) => p.id === postId);
+      const sourcePost = displayedPosts.find((p) => p.id === postId);
       const existing = prev[postId] ?? {
         gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
         gemsCount: sourcePost?.gems_count ?? 0,
@@ -2597,6 +2616,22 @@ export default function CommunitiesPageRoute() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (activeFilters) return;
+    const formatted = communitiesFeedQuery.posts.map((post, index) => ({
+      ...normalizeApiPost(post),
+      _key: index,
+    }));
+    setPosts(formatted);
+    setNextUrl(communitiesFeedQuery.hasNextPage ? "__react-query-next-page__" : null);
+    setLoading(communitiesFeedQuery.isFetchingNextPage);
+  }, [
+    activeFilters,
+    communitiesFeedQuery.posts,
+    communitiesFeedQuery.hasNextPage,
+    communitiesFeedQuery.isFetchingNextPage,
+  ]);
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
@@ -2699,6 +2734,12 @@ export default function CommunitiesPageRoute() {
     const observer = new IntersectionObserver(
       async (entries) => {
         if (!entries[0].isIntersecting || loading || !nextUrl) return;
+        if (!activeFilters) {
+          if (communitiesFeedQuery.hasNextPage && !communitiesFeedQuery.isFetchingNextPage) {
+            await communitiesFeedQuery.fetchNextPage();
+          }
+          return;
+        }
         try {
           setLoading(true);
           const resolvedNextUrl =
@@ -2740,12 +2781,20 @@ export default function CommunitiesPageRoute() {
           setLoading(false);
         }
       },
-      { threshold: 1.0 }
+      { rootMargin: "1800px 0px", threshold: 0.01 }
     );
 
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length]);
+  }, [
+    nextUrl,
+    loading,
+    posts.length,
+    activeFilters,
+    communitiesFeedQuery.hasNextPage,
+    communitiesFeedQuery.isFetchingNextPage,
+    communitiesFeedQuery.fetchNextPage,
+  ]);
 
   useEffect(() => {
     const feedElement = feedRef.current;
@@ -2869,13 +2918,16 @@ export default function CommunitiesPageRoute() {
                     {t("community.feedTitle")}
                   </h2>
                 </div>
-                {posts.length === 0 && !loading && (
+                {communitiesFeedQuery.isInitialLoading && !activeFilters && displayedPosts.length === 0 && (
+                  <PostsSkeletonList count={3} />
+                )}
+                {displayedPosts.length === 0 && !loading && !(communitiesFeedQuery.isInitialLoading && !activeFilters) && (
                   <div className="flex flex-col items-center py-20 text-center">
                     <p className="font-bold text-lg" style={{ color: "var(--text-muted)" }}>{t("community.noPostsTitle")}</p>
                     <p className="text-sm" style={{ color: "var(--text-muted)" }}>{t("community.noPostsDescription")}</p>
                   </div>
                 )}
-                {posts.map((post, index) => (
+                {displayedPosts.map((post, index) => (
                   <React.Fragment key={`${post.id}-${index}`}>
                     <PostCard
                       groupDetails={groups.find(g => g.id === post.group_id) || undefined}

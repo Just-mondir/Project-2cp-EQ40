@@ -149,6 +149,7 @@ class Save(me.Document):
 class Repost(me.Document):
     post = me.ReferenceField(Post, required=True)
     user_id = me.StringField(required=True)
+    description = me.StringField(default="")
     created_at = me.DateTimeField(default=timezone.now)
 
     meta = {

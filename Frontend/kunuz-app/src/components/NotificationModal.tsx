@@ -50,7 +50,7 @@ export default function NotificationModal({
     const config = STATUS_CONFIG[type] || STATUS_CONFIG.info;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
             {/* Modal Container */}
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-[420px] overflow-hidden relative animate-in fade-in zoom-in duration-200">
 

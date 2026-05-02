@@ -98,6 +98,30 @@ def _build_post_insight_prompt(post: Post) -> str:
     )
 
 
+def _build_post_quiz_prompt(post: Post) -> str:
+    plain_content = re.sub(r"<[^>]*>", " ", post.content or "")
+    plain_content = re.sub(r"\s+", " ", plain_content).strip()
+    fields = [
+        f"Title: {post.title}",
+        f"Type: {post.post_type}",
+        f"Content: {plain_content}",
+        f"Region: {post.region or 'Not specified'}",
+        f"Location: {post.location or 'Not specified'}",
+        f"Historical period: {post.historical_period or 'Not specified'}",
+        f"Monument type: {post.monument_type or 'Not specified'}",
+    ]
+    return (
+        "Create an educational multiple-choice quiz for this cultural heritage post. "
+        "Use only information that can be learned from the post fields, plus obvious contextual heritage facts "
+        "when the post is very short. Generate 3, 4, 5, or 6 questions depending on how much information exists. "
+        "Each question must have exactly 4 options and exactly one correct answer. "
+        "Return ONLY valid JSON, with no markdown and no extra text, in this exact shape: "
+        "{\"questions\":[{\"question\":\"...\",\"options\":[\"...\",\"...\",\"...\",\"...\"],\"answer_index\":0,\"explanation\":\"...\"}]}. "
+        "Keep questions clear, fun, and useful for learning. Keep explanations under 25 words.\n\n"
+        + "\n".join(fields)
+    )
+
+
 def _extract_gemini_text(payload: dict) -> str:
     candidates = payload.get("candidates") or []
     parts = []
@@ -162,6 +186,47 @@ def _clean_gemini_insight(text: str) -> str:
     return text
 
 
+def _parse_quiz_json(text: str) -> list[dict]:
+    text = text.strip()
+    fenced = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
+    if fenced:
+        text = fenced.group(1).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1:
+        text = text[start:end + 1]
+
+    payload = json.loads(text)
+    raw_questions = payload.get("questions") if isinstance(payload, dict) else None
+    if not isinstance(raw_questions, list):
+        raise ValueError("Gemini returned an invalid quiz.")
+
+    questions = []
+    for raw in raw_questions[:8]:
+        question = str(raw.get("question", "")).strip()
+        options = raw.get("options")
+        answer_index = raw.get("answer_index")
+        explanation = str(raw.get("explanation", "")).strip()
+        if not question or not isinstance(options, list) or len(options) != 4:
+            continue
+        try:
+            answer_index = int(answer_index)
+        except Exception:
+            continue
+        if answer_index < 0 or answer_index > 3:
+            continue
+        questions.append({
+            "question": question,
+            "options": [str(option).strip()[:180] for option in options],
+            "answer_index": answer_index,
+            "explanation": explanation[:220],
+        })
+
+    if len(questions) < 3:
+        raise ValueError("Gemini returned too few quiz questions.")
+    return questions
+
+
 def _generate_post_insight(post: Post) -> dict:
     api_key = getattr(settings, "GEMINI_API_KEY", "")
     if not api_key:
@@ -199,6 +264,40 @@ def _generate_post_insight(post: Post) -> dict:
         "insight": text,
         **_extract_gemini_grounding(payload),
     }
+
+
+def _generate_post_quiz(post: Post) -> dict:
+    api_key = getattr(settings, "GEMINI_API_KEY", "")
+    if not api_key:
+        raise ValueError("Gemini API key is not configured.")
+
+    model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    body = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": _build_post_quiz_prompt(post)}],
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.35,
+            "maxOutputTokens": 1800,
+            "responseMimeType": "application/json",
+        },
+    }
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(request, timeout=30) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+
+    questions = _parse_quiz_json(_extract_gemini_text(payload))
+    return {"questions": questions}
 
 
 class PostListCreateView(APIView):
@@ -419,10 +518,19 @@ class SaveToggleView(APIView):
 class RepostToggleView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request: Request, pk: str) -> Response:
+    def _get_post(self, pk: str):
         try:
-            post = Post.objects.get(id=pk, is_deleted=False)
+            return Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
+            return None
+
+    def _clean_description(self, value) -> str:
+        description = str(value or "")
+        return re.sub(r"<[^>]*>", "", description).strip()[:500]
+
+    def post(self, request: Request, pk: str) -> Response:
+        post = self._get_post(pk)
+        if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
         repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
@@ -433,7 +541,8 @@ class RepostToggleView(APIView):
                 {"reposted": False, "reposts_count": Repost.objects(post=post).count()},
             )
 
-        Repost(post=post, user_id=str(request.user.id)).save()
+        description = self._clean_description(request.data.get("description", ""))
+        Repost(post=post, user_id=str(request.user.id), description=description).save()
         if post.author_id != str(request.user.id):
             notify(
                 event_type="repost_on_post",
@@ -446,8 +555,52 @@ class RepostToggleView(APIView):
             )
         return api_success(
             "Post reposted.",
-            {"reposted": True, "reposts_count": Repost.objects(post=post).count()},
+            {
+                "reposted": True,
+                "reposts_count": Repost.objects(post=post).count(),
+                "repost_description": description,
+            },
             status.HTTP_201_CREATED,
+        )
+
+    def patch(self, request: Request, pk: str) -> Response:
+        post = self._get_post(pk)
+        if not post:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        if not repost:
+            return api_error("Repost not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost.description = self._clean_description(request.data.get("description", ""))
+        repost.save()
+        return api_success(
+            "Repost description updated.",
+            {
+                "reposted": True,
+                "reposts_count": Repost.objects(post=post).count(),
+                "repost_description": repost.description,
+            },
+        )
+
+    def delete(self, request: Request, pk: str) -> Response:
+        post = self._get_post(pk)
+        if not post:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        if not repost:
+            return api_error("Repost not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        repost.description = ""
+        repost.save()
+        return api_success(
+            "Repost description removed.",
+            {
+                "reposted": True,
+                "reposts_count": Repost.objects(post=post).count(),
+                "repost_description": "",
+            },
         )
 
 
@@ -517,6 +670,28 @@ class PostAIInsightView(APIView):
                 "model": getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash"),
             },
         )
+
+
+class PostQuizView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request: Request, pk: str) -> Response:
+        try:
+            post = Post.objects.get(id=pk, is_deleted=False)
+        except Post.DoesNotExist:
+            return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        try:
+            quiz = _generate_post_quiz(post)
+        except (ValueError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            return api_error(str(exc), status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception:
+            return api_error(
+                "Gemini could not generate a quiz right now.",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return api_success("Quiz generated.", quiz)
 
 
 class CommentListCreateView(APIView):
@@ -705,9 +880,10 @@ class MyRepostedPostsView(APIView):
                 continue
         posts_by_id = {post.id: post for post in Post.objects(id__in=post_ids, is_deleted=False)}
         posts = [posts_by_id[post_id] for post_id in post_ids if post_id in posts_by_id]
+        reposts_by_post_id = {str(repost.post.id): repost for repost in reposts if getattr(repost, "post", None)}
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context={"request": request, "reposts_by_post_id": reposts_by_post_id})
         return paginator.get_paginated_response(serializer.data)
 
 
@@ -729,9 +905,10 @@ class UserRepostedPostsView(APIView):
                 continue
         posts_by_id = {post.id: post for post in Post.objects(id__in=post_ids, is_deleted=False)}
         posts = [posts_by_id[post_id] for post_id in post_ids if post_id in posts_by_id]
+        reposts_by_post_id = {str(repost.post.id): repost for repost in reposts if getattr(repost, "post", None)}
         paginator = PostPagination()
         page = paginator.paginate_queryset(posts, request)
-        serializer = PostListSerializer(page, many=True, context={"request": request})
+        serializer = PostListSerializer(page, many=True, context={"request": request, "reposts_by_post_id": reposts_by_post_id})
         return paginator.get_paginated_response(serializer.data)
 
 

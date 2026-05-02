@@ -85,6 +85,8 @@ class PostListSerializer(serializers.Serializer):
     is_saved = serializers.SerializerMethodField()
     is_reposted = serializers.SerializerMethodField()
     reposts_count = serializers.SerializerMethodField()
+    repost_description = serializers.SerializerMethodField()
+    reposted_at = serializers.SerializerMethodField()
     is_available = serializers.SerializerMethodField()
     access_message = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
@@ -151,6 +153,18 @@ class PostListSerializer(serializers.Serializer):
     def get_reposts_count(self, obj):
         return Repost.objects(post=obj).count()
 
+    def _get_context_repost(self, obj):
+        reposts_by_post_id = self.context.get("reposts_by_post_id") or {}
+        return reposts_by_post_id.get(str(obj.id))
+
+    def get_repost_description(self, obj):
+        repost = self._get_context_repost(obj)
+        return repost.description if repost else ""
+
+    def get_reposted_at(self, obj):
+        repost = self._get_context_repost(obj)
+        return repost.created_at if repost else None
+
     def get_is_available(self, obj):
         return True
 
@@ -180,6 +194,8 @@ class PostDetailSerializer(serializers.Serializer):
     is_saved = serializers.SerializerMethodField()
     is_reposted = serializers.SerializerMethodField()
     reposts_count = serializers.SerializerMethodField()
+    repost_description = serializers.SerializerMethodField()
+    reposted_at = serializers.SerializerMethodField()
     is_available = serializers.SerializerMethodField()
     access_message = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
@@ -247,6 +263,18 @@ class PostDetailSerializer(serializers.Serializer):
 
     def get_reposts_count(self, obj):
         return Repost.objects(post=obj).count()
+
+    def _get_context_repost(self, obj):
+        reposts_by_post_id = self.context.get("reposts_by_post_id") or {}
+        return reposts_by_post_id.get(str(obj.id))
+
+    def get_repost_description(self, obj):
+        repost = self._get_context_repost(obj)
+        return repost.description if repost else ""
+
+    def get_reposted_at(self, obj):
+        repost = self._get_context_repost(obj)
+        return repost.created_at if repost else None
 
     def get_is_available(self, obj):
         return True

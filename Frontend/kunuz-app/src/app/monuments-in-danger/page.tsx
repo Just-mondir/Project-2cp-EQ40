@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
@@ -11,6 +12,9 @@ import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import ActionConfirmModal from "@/components/ActionConfirmModal";
+import { PostsSkeletonList } from "@/components/PostSkeletons";
+import { usePosts } from "@/hooks/usePosts";
+import { fetchJson } from "@/lib/apiClient";
 import {
   HISTORICAL_PERIOD_VALUES,
   MONUMENT_TYPE_VALUES,
@@ -177,6 +181,18 @@ type HistoryReport = {
   created_by: string;
   created_at: string;
 };
+
+type CriticalAlertsPayload = {
+  data?: { results?: ApiPost[] } | ApiPost[];
+  results?: ApiPost[];
+};
+
+function unwrapCriticalAlerts(payload: CriticalAlertsPayload | ApiPost[] | null | undefined): ApiPost[] {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.data)) return payload.data;
+  return payload.data?.results ?? payload.results ?? [];
+}
 
 type ApiCommentRaw = {
   id: string;
@@ -2794,6 +2810,12 @@ export default function MonumentsInDangerPage() {
     urgence_level: "All",
     current_status: "All",
   });
+  const criticalAlertsQuery = useQuery({
+    queryKey: ["posts", "critical-alerts"],
+    queryFn: async () => unwrapCriticalAlerts(await fetchJson<CriticalAlertsPayload | ApiPost[]>("posts/critical/?page_size=10")),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -2897,9 +2919,19 @@ export default function MonumentsInDangerPage() {
     if (filters.monument_type !== "All") params.append("monument_type", filters.monument_type);
     if (filters.urgence_level !== "All") params.append("urgence_level", filters.urgence_level.toLowerCase());
     if (filters.current_status !== "All") params.append("current_status", filters.current_status.toLowerCase().replace(/\s+/g, "_"));
+    params.set("page_size", "10");
 
     return `${API_URL}/api/posts/monuments-danger/?${params.toString()}`;
   };
+
+  const isDefaultAlertsFeed = !searchQuery.trim() && Object.values(activeFilters).every((value) => value === "All");
+  const alertsFeedQuery = usePosts<ApiPost>("monuments", {
+    enabled: isDefaultAlertsFeed,
+    pageSize: 10,
+    endpoint: constructUrl(activeFilters, ""),
+    prefetchNextPage: true,
+    prefetchPages: 5,
+  });
 
   const fetchAlerts = async (url: string) => {
     const token = getAuthToken();
@@ -2935,41 +2967,35 @@ export default function MonumentsInDangerPage() {
     }
   };
 
+  useEffect(() => {
+    if (!isDefaultAlertsFeed) return;
+    setPosts(alertsFeedQuery.posts.map(normalizeApiPost));
+    setLoading(alertsFeedQuery.isFetchingNextPage);
+  }, [
+    isDefaultAlertsFeed,
+    alertsFeedQuery.posts,
+    alertsFeedQuery.isFetchingNextPage,
+  ]);
+
   // Immediate effect for filter changes
   useEffect(() => {
+    if (isDefaultAlertsFeed) return;
     fetchAlerts(constructUrl(activeFilters, searchQuery));
-  }, [activeFilters]);
+  }, [activeFilters, isDefaultAlertsFeed]);
 
   // Debounced search effect
   useEffect(() => {
+    if (isDefaultAlertsFeed) return;
     const timer = setTimeout(() => {
       fetchAlerts(constructUrl(activeFilters, searchQuery));
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, isDefaultAlertsFeed]);
 
   useEffect(() => {
-    const fetchCriticalAlerts = async () => {
-      const token = getAuthToken();
-      if (!token) return;
-
-      try {
-        const res = await fetch(`${API_URL}/api/posts/critical/`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const results = (data.results || data.data || data).map((p: any) =>
-            normalizeApiPost(p)
-          );
-          setCriticalPosts(results);
-        }
-      } catch (err) {
-        console.error("Fetch critical alerts error:", err);
-      }
-    };
-    fetchCriticalAlerts();
-  }, []);
+    if (!criticalAlertsQuery.data) return;
+    setCriticalPosts(unwrapCriticalAlerts(criticalAlertsQuery.data).map(normalizeApiPost));
+  }, [criticalAlertsQuery.data]);
 
   const handleApplyFilters = (filters: typeof activeFilters) => {
     setActiveFilters(filters);
@@ -3022,6 +3048,9 @@ export default function MonumentsInDangerPage() {
                   </button>
                 </div>
                 <MobileMonumentsStrip posts={criticalPosts} />
+                {alertsFeedQuery.isInitialLoading && isDefaultAlertsFeed && posts.length === 0 && (
+                  <PostsSkeletonList count={3} />
+                )}
                 {posts.length > 0 ? (
                   posts.map((post) => (
                     <PostCard

@@ -36,13 +36,17 @@ function applyDaltonismMode(mode: DaltonismMode) {
   }
 }
 
-function AccessibilityIcon() {
+function EyeIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M4 9h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 9v11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="m8 20 4-8 4 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="2.7" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   );
 }
@@ -104,7 +108,7 @@ export default function DaltonismToggle() {
       >
         <span className="theme-toggle__glow" />
         <span className="theme-toggle__icon">
-          <AccessibilityIcon />
+          <EyeIcon />
         </span>
       </button>
 
