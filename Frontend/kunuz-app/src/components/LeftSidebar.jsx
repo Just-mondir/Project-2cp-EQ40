@@ -8,6 +8,19 @@ import { normalizeThemePathname } from "@/lib/themeRoutes";
 import NotificationPanel from "@/components/Notificationpanel";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
+const DEFAULT_PROFILE = {
+  displayName: "Ait Abderrahim Maria",
+  username: "",
+  profilePicture: "",
+};
+
+function resolveProfilePictureUrl(profilePicture) {
+  const value = String(profilePicture ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `${API_URL}${value}`;
+  return value;
+}
 
 function KunuzSidebarIcon() {
   return (
@@ -43,52 +56,61 @@ export default function LeftSidebar({
 }) {
   const t = useTranslations("auth.sidebar");
   const pathname = usePathname();
-  const [username, setUsername] = useState(() => {
-    if (typeof window === "undefined") return "";
-
-    try {
-      const direct =
-        localStorage.getItem("username") ||
-        localStorage.getItem("user_username") ||
-        "";
-      if (direct) return direct;
-
-      const storedUser = localStorage.getItem("user");
-      if (!storedUser) return "";
-
-      const parsed = JSON.parse(storedUser);
-      return parsed?.username || parsed?.user_username || "";
-    } catch {
-      return "";
-    }
-  });
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [profileImageError, setProfileImageError] = useState(false);
 
   useEffect(() => {
-    if (!username) {
-      // Fetch if not in localStorage
-      const fetchUser = async () => {
-        try {
-          const token = localStorage.getItem("accessToken");
-          if (!token) return;
-          const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8000";
-          const res = await fetch(`${API_URL}/api/users/me/`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) return;
-          const data = await res.json();
-          const realUser = data.data ?? data;
-          const fetchedUn = realUser.username || realUser.user_username || "";
-          if (fetchedUn) {
-            setUsername(fetchedUn);
-            localStorage.setItem("username", fetchedUn);
-          }
-        } catch (err) {
-          console.error("Error fetching me:", err);
-        }
+    let active = true;
+
+    const applyProfile = (rawUser) => {
+      const nextProfile = {
+        displayName: String(rawUser?.display_name || rawUser?.full_name || DEFAULT_PROFILE.displayName),
+        username: String(rawUser?.username || rawUser?.user_username || ""),
+        profilePicture: String(rawUser?.profile_picture || rawUser?.avatar || rawUser?.photoURL || ""),
       };
-      fetchUser();
+      if (!active) return;
+      setProfile(nextProfile);
+      setProfileImageError(false);
+      if (nextProfile.username) {
+        localStorage.setItem("username", nextProfile.username);
+      }
+    };
+
+    try {
+      const rawAuth =
+        localStorage.getItem("authUser") ||
+        localStorage.getItem("user") ||
+        localStorage.getItem("user_data");
+      if (rawAuth) {
+        const parsed = JSON.parse(rawAuth);
+        applyProfile(parsed);
+      }
+    } catch {
+      setProfile(DEFAULT_PROFILE);
+      setProfileImageError(false);
     }
-  }, [username]);
+
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+        const res = await fetch(`${API_URL}/api/users/me/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const realUser = data.data ?? data;
+        applyProfile(realUser);
+      } catch (err) {
+        console.error("Error fetching me:", err);
+      }
+    };
+    void fetchUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Colours based on variant â€” add-post uses page-matching bg
   const isSpecialBg = activePage === "add-post" || variant === "add-post" || activePage === "edit-profile" || variant === "edit-profile" || activePage === "create-group" || variant === "create-group" || activePage === "edit-group" || variant === "edit-group";
@@ -241,8 +263,8 @@ export default function LeftSidebar({
       },
       {
         key: "profile",
-        label: t("nav.profile"),
-        href: username ? `/user/${username}` : "#",
+        label: profile.username ? `@${profile.username}` : t("nav.profile"),
+        href: profile.username ? `/user/${profile.username}` : "#",
         path: (
           <>
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -251,7 +273,7 @@ export default function LeftSidebar({
         ),
       },
     ],
-    [t, username, unreadCount],
+    [t, profile.username, unreadCount],
   );
 
   return (

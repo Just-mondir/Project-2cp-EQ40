@@ -284,12 +284,34 @@ function normalizeParent(parent: ApiCommentRaw["parent"], parentId?: string | nu
   return null;
 }
 
+function resolveDedicatedProfilePicture(source: any): string {
+  if (!source || typeof source !== "object") return "";
+  const directCandidate =
+    source.user_profile_picture ??
+    source.profile_picture ??
+    source.avatar ??
+    source.profilePicture ??
+    source.photoURL ??
+    source.photo_url;
+  const nestedUser = source.user && typeof source.user === "object" ? source.user : null;
+  const nestedCandidate = nestedUser
+    ? nestedUser.user_profile_picture ??
+    nestedUser.profile_picture ??
+    nestedUser.avatar ??
+    nestedUser.profilePicture ??
+    nestedUser.photoURL ??
+    nestedUser.photo_url
+    : undefined;
+  const value = String(directCandidate ?? nestedCandidate ?? "").trim();
+  return value;
+}
+
 function normalizeComment(raw: ApiCommentRaw): CommentNode {
   return {
     id: String(raw.id),
     user_id: String(raw.user_id ?? ""),
     user_username: String(raw.user_username ?? ""),
-    user_profile_picture: String(raw.user_profile_picture ?? ""),
+    user_profile_picture: resolveDedicatedProfilePicture(raw),
     content: String(raw.content ?? raw.text ?? ""),
     created_at: String(raw.created_at ?? ""),
     parent: normalizeParent(raw.parent, raw.parent_id),
@@ -315,9 +337,11 @@ function UserAvatar({
   size: number;
   iconSize: number;
 }) {
+  const [hasImageError, setHasImageError] = useState(false);
   const imageUrl = resolveProfilePictureUrl(profilePicture);
+  const shouldShowImage = Boolean(imageUrl) && !hasImageError;
 
-  if (imageUrl) {
+  if (shouldShowImage) {
     return (
       <img
         src={imageUrl}
@@ -326,19 +350,24 @@ function UserAvatar({
         decoding="async"
         className="rounded-full object-cover flex-shrink-0"
         style={{ width: size, height: size }}
+        onError={() => setHasImageError(true)}
       />
     );
   }
 
   return (
     <div
-      className="rounded-full flex-shrink-0 flex items-center justify-center"
-      style={{ width: size, height: size, backgroundColor: "var(--avatar-surface)" }}
+      className="rounded-full flex-shrink-0 flex items-center justify-center font-semibold"
+      style={{
+        width: size,
+        height: size,
+        backgroundColor: "#8B6914",
+        color: "#FFFFFF",
+        fontSize: Math.max(iconSize - 2, 12),
+      }}
+      aria-label="Default profile avatar"
     >
-      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
+      AM
     </div>
   );
 }
@@ -2580,7 +2609,8 @@ export default function HomePageRoute() {
     user_id: raw?.user_id ?? fallback?.user_id ?? "",
     user_display_name: raw?.user_display_name ?? fallback?.user_display_name ?? "",
     user_username: raw?.user_username ?? fallback?.user_username ?? "",
-    user_profile_picture: raw?.user_profile_picture ?? fallback?.user_profile_picture ?? "",
+    user_profile_picture:
+      resolveDedicatedProfilePicture(raw) || resolveDedicatedProfilePicture(fallback),
     title: raw?.title ?? fallback?.title ?? "",
     content: raw?.content ?? fallback?.content ?? "",
     post_type: raw?.post_type ?? fallback?.post_type ?? "",
