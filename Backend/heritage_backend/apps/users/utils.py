@@ -8,7 +8,7 @@ from typing import Tuple
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
 from django.utils import timezone
-
+from django.core.mail import EmailMultiAlternatives
 from .models import OTPCode, OTPPurposeChoices, User
 
 OTP_LENGTH = 6
@@ -63,14 +63,34 @@ def verify_otp_code(otp: OTPCode, plain_code: str) -> bool:
         return False
     return check_password(plain_code, otp.code)
 
-
 def send_otp_email(email: str, code: str) -> None:
     """Send the OTP code to the user email."""
-    message = f"Here is your OTP code for register in Kunuz app: {code}"
-    send_mail(
-        subject=OTP_EMAIL_SUBJECT,
-        message=message,
-        from_email=None,
-        recipient_list=[email],
-        fail_silently=False,
+    
+    subject = OTP_EMAIL_SUBJECT
+    text_message = f"Your Kunuz verification code is: {code}\nThis code expires in 10 minutes."
+
+    html_message = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 32px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #333;">Verify your account</h2>
+        <p style="color: #555;">Use the code below to complete your registration on <strong>Kunuz</strong>:</p>
+
+        <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; text-align: center;
+                    background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 24px 0;">
+            {code}
+        </div>
+
+        <p style="color: #888; font-size: 13px;">⏱ This code expires in <strong>10 minutes</strong>.</p>
+        <p style="color: #888; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+        <p style="color: #bbb; font-size: 11px; text-align: center;">© Kunuz App</p>
+    </div>
+    """
+    email_msg = EmailMultiAlternatives(
+        subject=subject,
+        body=text_message, 
+        from_email=None,         
+        to=[email],
     )
+    email_msg.attach_alternative(html_message, "text/html")
+    email_msg.send(fail_silently=False)

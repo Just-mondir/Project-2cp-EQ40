@@ -182,7 +182,7 @@ EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / ".test_emails"))
 BACKEND_PUBLIC_URL = env("BACKEND_PUBLIC_URL", default="http://127.0.0.1:8000")
 DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL",
-    default="Heritage Community Algeria <noreply@heritage-algeria.com>",
+    default="kunuz <noreply@kunuz.com>",
 )
 
 ACCESS_TOKEN_LIFETIME_MINUTES = env.int("ACCESS_TOKEN_LIFETIME_MINUTES", default=60)
