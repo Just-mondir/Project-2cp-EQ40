@@ -26,7 +26,7 @@ type PostFormValues = {
     region: string;
     monumentType?: string | null;
     visibility: string;
-    groups: string[];
+    groups: { id: string; name: string }[];
     startTime?: string | null;
     endTime?: string | null;
     selectedMonument?: string | null;
@@ -63,7 +63,12 @@ export default function AddEventPage() {
             postFormData.append("content", formValues.description || "");
             postFormData.append("location", formValues.location || "");
             postFormData.append("post_type", "event");
-            postFormData.append("visibility", formValues.visibility.toLowerCase());
+            const visibility = formValues.visibility === "Private" ? "groups" : "public";
+            postFormData.append("visibility", visibility);
+
+            if (formValues.groups && formValues.groups.length > 0) {
+                postFormData.append("group_id", formValues.groups[0].id);
+            }
 
             if (formValues.historicalPeriod) postFormData.append("historical_period", formValues.historicalPeriod);
             if (formValues.region) postFormData.append("region", formValues.region);
@@ -137,7 +142,7 @@ export default function AddEventPage() {
         <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
             <LeftSidebar activePage="monuments" variant="add-post" />
 
-            <div className="flex flex-col flex-1 overflow-hidden ml-0 md:ml-[68px]">
+            <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
                 <div className="px-4 md:px-8 pt-2 md:pt-6 pb-1 md:pb-2 flex-shrink-0">
                     <BackButton />
                 </div>
@@ -172,7 +177,7 @@ export default function AddEventPage() {
                         </div>
 
                         <div
-                            className="h-[150px] md:h-auto md:min-h-0 md:flex-1 overflow-hidden shrink-0"
+                            className="h-[70px] md:h-auto md:min-h-0 md:flex-1 overflow-hidden shrink-0"
                             style={{
                                 backgroundColor: "#F7F5EF",
                                 borderRadius: 0,

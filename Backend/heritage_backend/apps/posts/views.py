@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.core.responses import api_error, api_success
 from apps.notifications.registry import notify
-from apps.users.models import User
+from apps.users.models import User, EXPERTISE_CHOICES
 from .models import Comment, CommentGem, Gem, Post, PostImage, Repost, Save, EventDetails, AlertDetails, Annotation, MobilizationEvent
 from apps.thematic_groups.models import ThematicGroup
 from .serializers import (
@@ -1003,8 +1003,13 @@ class EventFilterView(APIView):
         status_filter = request.query_params.get("status", "").strip().lower()
         date_from = request.query_params.get("date_from", "").strip()
         date_to = request.query_params.get("date_to", "").strip()
+        expertise = request.query_params.get("expertise", "").strip()
 
         posts = Post.objects(post_type="event", is_deleted=False)
+
+        if expertise:
+            user_ids = User.objects(expertise=expertise).scalar("id")
+            posts = posts.filter(author_id__in=[str(uid) for uid in user_ids])
 
         if q:
             posts = posts.filter(__raw__={"$or": [{"title": {"$regex": q, "$options": "i"}}, {"content": {"$regex": q, "$options": "i"}}, {"location": {"$regex": q, "$options": "i"}}]})
@@ -1229,6 +1234,7 @@ class FilterChoicesView(APIView):
                 "historical_periods": [p for p in Post.HISTORICAL_PERIOD_CHOICES if p],
                 "monument_types": [m for m in Post.MONUMENT_TYPE_CHOICES if m],
                 "regions": [r for r in Post.REGION_CHOICES if r],
+                "expertises": [e[0] for e in EXPERTISE_CHOICES if e[0]],
             },
             status_code=200,
         )
@@ -1242,6 +1248,8 @@ class PostFilterView(APIView):
         post_type = request.query_params.get("post_type", "").strip()
         historical_period = request.query_params.get("historical_period", "").strip()
         monument_type = request.query_params.get("monument_type", "").strip()
+        expertise = request.query_params.get("expertise", "").strip()
+        
         filters = {"is_deleted": False}
         if region:
             filters["region"] = region
@@ -1251,7 +1259,13 @@ class PostFilterView(APIView):
             filters["historical_period"] = historical_period
         if monument_type:
             filters["monument_type"] = monument_type
+            
         posts = Post.objects(**filters).order_by("-created_at")
+        
+        if expertise:
+            user_ids = User.objects(expertise=expertise).scalar("id")
+            posts = posts.filter(author_id__in=[str(uid) for uid in user_ids])
+            
         serializer = PostListSerializer(posts, many=True, context={"request": request})
         return api_success("Filtered posts retrieved.", serializer.data)
 

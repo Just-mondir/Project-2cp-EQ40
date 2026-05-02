@@ -215,7 +215,8 @@
       },
       "tabs": {
         "comments": "التعليقات ({count})",
-        "annotations": "التوضيحات ({count})"
+        "annotations": "التوضيحات ({count})",
+        "history": "السجل"
       },
       "placeholders": {
         "reply": "اكتب رداً...",
@@ -266,7 +267,6 @@
         "communities": "المجتمعات",
         "monuments": "المعالم المهددة بالخطر",
         "events": "الفعاليات",
-        "addPost": "إضافة",
         "notifications": "الإشعارات",
         "profile": "الملف الشخصي",
         "help": "المساعدة"

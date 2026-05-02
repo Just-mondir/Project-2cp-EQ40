@@ -215,7 +215,8 @@
       },
       "tabs": {
         "comments": "Commentaires ({count})",
-        "annotations": "Annotations ({count})"
+        "annotations": "Annotations ({count})",
+        "history": "Historique"
       },
       "placeholders": {
         "reply": "Écrire une réponse...",
@@ -266,7 +267,6 @@
         "communities": "Communautés",
         "monuments": "Monuments en danger",
         "events": "Événements",
-        "addPost": "Ajouter",
         "notifications": "Notifications",
         "profile": "Profil",
         "help": "Aide"

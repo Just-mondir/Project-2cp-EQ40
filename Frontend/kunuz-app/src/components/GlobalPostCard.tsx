@@ -8,6 +8,7 @@ import AiPostInsight from "@/components/AiPostInsight";
 import PostQuizButton from "@/components/PostQuizButton";
 import RepostButton from "@/components/RepostButton";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -1760,10 +1761,10 @@ function PostModal({
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "var(--border-soft)" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onClick={handleGem}>
+              <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onGemClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
-              </button>
+              </LongPressGemButton>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "comments" ? "var(--foreground)" : "var(--text-muted)" }}

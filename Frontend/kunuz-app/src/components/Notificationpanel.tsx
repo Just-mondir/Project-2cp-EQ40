@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CircleX, Loader2 } from "lucide-react";
+import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLocaleSettings } from "@/components/LocaleProvider";
 
@@ -29,6 +29,7 @@ type NotificationResponse = {
   data?: {
     results?: NotificationItem[];
     unread_count?: number;
+    next?: string | null;
   };
   unread_count?: number;
 };
@@ -109,10 +110,10 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
   someoneLabel: string;
 }) {
   const [responding, setResponding] = useState(false);
-   const [responded, setResponded] = useState(() => {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(`notification_responded_${item.id}`) === "true";
-});
+  const [responded, setResponded] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(`notification_responded_${item.id}`) === "true";
+  });
 
   const handleRespond = async (status: "accepted" | "refused", e: React.MouseEvent) => {
     e.stopPropagation();
@@ -263,9 +264,13 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
   const t = useTranslations("auth.notificationPanel");
   const { locale } = useLocaleSettings();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => readCachedNotifications());
-  const [, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(() => notifications.length === 0);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const rtf = useMemo(() => new Intl.RelativeTimeFormat(locale, { numeric: "auto" }), [locale]);
 
@@ -280,52 +285,54 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     return rtf.format(Math.round(diffSeconds / 86400), "day");
   }, [rtf, t]);
   const navigateFromNotification = async (notification: NotificationItem) => {
-  const { event_type, target_id } = notification;
+    const { event_type, target_id } = notification;
 
-  if (event_type === "gem_on_post" || event_type === "repost_on_post") {
-  // Scroll to post in feed, no modal
-  sessionStorage.setItem("highlight_post_id", target_id);
-  router.push("/home-page");
+    if (event_type === "gem_on_post" || event_type === "repost_on_post") {
+      // Scroll to post in feed, no modal
+      sessionStorage.setItem("highlight_post_id", target_id);
+      router.replace("/home-page");
 
-  } else if (event_type === "comment_on_post") {
-  // Open post modal with comments
-  sessionStorage.setItem("open_post_id", target_id);
-  sessionStorage.setItem("open_post_tab", "comments");
-  router.push("/home-page");
+    } else if (event_type === "comment_on_post") {
+      // Open post modal with comments
+      sessionStorage.setItem("open_post_id", target_id);
+      sessionStorage.setItem("open_post_tab", "comments");
+      router.replace("/home-page");
 
- } else if (event_type === "reply_to_comment" || event_type === "gem_on_comment") {
-    try {
-      const res = await fetch(`${API_URL}/api/posts/comments/${target_id}/`, {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const commentData = data?.data ?? data;
-      const postId = typeof commentData?.post === "string"
-        ? commentData.post
-        : String(commentData?.post?.id ?? commentData?.post?._id ?? "");
-      if (postId) {
-        sessionStorage.setItem("open_post_id", postId);
-        sessionStorage.setItem("open_post_tab", "comments");
-        router.push("/home-page");
+    } else if (event_type === "reply_to_comment" || event_type === "gem_on_comment") {
+      try {
+        const res = await fetch(`${API_URL}/api/posts/comments/${target_id}/`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const commentData = data?.data ?? data;
+        const postId = typeof commentData?.post === "string"
+          ? commentData.post
+          : String(commentData?.post?.id ?? commentData?.post?._id ?? "");
+        if (postId) {
+          sessionStorage.setItem("open_post_id", postId);
+          sessionStorage.setItem("open_post_tab", "comments");
+          router.replace("/home-page");
+        }
+      } catch { }
+
+    } else if (
+      event_type === "group_join_request" ||
+      event_type === "group_join_request_approved" ||
+      event_type === "group_join_request_rejected" ||
+      event_type === "group_invite_received" ||
+      event_type === "group_chat_message"
+    ) {
+      if (event_type === "group_chat_message") {
+        router.replace(`/group/${target_id}?tab=chat`);
+      } else {
+        router.replace(`/group/${target_id}`);
       }
-    } catch { }
-
-  } else if (
-    event_type === "group_join_request" ||
-    event_type === "group_join_request_approved" ||
-    event_type === "group_join_request_rejected" ||
-    event_type === "group_invite_received"
-  ) {
-    router.push(`/group/${target_id}`);
-  } else if (event_type === "group_chat_message" || event_type === "group_chat_message_reported") {
-    router.push(`/group/${target_id}?tab=chat`);
-  }
-  // ← NO onClose() call anywhere — this was causing the logout
-};
+    }
+  };
 
   const buildHeaders = () => {
-  
+
     const token = getAuthToken();
     const nextHeaders = new Headers();
     if (token) {
@@ -334,7 +341,8 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     return nextHeaders;
   };
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (url: string | null = `${API_URL}/api/notifications/`, isInitial = true) => {
+    if (!url) return;
     const token = getAuthToken();
     if (!token) {
       setNotifications([]);
@@ -343,28 +351,59 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
       return;
     }
 
+    if (isInitial) setRefreshing(true);
+    else setLoadingMore(true);
+
     try {
-      const [listRes, unreadRes] = await Promise.all([
-        fetch(`${API_URL}/api/notifications/?page_size=${NOTIFICATIONS_LIMIT}`, { headers: buildHeaders() }),
-        fetch(`${API_URL}/api/notifications/unread-count/`, { headers: buildHeaders() }),
-      ]);
+      const [listRes, unreadRes] = await Promise.all(
+        isInitial
+          ? [
+            fetch(url, { headers: buildHeaders() }),
+            fetch(`${API_URL}/api/notifications/unread-count/`, { headers: buildHeaders() }),
+          ]
+          : [
+            fetch(url, { headers: buildHeaders() }),
+            Promise.resolve(null)
+          ]
+      );
 
       const listJson = (await listRes.json().catch(() => null)) as NotificationResponse | null;
-      const unreadJson = (await unreadRes.json().catch(() => null)) as NotificationResponse | null;
+      const unreadJson = unreadRes ? (await unreadRes.json().catch(() => null)) as NotificationResponse | null : null;
 
       const nextItems = listJson?.data?.results ?? [];
-      setNotifications(nextItems);
-      writeCachedNotifications(nextItems);
-      const rawCount = unreadJson?.data?.unread_count !== undefined ? unreadJson.data.unread_count : (unreadJson?.unread_count !== undefined ? unreadJson.unread_count : 0);
-      const unreadFromList = nextItems.filter((item) => item.is_read === false).length;
-      const parsedCount = Number(rawCount);
-      const count = Number.isFinite(parsedCount) && parsedCount > 0 ? Math.max(parsedCount, unreadFromList) : unreadFromList;
-      setUnreadCount(count);
-      window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: count }));
+      setNotifications(prev => {
+        if (isInitial) return nextItems;
+        const existingIds = new Set(prev.map((n: NotificationItem) => n.id));
+        const uniqueItems = nextItems.filter((n: NotificationItem) => !existingIds.has(n.id));
+        return [...prev, ...uniqueItems];
+      });
+      setNextUrl(listJson?.data?.next ?? null);
+
+      if (isInitial) {
+        const rawCount = unreadJson?.data?.unread_count !== undefined ? unreadJson.data.unread_count : (unreadJson?.unread_count !== undefined ? unreadJson.unread_count : 0);
+        const count = Number(rawCount);
+        setUnreadCount(count);
+        window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: count }));
+      }
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
     }
   }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && nextUrl) {
+          void fetchNotifications(nextUrl, false);
+        }
+      },
+      { threshold: 1.0 }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [nextUrl, loadingMore]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
@@ -387,7 +426,7 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-const markAsRead = async (id: string) => {
+  const markAsRead = async (id: string) => {
     const token = getAuthToken();
     if (!token) return;
 
@@ -413,23 +452,56 @@ const markAsRead = async (id: string) => {
     }
   };
 
+  const markAllRead = async () => {
+    const token = getAuthToken();
+    if (!token) return;
+    setNotifications((current) => current.map(item => ({ ...item, is_read: true })));
+    try {
+      await fetch(`${API_URL}/api/notifications/read-all/`, {
+        method: "PATCH",
+        headers: buildHeaders(),
+      });
+      await fetchNotifications();
+    } catch { }
+  };
+
   const { today, thisMonth, older } = groupByRecency(notifications);
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-start bg-black/60 backdrop-blur-[3px]" onClick={onClose}>
-      <div
-        className="flex h-full w-[440px] max-w-[94vw] flex-col bg-[#FFF8E2] px-8 py-5 text-[#432817] shadow-[18px_0_45px_rgba(14,9,5,0.28)]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-center justify-between pb-4">
-          <h2 className="m-0 text-[18px] font-bold text-[#342417]">{t("title")}</h2>
-          <button
-            onClick={onClose}
-            aria-label={t("actions.close")}
-            className="rounded-full p-0.5 text-[#9B8165] transition hover:bg-[#EFE2C6] hover:text-[#432817]"
-          >
-            <CircleX className="h-4 w-4" />
-          </button>
+    <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-[2px]">
+      <div className="flex h-full w-full max-w-[760px] flex-col border-l border-[#D8C8B1] bg-[#FFF8E2] shadow-[0_0_60px_rgba(40,22,9,0.2)]">
+        <div className="flex items-start justify-between border-b border-[#E1D3BF] px-6 py-5">
+          <div>
+            <p className="m-0 text-[12px] font-bold uppercase tracking-[0.22em] text-[#8B6A4B]">{t("inbox")}</p>
+            <h2 className="m-0 mt-1 text-[28px] font-bold text-[#432817]">{t("title")}</h2>
+            <p className="mt-1 text-[13px] text-[#8B7355]">{t("unreadCount", { count: unreadCount })}</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fetchNotifications()}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-white px-4 text-[13px] font-semibold text-[#432817] transition hover:bg-[#FAF1DC]"
+            >
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+              {t("actions.refresh")}
+            </button>
+            <button
+              type="button"
+              onClick={markAllRead}
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-[#432817] px-4 text-[13px] font-semibold text-[#FFF8E2] transition hover:bg-[#5A3720]"
+            >
+              <CheckCheck className="h-4 w-4" />
+              {t("actions.markAllRead")}
+            </button>
+            <button
+              onClick={onClose}
+              aria-label={t("actions.close")}
+              className="rounded-full p-2 text-[#432817] transition hover:bg-white/80"
+            >
+              <CircleX className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-1">
@@ -479,6 +551,8 @@ const markAsRead = async (id: string) => {
                   </div>
                 </section>
               )}
+              {loadingMore && <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-[#8B7355]" /></div>}
+              <div ref={sentinelRef} className="h-4" />
             </div>
           )}
         </div>

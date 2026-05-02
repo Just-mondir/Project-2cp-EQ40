@@ -21,5 +21,5 @@ class IsModeratorOrAdmin(BasePermission):
         return (
             role in ("moderator", "admin", "staff") or 
             getattr(user, "is_staff", False) or
-            username in ("nordine", "hibeterrahmane-nordine")
+            username in ("cheballah", "tinhinane-cheballah")
         )

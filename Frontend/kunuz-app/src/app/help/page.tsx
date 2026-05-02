@@ -1,35 +1,216 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useState, useRef, useEffect, cloneElement } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { UserCog, SquarePen, MessagesSquare, Church, FileX, Search } from "lucide-react";
 import LeftSidebar from "@/components/LeftSidebar";
-import { useLocaleSettings } from "@/components/LocaleProvider";
-import { getHelpContent, helpDirection, helpTextAlign, TopicContent, type HelpTopic } from "./helpContent";
+
+const helpTopics = [
+  {
+    title: "Account Management",
+    description: "login, signup, profile edit.",
+    href: "/help/Account-management",
+    keywords: [
+      "sign up", "signup", "register", "create account",
+      "login", "log in", "password", "remember me",
+      "edit profile", "profile picture", "personal information",
+      "username", "email", "next", "done",
+    ],
+    content: (
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        <div>
+          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Sign Up</p>
+          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+            <li>Click <strong>"Sign Up"</strong></li>
+            <li>Fill your email, Password and confirm it.</li>
+            <li>Click <strong>"Next"</strong></li>
+            <li>If you already have an Account, Click on <strong>"Login"</strong></li>
+          </ol>
+        </div>
+        <div>
+          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Login</p>
+          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+            <li>If you already have an account, click on <strong>"Login"</strong>.</li>
+            <li>Enter your Username.</li>
+            <li>Enter your Password.</li>
+            <li>Check <strong>"Remember Me"</strong> to stay logged in.</li>
+            <li>Click <strong>"Login"</strong> to access your account.</li>
+          </ol>
+        </div>
+        <div>
+          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Edit Your Profile?</p>
+          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+            <li>Go to your Profile page.</li>
+            <li>Click on <strong>"Edit Profile"</strong>.</li>
+            <li>Update your personal information.</li>
+            <li>Change your profile picture if needed.</li>
+            <li>Click <strong>"Done"</strong>.</li>
+          </ol>
+        </div>
+      </div>
+    ),
+    icon: <UserCog size={34} color="white" strokeWidth={1.5} />,
+  },
+  {
+    title: "Creating Posts",
+    description: "posting, tagging, photos, and visibility.",
+    href: "/help/Creating-posts",
+    keywords: [
+      "create post", "publication", "create publication", "add post",
+      "title", "description", "upload", "image", "photo",
+      "label", "historical period", "monument type", "region",
+      "location", "visibility", "public", "private", "done", "share",
+      "tag", "tagging",
+    ],
+    content: (
+      <div>
+        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Create a Publication?</p>
+        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+          <li>After logging in, go to your Home Page.</li>
+          <li>Click on the <strong>"Create Publication"</strong> button.</li>
+          <li>Enter a clear Title for your post.</li>
+          <li>Write a detailed Description explaining the monument or topic.</li>
+          <li>Upload relevant images to illustrate your publication.</li>
+          <li>Add a short picture description if required.</li>
+          <li>Choose the appropriate labels: Post Type, Historical Period, Monument Type, Region.</li>
+          <li>Add the location of the monument.</li>
+          <li>Select the visibility settings (public or private).</li>
+          <li>Click <strong>"Done"</strong> to share your post.</li>
+        </ol>
+      </div>
+    ),
+    icon: <SquarePen size={34} color="white" strokeWidth={1.5} />,
+  },
+  {
+    title: "Interaction with posts",
+    description: "like, comment, report.",
+    href: "/help/Interaction-withe-posts",
+    keywords: [
+      "like", "gem", "comment", "share", "repost",
+      "interact", "interaction", "news feed", "browse",
+      "report post", "inappropriate", "reason", "submit", "review",
+      "appreciation", "opinion",
+    ],
+    content: (
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        <div>
+          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Interact with a Post?</p>
+          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+            <li>Browse the News Feed to view publications shared by other users.</li>
+            <li>Click the <strong>"Gem"</strong> button to show your appreciation.</li>
+            <li>Click <strong>"Comment"</strong> to write and share your opinion.</li>
+            <li>Click <strong>"Share"</strong> to repost the publication on your profile.</li>
+          </ol>
+        </div>
+        <div>
+          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Report a Post?</p>
+          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+            <li>Click on the <strong>"Report"</strong> option if you find inappropriate content.</li>
+            <li>Select the reason for reporting.</li>
+            <li>Submit your report for review by the administration team.</li>
+          </ol>
+        </div>
+      </div>
+    ),
+    icon: <MessagesSquare size={34} color="white" strokeWidth={1.5} />,
+  },
+  {
+    title: "Monuments in Danger",
+    description: "how to report endangered monuments.",
+    href: "/help/Monuments-in-danger",
+    keywords: [
+      "monument in danger", "endangered", "report monument", "danger",
+      "damage", "urgency", "low", "medium", "high",
+      "city", "address", "photo", "submit report",
+      "at risk", "heritage at risk", "destruction",
+    ],
+    content: (
+      <div>
+        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Report a Monument in Danger?</p>
+        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+          <li>Go to the <strong>"Monuments in Danger"</strong> section from the menu.</li>
+          <li>Click on <strong>"Report a Monument"</strong>.</li>
+          <li>Enter the name of the monument.</li>
+          <li>Add the location (city or exact address).</li>
+          <li>Select the urgency level (low, medium, high).</li>
+          <li>Upload clear photos showing the damage.</li>
+          <li>Provide a short description explaining the situation.</li>
+          <li>Click <strong>"Submit Report"</strong> to send your request.</li>
+        </ol>
+      </div>
+    ),
+    icon: <Church size={34} color="white" strokeWidth={1.5} />,
+  },
+  {
+    title: "Reporting Content",
+    description: "moderation and review process.",
+    href: "/help/Reporting-content",
+    keywords: [
+      "report content", "inappropriate content", "spam", "false information",
+      "moderation", "review", "submit", "flag", "abuse",
+      "post menu", "reason", "details",
+    ],
+    content: (
+      <div>
+        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Report Inappropriate Content?</p>
+        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+          <li>Go to the post you want to report.</li>
+          <li>Click on the <strong>"Report"</strong> option (usually available in the post menu).</li>
+          <li>Select the reason for reporting (spam, inappropriate content, false information, etc.).</li>
+          <li>Provide additional details if required.</li>
+          <li>Click <strong>"Submit"</strong> to send your request.</li>
+        </ol>
+      </div>
+    ),
+    icon: <FileX size={34} color="white" strokeWidth={1.5} />,
+  },
+  {
+    title: "Search & Filters",
+    description: "how to filter by region, period.",
+    href: "/help/Searche-by-filter",
+    keywords: [
+      "search", "filter", "region", "period", "historical period",
+      "monument type", "post type", "apply filters", "keyword",
+      "refine", "results", "news feed", "find",
+    ],
+    content: (
+      <div>
+        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Search Using Filters?</p>
+        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
+          <li>Go to the News Feed page.</li>
+          <li>Use the Search Bar to type keywords related to a monument or topic.</li>
+          <li>Click on the Filter option to refine your search.</li>
+          <li>Select the desired Historical Period.</li>
+          <li>Choose the appropriate Monument Type.</li>
+          <li>Select the Region.</li>
+          <li>Choose the Post Type if needed.</li>
+          <li>Click <strong>"Apply Filters"</strong> to display the results.</li>
+        </ol>
+      </div>
+    ),
+    icon: <Search size={34} color="white" strokeWidth={1.5} />,
+  },
+];
 
 export default function HelpPage() {
-  const { locale } = useLocaleSettings();
-  const content = getHelpContent(locale);
-  const direction = helpDirection(locale);
-  const textAlign = helpTextAlign(locale);
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<HelpTopic | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<typeof helpTopics[0] | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const filteredTopics = content.topics.filter((topic) => {
+  const filteredTopics = helpTopics.filter((topic) => {
     if (search.length === 0) return false;
-    const query = search.toLowerCase();
+    const q = search.toLowerCase();
     return (
-      topic.title.toLowerCase().includes(query) ||
-      topic.description.toLowerCase().includes(query) ||
-      topic.keywords.some((keyword) => query.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(query))
+      topic.title.toLowerCase().includes(q) ||
+      topic.description.toLowerCase().includes(q) ||
+      topic.keywords.some((kw) => q.includes(kw) || kw.includes(q))
     );
   });
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
       }
     };
@@ -39,49 +220,87 @@ export default function HelpPage() {
 
   return (
     <div className="flex h-[100dvh] overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
+
       <LeftSidebar activePage="help" />
-      <div className="flex flex-col flex-1 overflow-y-auto ml-[68px]">
-        <div className="relative flex flex-col items-center justify-center text-center" style={{ height: 367, minHeight: 367 }}>
+
+      <div className="flex flex-col flex-1 overflow-y-auto ml-0 md:ml-[68px] pb-24 md:pb-0">
+
+        {/* Hero Banner */}
+        <div
+          className="relative flex flex-col items-center justify-center text-center"
+          style={{ height: "300px", minHeight: "300px" }}
+        >
           <div className="absolute inset-0" style={{ backgroundImage: "url('/timgad.png')", backgroundSize: "cover", backgroundPosition: "center" }} />
           <div className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.45)" }} />
-          <div className="relative z-10 flex flex-col items-center gap-6 px-6" dir={direction}>
-            <h1 style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 800, fontSize: 50, lineHeight: 1.2, textAlign: "center" }}>
-              {content.heroTitle}
+
+          <div className="relative z-10 flex flex-col items-center gap-6 px-6">
+            <h1 className="text-2xl md:text-4xl font-extrabold" style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif", lineHeight: 1.2 }}>
+              Help & User Guide
             </h1>
-            <p style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 900, fontSize: 30, textAlign: "center" }}>
-              {content.heroSubtitle}
+            <p className="text-base md:text-2xl font-black" style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+              Navigate and contribute to preserving Algeria's Architectural legacy
             </p>
 
-            <div ref={searchRef} style={{ position: "relative", width: 465 }}>
-              <div className="flex items-center gap-3" style={{ backgroundColor: "#FFFFFF", borderRadius: 50, border: "2px solid #432817", padding: "0 20px", height: 63 }}>
-                <Search size={22} color="#79747E" strokeWidth={2} />
+            {/* Search Bar */}
+            <div ref={searchRef} className="relative w-full max-w-[465px] px-4 md:px-0">
+              <div
+                className="flex items-center gap-3 w-full h-[54px] md:h-[63px]"
+                style={{ backgroundColor: "#FFFFFF", borderRadius: "50px", border: "2px solid #432817", padding: "0 20px" }}
+              >
+                <Search size={22} color="#79747E" strokeWidth={2} className="flex-shrink-0" />
                 <input
-                  dir={direction}
                   type="text"
                   value={search}
-                  onChange={(event) => { setSearch(event.target.value); setShowDropdown(true); }}
+                  onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
                   onFocus={() => setShowDropdown(true)}
-                  placeholder={content.searchPlaceholder}
-                  style={{ border: "none", outline: "none", backgroundColor: "transparent", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, fontSize: 20, color: "#79747E", width: "100%", textAlign }}
+                  placeholder="Search help topics ..."
+                  className="text-sm md:text-lg w-full"
+                  style={{ border: "none", outline: "none", backgroundColor: "transparent", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, color: "#79747E" }}
                 />
               </div>
 
+              {/* Dropdown */}
               {showDropdown && filteredTopics.length > 0 && (
-                <div style={{ position: "absolute", top: 70, left: 0, right: 0, backgroundColor: "#FFFFFF", borderRadius: 16, border: "1px solid #D6CFC3", boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 50, overflow: "hidden" }}>
-                  {filteredTopics.map((topic, index) => (
-                    <button
-                      key={topic.id}
-                      type="button"
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "70px",
+                    left: 0,
+                    right: 0,
+                    backgroundColor: "#FFFFFF",
+                    borderRadius: "16px",
+                    border: "1px solid #D6CFC3",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                    zIndex: 50,
+                    overflow: "hidden",
+                  }}
+                >
+                  {filteredTopics.map((topic, i) => (
+                    <div
+                      key={i}
                       onClick={() => { setSelectedTopic(topic); setShowDropdown(false); setSearch(""); }}
-                      className="flex w-full items-center gap-3 text-left"
-                      style={{ padding: "12px 20px", cursor: "pointer", border: "none", borderBottom: index < filteredTopics.length - 1 ? "1px solid #F2F2F2" : "none", background: "transparent" }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        padding: "12px 20px",
+                        cursor: "pointer",
+                        borderBottom: i < filteredTopics.length - 1 ? "1px solid #F2F2F2" : "none",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "#FFF8E2"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}
                     >
                       <Search size={16} color="#79747E" strokeWidth={2} />
-                      <div dir={direction} style={{ textAlign }}>
-                        <p style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: 15, margin: 0 }}>{topic.title}</p>
-                        <p style={{ color: "#79747E", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, fontSize: 13, margin: 0 }}>{topic.description}</p>
+                      <div>
+                        <p style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: "15px", margin: 0 }}>
+                          {topic.title}
+                        </p>
+                        <p style={{ color: "#79747E", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, fontSize: "13px", margin: 0 }}>
+                          {topic.description}
+                        </p>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -89,46 +308,121 @@ export default function HelpPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 px-10 py-9" style={{ gap: 32, backgroundColor: "#FFF8E2" }}>
-          {content.topics.map((topic) => (
-            <Link key={topic.id} href={topic.href} style={{ textDecoration: "none" }}>
-              <div className="flex items-center gap-5 cursor-pointer relative" style={{ height: 120, borderRadius: 10, border: "2px solid #432817", backgroundColor: "rgba(67, 40, 23, 0.10)", padding: "0 24px", transition: "all 0.25s ease", boxShadow: "0 2px 8px rgba(67, 40, 23, 0.08)" }}>
-                <div style={{ width: 65, height: 65, borderRadius: "50%", backgroundColor: "#432817", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {topic.icon}
+        {/* Topics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 px-4 md:px-10 py-6 md:py-9 bg-[#FFF8E2] gap-4 md:gap-8">
+          {helpTopics.map((topic, index) => (
+            <Link key={index} href={topic.href} style={{ textDecoration: "none" }}>
+              <div
+                className="flex items-center gap-4 md:gap-5 cursor-pointer relative"
+                style={{
+                  height: "auto",
+                  minHeight: "100px",
+                  borderRadius: "10px",
+                  border: "2px solid #432817",
+                  backgroundColor: "rgba(67, 40, 23, 0.10)",
+                  padding: "16px 20px",
+                  transition: "all 0.25s ease",
+                  boxShadow: "0 2px 8px rgba(67, 40, 23, 0.08)",
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.backgroundColor = "rgba(67, 40, 23, 0.18)";
+                  el.style.boxShadow = "0 8px 24px rgba(67, 40, 23, 0.20)";
+                  el.style.transform = "translateY(-3px)";
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLDivElement;
+                  el.style.backgroundColor = "rgba(67, 40, 23, 0.10)";
+                  el.style.boxShadow = "0 2px 8px rgba(67, 40, 23, 0.08)";
+                  el.style.transform = "translateY(0)";
+                }}
+              >
+                {/* Icon circle */}
+                <div
+                  className="w-10 h-10 md:w-[60px] md:h-[60px] rounded-xl md:rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: "#432817" }}
+                >
+                  <div className="scale-75 md:scale-100">
+                    {topic.icon}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 flex-1" dir={direction} style={{ textAlign }}>
-                  <p style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 700, fontSize: 20, margin: 0 }}>{topic.title}</p>
-                  <p style={{ color: "#000000", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, fontSize: 20, margin: 0 }}>{topic.description}</p>
+
+                <div className="flex flex-col gap-0.5 md:gap-2 flex-1">
+                  <p className="text-sm md:text-lg font-bold m-0" style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                    {topic.title}
+                  </p>
+                  <p className="text-xs md:text-base font-normal m-0" style={{ color: "#000000", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                    {topic.description}
+                  </p>
                 </div>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ transform: direction === "rtl" ? "rotate(180deg)" : undefined }}>
+
+                {/* Arrow */}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M5 12h14M12 5l7 7-7 7" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
             </Link>
           ))}
         </div>
+
       </div>
 
+      {/* Modal Popup */}
       {selectedTopic && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.4)" }} onClick={() => setSelectedTopic(null)}>
-          <div style={{ backgroundColor: "#FFF8E2", borderRadius: 20, padding: "36px 40px", width: 600, maxHeight: "80vh", overflowY: "auto", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }} onClick={(event) => event.stopPropagation()}>
-            <button onClick={() => setSelectedTopic(null)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#432817", lineHeight: 1 }}>×</button>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+          onClick={() => setSelectedTopic(null)}
+        >
+          <div
+            style={{
+              backgroundColor: "#FFF8E2",
+              borderRadius: "20px",
+              width: "calc(100% - 32px)",
+              maxWidth: "600px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              position: "relative",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            }}
+            className="p-6 md:p-9"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedTopic(null)}
+              style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: "#432817", lineHeight: 1 }}
+            >
+              ×
+            </button>
+
             <div className="flex items-center gap-4 mb-6">
-              <div style={{ width: 52, height: 52, borderRadius: "50%", backgroundColor: "#432817", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{selectedTopic.icon}</div>
-              <div dir={direction} style={{ textAlign }}>
-                <p style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 700, fontSize: 24, margin: 0 }}>{selectedTopic.title}</p>
-                <p style={{ color: "#79747E", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontSize: 14, margin: 0 }}>{selectedTopic.description}</p>
+              <div style={{ width: "52px", height: "52px", borderRadius: "50%", backgroundColor: "#432817", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {selectedTopic.icon}
+              </div>
+              <div>
+                <p style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 700, fontSize: "24px", margin: 0 }}>
+                  {selectedTopic.title}
+                </p>
+                <p style={{ color: "#79747E", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontSize: "14px", margin: 0 }}>
+                  {selectedTopic.description}
+                </p>
               </div>
             </div>
-            <div style={{ borderTop: "1px solid #C4A882", paddingTop: 20, fontFamily: "var(--font-lato), 'Lato', sans-serif", color: "#000000" }}>
-              <TopicContent topic={selectedTopic} locale={locale} compact />
+
+            <div style={{ borderTop: "1px solid #C4A882", paddingTop: "20px", fontFamily: "var(--font-lato), 'Lato', sans-serif", color: "#000000" }}>
+              {selectedTopic.content}
             </div>
-            <Link href={selectedTopic.href} style={{ display: "inline-block", marginTop: 24, color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: 14, textDecoration: "underline" }}>
-              {content.viewFullPage}
+
+            <Link
+              href={selectedTopic.href}
+              style={{ display: "inline-block", marginTop: "24px", color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: "14px", textDecoration: "underline" }}
+            >
+              View full page →
             </Link>
           </div>
         </div>
       )}
+
     </div>
   );
 }

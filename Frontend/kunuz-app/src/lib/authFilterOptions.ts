@@ -67,6 +67,15 @@ export const MOBILIZATION_STATUS_VALUES = [
   "Alert",
 ] as const;
 
+export const EXPERTISE_VALUES = [
+  "amateur",
+  "student",
+  "researcher",
+  "architect",
+  "historian",
+  "guide",
+] as const;
+
 export function translatePostType(value: string, tPostForm: Translator): string {
   switch (value.trim().toLowerCase()) {
     case "question":
@@ -188,6 +197,26 @@ export function translateEventStatus(value: string, tFilters: Translator): strin
       return tFilters("eventStatuses.ongoing");
     case "past":
       return tFilters("eventStatuses.past");
+    default:
+      return value;
+  }
+}
+
+export function translateExpertise(value: any, tProfile: Translator): string {
+  if (typeof value !== "string") return String(value);
+  switch (value.trim().toLowerCase()) {
+    case "amateur":
+      return tProfile("expertiseOptions.amateur");
+    case "student":
+      return tProfile("expertiseOptions.student");
+    case "researcher":
+      return tProfile("expertiseOptions.researcher");
+    case "architect":
+      return tProfile("expertiseOptions.architect");
+    case "historian":
+      return tProfile("expertiseOptions.historian");
+    case "guide":
+      return tProfile("expertiseOptions.guide");
     default:
       return value;
   }

@@ -1,0 +1,16 @@
+src/app/help/helpContent.tsx(213,23): error TS2322: Type '{ bgColor: string; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'bgColor' does not exist on type 'IntrinsicAttributes'.
+src/app/set-profile/page.tsx(78,60): error TS2339: Property 'username' does not exist on type '{}'.
+src/app/set-profile/page.tsx(280,46): error TS2339: Property 'success' does not exist on type 'ApiResponseBody'.
+src/components/AddDocuments.tsx(34,50): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(iterable: Iterable<File> | ArrayLike<File>): File[]', gave the following error.
+    Argument of type 'FileList | null' is not assignable to parameter of type 'Iterable<File> | ArrayLike<File>'.
+      Type 'null' is not assignable to type 'Iterable<File> | ArrayLike<File>'.
+  Overload 2 of 4, '(arrayLike: ArrayLike<File>): File[]', gave the following error.
+    Argument of type 'FileList | null' is not assignable to parameter of type 'ArrayLike<File>'.
+      Type 'null' is not assignable to type 'ArrayLike<File>'.
+src/components/UpcomingEvents.tsx(190,15): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/UpcomingEvents.tsx(190,26): error TS18048: 'imgPath' is possibly 'undefined'.
+src/components/UpcomingEvents.tsx(196,32): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.

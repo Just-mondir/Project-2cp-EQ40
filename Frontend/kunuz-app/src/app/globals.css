@@ -78,23 +78,18 @@ html {
   overflow-x: hidden;
 }
 
-html.daltonism-deuteranopia {
-  filter: url("#filter-deuteranopia");
-}
 
-html.daltonism-protanopia {
-  filter: url("#filter-protanopia");
-}
-
-html.daltonism-tritanopia {
-  filter: url("#filter-tritanopia");
-}
 
 .daltonism-filter-defs {
   position: absolute;
-  width: 0;
-  height: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
   pointer-events: none;
 }
 
@@ -356,8 +351,7 @@ html[data-locale-direction="rtl"] .authenticated-app-shell {
   direction: ltr;
 }
 
-html[data-locale-direction="rtl"] .authenticated-app-shell :is(
-  h1,
+html[data-locale-direction="rtl"] .authenticated-app-shell :is(h1,
   h2,
   h3,
   h4,
@@ -369,15 +363,13 @@ html[data-locale-direction="rtl"] .authenticated-app-shell :is(
   figcaption,
   blockquote,
   .truncate,
-  [class*="line-clamp-"]
-) {
+  [class*="line-clamp-"]) {
   direction: rtl;
   text-align: right;
   unicode-bidi: plaintext;
 }
 
-html[data-locale-direction="rtl"] .authenticated-app-shell :is(
-  input[type="text"],
+html[data-locale-direction="rtl"] .authenticated-app-shell :is(input[type="text"],
   input[type="search"],
   input[type="email"],
   input[type="password"],
@@ -386,8 +378,7 @@ html[data-locale-direction="rtl"] .authenticated-app-shell :is(
   select,
   option,
   [contenteditable="true"],
-  .ProseMirror
-) {
+  .ProseMirror) {
   direction: rtl;
   text-align: right;
   unicode-bidi: plaintext;
@@ -1173,4 +1164,3 @@ html[data-locale-direction="rtl"] .localized-member-count {
 html[data-locale-direction="rtl"] .localized-member-count {
   justify-content: flex-end;
 }
-

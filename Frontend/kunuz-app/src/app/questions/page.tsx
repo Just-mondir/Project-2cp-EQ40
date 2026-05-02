@@ -9,11 +9,14 @@ import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
+import ReportModal from "@/components/ReportModal";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 import {
   translateHistoricalPeriod,
   translateMonumentType,
   translatePostType,
   translateRegion,
+  translateExpertise,
 } from "@/lib/authFilterOptions";
 
 //const API_URL =
@@ -543,12 +546,14 @@ function CommentItem({
   onRefresh,
   onDelete,
   isReply = false,
+  onReport,
 }: {
   comment: CommentNode;
   postId: string;
   onRefresh?: () => void;
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const router = useRouter();
   const commonT = useTranslations("auth.common");
@@ -678,19 +683,9 @@ function CommentItem({
     setIsEditing(false);
   };
 
-  const handleReportComment = async () => {
-    const reason = window.prompt(feedT("prompts.reportComment"));
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("comment", comment.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.commentReported"));
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
-      );
-    }
+  const handleReportComment = () => {
+    onReport("comment", comment.id);
+    setShowMenu(false);
   };
 
   return (
@@ -865,6 +860,7 @@ function AnnotationItem({
   onAccept,
   onReject,
   onRefresh,
+  onReport,
 }: {
   annotation: Annotation;
   postId: string;
@@ -873,6 +869,7 @@ function AnnotationItem({
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   onRefresh?: () => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -977,17 +974,9 @@ function AnnotationItem({
     setIsEditing(false);
   };
 
-  const handleReport = async () => {
-    const reason = window.prompt(feedT("prompts.reportAnnotation"));
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.annotationReported"));
-    } catch {
-      window.alert(feedT("feedback.annotationReportFailed"));
-    }
+  const handleReport = () => {
+    onReport("annotation", annotation.id);
+    setShowMenu(false);
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
@@ -1160,22 +1149,25 @@ function FilterSection({
 }: {
   isVisible: boolean;
   onClose: () => void;
-  onApply: (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => void;
+  onApply: (filters: { region: string; post_type: string; historical_period: string; monument_type: string; expertise: string }) => void;
 }) {
   const filtersT = useTranslations("auth.filters");
   const postFormT = useTranslations("auth.postForm");
+  const profileFormT = useTranslations("auth.profileForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [choices, setChoices] = useState<{
     regions: string[];
     post_types: string[];
     historical_periods: string[];
     monument_types: string[];
-  }>({ regions: [], post_types: [], historical_periods: [], monument_types: [] });
+    expertises: string[];
+  }>({ regions: [], post_types: [], historical_periods: [], monument_types: [], expertises: [] });
 
   const [region, setRegion] = useState("All");
   const [postType, setPostType] = useState("All");
   const [historicalPeriod, setHistoricalPeriod] = useState("All");
   const [monumentType, setMonumentType] = useState("All");
+  const [expertise, setExpertise] = useState("All");
 
   useEffect(() => {
     if (isVisible) setIsAnimating(true);
@@ -1201,7 +1193,8 @@ function FilterSection({
     setPostType("All");
     setHistoricalPeriod("All");
     setMonumentType("All");
-    onApply({ region: "", post_type: "", historical_period: "", monument_type: "" });
+    setExpertise("All");
+    onApply({ region: "", post_type: "", historical_period: "", monument_type: "", expertise: "" });
     onClose();
   };
 
@@ -1211,6 +1204,7 @@ function FilterSection({
       post_type: postType === "All" ? "" : postType,
       historical_period: historicalPeriod === "All" ? "" : historicalPeriod,
       monument_type: monumentType === "All" ? "" : monumentType,
+      expertise: expertise === "All" ? "" : expertise,
     });
     onClose();
   };
@@ -1235,10 +1229,15 @@ function FilterSection({
       onChange: setHistoricalPeriod,
     },
     {
-      label: filtersT("labels.heritageType"),
       options: [{ value: "All", label: filtersT("all") }, ...choices.monument_types.map((value) => ({ value, label: translateMonumentType(value, postFormT) }))],
       value: monumentType,
       onChange: setMonumentType,
+    },
+    {
+      label: filtersT("labels.expertise"),
+      options: [{ value: "All", label: filtersT("all") }, ...choices.expertises.map((value) => ({ value, label: translateExpertise(value, profileFormT) }))],
+      value: expertise,
+      onChange: setExpertise,
     },
   ];
 
@@ -1298,12 +1297,14 @@ function PostModal({
   interaction,
   onInteractionChange,
   initialTab = "comments",
+  onReport,
 }: {
   post: ApiPost | null;
   onClose: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
@@ -1545,6 +1546,7 @@ function PostModal({
           onRefresh={() => fetchComments(post.id)}
           onDelete={handleDeleteComment}
           isReply={level > 0}
+          onReport={onReport}
         />
         {replies.length > 0 && (
           <div className="flex flex-col gap-2 mt-2">
@@ -1707,30 +1709,30 @@ function PostModal({
           </div>
 
           <div className={`px-5 pt-3 pb-3 border-b flex-shrink-0 ${imageList.length === 0 ? "block md:hidden" : ""}`} style={{ borderColor: "#E0D5C5" }}>
-              <LocationWorldCard
-                location={post.location}
-                region={post.region}
-                textStyle={{ color: "#8B7355" }}
-                iconColor="#8B7355"
-                iconSize={13}
-                buttonClassName="mb-1"
-              />
-              <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+            <LocationWorldCard
+              location={post.location}
+              region={post.region}
+              textStyle={{ color: "#8B7355" }}
+              iconColor="#8B7355"
+              iconSize={13}
+              buttonClassName="mb-1"
+            />
+            <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
-              {isContentLong && !contentExpanded ? (
-                <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
-                  {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
-                </p>
-              ) : (
-                <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-              )}
-              {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
-              )}
+            {isContentLong && !contentExpanded ? (
+              <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
+                <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+              </p>
+            ) : (
+              <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+            )}
+            {isContentLong && contentExpanded && (
+              <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+            )}
 
 
-            </div>
+          </div>
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <button
@@ -1797,6 +1799,7 @@ function PostModal({
                       onAccept={handleAcceptAnnotation}
                       onReject={handleRejectAnnotation}
                       onRefresh={() => fetchAnnotations(post.id)}
+                      onReport={onReport}
                     />
                   ))
                 )}
@@ -1806,10 +1809,10 @@ function PostModal({
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+              <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
-              </button>
+              </LongPressGemButton>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }}
@@ -1982,6 +1985,7 @@ function PostCard({
   onAnnotationClick,
   interaction,
   onInteractionChange,
+  onReport,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -1990,6 +1994,7 @@ function PostCard({
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   onDelete?: (postId: string) => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const user = getAuthUser();
@@ -2111,7 +2116,7 @@ function PostCard({
                 </>
               )}
               {!isModeratorActive && (
-                <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
+                <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); onReport("post", post.id); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
               )}
             </div>
           )}
@@ -2195,10 +2200,10 @@ function PostCard({
 
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+          <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
             <GemIcon filled={gemmed} active={gemmed} />
             <span>{formatCount(gemsCount)}</span>
-          </button>
+          </LongPressGemButton>
           <button
             className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
             style={{ color: "#432817" }}
@@ -2297,6 +2302,20 @@ export default function HomePageRoute() {
   const [isFocused, setIsFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<{ users: any[]; posts: ApiPost[] } | null>(null);
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    targetType: ReportTargetType;
+    targetId: string;
+  }>({ isOpen: false, targetType: "post", targetId: "" });
+
+  const openReportModal = (type: ReportTargetType, id: string) => {
+    setReportModal({ isOpen: true, targetType: type, targetId: id });
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    const combinedReason = description ? `${reason}: ${description}` : reason;
+    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+  };
   const [searchLoading, setSearchLoading] = useState(false);
   const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/posts/`);
@@ -2499,7 +2518,7 @@ export default function HomePageRoute() {
     } catch { }
   };
 
-  const handleApplyFilter = async (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => {
+  const handleApplyFilter = async (filters: { region: string; post_type: string; historical_period: string; monument_type: string; expertise: string }) => {
     const hasFilter = Object.values(filters).some((v) => v !== "");
     if (!hasFilter) {
       setActiveFilters(null);
@@ -2514,6 +2533,7 @@ export default function HomePageRoute() {
     if (filters.post_type) params.append("post_type", filters.post_type);
     if (filters.historical_period) params.append("historical_period", filters.historical_period);
     if (filters.monument_type) params.append("monument_type", filters.monument_type);
+    if (filters.expertise) params.append("expertise", filters.expertise);
     try {
       const res = await fetch(`${API_URL}/api/posts/filter/?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -2594,9 +2614,9 @@ export default function HomePageRoute() {
     <>
       <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
         <LeftSidebar activePage="home" />
-        <div className="flex h-full w-full max-w-[1116px] md:ml-[80px] pb-16 md:pb-0">
+        <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
+            <div className="sticky top-0 z-40 px-4 md:px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
               <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
@@ -2692,6 +2712,7 @@ export default function HomePageRoute() {
                       onAnnotationClick={() => {
                         openPostModal(post, "annotations");
                       }}
+                      onReport={openReportModal}
                     />
                   </React.Fragment>
                 ))}
@@ -2715,8 +2736,16 @@ export default function HomePageRoute() {
           interaction={getInteraction(selectedPost)}
           onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
           onClose={() => setSelectedPost(null)}
+          onReport={openReportModal}
         />
       )}
+
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleReportSubmit}
+        targetType={reportModal.targetType}
+      />
     </>
   );
 }

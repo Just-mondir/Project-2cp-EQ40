@@ -254,17 +254,6 @@ export default function LeftSidebar({
         ),
       },
       {
-        key: "add-post",
-        label: t("nav.addPost") || "Add Post",
-        href: "/add-post",
-        path: (
-          <>
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </>
-        ),
-      },
-      {
         key: "profile",
         label: profile.username ? `@${profile.username}` : t("nav.profile"),
         href: profile.username ? `/user/${profile.username}` : "#",
@@ -272,6 +261,18 @@ export default function LeftSidebar({
           <>
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
             <circle cx="12" cy="7" r="4" />
+          </>
+        ),
+      },
+      {
+        key: "help",
+        label: t("nav.help"),
+        href: "/help",
+        path: (
+          <>
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
           </>
         ),
       },
@@ -293,13 +294,12 @@ export default function LeftSidebar({
           <KunuzSidebarIcon />
         </Link>
 
-        <nav className="flex flex-col items-center gap-5">
+        <nav className="flex flex-col items-center gap-6">
           {navItems.map((item) => {
             const isActive = activePage === item.key;
             const strokeCol = isActive ? navActiveIcon : iconDefault;
             const fillCol = isActive ? navActiveIcon : "none";
 
-            if (item.key === "add-post") return null; // Hide in desktop sidebar, it's usually elsewhere or too much
             const iconEl = (
               <>
                 <svg
@@ -363,7 +363,7 @@ export default function LeftSidebar({
             }
 
             return (
-              <div key={item.key} className="relative group">
+              <div key={item.key} className={`relative group${item.key === "help" ? " mt-25" : ""}`}>
                 <Link
                   href={item.href}
                   className="relative p-2.5 rounded-xl transition-all duration-200 block"
@@ -397,49 +397,12 @@ export default function LeftSidebar({
             );
           })}
 
-          <div className="h-40" />
-
-          <div className="relative group">
-            <Link
-              href="/help"
-              className="p-2.5 rounded-xl transition-all duration-200 block"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = iconHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={iconDefault}
-                strokeWidth="1.8"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </Link>
-
-            <span
-              className="rtl-sidebar-tooltip absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
-              style={{
-                backgroundColor: navActiveBg,
-                color: navActiveIcon,
-              }}
-            >
-              {t("nav.help")}
-            </span>
-          </div>
         </nav>
       </aside>
 
       {/* Mobile Bottom Navigation */}
       <nav
-        className={`rtl-mobile-sidebar fixed bottom-0 left-0 right-0 h-16 md:hidden flex items-center justify-around z-[100] px-4 border-t${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
+        className={`rtl-mobile-sidebar fixed bottom-0 left-0 right-0 h-16 md:hidden flex items-center justify-around z-[100] px-4${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
         style={{
           backgroundColor: sidebarBg,
           borderColor: isLegacyRoute ? "var(--legacy-route-mobile-border)" : "var(--border-soft)",
@@ -447,7 +410,6 @@ export default function LeftSidebar({
         }}
       >
         {navItems.map((item) => {
-          if (item.key === "add-post") return null;
           const isActive = activePage === item.key;
           const strokeCol = isActive ? navActiveIcon : iconDefault;
           const fillCol = isActive ? navActiveIcon : "none";

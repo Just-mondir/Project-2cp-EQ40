@@ -31,7 +31,7 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFiles((prev) => [...prev, ...Array.from(e.target.files)]);
+      setFiles((prev) => [...prev, ...Array.from(e.target.files as FileList)]);
     }
   };
 
@@ -93,8 +93,8 @@ export default function AddDocumentsModal({ onClose, onDraftSave, initialDraft }
         >
           {files.length === 0 ? (
             <svg width="70" height="70" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M35 10V45M35 45L22 32M35 45L48 32" stroke="#9E9E9E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M12 52C12 52 12 58 20 58H50C58 58 58 52 58 52" stroke="#9E9E9E" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M35 10V45M35 45L22 32M35 45L48 32" stroke="#9E9E9E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M12 52C12 52 12 58 20 58H50C58 58 58 52 58 52" stroke="#9E9E9E" strokeWidth="3" strokeLinecap="round" />
             </svg>
           ) : (
             <div className="flex flex-col items-center gap-2 px-4">

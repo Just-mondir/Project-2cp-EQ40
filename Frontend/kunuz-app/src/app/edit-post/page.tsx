@@ -316,7 +316,7 @@ function EditPostInner() {
     <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
       <LeftSidebar activePage="add-post" />
 
-      <div className="flex flex-col flex-1 overflow-hidden ml-0 md:ml-[68px]">
+      <div className="flex flex-col flex-1 overflow-hidden md:ml-[80px]">
         <div className="px-8 pt-6 pb-2 flex-shrink-0">
           <BackButton />
         </div>
@@ -367,7 +367,7 @@ function EditPostInner() {
               style={{
                 backgroundColor: "#F7F5EF",
                 borderRadius: 0,
-                marginTop: "10px",
+                marginTop: "43px",
               }}
             >
               <ImageUploadPanel

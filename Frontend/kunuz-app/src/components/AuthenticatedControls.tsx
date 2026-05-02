@@ -9,29 +9,26 @@ import { normalizeThemePathname } from "@/lib/themeRoutes";
 export default function AuthenticatedControls() {
   const pathname = usePathname();
   const normalizedPathname = normalizeThemePathname(pathname || "/");
-  const shouldShowThemeControls =
+  const isHomePage =
     normalizedPathname === "/home-page" || normalizedPathname === "/home";
 
-  if (!shouldShowThemeControls) {
-    return null;
-  }
+  // Only show the three toggle buttons on the home page (desktop)
+  if (!isHomePage) return null;
 
   return (
     <div
-      className="fixed top-[18px] z-[110] flex items-center gap-3"
+      className="hidden md:flex fixed top-[18px] z-[110] items-center gap-3"
       style={{ insetInlineEnd: "18px" }}
     >
-      {shouldShowThemeControls && <LanguageSwitcher />}
+      <LanguageSwitcher />
       <DaltonismToggle />
-      {shouldShowThemeControls && (
-        <ThemeToggle
-          forceVisible
-          variant="inline"
-          backgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
-          hoverBackgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
-          shadow="none"
-        />
-      )}
+      <ThemeToggle
+        forceVisible
+        variant="inline"
+        backgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
+        hoverBackgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
+        shadow="none"
+      />
     </div>
   );
 }

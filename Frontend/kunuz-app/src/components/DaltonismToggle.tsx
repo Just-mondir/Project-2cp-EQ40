@@ -30,7 +30,9 @@ function normalizeFilterMode(value: string | null): DaltonismFilterMode {
 function applyDaltonismMode(mode: DaltonismMode) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  FILTER_MODES.forEach(filterMode => root.classList.remove(`daltonism-${filterMode}`));
+  FILTER_MODES.forEach(filterMode => {
+    root.classList.remove(`daltonism-${filterMode}`);
+  });
   if (mode !== "off") {
     root.classList.add(`daltonism-${mode}`);
   }
@@ -58,22 +60,29 @@ export default function DaltonismToggle() {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const storedMode = normalizeMode(window.localStorage.getItem(STORAGE_KEY));
-    const storedLastFilterMode = normalizeFilterMode(window.localStorage.getItem(LAST_FILTER_KEY) || (storedMode === "off" ? null : storedMode));
-    setMode(storedMode);
-    setLastFilterMode(storedLastFilterMode);
-    applyDaltonismMode(storedMode);
+    const refresh = () => {
+      const storedMode = normalizeMode(window.localStorage.getItem(STORAGE_KEY));
+      const storedLastFilterMode = normalizeFilterMode(window.localStorage.getItem(LAST_FILTER_KEY) || (storedMode === "off" ? null : storedMode));
+      setMode(storedMode);
+      setLastFilterMode(storedLastFilterMode);
+      applyDaltonismMode(storedMode);
+    };
+    refresh();
+
+    window.addEventListener("daltonism-updated", refresh);
+    return () => window.removeEventListener("daltonism-updated", refresh);
   }, []);
 
   useEffect(() => {
     if (!open) return;
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
+    const handleOutsideMouseDown = (e: MouseEvent) => {
+      if (containerRef.current && containerRef.current.contains(e.target as Node)) {
+        return; // Clicked inside the component, ignore outside-close
       }
+      setOpen(false);
     };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("mousedown", handleOutsideMouseDown);
+    return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
   }, [open]);
 
   const setAndStoreMode = (nextMode: DaltonismMode) => {
@@ -84,6 +93,7 @@ export default function DaltonismToggle() {
       window.localStorage.setItem(LAST_FILTER_KEY, nextMode);
     }
     applyDaltonismMode(nextMode);
+    window.dispatchEvent(new CustomEvent("daltonism-updated"));
   };
 
   const toggleEnabled = () => {
@@ -97,7 +107,7 @@ export default function DaltonismToggle() {
     : `Enable color blindness mode. Last filter: ${MODE_LABELS[lastFilterMode]}.`;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative" style={{ zIndex: 130 }}>
       <button
         type="button"
         aria-label={label}
@@ -117,6 +127,8 @@ export default function DaltonismToggle() {
           className="daltonism-toggle__panel"
           role="dialog"
           aria-label="Color blindness accessibility settings"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"

@@ -8,8 +8,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
-import PostQuizButton from "@/components/PostQuizButton";
-import { LongPressGemButton } from "@/components/GemUsersModal";
 import RepostButton, { RepostIcon } from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
@@ -20,31 +18,10 @@ import LocationWorldCard from "@/components/LocationWorldCard";
 
 import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
 import NotificationModal from "@/components/NotificationModal";
+import ReportModal from "@/components/ReportModal";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-
-const PROFILE_TAG_TRANSLATIONS: Record<string, Record<string, string>> = {
-  fr: {
-    Amateur: "Amateur",
-    Student: "Étudiant",
-    Researcher: "Chercheur",
-    Historian: "Historien",
-    "Tour Guide": "Guide touristique",
-    Architect: "Architecte",
-  },
-  ar: {
-    Amateur: "هاو",
-    Student: "طالب",
-    Researcher: "باحث",
-    Historian: "مؤرخ",
-    "Tour Guide": "مرشد سياحي",
-    Architect: "مهندس معماري",
-  },
-};
-
-function translateProfileTag(tag: string, locale: string) {
-  return PROFILE_TAG_TRANSLATIONS[locale]?.[tag] ?? tag;
-}
 
 function stripHtmlFallback(html: string): string {
   let result = html;
@@ -163,8 +140,6 @@ type ApiPost = {
   is_saved?: boolean;
   is_reposted?: boolean;
   reposts_count?: number;
-  repost_description?: string;
-  reposted_at?: string | null;
   images: PostImage[];
   tags?: string[];
   historical_period?: string;
@@ -273,7 +248,11 @@ async function submitReport(targetType: ReportTargetType, targetId: string, reas
     body: JSON.stringify({ target_type: targetType, target_id: targetId, reason }),
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.message || "Failed to submit report.");
+  if (!res.ok) {
+    const errorMsg = data?.message || "Failed to submit report.";
+    const details = data?.errors ? Object.values(data.errors).flat().join(" ") : "";
+    throw new Error(details ? `${errorMsg} ${details}` : errorMsg);
+  }
 }
 
 function formatDate(dateStr: string) {
@@ -396,8 +375,6 @@ function mapPost(post: any): ApiPost {
     is_saved: post.is_saved ?? false,
     is_reposted: post.is_reposted ?? false,
     reposts_count: post.reposts_count ?? 0,
-    repost_description: post.repost_description ?? "",
-    reposted_at: post.reposted_at ?? null,
     images: Array.isArray(post.images) ? post.images : [],
     tags: Array.isArray(post.tags) ? post.tags : [],
     historical_period: post.historical_period ?? "",
@@ -585,10 +562,19 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 /* ───────────────── COMMENT ITEM ───────────────── */
 
 function CommentItem({
-  comment, postId, onRefresh, onDelete, isReply = false,
+  comment,
+  postId,
+  onRefresh,
+  onDelete,
+  isReply = false,
+  onReport,
 }: {
-  comment: CommentNode; postId: string; onRefresh?: () => void;
-  onDelete?: (commentId: string) => void; isReply?: boolean;
+  comment: CommentNode;
+  postId: string;
+  onRefresh?: () => void;
+  onDelete?: (commentId: string) => void;
+  isReply?: boolean;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const router = useRouter();
   const commonT = useTranslations("auth.common");
@@ -686,16 +672,9 @@ function CommentItem({
     } catch { }
   };
 
-  const handleReportComment = async () => {
-    const reason = window.prompt(feedT("prompts.reportComment"));
-    if (!reason || !reason.trim()) return;
-    try {
-      await submitReport("comment", comment.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.commentReported"));
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : feedT("feedback.commentReportFailed"));
-    }
+  const handleReportComment = () => {
+    onReport("comment", comment.id);
+    setShowMenu(false);
   };
 
   return (
@@ -760,11 +739,23 @@ function CommentItem({
 /* ───────────────── ANNOTATION ITEM ───────────────── */
 
 function AnnotationItem({
-  annotation, postId, postAuthorId, onDelete, onAccept, onReject, onRefresh,
+  annotation,
+  postId,
+  postAuthorId,
+  onDelete,
+  onAccept,
+  onReject,
+  onRefresh,
+  onReport,
 }: {
-  annotation: Annotation; postId: string; postAuthorId?: string;
-  onDelete: (id: string) => void; onAccept: (id: string) => void;
-  onReject: (id: string) => void; onRefresh: () => void;
+  annotation: Annotation;
+  postId: string;
+  postAuthorId?: string;
+  onDelete: (id: string) => void;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  onRefresh?: () => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -821,22 +812,15 @@ function AnnotationItem({
       });
       if (!res.ok) return;
       setIsEditing(false);
-      onRefresh();
+      onRefresh?.();
     } catch { }
   };
 
   const handleCancelEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(false); };
 
-  const handleReportAnnotation = async () => {
-    const reason = window.prompt(feedT("prompts.reportAnnotation"));
-    if (!reason || !reason.trim()) return;
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.annotationReported"));
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : feedT("feedback.annotationReportFailed"));
-    }
+  const handleReport = () => {
+    onReport("annotation", annotation.id);
+    setShowMenu(false);
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
@@ -868,7 +852,7 @@ function AnnotationItem({
                   </>
                 )}
                 {!canDelete && (
-                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportAnnotation}>{feedT("actions.reportAnnotation")}</button>
+                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReport}>{feedT("actions.reportAnnotation")}</button>
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
@@ -901,7 +885,14 @@ function AnnotationItem({
 /* ───────────────── POST MODAL ───────────────── */
 
 function PostModal({
-  post, onClose, interaction, onInteractionChange, onDeletePost, loggedInUsername, initialTab = "comments", canManageRepostDescription = false, onRepostDescriptionChange,
+  post,
+  onClose,
+  interaction,
+  onInteractionChange,
+  onDeletePost,
+  loggedInUsername,
+  initialTab = "comments",
+  onReport,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -910,8 +901,7 @@ function PostModal({
   onDeletePost: (postId: string) => void;
   loggedInUsername: string;
   initialTab?: "comments" | "annotations";
-  canManageRepostDescription?: boolean;
-  onRepostDescriptionChange?: (postId: string, description: string) => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -926,11 +916,6 @@ function PostModal({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [contentExpanded, setContentExpanded] = useState(false);
-  const [repostDescriptionExpanded, setRepostDescriptionExpanded] = useState(false);
-  const [editingRepostDescription, setEditingRepostDescription] = useState(false);
-  const [repostDescriptionDraft, setRepostDescriptionDraft] = useState("");
-  const [savingRepostDescription, setSavingRepostDescription] = useState(false);
-  const [showDeleteRepostDescriptionModal, setShowDeleteRepostDescriptionModal] = useState(false);
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -945,9 +930,6 @@ function PostModal({
       setAnnotations([]);
       setComments([]);
       setCurrentImageIndex(0);
-      setRepostDescriptionExpanded(false);
-      setEditingRepostDescription(false);
-      setRepostDescriptionDraft(post.repost_description ?? "");
     }
   }, [post, initialTab]);
 
@@ -979,8 +961,6 @@ function PostModal({
   const imageList = post.images ?? [];
   const tags = buildTags(post);
   const isContentLong = stripHtml(post.content).length > CONTENT_LIMIT;
-  const repostDescriptionText = stripHtml(post.repost_description ?? "");
-  const isRepostDescriptionLong = repostDescriptionText.length > 250;
 
   const fetchComments = async (postId: string) => {
     try {
@@ -1065,49 +1045,6 @@ function PostModal({
 
   const handleDeletePost = () => { setShowPostMenu(false); setShowDeleteModal(true); };
 
-  const updateRepostDescription = async (description: string) => {
-    if (!post) return;
-    setSavingRepostDescription(true);
-    try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/repost/`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ description }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to update repost description.");
-      const nextDescription = data?.data?.repost_description ?? description;
-      onRepostDescriptionChange?.(post.id, nextDescription);
-      setRepostDescriptionDraft(nextDescription);
-      setEditingRepostDescription(false);
-    } catch {
-      alert("Failed to update repost description.");
-    } finally {
-      setSavingRepostDescription(false);
-    }
-  };
-
-  const deleteRepostDescription = async () => {
-    if (!post) return;
-    setSavingRepostDescription(true);
-    try {
-      const res = await fetch(`${API_URL}/api/posts/${post.id}/repost/`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.message || "Failed to delete repost description.");
-      onRepostDescriptionChange?.(post.id, "");
-      setRepostDescriptionDraft("");
-      setEditingRepostDescription(false);
-      setShowDeleteRepostDescriptionModal(false);
-    } catch {
-      alert("Failed to delete repost description.");
-    } finally {
-      setSavingRepostDescription(false);
-    }
-  };
-
   const confirmDeletePost = async () => {
     setShowDeleteModal(false);
     try {
@@ -1157,14 +1094,21 @@ function PostModal({
     const replies = getReplies(comment.id);
     return (
       <div key={comment.id} className={level > 0 ? "ml-8 mt-2" : ""}>
-        <CommentItem comment={comment} postId={post.id} onRefresh={() => fetchComments(post.id)} onDelete={handleDeleteComment} isReply={level > 0} />
+        <CommentItem
+          comment={comment}
+          postId={post.id}
+          onRefresh={() => fetchComments(post.id)}
+          onDelete={handleDeleteComment}
+          isReply={level > 0}
+          onReport={onReport}
+        />
         {replies.length > 0 && <div className="flex flex-col gap-2 mt-2">{replies.map((reply) => renderCommentThread(reply, level + 1))}</div>}
       </div>
     );
   };
 
   const LeftPanel = imageList.length > 0 ? (
-    <div className="flex w-full md:w-1/2 h-[250px] md:h-full flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
+    <div className="block w-full h-[240px] md:h-full md:w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
       <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
         {imageList.map((img) => {
           const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
@@ -1226,173 +1170,90 @@ function PostModal({
   return (
     <>
       <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title={userPageT("modals.deletePost.title")} message={userPageT("modals.deletePost.message")} primaryAction={{ label: userPageT("modals.deletePost.confirm"), onClick: confirmDeletePost }} secondaryAction={{ label: userPageT("modals.deletePost.cancel"), onClick: () => setShowDeleteModal(false) }} />
-      <NotificationModal
-        isOpen={showDeleteRepostDescriptionModal}
-        onClose={() => setShowDeleteRepostDescriptionModal(false)}
-        type="error"
-        title="Delete repost description"
-        message="Are you sure you want to delete this repost description? The repost will stay on your profile."
-        primaryAction={{ label: "Delete", onClick: deleteRepostDescription }}
-        secondaryAction={{ label: "Cancel", onClick: () => setShowDeleteRepostDescriptionModal(false) }}
-      />
-      <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] h-full md:h-[90vh] rounded-none md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="relative flex flex-col md:flex-row w-full md:max-w-[1000px] h-full md:max-h-[90vh] md:h-[90vh] md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
           {LeftPanel}
-          <div className="w-full md:w-1/2 flex flex-col flex-1 h-full min-h-0" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
             <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
               <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
               <div className="ml-3 flex-1">
                 <div className="flex items-center gap-2">
-                  <button className="font-bold text-base hover:underline text-left" style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }} onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}>
+                  <button className="font-bold text-sm hover:underline text-left block truncate" style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }} onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}>
                     {post.user_display_name || post.user_username}
                   </button>
-                  <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+                  <p className="text-[11px] block" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
                 </div>
               </div>
               <div className="relative" ref={postMenuRef}>
-                <button className="p-1 rounded hover:bg-[#E0D5C5] mr-2" onClick={() => setShowPostMenu(!showPostMenu)}>
+                <button className="p-1 rounded hover:bg-[#E0D5C5] mr-2 transition-colors" onClick={() => setShowPostMenu(!showPostMenu)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
                 </button>
                 {showPostMenu && (
-                  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+                  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
                     {canDelete ? (
                       <>
                         {isOwner && (
-                          <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
+                          <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5" style={{ color: "var(--foreground)" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
                         )}
-                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#C0392B]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>{commonT("delete")}</button>
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]" style={{ color: "#7B0000" }} onClick={handleDeletePost}>{commonT("delete")}</button>
                       </>
                     ) : (
-                      <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={() => { setShowPostMenu(false); if (!isLoggedIn) { router.push("/login"); return; } }}>{feedT("actions.reportPost")}</button>
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817" }}
+                        onClick={() => {
+                          setShowPostMenu(false);
+                          if (!isLoggedIn) { router.push("/login"); return; }
+                          onReport("post", post.id);
+                        }}
+                      >
+                        {feedT("actions.reportPost")}
+                      </button>
                     )}
                   </div>
                 )}
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5]">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto feed-scroll">
-              <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-                  {post.repost_description && (
-                    <div className="mb-3 rounded-xl px-3 py-2.5" style={{ backgroundColor: "#F0E8CC", border: "1px solid #E0D5C5" }}>
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wide" style={{ color: "#8B6914" }}>
-                          <RepostIcon size={13} active />
-                          Repost description
-                        </div>
-                        {canManageRepostDescription && !editingRepostDescription && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="text-[11px] font-black hover:underline disabled:opacity-60"
-                              style={{ color: "#432817" }}
-                              onClick={() => {
-                                setRepostDescriptionDraft(post.repost_description ?? "");
-                                setEditingRepostDescription(true);
-                              }}
-                              disabled={savingRepostDescription}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="text-[11px] font-black hover:underline disabled:opacity-60"
-                              style={{ color: "#C0392B" }}
-                              onClick={() => setShowDeleteRepostDescriptionModal(true)}
-                              disabled={savingRepostDescription}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {editingRepostDescription ? (
-                        <div className="mt-2">
-                          <textarea
-                            value={repostDescriptionDraft}
-                            onChange={(e) => setRepostDescriptionDraft(e.target.value.slice(0, 500))}
-                            rows={4}
-                            className="w-full resize-none rounded-lg px-3 py-2 text-sm outline-none"
-                            style={{ backgroundColor: "#FFF8E2", color: "#432817", border: "1px solid #E0D5C5" }}
-                          />
-                          <div className="mt-2 flex items-center justify-between">
-                            <span className="text-[11px]" style={{ color: "#8B7355" }}>{repostDescriptionDraft.length}/500</span>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                className="rounded-full px-3 py-1.5 text-xs font-bold disabled:opacity-60"
-                                style={{ color: "#432817" }}
-                                onClick={() => {
-                                  setEditingRepostDescription(false);
-                                  setRepostDescriptionDraft(post.repost_description ?? "");
-                                }}
-                                disabled={savingRepostDescription}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                className="rounded-full px-3 py-1.5 text-xs font-black disabled:opacity-60"
-                                style={{ backgroundColor: "#432817", color: "#FFF8E2" }}
-                                onClick={() => updateRepostDescription(repostDescriptionDraft)}
-                                disabled={savingRepostDescription || !repostDescriptionDraft.trim()}
-                              >
-                                {savingRepostDescription ? "Saving..." : "Save"}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="m-0 whitespace-pre-wrap text-sm leading-relaxed" style={{ color: "#432817" }}>
-                          {isRepostDescriptionLong && !repostDescriptionExpanded
-                            ? `${repostDescriptionText.slice(0, 250)}... `
-                            : repostDescriptionText}
-                          {isRepostDescriptionLong && (
-                            <button
-                              type="button"
-                              className="font-black hover:underline"
-                              style={{ color: "#8B6914" }}
-                              onClick={() => setRepostDescriptionExpanded(value => !value)}
-                            >
-                              {repostDescriptionExpanded ? "See less" : "See more"}
-                            </button>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <LocationWorldCard
-                    location={post.location}
-                    region={post.region}
-                    textStyle={{ color: "#8B7355" }}
-                    iconColor="#8B7355"
-                    iconSize={13}
-                    buttonClassName="mb-1"
-                  />
-                  <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-                  {isContentLong && !contentExpanded ? (
-                    <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
-                      {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
-                      <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
-                    </p>
-                  ) : (
-                    <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-                  )}
-                  {isContentLong && contentExpanded && (
-                    <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
-                  )}
-                </div>
 
-              <div className="sticky top-0 z-10 flex border-b flex-shrink-0" style={{ backgroundColor: "#FFF8E2", borderColor: "#E0D5C5" }}>
-                <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
-                  <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
-                </button>
-                <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
-                  <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
-                </button>
+            {imageList.length > 0 && (
+              <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+                <LocationWorldCard
+                  location={post.location}
+                  region={post.region}
+                  textStyle={{ color: "#8B7355" }}
+                  iconColor="#8B7355"
+                  iconSize={13}
+                  buttonClassName="mb-1"
+                />
+                <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+                {isContentLong && !contentExpanded ? (
+                  <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                    {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+                  </p>
+                ) : (
+                  <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                )}
+                {isContentLong && contentExpanded && (
+                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+                )}
               </div>
+            )}
+
+            <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
+                <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
+              </button>
+              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
+                <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto feed-scroll">
               {activeTab === "comments" && (
                 <div className="px-5 py-3 flex flex-col gap-3">
                   {topLevelComments.length === 0 ? (
@@ -1415,7 +1276,17 @@ function PostModal({
                       <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.annotations")}</p>
                     </div>
                   ) : annotations.map((annotation) => (
-                    <AnnotationItem key={annotation.id} annotation={annotation} postId={post.id} postAuthorId={post.user_id} onDelete={handleDeleteAnnotation} onAccept={handleAcceptAnnotation} onReject={handleRejectAnnotation} onRefresh={() => fetchAnnotations(post.id)} />
+                    <AnnotationItem
+                      key={annotation.id}
+                      annotation={annotation}
+                      postId={post.id}
+                      postAuthorId={post.user_id}
+                      onDelete={handleDeleteAnnotation}
+                      onAccept={handleAcceptAnnotation}
+                      onReject={handleRejectAnnotation}
+                      onRefresh={() => fetchAnnotations(post.id)}
+                      onReport={onReport}
+                    />
                   ))}
                 </div>
               )}
@@ -1451,12 +1322,6 @@ function PostModal({
                   buttonClassName="flex items-center gap-1 text-xs transition-all"
                   buttonStyle={{ color: "#432817" }}
                 />
-                <PostQuizButton
-                  postId={post.id}
-                  title={post.title}
-                  buttonClassName="flex items-center gap-1 text-xs transition-all"
-                  buttonStyle={{ color: "#432817" }}
-                />
                 <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
                   <BookmarkIcon size={18} filled={saved} active={saved} />
                 </button>
@@ -1486,7 +1351,6 @@ function PostModal({
   );
 }
 function BioText({ bio }: { bio: string }) {
-  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const lines = 2;
   const isLong = bio.length > 120;
@@ -1511,7 +1375,7 @@ function BioText({ bio }: { bio: string }) {
           style={{ color: "#8B6914", background: "none", border: "none", padding: 0, cursor: "pointer" }}
           onClick={() => setExpanded(prev => !prev)}
         >
-          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
+          {expanded ? "See less" : "See more"}
         </button>
       )}
     </div>
@@ -1537,7 +1401,6 @@ function ProfileHeader({
   const addPostT = useTranslations("auth.pages.addPost");
   const editProfileT = useTranslations("auth.pages.editProfile");
   const userPageT = useTranslations("auth.pages.userProfile");
-  const locale = useLocale();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [showDashboardModal, setShowDashboardModal] = useState(false);
@@ -1648,10 +1511,10 @@ function ProfileHeader({
 
           <div className="flex items-center gap-3 mb-4">
             {profileInfo.expertise && (
-              <span className="text-sm" style={{ color: "#432817" }}>#{translateProfileTag(profileInfo.expertise, locale)}</span>
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.expertise}</span>
             )}
             {profileInfo.speciality && (
-              <span className="text-sm" style={{ color: "#432817" }}>#{translateProfileTag(profileInfo.speciality, locale)}</span>
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.speciality}</span>
             )}
           </div>
 
@@ -1783,6 +1646,20 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("grid");
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    targetType: ReportTargetType;
+    targetId: string;
+  }>({ isOpen: false, targetType: "post", targetId: "" });
+
+  const openReportModal = (type: ReportTargetType, id: string) => {
+    setReportModal({ isOpen: true, targetType: type, targetId: id });
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    const combinedReason = description ? `${reason}: ${description}` : reason;
+    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+  };
 
   const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -1796,6 +1673,9 @@ export default function ProfilePage() {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [alertPosts, setAlertPosts] = useState<ApiPost[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
 
@@ -2171,7 +2051,53 @@ export default function ProfilePage() {
     fetchProfile();
   }, [viewedUsername, isOwnProfile, profileQuery.data, profileQuery.isFetching]);
 
-  /* ── Fetch posts ── */
+  /* ── Fetch posts logic with pagination ── */
+  const fetchTabPosts = async (url: string, tab: string, isInitial = false) => {
+    if (!url) return;
+    isInitial ? (
+      tab === "grid" ? setLoadingPosts(true) :
+        tab === "gems" ? setLoadingGemmed(true) :
+          tab === "saved" ? setLoadingSaved(true) :
+            tab === "reposts" ? setLoadingReposts(true) :
+              tab === "events" ? setLoadingEvents(true) :
+                setLoadingAlerts(true)
+    ) : setLoadingMore(true);
+
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const results = (data.results ?? data).map(mapPost);
+
+      const setter =
+        tab === "grid" ? setAllPosts :
+          tab === "gems" ? setGemmedPosts :
+            tab === "saved" ? setSavedPosts :
+              tab === "reposts" ? setRepostedPosts :
+                tab === "events" ? setEventPosts :
+                  setAlertPosts;
+
+      setter(prev => {
+        if (isInitial) return results;
+        const existingIds = new Set(prev.map((p: ApiPost) => p.id));
+        const uniqueNew = results.filter((p: ApiPost) => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
+      setNextUrl(data.next ?? null);
+    } catch (err) {
+      console.error(`Error fetching ${tab}:`, err);
+    } finally {
+      isInitial ? (
+        tab === "grid" ? setLoadingPosts(false) :
+          tab === "gems" ? setLoadingGemmed(false) :
+            tab === "saved" ? setLoadingSaved(false) :
+              tab === "reposts" ? setLoadingReposts(false) :
+                tab === "events" ? setLoadingEvents(false) :
+                  setLoadingAlerts(false)
+      ) : setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     if (!viewedUsername) return;
     if (gridTabQuery.data || gridTabQuery.isFetching) return;
@@ -2290,6 +2216,19 @@ export default function ProfilePage() {
     fetch_();
   }, [visibleTab, viewedUsername, alertsTabQuery.data, alertsTabQuery.isFetching, tabMemoryKeys.alerts]);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && nextUrl) {
+          fetchTabPosts(nextUrl, visibleTab, false);
+        }
+      },
+      { threshold: 1.0 }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [nextUrl, loadingMore, visibleTab]);
+
   const openPost = (post: ApiPost, tab: "comments" | "annotations" = "comments") => {
     setSelectedPost(post);
     setSelectedPostTab(tab);
@@ -2353,10 +2292,16 @@ export default function ProfilePage() {
           onDeletePost={deletePostFromLists}
           onClose={() => setSelectedPost(null)}
           loggedInUsername={loggedInUsername}
-          canManageRepostDescription={isOwnProfile && visibleTab === "reposts"}
-          onRepostDescriptionChange={updateRepostDescriptionInLists}
+          onReport={openReportModal}
         />
       )}
+
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleReportSubmit}
+        targetType={reportModal.targetType}
+      />
 
       <LeftSidebar activePage={isOwnProfile ? "profile" : ""} />
 
@@ -2403,6 +2348,8 @@ export default function ProfilePage() {
               displayedAlertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message={userPageT("empty.alerts")} /> :
                 <PostsGrid posts={displayedAlertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
+          {loadingMore && <Spinner />}
+          <div ref={sentinelRef} className="h-4" />
         </div>
       </main>
     </div>

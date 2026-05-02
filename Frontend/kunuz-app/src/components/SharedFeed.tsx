@@ -257,7 +257,9 @@ async function submitReport(
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(data?.message || "Failed to submit report.");
+    const errorMsg = data?.message || "Failed to submit report.";
+    const details = data?.errors ? Object.values(data.errors).flat().join(" ") : "";
+    throw new Error(details ? `${errorMsg} ${details}` : errorMsg);
   }
 }
 
@@ -1396,14 +1398,14 @@ function PostModal({
         scrollEl.scrollLeft = 0;
       }
     }
-  },  [post?.id, initialTab]);
+  }, [post?.id, initialTab]);
 
   useEffect(() => {
-  if (!post) return;
-  fetchComments(post.id);
-  fetchAnnotations(post.id);
-  if (post.post_type === "alert") fetchHistory(post.id);
-}, [post?.id]);
+    if (!post) return;
+    fetchComments(post.id);
+    fetchAnnotations(post.id);
+    if (post.post_type === "alert") fetchHistory(post.id);
+  }, [post?.id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
