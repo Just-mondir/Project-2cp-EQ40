@@ -165,7 +165,10 @@ export default function LeftSidebar({
     const handleUpdate = (e) => {
       const newCount = Number(e.detail);
       if (Number.isFinite(newCount)) {
-        setUnreadCount(newCount > 0 ? newCount : 0);
+        // Defer state update to avoid setState during another component render.
+        window.setTimeout(() => {
+          setUnreadCount(newCount > 0 ? newCount : 0);
+        }, 0);
       } else {
         fetchUnreadCount();
       }
