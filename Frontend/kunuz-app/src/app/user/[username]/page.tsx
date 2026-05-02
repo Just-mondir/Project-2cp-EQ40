@@ -100,6 +100,13 @@ function getCachedProfileInfo(): Partial<ProfileInfo> | null {
   }
 }
 
+function getPaginatedCount(payload: unknown): number | null {
+  const data = payload as { count?: unknown; data?: { count?: unknown } };
+  const rawCount = data.count ?? data.data?.count;
+  const count = Number(rawCount);
+  return Number.isFinite(count) ? count : null;
+}
+
 
 
 const isModerator = (user: any) => {
@@ -440,6 +447,25 @@ const GemIcon = ({ size = 18, filled = false, className = "", active = false }: 
     <path d="M2 9h20" />
     <path d="M12 22L6 9l3-6" />
     <path d="M12 22l6-13-3-6" />
+  </svg>
+);
+
+const TreasureChestIcon = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 10.5h15v9H4.5z" />
+    <path d="M7.25 10.5l1.35-5.4h7.7l1.45 5.4" />
+    <path d="M8.6 5.1l-3.4 5.4" />
+    <path d="M16.3 5.1l3.5 5.4" />
+    <path d="M4.5 13.25h15" />
+    <path d="M11.95 10.5v9" />
+    <path d="M7 13.25v6.25" />
+    <path d="M5.65 19.5h2.7v-4.85h-2.7z" />
+    <path d="M10.2 14.9h3.55v2.45H10.2z" />
+    <path d="M12.65 4.2l1.65 1.65-1.65 1.65L11 5.85z" />
+    <circle cx="15.9" cy="8.05" r="1.15" />
+    <circle cx="10" cy="8.4" r="0.9" />
+    <path d="M17.4 7.35l1.1-.95" />
+    <path d="M14.65 8.95l-1.05.95" />
   </svg>
 );
 
@@ -1496,9 +1522,15 @@ function BioText({ bio }: { bio: string }) {
 function ProfileHeader({
   profileInfo,
   isOwnProfile,
+  gemsCount,
+  postsCount,
+  eventsCount,
 }: {
   profileInfo: ProfileInfo;
   isOwnProfile: boolean;
+  gemsCount: number;
+  postsCount: number;
+  eventsCount: number;
 }) {
   const router = useRouter();
   const dashboardT = useTranslations("auth.profilePopups.dashboard");
@@ -1539,14 +1571,7 @@ function ProfileHeader({
   return (
 
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
-      {isOwnProfile && (
-        <div className="absolute top-4 right-6">
-          <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
-          </button>
-        </div>
-      )}
-
+      
       {/* ── Popups ── */}
       {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}
       {showChangePasswordModal && <ChangePasswordPopup onClose={() => setShowChangePasswordModal(false)} />}
@@ -1607,15 +1632,16 @@ function ProfileHeader({
 
           <div className="flex items-center gap-6 mb-4">
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.posts_count}</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{postsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.posts")}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.likes_count}</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{gemsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.likes")}</span>
             </div>
+            
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.events_count}</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{eventsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.events")}</span>
             </div>
           </div>
@@ -1654,11 +1680,19 @@ function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: str
     { id: "events", icon: <CalendarIcon size={20} /> },
     { id: "alerts", icon: <DangerIcon size={20} /> },
   ];
+  const tabLabels: Record<string, string> = {
+    grid: "Posts",
+    reposts: "Reposts",
+    gems: "Your treasure",
+    saved: "Saved",
+    events: "Events",
+    alerts: "Monuments in danger",
+  };
 
   return (
     <div className="flex items-center justify-between px-4 md:px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
       {tabs.map((tab) => (
-        <button key={tab.id} title={tab.id === "reposts" ? "Reposts" : tab.id} aria-label={tab.id === "reposts" ? "Reposts" : tab.id} onClick={() => setActiveTab(tab.id)} className="p-3 transition-all duration-200 hover:opacity-70 relative" style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}>
+        <button key={tab.id} title={tabLabels[tab.id] ?? tab.id} aria-label={tabLabels[tab.id] ?? tab.id} onClick={() => setActiveTab(tab.id)} className="p-3 transition-all duration-200 hover:opacity-70 relative" style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}>
           {tab.icon}
           {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: "#432817" }} />}
         </button>
@@ -1784,6 +1818,9 @@ export default function ProfilePage() {
     events_count: isOwnProfile ? cachedProfile?.events_count ?? 0 : 0,
   }), [cachedProfile, isOwnProfile, viewedUsername]);
   const [profileInfo, setProfileInfo] = useState<ProfileInfo>(initialProfileInfo);
+  const [gemmedPostsCount, setGemmedPostsCount] = useState<number | null>(null);
+  const [profilePostsCount, setProfilePostsCount] = useState<number | null>(null);
+  const [profileEventsCount, setProfileEventsCount] = useState<number | null>(null);
   const visibleTab = !isOwnProfile && (activeTab === "gems" || activeTab === "saved") ? "grid" : activeTab;
   const profileQuery = useProfile<Partial<ProfileInfo>>(viewedUsername, isOwnProfile);
   const gridTabQuery = useProfileTab<ApiPost>(viewedUsername, "grid", isOwnProfile, visibleTab === "grid");
@@ -1858,6 +1895,9 @@ export default function ProfilePage() {
   useEffect(() => {
     setAllPosts([]);
     setGemmedPosts([]);
+    setGemmedPostsCount(null);
+    setProfilePostsCount(null);
+    setProfileEventsCount(null);
     setSavedPosts([]);
     setRepostedPosts([]);
     setEventPosts([]);
@@ -1897,6 +1937,58 @@ export default function ProfilePage() {
       events_count: data.events_count ?? displayedEventPosts.length,
     });
   }, [profileQuery.data, displayedAllPosts.length, displayedEventPosts.length]);
+
+  useEffect(() => {
+    if (!isOwnProfile || !viewedUsername) return;
+    let cancelled = false;
+
+    const fetchGemmedPostsCount = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/posts/gemed/?page_size=1`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const count = getPaginatedCount(data);
+        if (!cancelled && count !== null) {
+          setGemmedPostsCount(count);
+        }
+      } catch { }
+    };
+
+    void fetchGemmedPostsCount();
+    return () => { cancelled = true; };
+  }, [isOwnProfile, viewedUsername]);
+
+  useEffect(() => {
+    if (!viewedUsername) return;
+    let cancelled = false;
+
+    const fetchProfileCounts = async () => {
+      const headers = { Authorization: `Bearer ${getAuthToken()}` };
+      try {
+        const [postsRes, eventsRes] = await Promise.all([
+          fetch(`${API_URL}/api/posts/user/${viewedUsername}/?page_size=1`, { headers }),
+          fetch(`${API_URL}/api/posts/user/${viewedUsername}/events/?page_size=1`, { headers }),
+        ]);
+
+        if (postsRes.ok) {
+          const data = await postsRes.json();
+          const count = getPaginatedCount(data);
+          if (!cancelled && count !== null) setProfilePostsCount(count);
+        }
+
+        if (eventsRes.ok) {
+          const data = await eventsRes.json();
+          const count = getPaginatedCount(data);
+          if (!cancelled && count !== null) setProfileEventsCount(count);
+        }
+      } catch { }
+    };
+
+    void fetchProfileCounts();
+    return () => { cancelled = true; };
+  }, [viewedUsername]);
 
   useEffect(() => {
     if (!gridTabQuery.data) return;
@@ -1975,6 +2067,8 @@ export default function ProfilePage() {
   };
 
   const deletePostFromLists = (postId: string) => {
+    const deletedPost = [...displayedAllPosts, ...displayedGemmedPosts, ...displayedSavedPosts, ...displayedRepostedPosts, ...displayedEventPosts, ...displayedAlertPosts]
+      .find((post) => post.id === postId);
     setAllPosts((prev) => prev.filter((p) => p.id !== postId));
     setGemmedPosts((prev) => prev.filter((p) => p.id !== postId));
     setSavedPosts((prev) => prev.filter((p) => p.id !== postId));
@@ -1985,6 +2079,10 @@ export default function ProfilePage() {
       const remembered = profileTabMemory.get(key);
       if (remembered) profileTabMemory.set(key, remembered.filter((post) => post.id !== postId));
     });
+    setProfilePostsCount((current) => current === null ? current : Math.max(current - 1, 0));
+    if (deletedPost?.post_type === "event") {
+      setProfileEventsCount((current) => current === null ? current : Math.max(current - 1, 0));
+    }
   };
 
   /* ── Fetch logged in user ── */
@@ -2084,6 +2182,8 @@ export default function ProfilePage() {
         const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data: any = await res.json();
+        const count = getPaginatedCount(data);
+        if (count !== null) setProfilePostsCount(count);
         const collected = (data.results ?? data.data?.results ?? data.data ?? data ?? []).map(mapPost);
         profileTabMemory.set(tabMemoryKeys.grid, collected);
         setAllPosts(collected);
@@ -2102,7 +2202,9 @@ export default function ProfilePage() {
         const res = await fetch(`${API_URL}/api/posts/gemed/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        const mapped = (data.results ?? data).map(mapPost);
+        const count = getPaginatedCount(data);
+        if (count !== null) setGemmedPostsCount(count);
+        const mapped = (data.results ?? data.data?.results ?? data.data ?? data).map(mapPost);
         profileTabMemory.set(tabMemoryKeys.gems, mapped);
         setGemmedPosts(mapped);
       } catch (err) { console.error(err); }
@@ -2159,6 +2261,8 @@ export default function ProfilePage() {
         const res = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/events/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
+        const count = getPaginatedCount(data);
+        if (count !== null) setProfileEventsCount(count);
         const mapped = (data.results ?? data).map(mapPost);
         profileTabMemory.set(tabMemoryKeys.events, mapped);
         setEventPosts(mapped);
@@ -2197,6 +2301,36 @@ export default function ProfilePage() {
   const isRepostsLoading = displayedRepostedPosts.length === 0 && (loadingReposts || repostsTabQuery.isLoading);
   const isEventsLoading = displayedEventPosts.length === 0 && (loadingEvents || eventsTabQuery.isLoading);
   const isAlertsLoading = displayedAlertPosts.length === 0 && (loadingAlerts || alertsTabQuery.isLoading);
+  const profileGemsCount = isOwnProfile
+    ? gemmedPostsCount ?? Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length)
+    : profileInfo.likes_count;
+  const profilePostsDisplayCount = profilePostsCount ?? Math.max(profileInfo.posts_count, displayedAllPosts.length, rememberedAllPosts.length, allPosts.length);
+  const profileEventsDisplayCount = profileEventsCount ?? Math.max(profileInfo.events_count, displayedEventPosts.length, rememberedEventPosts.length, eventPosts.length);
+
+  const handleSelectedPostInteractionChange = (post: ApiPost, update: Partial<PostInteraction>) => {
+    const previousInteraction = getInteraction(post);
+    updateInteraction(post.id, update);
+
+    if (!isOwnProfile || typeof update.gemmed !== "boolean" || update.gemmed === previousInteraction.gemmed) return;
+
+    setGemmedPostsCount((current) => {
+      const fallback = Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length);
+      const base = current ?? fallback;
+      return update.gemmed ? base + 1 : Math.max(base - 1, 0);
+    });
+
+    if (update.gemmed) {
+      setGemmedPosts((current) => current.some((item) => item.id === post.id) ? current : [post, ...current]);
+      const remembered = profileTabMemory.get(tabMemoryKeys.gems) ?? [];
+      if (!remembered.some((item) => item.id === post.id)) {
+        profileTabMemory.set(tabMemoryKeys.gems, [post, ...remembered]);
+      }
+    } else {
+      setGemmedPosts((current) => current.filter((item) => item.id !== post.id));
+      const remembered = profileTabMemory.get(tabMemoryKeys.gems);
+      if (remembered) profileTabMemory.set(tabMemoryKeys.gems, remembered.filter((item) => item.id !== post.id));
+    }
+  };
 
   const updateRepostDescriptionInLists = (postId: string, description: string) => {
     const applyDescription = (post: ApiPost) => (
@@ -2215,7 +2349,7 @@ export default function ProfilePage() {
           post={selectedPost}
           initialTab={selectedPostTab}
           interaction={getInteraction(selectedPost)}
-          onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
+          onInteractionChange={(update) => handleSelectedPostInteractionChange(selectedPost, update)}
           onDeletePost={deletePostFromLists}
           onClose={() => setSelectedPost(null)}
           loggedInUsername={loggedInUsername}
@@ -2228,7 +2362,13 @@ export default function ProfilePage() {
 
       <main className="md:pl-[80px] px-4 pb-16 md:pb-0">
         <div className="max-w-4xl mx-auto">
-          <ProfileHeader profileInfo={profileInfo} isOwnProfile={isOwnProfile} />
+          <ProfileHeader
+            profileInfo={profileInfo}
+            isOwnProfile={isOwnProfile}
+            gemsCount={profileGemsCount}
+            postsCount={profilePostsDisplayCount}
+            eventsCount={profileEventsDisplayCount}
+          />
           <ProfileTabs activeTab={visibleTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
           {visibleTab === "grid" && (

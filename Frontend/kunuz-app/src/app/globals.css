@@ -235,7 +235,8 @@ select {
 
 .daltonism-toggle__switch:hover,
 .daltonism-toggle__tab:hover {
-  background: var(--panel-hover);
+  background: var(--sidebar-hover);
+  color: var(--foreground);
 }
 
 .daltonism-toggle__track {

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { normalizeThemePathname } from "@/lib/themeRoutes";
+import NotificationPanel from "@/components/Notificationpanel";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -106,17 +106,8 @@ export default function LeftSidebar({
     : (isSpecialBg ? "var(--panel-hover)" : "var(--sidebar-hover)");
   const navActiveBg = isLegacyRoute ? "var(--legacy-route-sidebar-active-bg)" : "var(--nav-active-bg)";
   const navActiveIcon = isLegacyRoute ? "var(--legacy-route-sidebar-active-icon)" : "var(--nav-active-icon)";
-  const overlayBg = isLegacyRoute ? "var(--legacy-route-overlay-bg)" : "var(--overlay-bg)";
-  const overlayItemBg = isLegacyRoute ? "var(--legacy-route-overlay-item-bg)" : "var(--overlay-item)";
-  const overlayBorder = isLegacyRoute ? "var(--legacy-route-overlay-border)" : "var(--border-soft)";
-  const overlayDivider = isLegacyRoute ? "var(--legacy-route-overlay-divider)" : "var(--border-soft)";
-  const mutedText = isLegacyRoute ? "var(--legacy-route-muted-text)" : "var(--text-muted)";
-  const foregroundText = isLegacyRoute ? "var(--legacy-route-foreground-text)" : "var(--foreground)";
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const notifContainerRef = useRef(null);
 
   const fetchUnreadCount = async () => {
     const token = localStorage.getItem("accessToken");
@@ -132,7 +123,8 @@ export default function LeftSidebar({
         const json = await response.json();
         // Handle both { data: { unread_count: N } } and { unread_count: N }
         const count = json?.data?.unread_count !== undefined ? json.data.unread_count : (json?.unread_count !== undefined ? json.unread_count : 0);
-        setUnreadCount(Number(count));
+        const parsedCount = Number(count);
+        setUnreadCount(Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0);
       }
     } catch (err) {
       console.error("Error fetching unread count:", err);
@@ -140,7 +132,9 @@ export default function LeftSidebar({
   };
 
   useEffect(() => {
-    fetchUnreadCount();
+    const initialLoad = window.setTimeout(() => {
+      void fetchUnreadCount();
+    }, 0);
     const interval = setInterval(() => {
       const token = localStorage.getItem("accessToken");
       if (token) fetchUnreadCount();
@@ -148,8 +142,8 @@ export default function LeftSidebar({
 
     const handleUpdate = (e) => {
       const newCount = Number(e.detail);
-      if (!isNaN(newCount)) {
-        setUnreadCount(newCount);
+      if (Number.isFinite(newCount)) {
+        setUnreadCount(newCount > 0 ? newCount : 0);
       } else {
         fetchUnreadCount();
       }
@@ -157,56 +151,18 @@ export default function LeftSidebar({
 
     window.addEventListener("refresh-unread-count", handleUpdate);
     return () => {
+      window.clearTimeout(initialLoad);
       clearInterval(interval);
       window.removeEventListener("refresh-unread-count", handleUpdate);
     };
   }, [pathname]); // Also refetch on navigation
 
-  const fetchMiniNotifications = async () => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      setNotifications([]);
-      return;
-    }
-
-    setNotifLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/notifications/?page_size=4`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        setNotifications([]);
-        return;
-      }
-      const data = await response.json();
-      setNotifications(data?.data?.results ?? []);
-    } catch {
-      setNotifications([]);
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!isNotifOpen) return;
-
-    const loadNotifications = async () => {
-      await fetchMiniNotifications();
-      await fetchUnreadCount();
-    };
-
-    void loadNotifications();
-  }, [isNotifOpen]);
-
-  useEffect(() => {
-    if (!isNotifOpen) return;
-    const handleOutsideClick = (event) => {
-      if (notifContainerRef.current && !notifContainerRef.current.contains(event.target)) {
-        setIsNotifOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    const timer = window.setTimeout(() => {
+      void fetchUnreadCount();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [isNotifOpen]);
 
   const navItems = useMemo(
@@ -264,7 +220,7 @@ export default function LeftSidebar({
         key: "notifications",
         label: t("nav.notifications"),
         href: "/notifications",
-        hasBadge: unreadCount > 0,
+        hasBadge: Number.isFinite(unreadCount) && unreadCount > 0,
         path: (
           <>
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -345,7 +301,7 @@ export default function LeftSidebar({
 
             if (item.key === "notifications") {
               return (
-                <div key={item.key} className="relative group" ref={notifContainerRef}>
+                <div key={item.key} className="relative group">
                   <button
                     type="button"
                     className="relative p-2.5 rounded-xl transition-all duration-200 block"
@@ -377,52 +333,6 @@ export default function LeftSidebar({
                     {item.label}
                   </span>
 
-                  {isNotifOpen && (
-                    <div
-                      className="rtl-sidebar-overlay absolute left-full ml-4 top-1/2 -translate-y-1/2 w-[320px] rounded-2xl border p-4 z-[70]"
-                      style={{
-                        backgroundColor: overlayBg,
-                        borderColor: overlayBorder,
-                        boxShadow: "0 16px 36px rgba(46, 25, 11, 0.22)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-sm font-bold" style={{ color: foregroundText }}>
-                          {t("overlay.title")}
-                        </p>
-                        <Bell size={14} color={mutedText} />
-                      </div>
-
-                      {notifLoading ? (
-                        <p className="text-xs" style={{ color: mutedText }}>{t("overlay.loading")}</p>
-                      ) : notifications.length === 0 ? (
-                        <p className="text-xs leading-5" style={{ color: mutedText }}>
-                          {t("overlay.empty")}
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {notifications.map((notification) => (
-                            <div key={notification.id} className="rounded-xl p-2.5" style={{ backgroundColor: overlayItemBg }}>
-                              <p className="text-[12px] font-semibold leading-5" style={{ color: foregroundText }}>
-                                {notification.actor_display_name || t("overlay.someone")} {notification.event_label || notification.message}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="mt-3 pt-3 border-t" style={{ borderColor: overlayDivider }}>
-                        <Link
-                          href="/notifications"
-                          className="inline-flex items-center justify-center text-xs font-semibold rounded-lg px-3 py-2"
-                          style={{ backgroundColor: navActiveBg, color: navActiveIcon }}
-                          onClick={() => setIsNotifOpen(false)}
-                        >
-                          {t("overlay.viewAll")}
-                        </Link>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             }
@@ -516,18 +426,8 @@ export default function LeftSidebar({
           const isActive = activePage === item.key;
           const strokeCol = isActive ? navActiveIcon : iconDefault;
           const fillCol = isActive ? navActiveIcon : "none";
-
-          return (
-            <Link
-              key={item.key}
-              href={item.href}
-              className="relative p-2.5 rounded-xl transition-all duration-300"
-              style={{
-                backgroundColor: isActive ? navActiveBg : "transparent",
-                transform: isActive ? "scale(1.1)" : "scale(1)",
-                boxShadow: isActive ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
-              }}
-            >
+          const mobileIcon = (
+            <>
               <svg
                 width="20"
                 height="20"
@@ -543,10 +443,45 @@ export default function LeftSidebar({
               {item.hasBadge && (
                 <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#FF0000] rounded-full border-2 border-white z-20" />
               )}
+            </>
+          );
+
+          if (item.key === "notifications") {
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setIsNotifOpen(true)}
+                className="relative p-2.5 rounded-xl transition-all duration-300"
+                style={{
+                  backgroundColor: isNotifOpen ? navActiveBg : "transparent",
+                  transform: isNotifOpen ? "scale(1.1)" : "scale(1)",
+                  boxShadow: isNotifOpen ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
+                }}
+                aria-label={item.label}
+              >
+                {mobileIcon}
+              </button>
+            );
+          }
+
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className="relative p-2.5 rounded-xl transition-all duration-300"
+              style={{
+                backgroundColor: isActive ? navActiveBg : "transparent",
+                transform: isActive ? "scale(1.1)" : "scale(1)",
+                boxShadow: isActive ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
+              }}
+            >
+              {mobileIcon}
             </Link>
           );
         })}
       </nav>
+      {isNotifOpen && <NotificationPanel onClose={() => setIsNotifOpen(false)} />}
     </>
   );
 }

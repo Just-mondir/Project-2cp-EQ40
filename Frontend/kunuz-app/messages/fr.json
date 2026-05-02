@@ -653,6 +653,7 @@
       },
       "sections": {
         "today": "Aujourd'hui",
+        "thisMonth": "Ce mois-ci",
         "thisWeek": "Cette semaine",
         "earlier": "Plus tôt"
       },
@@ -882,7 +883,7 @@
         },
         "stats": {
           "posts": "Publications",
-          "likes": "J'aime",
+          "likes": "Gems",
           "events": "\u00c9v\u00e9nements"
         },
         "empty": {

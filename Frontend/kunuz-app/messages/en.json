@@ -653,6 +653,7 @@
       },
       "sections": {
         "today": "Today",
+        "thisMonth": "This month",
         "thisWeek": "This week",
         "earlier": "Earlier"
       },
@@ -882,7 +883,7 @@
         },
         "stats": {
           "posts": "Posts",
-          "likes": "Likes",
+          "likes": "Gems",
           "events": "Events"
         },
         "empty": {
