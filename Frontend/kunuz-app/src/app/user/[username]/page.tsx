@@ -1434,7 +1434,14 @@ function ProfileHeader({
   return (
 
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
-      
+      {isOwnProfile && (
+        <div className="absolute top-4 right-6">
+          <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+          </button>
+        </div>
+      )}
+
       {/* ── Popups ── */}
       {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}
       {showChangePasswordModal && <ChangePasswordPopup onClose={() => setShowChangePasswordModal(false)} />}
@@ -1502,7 +1509,7 @@ function ProfileHeader({
               <span className="font-bold" style={{ color: "#432817" }}>{gemsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.likes")}</span>
             </div>
-            
+
             <div className="flex items-center gap-1.5">
               <span className="font-bold" style={{ color: "#432817" }}>{eventsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.events")}</span>
