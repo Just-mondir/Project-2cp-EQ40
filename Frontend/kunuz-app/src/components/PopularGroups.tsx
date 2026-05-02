@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Lato } from "next/font/google";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { fetchJson } from "@/lib/apiClient";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -18,6 +19,11 @@ type Group = {
   description: string;
   member_count: number;
   profile_picture?: string;
+};
+
+type GroupsPayload = {
+  data?: { results?: Group[] } | Group[];
+  results?: Group[];
 };
 
 function resolveProfilePictureUrl(profilePicture?: string): string {
@@ -86,28 +92,21 @@ function GroupCard({ group }: { group: Group }) {
 }
 
 export default function PopularGroups() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [loading, setLoading] = useState(true);
+  const groupsQuery = useQuery({
+    queryKey: ["groups", "popular"],
+    queryFn: async () => {
+      const payload = await fetchJson<GroupsPayload | Group[]>("/groups/popular/");
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload.data)) return payload.data;
+      return payload.data?.results ?? payload.results ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    const fetchGroups = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/groups/popular/`);
-        const data = await res.json();
-        // Matching the extraction logic from communities page
-        const groupData = data.data?.results || data.data || data.results || data;
-        setGroups(Array.isArray(groupData) ? groupData : []);
-      } catch (err) {
-        console.error("Error fetching groups:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const groups = groupsQuery.data ?? [];
 
-    fetchGroups();
-  }, []);
-
-  if (loading) {
+  if (groupsQuery.isLoading) {
     return (
       <section id="groups" className="w-full py-12 sm:py-16 md:py-20 lg:py-28 px-4 sm:px-6 md:px-8 lg:px-24 xl:px-32" style={{ backgroundColor: "#FFF8E2" }}>
         <h2 className="font-bold text-[clamp(24px,6vw,44px)] text-[#2C1A0E] text-center mb-8 sm:mb-10 md:mb-12 lg:mb-16" style={{ fontFamily: 'var(--font-lato), system-ui, sans-serif' }}>Popular Groups</h2>

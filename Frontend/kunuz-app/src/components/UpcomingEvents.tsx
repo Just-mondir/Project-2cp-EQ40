@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Lato } from "next/font/google";
+import { useQuery } from "@tanstack/react-query";
+import { fetchUpcomingEventsWithFallback, upcomingEventsQueryKey } from "@/lib/upcomingEvents";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -157,60 +159,38 @@ function EventCard({ item }: { item: EventItem }) {
   );
 }
 
+function mapEventPost(post: EventApiPost): EventItem {
+  const stripHtml = (html = "") => html.replace(/<[^>]*>/g, "");
+  const imgPath = post.images?.[0]?.image ?? "";
+  const imageUrl = imgPath
+    ? imgPath.startsWith("http")
+      ? imgPath
+      : `${process.env.NEXT_PUBLIC_API_URL}${imgPath}`
+    : "";
+
+  return {
+    title: stripHtml(post.title),
+    description: stripHtml(post.content ?? ""),
+    location: post.location || post.region || "Algeria",
+    date: post.event_details?.starts_at
+      ? new Date(post.event_details.starts_at).toLocaleDateString("fr-FR")
+      : "TBD",
+    imageUrl,
+  };
+}
+
 export default function UpcomingEvents() {
-  const [events, setEvents] = useState<EventItem[]>(fallbackEvents);
+  const eventsQuery = useQuery({
+    queryKey: upcomingEventsQueryKey,
+    queryFn: () => fetchUpcomingEventsWithFallback<EventApiPost>(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/posts/?post_type=event`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }
-        );
-        if (!res.ok) return;
-
-        const data = await res.json();
-        const results = data.results || data;
-
-        const fetched: EventItem[] = ((results || []) as EventApiPost[])
-          .slice(0, 6)
-          .map((post) => {
-            const stripHtml = (html: string) => {
-              if (!html) return "";
-              return html.replace(/<[^>]*>/g, "");
-            };
-
-            const images = post.images || [];
-            let imageUrl = "";
-            if (images.length > 0) {
-              const imgPath = images[0].image;
-              imageUrl = imgPath.startsWith("http")
-                ? imgPath
-                : `${process.env.NEXT_PUBLIC_API_URL}${imgPath}`;
-            }
-
-            return {
-              title: stripHtml(post.title),
-              description: stripHtml(post.content ?? ""),
-              location: post.location || post.region || "Algeria",
-              date: post.event_details?.starts_at
-                ? new Date(post.event_details.starts_at).toLocaleDateString("fr-FR")
-                : "TBD",
-              imageUrl: imageUrl,
-            };
-          });
-
-        if (fetched.length > 0) setEvents(fetched);
-      } catch (err) {
-        console.error("Failed to fetch events:", err);
-      }
-    }
-
-    fetchEvents();
-  }, []);
+  const events = useMemo(() => {
+    const fetched = (eventsQuery.data ?? []).slice(0, 6).map(mapEventPost);
+    return fetched.length > 0 ? fetched : fallbackEvents;
+  }, [eventsQuery.data]);
 
   return (
     <section

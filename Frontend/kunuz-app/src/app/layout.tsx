@@ -4,6 +4,7 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 import GoogleProvider from "@/components/GoogleProvider";
 import AuthGate from "@/components/AuthGate";
+import ReactQueryProvider from "@/components/ReactQueryProvider";
 import {
   LIGHT_ONLY_PLATFORM_ROUTE_LIST,
   PUBLIC_ROUTE_LIST,
@@ -104,9 +105,11 @@ export default function RootLayout({
             </filter>
           </defs>
         </svg>
-        <GoogleProvider>
-          <AuthGate>{children}</AuthGate>
-        </GoogleProvider>
+        <ReactQueryProvider>
+          <GoogleProvider>
+            <AuthGate>{children}</AuthGate>
+          </GoogleProvider>
+        </ReactQueryProvider>
         <Footer />
       </body>
     </html>

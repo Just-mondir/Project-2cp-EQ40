@@ -4,12 +4,16 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import ActionConfirmModal from "@/components/ActionConfirmModal";
+import { PostsSkeletonList } from "@/components/PostSkeletons";
+import { usePosts } from "@/hooks/usePosts";
+import { fetchUpcomingEventsWithFallback, upcomingEventsQueryKey } from "@/lib/upcomingEvents";
 import {
   EVENT_STATUS_VALUES,
   HISTORICAL_PERIOD_VALUES,
@@ -1091,54 +1095,132 @@ const UPCOMING_EVENTS_MOCKS = Array(5).fill({
   end_date: "21/09/2026",
 }).map((item, index) => ({ ...item, id: index + 1 }));
 
+function normalizeEventPost(post: any, key = 0): ApiPost {
+  return {
+    id: String(post.id),
+    user_display_name: post.user_display_name ?? "",
+    user_username: post.user_username ?? "",
+    user_profile_picture: post.user_profile_picture ?? "",
+    title: post.title ?? "",
+    content: post.content ?? "",
+    post_type: post.post_type ?? "",
+    region: post.region ?? "",
+    location: post.location ?? "",
+    gems_count: post.gems_count ?? 0,
+    comments_count: post.comments_count ?? 0,
+    images: Array.isArray(post.images) ? post.images : [],
+    tags: Array.isArray(post.tags) ? post.tags : [],
+    historical_period: post.historical_period ?? "",
+    monument_type: post.monument_type ?? "",
+    created_at: post.created_at ?? "",
+    alert_details: post.alert_details ?? null,
+    event_details: post.event_details ?? null,
+    _key: key,
+  };
+}
+
+type UpcomingEventPost = {
+  id: string;
+  title?: string;
+  user_display_name?: string;
+  user_username?: string;
+  location?: string;
+  region?: string;
+  images?: Array<{ image?: string }>;
+  event_details?: {
+    starts_at?: string;
+    ends_at?: string;
+  };
+};
+
+type UpcomingEventItem = {
+  id: string;
+  user_name: string;
+  event_image: string;
+  title: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+};
+
+const UPCOMING_EVENTS_CACHE_KEY = "kunuz_upcoming_events_cache_v1";
+const UPCOMING_EVENTS_CACHE_TTL = 5 * 60 * 1000;
+let upcomingEventsMemoryCache: { data: UpcomingEventPost[]; savedAt: number } | null = null;
+
+function readUpcomingEventsCache() {
+  const now = Date.now();
+  if (upcomingEventsMemoryCache && now - upcomingEventsMemoryCache.savedAt < UPCOMING_EVENTS_CACHE_TTL) {
+    return upcomingEventsMemoryCache.data;
+  }
+  if (typeof window === "undefined") return [];
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(UPCOMING_EVENTS_CACHE_KEY) || "null") as
+      | { data?: UpcomingEventPost[]; savedAt?: number }
+      | null;
+    if (cached?.data?.length && cached.savedAt && now - cached.savedAt < UPCOMING_EVENTS_CACHE_TTL) {
+      upcomingEventsMemoryCache = { data: cached.data, savedAt: cached.savedAt };
+      return cached.data;
+    }
+  } catch { }
+  return [];
+}
+
+function saveUpcomingEventsCache(data: UpcomingEventPost[]) {
+  if (data.length === 0) return;
+  const cached = { data, savedAt: Date.now() };
+  upcomingEventsMemoryCache = cached;
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(UPCOMING_EVENTS_CACHE_KEY, JSON.stringify(cached));
+  } catch { }
+}
+
+function useUpcomingEvents(pageT: ReturnType<typeof useTranslations>) {
+  const [eventPosts, setEventPosts] = useState<UpcomingEventPost[]>(() => readUpcomingEventsCache());
+  const eventsQuery = useQuery({
+    queryKey: upcomingEventsQueryKey,
+    queryFn: () => fetchUpcomingEventsWithFallback<UpcomingEventPost>(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    initialData: () => {
+      const cached = readUpcomingEventsCache();
+      return cached.length > 0 ? cached : undefined;
+    },
+  });
+
+  useEffect(() => {
+    if (!eventsQuery.data) return;
+    setEventPosts(eventsQuery.data);
+    saveUpcomingEventsCache(eventsQuery.data);
+  }, [eventsQuery.data]);
+
+  const upcomingEvents = useMemo<UpcomingEventItem[]>(() => {
+    return eventPosts.slice(0, 5).map((event) => {
+      const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
+      const imgPath = imgObj?.image ?? "";
+      const imageUrl = imgPath ? (imgPath.startsWith("/media/") ? `${API_URL}${imgPath}` : imgPath) : "";
+      const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
+      const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
+      return {
+        id: String(event.id),
+        user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
+        event_image: imageUrl,
+        title: event.title ?? "",
+        location: event.location || event.region || pageT("defaultLocation"),
+        start_date: sDate,
+        end_date: eDate,
+      };
+    });
+  }, [eventPosts, pageT]);
+
+  return { upcomingEvents, loading: eventsQuery.isLoading && eventPosts.length === 0 };
+}
+
 /* ─────────────────── MOBILE EVENTS STRIP ─────────────────── */
 
 function MobileEventsStrip() {
   const pageT = useTranslations("auth.pages.events");
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchUpcoming() {
-      try {
-        const token = getAuthToken();
-        const res = await fetch(`${API_URL}/api/posts/upcoming-events/`, {
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const results = Array.isArray(data.results) ? data.results : data;
-          if (Array.isArray(results) && results.length > 0) {
-            setUpcomingEvents(results.slice(0, 5).map((event: any) => {
-              const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
-              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "";
-              const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
-              const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
-              return {
-                id: event.id,
-                user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
-                event_image: imageUrl,
-                title: event.title,
-                location: event.location || event.region || pageT("defaultLocation"),
-                start_date: sDate,
-                end_date: eDate,
-              };
-            }));
-          } else {
-            setUpcomingEvents([]);
-          }
-        } else {
-          setUpcomingEvents([]);
-        }
-      } catch (e) {
-        console.error("Failed to fetch upcoming events", e);
-        setUpcomingEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUpcoming();
-  }, [pageT]);
+  const { upcomingEvents, loading } = useUpcomingEvents(pageT);
 
   return (
     <div className="lg:hidden px-4 py-4">
@@ -1234,50 +1316,7 @@ function MobileEventsStrip() {
 
 function RightSidebar({ onPostClick }: { onPostClick: (postId: string) => void }) {
   const pageT = useTranslations("auth.pages.events");
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchUpcoming() {
-      try {
-        const token = getAuthToken();
-        const res = await fetch(`${API_URL}/api/posts/upcoming-events/`, {
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const results = Array.isArray(data.results) ? data.results : data;
-          if (Array.isArray(results) && results.length > 0) {
-            setUpcomingEvents(results.slice(0, 5).map((event: any) => {
-              const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
-              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "";
-              const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
-              const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
-              return {
-                id: event.id,
-                user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
-                event_image: imageUrl,
-                title: event.title,
-                location: event.location || event.region || pageT("defaultLocation"),
-                start_date: sDate,
-                end_date: eDate,
-              };
-            }));
-          } else {
-            setUpcomingEvents([]);
-          }
-        } else {
-          setUpcomingEvents([]);
-        }
-      } catch (e) {
-        console.error("Failed to fetch upcoming events", e);
-        setUpcomingEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUpcoming();
-  }, [pageT]);
+  const { upcomingEvents, loading } = useUpcomingEvents(pageT);
 
   return (
     <aside className="w-[380px] xl:w-[500px] flex-shrink-0 pl-6 pr-5 pt-4 h-full hidden lg:block overflow-hidden">
@@ -2346,6 +2385,7 @@ export default function HomePageRoute() {
     if (filters.historical_period !== "All") params.append("historical_period", filters.historical_period);
     if (filters.monument_type !== "All") params.append("monument_type", filters.monument_type);
     if (filters.status !== "All") params.append("status", filters.status.toLowerCase());
+    params.set("page_size", "10");
 
     return `${API_URL}/api/posts/events/filter/?${params.toString()}`;
   };
@@ -2353,6 +2393,19 @@ export default function HomePageRoute() {
   const [nextUrl, setNextUrl] = useState<string | null>(constructUrl({ region: "All", historical_period: "All", monument_type: "All", status: "All" }, ""));
 
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+  const isDefaultEventsFeed = !searchQuery.trim() && Object.values(activeFilters).every((value) => value === "All");
+  const eventsFeedQuery = usePosts<ApiPost>("events", {
+    enabled: isDefaultEventsFeed,
+    pageSize: 10,
+    prefetchNextPage: true,
+    prefetchPages: 5,
+  });
+  const displayedPosts = useMemo(
+    () => isDefaultEventsFeed
+      ? eventsFeedQuery.posts.map((post, index) => normalizeEventPost(post, index))
+      : posts,
+    [isDefaultEventsFeed, eventsFeedQuery.posts, posts],
+  );
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -2426,27 +2479,7 @@ export default function HomePageRoute() {
         return;
       }
       const data = await res.json();
-      const formattedPosts: ApiPost[] = (data.results || data).map((post: any, i: number) => ({
-        id: String(post.id),
-        user_display_name: post.user_display_name ?? "",
-        user_username: post.user_username ?? "",
-        user_profile_picture: post.user_profile_picture ?? "",
-        title: post.title ?? "",
-        content: post.content ?? "",
-        post_type: post.post_type ?? "",
-        region: post.region ?? "",
-        location: post.location ?? "",
-        gems_count: post.gems_count ?? 0,
-        comments_count: post.comments_count ?? 0,
-        images: Array.isArray(post.images) ? post.images : [],
-        tags: Array.isArray(post.tags) ? post.tags : [],
-        historical_period: post.historical_period ?? "",
-        monument_type: post.monument_type ?? "",
-        created_at: post.created_at ?? "",
-        alert_details: post.alert_details ?? null,
-        event_details: post.event_details ?? null,
-        _key: (reset ? 0 : posts.length) + i,
-      }));
+      const formattedPosts: ApiPost[] = (data.results || data).map((post: any, i: number) => normalizeEventPost(post, (reset ? 0 : posts.length) + i));
       setPosts(prev => reset ? formattedPosts : [...prev, ...formattedPosts]);
       setNextUrl(data.next ?? null);
     } catch (err) {
@@ -2457,18 +2490,45 @@ export default function HomePageRoute() {
   };
 
   useEffect(() => {
+    if (!isDefaultEventsFeed) return;
+    const formattedPosts: ApiPost[] = eventsFeedQuery.posts.map((post: any, i: number) => normalizeEventPost(post, i));
+    setPosts(formattedPosts);
+    setNextUrl(eventsFeedQuery.hasNextPage ? "__react-query-next-page__" : null);
+    setLoading(eventsFeedQuery.isFetchingNextPage);
+  }, [
+    isDefaultEventsFeed,
+    eventsFeedQuery.posts,
+    eventsFeedQuery.hasNextPage,
+    eventsFeedQuery.isFetchingNextPage,
+  ]);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loading && nextUrl) {
+          if (isDefaultEventsFeed) {
+            if (eventsFeedQuery.hasNextPage && !eventsFeedQuery.isFetchingNextPage) {
+              eventsFeedQuery.fetchNextPage();
+            }
+            return;
+          }
           fetchPosts(nextUrl);
         }
       },
-      { threshold: 1.0 }
+      { rootMargin: "1800px 0px", threshold: 0.01 }
     );
 
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length]);
+  }, [
+    nextUrl,
+    loading,
+    posts.length,
+    isDefaultEventsFeed,
+    eventsFeedQuery.hasNextPage,
+    eventsFeedQuery.isFetchingNextPage,
+    eventsFeedQuery.fetchNextPage,
+  ]);
 
   const handleApplyFilters = (filters: typeof activeFilters) => {
     setActiveFilters(filters);
@@ -2524,13 +2584,16 @@ export default function HomePageRoute() {
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-0 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileEventsStrip />
-                {posts.length === 0 && !loading ? (
+                {eventsFeedQuery.isInitialLoading && isDefaultEventsFeed && displayedPosts.length === 0 && (
+                  <PostsSkeletonList count={3} />
+                )}
+                {displayedPosts.length === 0 && !loading && !(eventsFeedQuery.isInitialLoading && isDefaultEventsFeed) ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4"><circle cx="12" cy="12" r="10" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
                     <p className="text-sm font-bold" style={{ color: "var(--brown)" }}>{pageT("noResults")}</p>
                   </div>
                 ) : (
-                  posts.map((post, index) => (
+                  displayedPosts.map((post, index) => (
                     <React.Fragment key={post._key ?? post.id ?? index}>
                       <PostCard
                         post={post}

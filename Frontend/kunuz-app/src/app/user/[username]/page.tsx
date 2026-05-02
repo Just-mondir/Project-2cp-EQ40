@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard, Mail, Lock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import PostQuizButton from "@/components/PostQuizButton";
@@ -12,6 +13,8 @@ import { LongPressGemButton } from "@/components/GemUsersModal";
 import RepostButton, { RepostIcon } from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
+import { ProfileGridSkeleton } from "@/components/PostSkeletons";
+import { fetchProfileTabPosts, profileTabQueryKey, useProfile, useProfileTab } from "@/hooks/useProfile";
 
 import LocationWorldCard from "@/components/LocationWorldCard";
 
@@ -79,6 +82,21 @@ function getAuthUser(): { id?: string; username?: string; display_name?: string 
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
+  }
+}
+
+function getCachedProfileInfo(): Partial<ProfileInfo> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("authUser") || localStorage.getItem("user");
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed ?? {
+      username: localStorage.getItem("username") || localStorage.getItem("user_username") || "",
+    };
+  } catch {
+    return {
+      username: localStorage.getItem("username") || localStorage.getItem("user_username") || "",
+    };
   }
 }
 
@@ -159,6 +177,13 @@ type PostInteraction = {
   commentsCount: number;
   annotationsCount: number;
 };
+
+type ProfileTabId = "grid" | "gems" | "saved" | "reposts" | "events" | "alerts";
+const profileTabMemory = new Map<string, ApiPost[]>();
+
+function profileTabMemoryKey(username: string | undefined, tab: ProfileTabId, isOwnProfile: boolean) {
+  return `${isOwnProfile ? "own" : "public"}:${username ?? ""}:${tab}`;
+}
 
 type Annotation = {
   id: string;
@@ -1718,7 +1743,9 @@ function PostsGrid({
 
 export default function ProfilePage() {
   const userPageT = useTranslations("auth.pages.userProfile");
-  const [loggedInUsername, setLoggedInUsername] = useState("");
+  const queryClient = useQueryClient();
+  const cachedProfile = useMemo(() => getCachedProfileInfo(), []);
+  const [loggedInUsername, setLoggedInUsername] = useState(() => cachedProfile?.username ?? getAuthUser()?.username ?? "");
   const [activeTab, setActiveTab] = useState("grid");
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
@@ -1739,25 +1766,185 @@ export default function ProfilePage() {
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
 
   // ← state for real profile info from backend
-  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
-    username: "",
-    display_name: "",
-    bio: "",
-    expertise: "",
-    speciality: "",
-    profile_picture: null,
-    badge: null,
-    is_verified: false,
-    role: "",
-    posts_count: 0,
-    likes_count: 0,
-    events_count: 0,
-  });
-
   const params = useParams();
   const viewedUsername = typeof params?.username === "string" ? params.username : loggedInUsername;
   const isOwnProfile = !!loggedInUsername && !!viewedUsername && loggedInUsername === viewedUsername;
+  const initialProfileInfo = useMemo<ProfileInfo>(() => ({
+    username: isOwnProfile ? cachedProfile?.username ?? "" : viewedUsername || "",
+    display_name: isOwnProfile ? cachedProfile?.display_name ?? cachedProfile?.username ?? "" : viewedUsername || "",
+    bio: isOwnProfile ? cachedProfile?.bio ?? "" : "",
+    expertise: isOwnProfile ? cachedProfile?.expertise ?? "" : "",
+    speciality: isOwnProfile ? cachedProfile?.speciality ?? "" : "",
+    profile_picture: isOwnProfile ? cachedProfile?.profile_picture ?? null : null,
+    badge: isOwnProfile ? cachedProfile?.badge ?? null : null,
+    is_verified: isOwnProfile ? cachedProfile?.is_verified ?? false : false,
+    role: isOwnProfile ? cachedProfile?.role ?? "" : "",
+    posts_count: isOwnProfile ? cachedProfile?.posts_count ?? 0 : 0,
+    likes_count: isOwnProfile ? cachedProfile?.likes_count ?? 0 : 0,
+    events_count: isOwnProfile ? cachedProfile?.events_count ?? 0 : 0,
+  }), [cachedProfile, isOwnProfile, viewedUsername]);
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo>(initialProfileInfo);
   const visibleTab = !isOwnProfile && (activeTab === "gems" || activeTab === "saved") ? "grid" : activeTab;
+  const profileQuery = useProfile<Partial<ProfileInfo>>(viewedUsername, isOwnProfile);
+  const gridTabQuery = useProfileTab<ApiPost>(viewedUsername, "grid", isOwnProfile, visibleTab === "grid");
+  const gemsTabQuery = useProfileTab<ApiPost>(viewedUsername, "gems", isOwnProfile, isOwnProfile && visibleTab === "gems");
+  const savedTabQuery = useProfileTab<ApiPost>(viewedUsername, "saved", isOwnProfile, isOwnProfile && visibleTab === "saved");
+  const repostsTabQuery = useProfileTab<ApiPost>(viewedUsername, "reposts", isOwnProfile, visibleTab === "reposts");
+  const eventsTabQuery = useProfileTab<ApiPost>(viewedUsername, "events", isOwnProfile, visibleTab === "events");
+  const alertsTabQuery = useProfileTab<ApiPost>(viewedUsername, "alerts", isOwnProfile, visibleTab === "alerts");
+  const tabMemoryKeys = useMemo(() => ({
+    grid: profileTabMemoryKey(viewedUsername, "grid", isOwnProfile),
+    gems: profileTabMemoryKey(viewedUsername, "gems", isOwnProfile),
+    saved: profileTabMemoryKey(viewedUsername, "saved", isOwnProfile),
+    reposts: profileTabMemoryKey(viewedUsername, "reposts", isOwnProfile),
+    events: profileTabMemoryKey(viewedUsername, "events", isOwnProfile),
+    alerts: profileTabMemoryKey(viewedUsername, "alerts", isOwnProfile),
+  }), [viewedUsername, isOwnProfile]);
+
+  const rememberedAllPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.grid) ?? [], [tabMemoryKeys.grid]);
+  const rememberedGemmedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.gems) ?? [], [tabMemoryKeys.gems]);
+  const rememberedSavedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.saved) ?? [], [tabMemoryKeys.saved]);
+  const rememberedRepostedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.reposts) ?? [], [tabMemoryKeys.reposts]);
+  const rememberedEventPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.events) ?? [], [tabMemoryKeys.events]);
+  const rememberedAlertPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.alerts) ?? [], [tabMemoryKeys.alerts]);
+
+  const displayedAllPosts = useMemo(
+    () => {
+      const mapped = gridTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (allPosts.length > 0 ? allPosts : rememberedAllPosts);
+    },
+    [gridTabQuery.data, allPosts, rememberedAllPosts],
+  );
+  const displayedGemmedPosts = useMemo(
+    () => {
+      const mapped = gemsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (gemmedPosts.length > 0 ? gemmedPosts : rememberedGemmedPosts);
+    },
+    [gemsTabQuery.data, gemmedPosts, rememberedGemmedPosts],
+  );
+  const displayedSavedPosts = useMemo(
+    () => {
+      const mapped = savedTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (savedPosts.length > 0 ? savedPosts : rememberedSavedPosts);
+    },
+    [savedTabQuery.data, savedPosts, rememberedSavedPosts],
+  );
+  const displayedRepostedPosts = useMemo(
+    () => {
+      const mapped = repostsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (repostedPosts.length > 0 ? repostedPosts : rememberedRepostedPosts);
+    },
+    [repostsTabQuery.data, repostedPosts, rememberedRepostedPosts],
+  );
+  const displayedEventPosts = useMemo(
+    () => {
+      const mapped = eventsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (eventPosts.length > 0 ? eventPosts : rememberedEventPosts);
+    },
+    [eventsTabQuery.data, eventPosts, rememberedEventPosts],
+  );
+  const displayedAlertPosts = useMemo(
+    () => {
+      const mapped = alertsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (alertPosts.length > 0 ? alertPosts : rememberedAlertPosts);
+    },
+    [alertsTabQuery.data, alertPosts, rememberedAlertPosts],
+  );
+
+  useEffect(() => {
+    setProfileInfo(initialProfileInfo);
+  }, [initialProfileInfo]);
+
+  useEffect(() => {
+    setAllPosts([]);
+    setGemmedPosts([]);
+    setSavedPosts([]);
+    setRepostedPosts([]);
+    setEventPosts([]);
+    setAlertPosts([]);
+    setActiveTab("grid");
+  }, [viewedUsername]);
+
+  useEffect(() => {
+    if (!viewedUsername) return;
+    const tabs: Array<"grid" | "gems" | "saved" | "reposts" | "events" | "alerts"> = isOwnProfile
+      ? ["grid", "gems", "saved", "reposts", "events", "alerts"]
+      : ["grid", "reposts", "events", "alerts"];
+    tabs.forEach((tab) => {
+      queryClient.prefetchQuery({
+        queryKey: profileTabQueryKey(viewedUsername, tab, isOwnProfile),
+        queryFn: () => fetchProfileTabPosts<ApiPost>(viewedUsername, tab, isOwnProfile),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+    });
+  }, [queryClient, viewedUsername, isOwnProfile]);
+
+  useEffect(() => {
+    const data = profileQuery.data;
+    if (!data) return;
+    setProfileInfo({
+      username: data.username ?? "",
+      display_name: data.display_name ?? data.username ?? "",
+      bio: data.bio ?? "",
+      expertise: data.expertise ?? "",
+      speciality: data.speciality ?? "",
+      profile_picture: data.profile_picture ?? null,
+      badge: data.badge ?? null,
+      is_verified: data.is_verified ?? false,
+      role: data.role ?? "",
+      posts_count: data.posts_count ?? displayedAllPosts.length,
+      likes_count: data.likes_count ?? 0,
+      events_count: data.events_count ?? displayedEventPosts.length,
+    });
+  }, [profileQuery.data, displayedAllPosts.length, displayedEventPosts.length]);
+
+  useEffect(() => {
+    if (!gridTabQuery.data) return;
+    const mapped = gridTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (allPosts.length > 0 || rememberedAllPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.grid, mapped);
+    setAllPosts(mapped);
+  }, [gridTabQuery.data, tabMemoryKeys.grid, allPosts.length, rememberedAllPosts.length]);
+
+  useEffect(() => {
+    if (!gemsTabQuery.data) return;
+    const mapped = gemsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (gemmedPosts.length > 0 || rememberedGemmedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.gems, mapped);
+    setGemmedPosts(mapped);
+  }, [gemsTabQuery.data, tabMemoryKeys.gems, gemmedPosts.length, rememberedGemmedPosts.length]);
+
+  useEffect(() => {
+    if (!savedTabQuery.data) return;
+    const mapped = savedTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (savedPosts.length > 0 || rememberedSavedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.saved, mapped);
+    setSavedPosts(mapped);
+  }, [savedTabQuery.data, tabMemoryKeys.saved, savedPosts.length, rememberedSavedPosts.length]);
+
+  useEffect(() => {
+    if (!repostsTabQuery.data) return;
+    const mapped = repostsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (repostedPosts.length > 0 || rememberedRepostedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.reposts, mapped);
+    setRepostedPosts(mapped);
+  }, [repostsTabQuery.data, tabMemoryKeys.reposts, repostedPosts.length, rememberedRepostedPosts.length]);
+
+  useEffect(() => {
+    if (!eventsTabQuery.data) return;
+    const mapped = eventsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (eventPosts.length > 0 || rememberedEventPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.events, mapped);
+    setEventPosts(mapped);
+  }, [eventsTabQuery.data, tabMemoryKeys.events, eventPosts.length, rememberedEventPosts.length]);
+
+  useEffect(() => {
+    if (!alertsTabQuery.data) return;
+    const mapped = alertsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (alertPosts.length > 0 || rememberedAlertPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.alerts, mapped);
+    setAlertPosts(mapped);
+  }, [alertsTabQuery.data, tabMemoryKeys.alerts, alertPosts.length, rememberedAlertPosts.length]);
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -1772,7 +1959,7 @@ export default function ProfilePage() {
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
-      const allPostsFlat = [...allPosts, ...gemmedPosts, ...savedPosts, ...repostedPosts, ...eventPosts, ...alertPosts];
+      const allPostsFlat = [...displayedAllPosts, ...displayedGemmedPosts, ...displayedSavedPosts, ...displayedRepostedPosts, ...displayedEventPosts, ...displayedAlertPosts];
       const sourcePost = allPostsFlat.find((p) => p.id === postId);
       const existing = prev[postId] ?? {
         gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
@@ -1794,6 +1981,10 @@ export default function ProfilePage() {
     setRepostedPosts((prev) => prev.filter((p) => p.id !== postId));
     setEventPosts((prev) => prev.filter((p) => p.id !== postId));
     setAlertPosts((prev) => prev.filter((p) => p.id !== postId));
+    Object.values(tabMemoryKeys).forEach((key) => {
+      const remembered = profileTabMemory.get(key);
+      if (remembered) profileTabMemory.set(key, remembered.filter((post) => post.id !== postId));
+    });
   };
 
   /* ── Fetch logged in user ── */
@@ -1813,6 +2004,7 @@ export default function ProfilePage() {
   // ← fetch real profile info + likes + events + posts counts
   useEffect(() => {
     if (!viewedUsername) return;
+    if (profileQuery.data || profileQuery.isFetching) return;
     const fetchProfile = async () => {
       try {
         const endpoint = isOwnProfile
@@ -1879,62 +2071,67 @@ export default function ProfilePage() {
       }
     };
     fetchProfile();
-  }, [viewedUsername, isOwnProfile]);
+  }, [viewedUsername, isOwnProfile, profileQuery.data, profileQuery.isFetching]);
 
   /* ── Fetch posts ── */
   useEffect(() => {
     if (!viewedUsername) return;
+    if (gridTabQuery.data || gridTabQuery.isFetching) return;
     const fetchAllPosts = async () => {
       setLoadingPosts(true);
-      let url: string | null = `${API_URL}/api/posts/user/${viewedUsername}/`;
-      const collected: ApiPost[] = [];
+      const url = `${API_URL}/api/posts/user/${viewedUsername}/?page_size=10`;
       try {
-        while (url) {
-          const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
-          if (!res.ok) break;
-          const data: any = await res.json();
-          collected.push(...(data.results ?? []).map(mapPost));
-          url = data.next ?? null;
-        }
+        const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data: any = await res.json();
+        const collected = (data.results ?? data.data?.results ?? data.data ?? data ?? []).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.grid, collected);
         setAllPosts(collected);
       } catch (err) { console.error("Error fetching posts:", err); }
       finally { setLoadingPosts(false); }
     };
     fetchAllPosts();
-  }, [viewedUsername]);
+  }, [viewedUsername, gridTabQuery.data, gridTabQuery.isFetching, tabMemoryKeys.grid]);
 
   useEffect(() => {
     if (!isOwnProfile || visibleTab !== "gems") return;
+    if (gemsTabQuery.data || gemsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingGemmed(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/gemed/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setGemmedPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.gems, mapped);
+        setGemmedPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingGemmed(false); }
     };
     fetch_();
-  }, [visibleTab, isOwnProfile]);
+  }, [visibleTab, isOwnProfile, gemsTabQuery.data, gemsTabQuery.isFetching, tabMemoryKeys.gems]);
 
   useEffect(() => {
     if (!isOwnProfile || visibleTab !== "saved") return;
+    if (savedTabQuery.data || savedTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingSaved(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/saved/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setSavedPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.saved, mapped);
+        setSavedPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingSaved(false); }
     };
     fetch_();
-  }, [visibleTab, isOwnProfile]);
+  }, [visibleTab, isOwnProfile, savedTabQuery.data, savedTabQuery.isFetching, tabMemoryKeys.saved]);
 
   useEffect(() => {
     if (visibleTab !== "reposts" || !viewedUsername) return;
+    if (repostsTabQuery.data || repostsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingReposts(true);
       try {
@@ -1944,47 +2141,62 @@ export default function ProfilePage() {
         const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setRepostedPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.reposts, mapped);
+        setRepostedPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingReposts(false); }
     };
     fetch_();
-  }, [visibleTab, isOwnProfile, viewedUsername]);
+  }, [visibleTab, isOwnProfile, viewedUsername, repostsTabQuery.data, repostsTabQuery.isFetching, tabMemoryKeys.reposts]);
 
   useEffect(() => {
     if (visibleTab !== "events" || !viewedUsername) return;
+    if (eventsTabQuery.data || eventsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingEvents(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/events/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setEventPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.events, mapped);
+        setEventPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingEvents(false); }
     };
     fetch_();
-  }, [visibleTab, viewedUsername]);
+  }, [visibleTab, viewedUsername, eventsTabQuery.data, eventsTabQuery.isFetching, tabMemoryKeys.events]);
 
   useEffect(() => {
     if (visibleTab !== "alerts" || !viewedUsername) return;
+    if (alertsTabQuery.data || alertsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingAlerts(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/alerts/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setAlertPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.alerts, mapped);
+        setAlertPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingAlerts(false); }
     };
     fetch_();
-  }, [visibleTab, viewedUsername]);
+  }, [visibleTab, viewedUsername, alertsTabQuery.data, alertsTabQuery.isFetching, tabMemoryKeys.alerts]);
 
   const openPost = (post: ApiPost, tab: "comments" | "annotations" = "comments") => {
     setSelectedPost(post);
     setSelectedPostTab(tab);
   };
+
+  const isGridLoading = displayedAllPosts.length === 0 && (loadingPosts || gridTabQuery.isLoading);
+  const isGemsLoading = displayedGemmedPosts.length === 0 && (loadingGemmed || gemsTabQuery.isLoading);
+  const isSavedLoading = displayedSavedPosts.length === 0 && (loadingSaved || savedTabQuery.isLoading);
+  const isRepostsLoading = displayedRepostedPosts.length === 0 && (loadingReposts || repostsTabQuery.isLoading);
+  const isEventsLoading = displayedEventPosts.length === 0 && (loadingEvents || eventsTabQuery.isLoading);
+  const isAlertsLoading = displayedAlertPosts.length === 0 && (loadingAlerts || alertsTabQuery.isLoading);
 
   const updateRepostDescriptionInLists = (postId: string, description: string) => {
     const applyDescription = (post: ApiPost) => (
@@ -1992,6 +2204,8 @@ export default function ProfilePage() {
     );
     setSelectedPost(prev => prev && prev.id === postId ? { ...prev, repost_description: description } : prev);
     setRepostedPosts(prev => prev.map(applyDescription));
+    const remembered = profileTabMemory.get(tabMemoryKeys.reposts);
+    if (remembered) profileTabMemory.set(tabMemoryKeys.reposts, remembered.map(applyDescription));
   };
 
   return (
@@ -2018,36 +2232,36 @@ export default function ProfilePage() {
           <ProfileTabs activeTab={visibleTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
           {visibleTab === "grid" && (
-            loadingPosts ? <Spinner /> :
-              allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message={userPageT("empty.posts")} /> :
-                <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isGridLoading ? <ProfileGridSkeleton /> :
+              displayedAllPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message={userPageT("empty.posts")} /> :
+                <PostsGrid posts={displayedAllPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && visibleTab === "gems" && (
-            loadingGemmed ? <Spinner /> :
-              gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message={userPageT("empty.treasure")} /> :
-                <PostsGrid posts={gemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isGemsLoading ? <ProfileGridSkeleton /> :
+              displayedGemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message={userPageT("empty.treasure")} /> :
+                <PostsGrid posts={displayedGemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && visibleTab === "saved" && (
-            loadingSaved ? <Spinner /> :
-              savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message={userPageT("empty.collection")} /> :
-                <PostsGrid posts={savedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isSavedLoading ? <ProfileGridSkeleton /> :
+              displayedSavedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message={userPageT("empty.collection")} /> :
+                <PostsGrid posts={displayedSavedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {visibleTab === "reposts" && (
             <>
-              {loadingReposts ? <Spinner /> :
-                repostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message={userPageT("empty.reposts")} /> :
-                  <PostsGrid posts={repostedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />}
+              {isRepostsLoading ? <ProfileGridSkeleton /> :
+                displayedRepostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message={userPageT("empty.reposts")} /> :
+                  <PostsGrid posts={displayedRepostedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />}
             </>
           )}
           {visibleTab === "events" && (
-            loadingEvents ? <Spinner /> :
-              eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message={userPageT("empty.events")} /> :
-                <PostsGrid posts={eventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isEventsLoading ? <ProfileGridSkeleton /> :
+              displayedEventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message={userPageT("empty.events")} /> :
+                <PostsGrid posts={displayedEventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {visibleTab === "alerts" && (
-            loadingAlerts ? <Spinner /> :
-              alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message={userPageT("empty.alerts")} /> :
-                <PostsGrid posts={alertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isAlertsLoading ? <ProfileGridSkeleton /> :
+              displayedAlertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message={userPageT("empty.alerts")} /> :
+                <PostsGrid posts={displayedAlertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
         </div>
       </main>
