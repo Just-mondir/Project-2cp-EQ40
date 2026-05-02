@@ -1,3 +1,5 @@
+import { PUBLIC_ROUTES } from "@/lib/themeRoutes";
+
 export const API_ROOT = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/api\/?$/, "") ||
@@ -35,7 +37,14 @@ export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> 
   if (response.status === 401 && typeof window !== "undefined") {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("authUser");
-    window.location.href = "/login";
+
+    const pathname = window.location.pathname.replace(/\/+$/, "") || "/";
+    const isPublic = PUBLIC_ROUTES.has(pathname);
+
+    // Avoid infinite redirect loop and don't force login on public pages
+    if (pathname !== "/login" && !isPublic) {
+      window.location.href = "/login";
+    }
   }
 
   if (!response.ok) {

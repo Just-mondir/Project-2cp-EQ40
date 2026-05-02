@@ -99,7 +99,13 @@ from mongoengine.connection import get_db  # noqa: E402
 
 MONGODB_NAME = env("MONGODB_NAME", default="heritage_db")
 MONGODB_HOST = env("MONGODB_HOST", default="mongodb://localhost:27017")
-mongoengine.connect(db=MONGODB_NAME, host=MONGODB_HOST, tz_aware=True)
+mongoengine.connect(
+    db=MONGODB_NAME, 
+    host=MONGODB_HOST, 
+    tz_aware=True,
+    connectTimeoutMS=30000,
+    serverSelectionTimeoutMS=30000
+)
 
 try:
     users_collection = get_db().get_collection("users")
@@ -156,12 +162,12 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.ScopedRateThrottle",
     ),
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/hour",
-        "user": "1000/hour",
-        "auth": "10/minute",
-        "otp": "5/minute",
-        "password_reset": "5/minute",
-        "upload": "20/hour",
+        "anon": "10000/hour",
+        "user": "10000/hour",
+        "auth": "100/minute",
+        "otp": "20/minute",
+        "password_reset": "20/minute",
+        "upload": "100/hour",
     },
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardResultsSetPagination",
     "PAGE_SIZE": 20,

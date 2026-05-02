@@ -75,6 +75,10 @@ export default function ReactQueryProvider({ children }: { children: React.React
   const [queryClient] = useState(() => createKunuzQueryClient());
 
   useEffect(() => {
+    // Only prefetch if we have a token to avoid 401 flood/redirect loop
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token) return;
+
     queryClient.prefetchQuery({
       queryKey: ["user", "me"],
       queryFn: async () => {

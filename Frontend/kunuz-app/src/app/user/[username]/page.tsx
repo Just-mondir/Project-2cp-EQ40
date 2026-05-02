@@ -1547,8 +1547,8 @@ function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: str
     { id: "grid", icon: <GridIcon size={20} /> },
     { id: "reposts", icon: <RepostIcon size={20} /> },
     ...(isOwnProfile ? [{ id: "gems", icon: <GemIcon size={20} /> }, { id: "saved", icon: <BookmarkIcon size={20} /> }] : []),
-    { id: "events", icon: <CalendarIcon size={20} /> },
-    { id: "alerts", icon: <DangerIcon size={20} /> },
+    { id: "events", icon: <CalendarIcon size={20} />, hideOnMobile: true },
+    { id: "alerts", icon: <DangerIcon size={20} />, hideOnMobile: true },
   ];
   const tabLabels: Record<string, string> = {
     grid: "Posts",
@@ -1561,8 +1561,15 @@ function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: str
 
   return (
     <div className="flex items-center justify-between px-4 md:px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
-      {tabs.map((tab) => (
-        <button key={tab.id} title={tabLabels[tab.id] ?? tab.id} aria-label={tabLabels[tab.id] ?? tab.id} onClick={() => setActiveTab(tab.id)} className="p-3 transition-all duration-200 hover:opacity-70 relative" style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}>
+      {tabs.map((tab: any) => (
+        <button
+          key={tab.id}
+          title={tabLabels[tab.id] ?? tab.id}
+          aria-label={tabLabels[tab.id] ?? tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`p-3 transition-all duration-200 hover:opacity-70 relative ${tab.hideOnMobile ? "hidden md:block" : ""}`}
+          style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}
+        >
           {tab.icon}
           {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: "#432817" }} />}
         </button>
