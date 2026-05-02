@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 from rest_framework import serializers
-
 import bleach
 
 ALLOWED_CONTENT_TAGS = ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li", "a", "h1", "h2", "h3"]
 ALLOWED_CONTENT_ATTRS = {"a": ["href", "target", "rel"], "span": ["class", "style"]}
-
 
 def sanitize_plain(value: str) -> str:
     """Strip ALL HTML tags — for fields that should be plain text (titles, names)."""
     if not value:
         return value
     return bleach.clean(value, tags=[], strip=True).strip()
-
 
 def sanitize_rich(value: str) -> str:
     """Allow only safe tags — for rich text content fields."""
