@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import PostQuizButton from "@/components/PostQuizButton";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
@@ -2366,6 +2367,11 @@ function PostCard({
             title={post.title}
             buttonStyle={{ color: "#432817" }}
           />
+          <PostQuizButton
+            postId={post.id}
+            title={post.title}
+            buttonStyle={{ color: "#432817" }}
+          />
           <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
             <BookmarkIcon filled={saved} active={saved} />
           </button>
@@ -2468,6 +2474,7 @@ function loadGroupsFromCache(): Group[] {
 /* ─────────────────── MAIN PAGE ─────────────────── */
 
 export default function HomePageRoute() {
+  const pathname = usePathname();
   const t = useTranslations("auth.pages.home");
   const commonT = useTranslations("auth.common");
   const initialHomeCache = useMemo(() => loadPostsFromCache(), []);
@@ -2554,52 +2561,56 @@ export default function HomePageRoute() {
 
   // Handle notification navigation
   useEffect(() => {
-    const token = getAuthToken();
-    if (!token) return;
+    const handleNavigation = () => {
+      const token = getAuthToken();
+      if (!token) return;
 
-    // Case 1: open post modal (comment/reply/gem on comment)
-    const postId = sessionStorage.getItem("open_post_id");
-    const tab = (sessionStorage.getItem("open_post_tab") || "comments") as "comments" | "annotations";
+      // Case 1: open post modal (comment/reply/gem on comment)
+      const postId = sessionStorage.getItem("open_post_id");
+      const tab = (sessionStorage.getItem("open_post_tab") || "comments") as "comments" | "annotations";
 
-    if (postId) {
-      sessionStorage.removeItem("open_post_id");
-      sessionStorage.removeItem("open_post_tab");
+      if (postId) {
+        sessionStorage.removeItem("open_post_id");
+        sessionStorage.removeItem("open_post_tab");
 
-      fetch(`${API_URL}/api/posts/${postId}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then(res => res.json())
-        .then(data => {
-          const raw = data?.data ?? data;
-          if (raw?.id) {
-            setSelectedPost(normalizeApiPost(raw));
-            setSelectedPostTab(tab);
-          }
+        fetch(`${API_URL}/api/posts/${postId}/`, {
+          headers: { Authorization: `Bearer ${token}` },
         })
-        .catch(() => { });
-      return;
-    }
+          .then(res => res.json())
+          .then(data => {
+            const raw = data?.data ?? data;
+            if (raw?.id) {
+              setSelectedPost(normalizeApiPost(raw));
+              setSelectedPostTab(tab);
+            }
+          })
+          .catch(() => { });
+        return;
+      }
 
-    // Case 2: highlight post in feed (gem on post / repost)
-    const highlightId = sessionStorage.getItem("highlight_post_id");
-    if (highlightId) {
-      sessionStorage.removeItem("highlight_post_id");
+      // Case 2: highlight post in feed (gem on post / repost)
+      const highlightId = sessionStorage.getItem("highlight_post_id");
+      if (highlightId) {
+        sessionStorage.removeItem("highlight_post_id");
+        const tryScroll = (attempts = 0) => {
+          const el = document.getElementById(`post-${highlightId}`);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.style.outline = "3px solid #8B6914";
+            el.style.borderRadius = "12px";
+            setTimeout(() => { if (el) el.style.outline = ""; }, 2000);
+          } else if (attempts < 15) {
+            setTimeout(() => tryScroll(attempts + 1), 300);
+          }
+        };
+        tryScroll();
+      }
+    };
 
-      // Wait for posts to load then scroll to it
-      const tryScroll = (attempts = 0) => {
-        const el = document.getElementById(`post-${highlightId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.style.outline = "3px solid #8B6914";
-          el.style.borderRadius = "12px";
-          setTimeout(() => { el.style.outline = ""; }, 2000);
-        } else if (attempts < 10) {
-          setTimeout(() => tryScroll(attempts + 1), 300);
-        }
-      };
-      tryScroll();
-    }
-  }, []);
+    handleNavigation();
+    window.addEventListener("highlight-post", handleNavigation);
+    return () => window.removeEventListener("highlight-post", handleNavigation);
+  }, [pathname]);
 
   const groups = useMemo<GroupCard[]>(
     () => {

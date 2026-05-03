@@ -232,7 +232,7 @@ def _generate_post_insight(post: Post) -> dict:
     if not api_key:
         raise ValueError("Gemini API key is not configured.")
 
-    model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
+    model = getattr(settings, "GEMINI_MODEL", "gemini-1.5-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = {
         "contents": [
@@ -271,7 +271,7 @@ def _generate_post_quiz(post: Post) -> dict:
     if not api_key:
         raise ValueError("Gemini API key is not configured.")
 
-    model = getattr(settings, "GEMINI_MODEL", "gemini-2.5-flash")
+    model = getattr(settings, "GEMINI_MODEL", "gemini-1.5-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = {
         "contents": [

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck } from "lucide-react";
+import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck, ChevronLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLocaleSettings } from "@/components/LocaleProvider";
 
@@ -142,7 +142,6 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
   const isJoinRequest = item.event_type === "group_join_request";
   const label = item.event_label || item.message;
 
-  // ── changed from <button> to <div> to avoid nested <button> hydration error ──
   return (
     <div
       role="button"
@@ -161,7 +160,6 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
           <span>{relativeTimeLabel}</span>
         </div>
 
-        {/* ── Accept/Decline for group invitations ── */}
         {isInvite && !responded && (
           <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
             <button
@@ -185,7 +183,6 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
           </div>
         )}
 
-        {/* ── Accept/Reject for join requests (admin sees this) ── */}
         {isJoinRequest && !responded && (
           <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
             <button
@@ -254,7 +251,6 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
             Response sent ✓
           </p>
         )}
-
       </div>
     </div>
   );
@@ -267,9 +263,8 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const rtf = useMemo(() => new Intl.RelativeTimeFormat(locale, { numeric: "auto" }), [locale]);
@@ -284,20 +279,21 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     if (absSeconds < 86400) return rtf.format(Math.round(diffSeconds / 3600), "hour");
     return rtf.format(Math.round(diffSeconds / 86400), "day");
   }, [rtf, t]);
+
   const navigateFromNotification = async (notification: NotificationItem) => {
     const { event_type, target_id } = notification;
 
     if (event_type === "gem_on_post" || event_type === "repost_on_post") {
-      // Scroll to post in feed, no modal
       sessionStorage.setItem("highlight_post_id", target_id);
       router.replace("/home-page");
-
+      window.dispatchEvent(new Event("highlight-post"));
+      onClose();
     } else if (event_type === "comment_on_post") {
-      // Open post modal with comments
       sessionStorage.setItem("open_post_id", target_id);
       sessionStorage.setItem("open_post_tab", "comments");
       router.replace("/home-page");
-
+      window.dispatchEvent(new Event("highlight-post"));
+      onClose();
     } else if (event_type === "reply_to_comment" || event_type === "gem_on_comment") {
       try {
         const res = await fetch(`${API_URL}/api/posts/comments/${target_id}/`, {
@@ -313,9 +309,10 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
           sessionStorage.setItem("open_post_id", postId);
           sessionStorage.setItem("open_post_tab", "comments");
           router.replace("/home-page");
+          window.dispatchEvent(new Event("highlight-post"));
+          onClose();
         }
       } catch { }
-
     } else if (
       event_type === "group_join_request" ||
       event_type === "group_join_request_approved" ||
@@ -328,17 +325,8 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
       } else {
         router.replace(`/group/${target_id}`);
       }
+      onClose();
     }
-  };
-
-  const buildHeaders = () => {
-
-    const token = getAuthToken();
-    const nextHeaders = new Headers();
-    if (token) {
-      nextHeaders.set("Authorization", `Bearer ${token}`);
-    }
-    return nextHeaders;
   };
 
   const fetchNotifications = useCallback(async (url: string | null = `${API_URL}/api/notifications/`, isInitial = true) => {
@@ -351,46 +339,49 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
       return;
     }
 
-    if (isInitial) setRefreshing(true);
-    else setLoadingMore(true);
+    if (!isInitial) setLoadingMore(true);
 
     try {
+      const headers = { Authorization: `Bearer ${token}` };
       const [listRes, unreadRes] = await Promise.all(
         isInitial
           ? [
-            fetch(url, { headers: buildHeaders() }),
-            fetch(`${API_URL}/api/notifications/unread-count/`, { headers: buildHeaders() }),
+            fetch(url, { headers }),
+            fetch(`${API_URL}/api/notifications/unread-count/`, { headers }),
           ]
-          : [
-            fetch(url, { headers: buildHeaders() }),
-            Promise.resolve(null)
-          ]
+          : [fetch(url, { headers }), Promise.resolve(null)]
       );
 
-      const listJson = (await listRes.json().catch(() => null)) as NotificationResponse | null;
-      const unreadJson = unreadRes ? (await unreadRes.json().catch(() => null)) as NotificationResponse | null : null;
+      const listJson = await listRes.json().catch(() => null);
+      const unreadJson = unreadRes ? await unreadRes.json().catch(() => null) : null;
 
       const nextItems = listJson?.data?.results ?? [];
       setNotifications(prev => {
         if (isInitial) return nextItems;
-        const existingIds = new Set(prev.map((n: NotificationItem) => n.id));
+        const existingIds = new Set(prev.map(n => n.id));
         const uniqueItems = nextItems.filter((n: NotificationItem) => !existingIds.has(n.id));
         return [...prev, ...uniqueItems];
       });
       setNextUrl(listJson?.data?.next ?? null);
 
       if (isInitial) {
-        const rawCount = unreadJson?.data?.unread_count !== undefined ? unreadJson.data.unread_count : (unreadJson?.unread_count !== undefined ? unreadJson.unread_count : 0);
-        const count = Number(rawCount);
-        setUnreadCount(count);
-        window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: count }));
+        const rawCount = unreadJson?.data?.unread_count ?? unreadJson?.unread_count ?? 0;
+        setUnreadCount(Number(rawCount));
+        window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: Number(rawCount) }));
       }
     } finally {
-      if (isInitial) setLoading(false);
-      setRefreshing(false);
+      setLoading(false);
       setLoadingMore(false);
     }
   }, []);
+
+  useEffect(() => {
+    void fetchNotifications();
+    const timer = window.setInterval(() => {
+      void fetchNotifications();
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, [fetchNotifications]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -403,28 +394,7 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     );
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [nextUrl, loadingMore]);
-
-  useEffect(() => {
-    const initialLoad = window.setTimeout(() => {
-      void fetchNotifications();
-    }, 0);
-    const timer = window.setInterval(() => {
-      void fetchNotifications();
-    }, 30000);
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.clearInterval(timer);
-    };
-  }, [fetchNotifications]);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [nextUrl, loadingMore, fetchNotifications]);
 
   const markAsRead = async (id: string) => {
     const token = getAuthToken();
@@ -434,17 +404,17 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     setNotifications((current) => {
       const nextItems = current.map((item) => (item.id === id ? { ...item, is_read: true } : item));
       writeCachedNotifications(nextItems);
-      window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: nextItems.filter((item) => item.is_read === false).length }));
       return nextItems;
     });
+
     try {
       await fetch(`${API_URL}/api/notifications/${id}/read/`, {
         method: "PATCH",
-        headers: buildHeaders(),
+        headers: { Authorization: `Bearer ${token}` },
       });
-      await fetchNotifications();
+      void fetchNotifications();
     } catch {
-      await fetchNotifications();
+      void fetchNotifications();
     }
 
     if (notification) {
@@ -459,49 +429,36 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     try {
       await fetch(`${API_URL}/api/notifications/read-all/`, {
         method: "PATCH",
-        headers: buildHeaders(),
+        headers: { Authorization: `Bearer ${token}` },
       });
-      await fetchNotifications();
+      void fetchNotifications();
     } catch { }
   };
 
   const { today, thisMonth, older } = groupByRecency(notifications);
 
   return (
-    <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-[2px]">
-      <div className="flex h-full w-full max-w-[760px] flex-col border-l border-[#D8C8B1] bg-[#FFF8E2] shadow-[0_0_60px_rgba(40,22,9,0.2)]">
-        <div className="flex items-start justify-between border-b border-[#E1D3BF] px-6 py-5">
-          <div>
-            <p className="m-0 text-[12px] font-bold uppercase tracking-[0.22em] text-[#8B6A4B]">{t("inbox")}</p>
-            <h2 className="m-0 mt-1 text-[28px] font-bold text-[#432817]">{t("title")}</h2>
-            <p className="mt-1 text-[13px] text-[#8B7355]">{t("unreadCount", { count: unreadCount })}</p>
+    <div className="notification-panel-overlay fixed inset-0 z-[100] flex justify-start bg-black/60 backdrop-blur-[3px]" onClick={onClose}>
+      <div
+        className="flex h-full w-[440px] max-w-[94vw] flex-col bg-[#FFF8E2] px-8 py-5 text-[#432817] shadow-[18px_0_45px_rgba(14,9,5,0.28)]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between pb-4">
+          <div className="flex items-center gap-3">
+            <h2 className="m-0 text-[18px] font-bold text-[#342417]">{t("title")}</h2>
+            {unreadCount > 0 && (
+              <span className="flex h-5 items-center justify-center rounded-full bg-[#8B6A4B] px-2 text-[10px] font-bold text-white">
+                {unreadCount}
+              </span>
+            )}
           </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fetchNotifications()}
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-white px-4 text-[13px] font-semibold text-[#432817] transition hover:bg-[#FAF1DC]"
-            >
-              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-              {t("actions.refresh")}
-            </button>
-            <button
-              type="button"
-              onClick={markAllRead}
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-[#432817] px-4 text-[13px] font-semibold text-[#FFF8E2] transition hover:bg-[#5A3720]"
-            >
-              <CheckCheck className="h-4 w-4" />
-              {t("actions.markAllRead")}
-            </button>
-            <button
-              onClick={onClose}
-              aria-label={t("actions.close")}
-              className="rounded-full p-2 text-[#432817] transition hover:bg-white/80"
-            >
-              <CircleX className="h-6 w-6" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            aria-label={t("actions.close")}
+            className="rounded-full p-0.5 text-[#9B8165] transition hover:bg-[#EFE2C6] hover:text-[#432817]"
+          >
+            <CircleX className="h-4 w-4" />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-1">
@@ -519,12 +476,27 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={markAllRead}
+                  className="text-[10px] font-bold uppercase tracking-wider text-[#A07850] transition hover:text-[#432817]"
+                >
+                  {t("actions.markAllRead")}
+                </button>
+              </div>
+
               {today.length > 0 && (
                 <section className="space-y-2">
                   <SectionTitle title={t("sections.today")} />
                   <div className="space-y-1">
                     {today.map((item) => (
-                      <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
+                      <NotificationRow
+                        key={item.id}
+                        item={item}
+                        onRead={markAsRead}
+                        relativeTimeLabel={formatRelativeTime(item.created_at)}
+                        someoneLabel={t("someone")}
+                      />
                     ))}
                   </div>
                 </section>
@@ -535,7 +507,13 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
                   <SectionTitle title={t("sections.thisMonth")} withDivider />
                   <div className="space-y-1">
                     {thisMonth.map((item) => (
-                      <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
+                      <NotificationRow
+                        key={item.id}
+                        item={item}
+                        onRead={markAsRead}
+                        relativeTimeLabel={formatRelativeTime(item.created_at)}
+                        someoneLabel={t("someone")}
+                      />
                     ))}
                   </div>
                 </section>
@@ -546,7 +524,13 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
                   <SectionTitle title={t("sections.earlier")} withDivider />
                   <div className="space-y-1">
                     {older.map((item) => (
-                      <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
+                      <NotificationRow
+                        key={item.id}
+                        item={item}
+                        onRead={markAsRead}
+                        relativeTimeLabel={formatRelativeTime(item.created_at)}
+                        someoneLabel={t("someone")}
+                      />
                     ))}
                   </div>
                 </section>
@@ -560,4 +544,3 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     </div>
   );
 }
-

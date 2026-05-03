@@ -16,19 +16,28 @@ export default function AuthenticatedControls() {
   if (!isHomePage) return null;
 
   return (
-    <div
-      className="hidden md:flex fixed top-[18px] z-[110] items-center gap-3"
-      style={{ insetInlineEnd: "18px" }}
-    >
-      <LanguageSwitcher />
-      <DaltonismToggle />
-      <ThemeToggle
-        forceVisible
-        variant="inline"
-        backgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
-        hoverBackgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
-        shadow="none"
-      />
-    </div>
+    <>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        .notification-panel-overlay ~ .authenticated-controls,
+        body:has(.notification-panel-overlay) .authenticated-controls {
+          display: none !important;
+        }
+      `}} />
+      <div
+        className="authenticated-controls hidden md:flex fixed top-[18px] z-[110] items-center gap-3"
+        style={{ insetInlineEnd: "18px" }}
+      >
+        <LanguageSwitcher />
+        <DaltonismToggle />
+        <ThemeToggle
+          forceVisible
+          variant="inline"
+          backgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
+          hoverBackgroundColor="linear-gradient(135deg, var(--surface-strong), var(--surface))"
+          shadow="none"
+        />
+      </div>
+    </>
   );
 }

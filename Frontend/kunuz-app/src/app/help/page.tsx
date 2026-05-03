@@ -2,200 +2,22 @@
 
 import React, { useState, useRef, useEffect, cloneElement } from "react";
 import Link from "next/link";
-import { UserCog, SquarePen, MessagesSquare, Church, FileX, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import LeftSidebar from "@/components/LeftSidebar";
+import { useLocaleSettings } from "@/components/LocaleProvider";
+import { getHelpContent, helpDirection, helpTextAlign, TopicContent } from "./helpContent";
 
-const helpTopics = [
-  {
-    title: "Account Management",
-    description: "login, signup, profile edit.",
-    href: "/help/Account-management",
-    keywords: [
-      "sign up", "signup", "register", "create account",
-      "login", "log in", "password", "remember me",
-      "edit profile", "profile picture", "personal information",
-      "username", "email", "next", "done",
-    ],
-    content: (
-      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        <div>
-          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Sign Up</p>
-          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-            <li>Click <strong>"Sign Up"</strong></li>
-            <li>Fill your email, Password and confirm it.</li>
-            <li>Click <strong>"Next"</strong></li>
-            <li>If you already have an Account, Click on <strong>"Login"</strong></li>
-          </ol>
-        </div>
-        <div>
-          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Login</p>
-          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-            <li>If you already have an account, click on <strong>"Login"</strong>.</li>
-            <li>Enter your Username.</li>
-            <li>Enter your Password.</li>
-            <li>Check <strong>"Remember Me"</strong> to stay logged in.</li>
-            <li>Click <strong>"Login"</strong> to access your account.</li>
-          </ol>
-        </div>
-        <div>
-          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Edit Your Profile?</p>
-          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-            <li>Go to your Profile page.</li>
-            <li>Click on <strong>"Edit Profile"</strong>.</li>
-            <li>Update your personal information.</li>
-            <li>Change your profile picture if needed.</li>
-            <li>Click <strong>"Done"</strong>.</li>
-          </ol>
-        </div>
-      </div>
-    ),
-    icon: <UserCog size={34} color="white" strokeWidth={1.5} />,
-  },
-  {
-    title: "Creating Posts",
-    description: "posting, tagging, photos, and visibility.",
-    href: "/help/Creating-posts",
-    keywords: [
-      "create post", "publication", "create publication", "add post",
-      "title", "description", "upload", "image", "photo",
-      "label", "historical period", "monument type", "region",
-      "location", "visibility", "public", "private", "done", "share",
-      "tag", "tagging",
-    ],
-    content: (
-      <div>
-        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Create a Publication?</p>
-        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-          <li>After logging in, go to your Home Page.</li>
-          <li>Click on the <strong>"Create Publication"</strong> button.</li>
-          <li>Enter a clear Title for your post.</li>
-          <li>Write a detailed Description explaining the monument or topic.</li>
-          <li>Upload relevant images to illustrate your publication.</li>
-          <li>Add a short picture description if required.</li>
-          <li>Choose the appropriate labels: Post Type, Historical Period, Monument Type, Region.</li>
-          <li>Add the location of the monument.</li>
-          <li>Select the visibility settings (public or private).</li>
-          <li>Click <strong>"Done"</strong> to share your post.</li>
-        </ol>
-      </div>
-    ),
-    icon: <SquarePen size={34} color="white" strokeWidth={1.5} />,
-  },
-  {
-    title: "Interaction with posts",
-    description: "like, comment, report.",
-    href: "/help/Interaction-withe-posts",
-    keywords: [
-      "like", "gem", "comment", "share", "repost",
-      "interact", "interaction", "news feed", "browse",
-      "report post", "inappropriate", "reason", "submit", "review",
-      "appreciation", "opinion",
-    ],
-    content: (
-      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        <div>
-          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Interact with a Post?</p>
-          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-            <li>Browse the News Feed to view publications shared by other users.</li>
-            <li>Click the <strong>"Gem"</strong> button to show your appreciation.</li>
-            <li>Click <strong>"Comment"</strong> to write and share your opinion.</li>
-            <li>Click <strong>"Share"</strong> to repost the publication on your profile.</li>
-          </ol>
-        </div>
-        <div>
-          <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Report a Post?</p>
-          <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-            <li>Click on the <strong>"Report"</strong> option if you find inappropriate content.</li>
-            <li>Select the reason for reporting.</li>
-            <li>Submit your report for review by the administration team.</li>
-          </ol>
-        </div>
-      </div>
-    ),
-    icon: <MessagesSquare size={34} color="white" strokeWidth={1.5} />,
-  },
-  {
-    title: "Monuments in Danger",
-    description: "how to report endangered monuments.",
-    href: "/help/Monuments-in-danger",
-    keywords: [
-      "monument in danger", "endangered", "report monument", "danger",
-      "damage", "urgency", "low", "medium", "high",
-      "city", "address", "photo", "submit report",
-      "at risk", "heritage at risk", "destruction",
-    ],
-    content: (
-      <div>
-        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Report a Monument in Danger?</p>
-        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-          <li>Go to the <strong>"Monuments in Danger"</strong> section from the menu.</li>
-          <li>Click on <strong>"Report a Monument"</strong>.</li>
-          <li>Enter the name of the monument.</li>
-          <li>Add the location (city or exact address).</li>
-          <li>Select the urgency level (low, medium, high).</li>
-          <li>Upload clear photos showing the damage.</li>
-          <li>Provide a short description explaining the situation.</li>
-          <li>Click <strong>"Submit Report"</strong> to send your request.</li>
-        </ol>
-      </div>
-    ),
-    icon: <Church size={34} color="white" strokeWidth={1.5} />,
-  },
-  {
-    title: "Reporting Content",
-    description: "moderation and review process.",
-    href: "/help/Reporting-content",
-    keywords: [
-      "report content", "inappropriate content", "spam", "false information",
-      "moderation", "review", "submit", "flag", "abuse",
-      "post menu", "reason", "details",
-    ],
-    content: (
-      <div>
-        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Report Inappropriate Content?</p>
-        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-          <li>Go to the post you want to report.</li>
-          <li>Click on the <strong>"Report"</strong> option (usually available in the post menu).</li>
-          <li>Select the reason for reporting (spam, inappropriate content, false information, etc.).</li>
-          <li>Provide additional details if required.</li>
-          <li>Click <strong>"Submit"</strong> to send your request.</li>
-        </ol>
-      </div>
-    ),
-    icon: <FileX size={34} color="white" strokeWidth={1.5} />,
-  },
-  {
-    title: "Search & Filters",
-    description: "how to filter by region, period.",
-    href: "/help/Searche-by-filter",
-    keywords: [
-      "search", "filter", "region", "period", "historical period",
-      "monument type", "post type", "apply filters", "keyword",
-      "refine", "results", "news feed", "find",
-    ],
-    content: (
-      <div>
-        <p style={{ color: "#432817", fontSize: "18px", fontWeight: 700, marginBottom: "10px" }}>How to Search Using Filters?</p>
-        <ol style={{ paddingLeft: "20px", fontSize: "14px", lineHeight: "26px", listStyleType: "decimal" }}>
-          <li>Go to the News Feed page.</li>
-          <li>Use the Search Bar to type keywords related to a monument or topic.</li>
-          <li>Click on the Filter option to refine your search.</li>
-          <li>Select the desired Historical Period.</li>
-          <li>Choose the appropriate Monument Type.</li>
-          <li>Select the Region.</li>
-          <li>Choose the Post Type if needed.</li>
-          <li>Click <strong>"Apply Filters"</strong> to display the results.</li>
-        </ol>
-      </div>
-    ),
-    icon: <Search size={34} color="white" strokeWidth={1.5} />,
-  },
-];
 
 export default function HelpPage() {
+  const { locale } = useLocaleSettings();
+  const helpContent = getHelpContent(locale);
+  const helpTopics = helpContent.topics;
+  const direction = helpDirection(locale);
+  const textAlign = helpTextAlign(locale);
+
   const [search, setSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedTopic, setSelectedTopic] = useState<typeof helpTopics[0] | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<any | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   const filteredTopics = helpTopics.filter((topic) => {
@@ -219,7 +41,7 @@ export default function HelpPage() {
   }, []);
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
+    <div className="flex h-[100dvh] overflow-hidden" style={{ backgroundColor: "#FFF8E2" }} dir={direction}>
 
       <LeftSidebar activePage="help" />
 
@@ -234,11 +56,11 @@ export default function HelpPage() {
           <div className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.45)" }} />
 
           <div className="relative z-10 flex flex-col items-center gap-6 px-6">
-            <h1 className="text-2xl md:text-4xl font-extrabold" style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif", lineHeight: 1.2 }}>
-              Help & User Guide
+            <h1 className="text-2xl md:text-4xl font-extrabold" style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif", lineHeight: 1.2, textAlign }}>
+              {helpContent.heroTitle}
             </h1>
-            <p className="text-base md:text-2xl font-black" style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-              Navigate and contribute to preserving Algeria's Architectural legacy
+            <p className="text-base md:text-2xl font-black" style={{ color: "#FFFFFF", fontFamily: "var(--font-lato), 'Lato', sans-serif", textAlign }}>
+              {helpContent.heroSubtitle}
             </p>
 
             {/* Search Bar */}
@@ -253,9 +75,9 @@ export default function HelpPage() {
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setShowDropdown(true); }}
                   onFocus={() => setShowDropdown(true)}
-                  placeholder="Search help topics ..."
+                  placeholder={helpContent.searchPlaceholder}
                   className="text-sm md:text-lg w-full"
-                  style={{ border: "none", outline: "none", backgroundColor: "transparent", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, color: "#79747E" }}
+                  style={{ border: "none", outline: "none", backgroundColor: "transparent", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, color: "#79747E", textAlign }}
                 />
               </div>
 
@@ -293,10 +115,10 @@ export default function HelpPage() {
                     >
                       <Search size={16} color="#79747E" strokeWidth={2} />
                       <div>
-                        <p style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: "15px", margin: 0 }}>
+                        <p style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: "15px", margin: 0, textAlign }}>
                           {topic.title}
                         </p>
-                        <p style={{ color: "#79747E", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, fontSize: "13px", margin: 0 }}>
+                        <p style={{ color: "#79747E", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 400, fontSize: "13px", margin: 0, textAlign }}>
                           {topic.description}
                         </p>
                       </div>
@@ -348,10 +170,10 @@ export default function HelpPage() {
                 </div>
 
                 <div className="flex flex-col gap-0.5 md:gap-2 flex-1">
-                  <p className="text-sm md:text-lg font-bold m-0" style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                  <p className="text-sm md:text-lg font-bold m-0" style={{ color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", textAlign }}>
                     {topic.title}
                   </p>
-                  <p className="text-xs md:text-base font-normal m-0" style={{ color: "#000000", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                  <p className="text-xs md:text-base font-normal m-0" style={{ color: "#000000", fontFamily: "var(--font-lato), 'Lato', sans-serif", textAlign }}>
                     {topic.description}
                   </p>
                 </div>
@@ -409,15 +231,15 @@ export default function HelpPage() {
               </div>
             </div>
 
-            <div style={{ borderTop: "1px solid #C4A882", paddingTop: "20px", fontFamily: "var(--font-lato), 'Lato', sans-serif", color: "#000000" }}>
-              {selectedTopic.content}
+            <div style={{ borderTop: "1px solid #C4A882", paddingTop: "20px", fontFamily: "var(--font-lato), 'Lato', sans-serif", color: "#000000", textAlign }}>
+              <TopicContent topic={selectedTopic} locale={locale} compact />
             </div>
 
             <Link
               href={selectedTopic.href}
-              style={{ display: "inline-block", marginTop: "24px", color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: "14px", textDecoration: "underline" }}
+              style={{ display: "inline-block", marginTop: "24px", color: "#432817", fontFamily: "var(--font-lato), 'Lato', sans-serif", fontWeight: 600, fontSize: "14px", textDecoration: "underline", textAlign }}
             >
-              View full page →
+              {helpContent.viewFullPage}
             </Link>
           </div>
         </div>
