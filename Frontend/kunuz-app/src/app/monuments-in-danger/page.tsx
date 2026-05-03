@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
@@ -11,17 +12,24 @@ import LeftSidebar from "@/components/LeftSidebar";
 import ImageUploadPanel, { type ImageItem } from "@/components/ImageUploadPanel";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import ActionConfirmModal from "@/components/ActionConfirmModal";
+import { PostsSkeletonList } from "@/components/PostSkeletons";
+import { usePosts } from "@/hooks/usePosts";
+import { fetchJson } from "@/lib/apiClient";
+import ReportModal from "@/components/ReportModal";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 import {
   HISTORICAL_PERIOD_VALUES,
   MONUMENT_TYPE_VALUES,
   MOBILIZATION_STATUS_VALUES,
   REGION_VALUES,
   URGENCY_LEVEL_VALUES,
+  EXPERTISE_VALUES,
   translateHistoricalPeriod,
   translateMobilizationStatus,
   translateMonumentType,
   translateRegion,
   translateUrgencyLevel,
+  translateExpertise,
 } from "@/lib/authFilterOptions";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -177,6 +185,18 @@ type HistoryReport = {
   created_by: string;
   created_at: string;
 };
+
+type CriticalAlertsPayload = {
+  data?: { results?: ApiPost[] } | ApiPost[];
+  results?: ApiPost[];
+};
+
+function unwrapCriticalAlerts(payload: CriticalAlertsPayload | ApiPost[] | null | undefined): ApiPost[] {
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.data)) return payload.data;
+  return payload.data?.results ?? payload.results ?? [];
+}
 
 type ApiCommentRaw = {
   id: string;
@@ -559,12 +579,14 @@ function CommentItem({
   onRefresh,
   onDelete,
   isReply = false,
+  onReport,
 }: {
   comment: CommentNode;
   postId: string;
   onRefresh?: () => void;
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -696,19 +718,9 @@ function CommentItem({
     } catch { }
   };
 
-  const handleReportComment = async () => {
-    const reason = window.prompt(feedT("prompts.reportComment"));
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("comment", comment.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.commentReported"));
-    } catch (error) {
-      window.alert(
-        error instanceof Error ? error.message : feedT("feedback.commentReportFailed")
-      );
-    }
+  const handleReportComment = () => {
+    onReport("comment", comment.id);
+    setShowMenu(false);
   };
 
   return (
@@ -883,6 +895,7 @@ function AnnotationItem({
   onAccept,
   onReject,
   onRefresh,
+  onReport,
 }: {
   annotation: Annotation;
   postId: string;
@@ -891,6 +904,7 @@ function AnnotationItem({
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   onRefresh?: () => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -998,17 +1012,9 @@ function AnnotationItem({
     setIsEditing(false);
   };
 
-  const handleReport = async () => {
-    const reason = window.prompt(feedT("prompts.reportAnnotation"));
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.annotationReported"));
-    } catch {
-      window.alert(feedT("feedback.annotationReportFailed"));
-    }
+  const handleReport = () => {
+    onReport("annotation", annotation.id);
+    setShowMenu(false);
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
@@ -1170,6 +1176,7 @@ function AnnotationItem({
 function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; onClose: () => void; onApply: (filters: any) => void }) {
   const filtersT = useTranslations("auth.filters");
   const postFormT = useTranslations("auth.postForm");
+  const profileFormT = useTranslations("auth.profileForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({
     region: "All",
@@ -1177,6 +1184,7 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
     monument_type: "All",
     urgence_level: "All",
     current_status: "All",
+    expertise: "All",
   });
 
   useEffect(() => {
@@ -1192,6 +1200,7 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
     { key: "monument_type", label: filtersT("labels.heritageType"), options: ["All", ...MONUMENT_TYPE_VALUES] },
     { key: "urgence_level", label: filtersT("labels.urgencyLevel"), options: ["All", ...URGENCY_LEVEL_VALUES] },
     { key: "current_status", label: filtersT("labels.mobilizationStatus"), options: ["All", ...MOBILIZATION_STATUS_VALUES] },
+    { key: "expertise", label: filtersT("labels.expertise"), options: ["All", ...EXPERTISE_VALUES] },
   ];
 
   const handleSelectChange = (key: string, value: string) => {
@@ -1205,6 +1214,7 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
       monument_type: "All",
       urgence_level: "All",
       current_status: "All",
+      expertise: "All",
     };
     setSelectedFilters(reset);
     onApply(reset);
@@ -1257,7 +1267,11 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
                                 ? translateMonumentType(opt, postFormT)
                                 : filter.key === "urgence_level"
                                   ? translateUrgencyLevel(opt, postFormT)
-                                  : translateMobilizationStatus(opt, postFormT)}
+                                  : filter.key === "current_status"
+                                    ? translateMobilizationStatus(opt, postFormT)
+                                    : filter.key === "expertise"
+                                      ? translateExpertise(opt, profileFormT)
+                                      : opt}
                       </option>
                     ))}
                   </select>
@@ -1289,6 +1303,7 @@ function PostModal({
   onMobilizationClick,
   initialTab = "comments",
   onDelete,
+  onReport,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -1297,6 +1312,7 @@ function PostModal({
   onMobilizationClick: () => void;
   initialTab?: "comments" | "annotations" | "history";
   onDelete?: (postId: string) => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const pageT = useTranslations("auth.pages.monumentsInDanger");
@@ -1324,11 +1340,12 @@ function PostModal({
   useEffect(() => {
     if (post) {
       setContentExpanded(false);
+      setActiveTab(initialTab);
       fetchComments(post.id);
       fetchAnnotations(post.id);
       fetchHistory(post.id);
     }
-  }, [post?.id]);
+  }, [post, initialTab]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -1373,8 +1390,16 @@ function PostModal({
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setHistories(data.data?.results || []);
-    } catch { } finally {
+      const results = data.results || (data.data && Array.isArray(data.data) ? data.data : data.data?.results) || (Array.isArray(data) ? data : []);
+      if (Array.isArray(results)) {
+        setHistories(results);
+      } else {
+        setHistories([]);
+      }
+    } catch (err) {
+      console.error("fetchHistory error:", err);
+      setHistories([]);
+    } finally {
       setHistoryLoading(false);
     }
   };
@@ -1532,14 +1557,14 @@ function PostModal({
     const replies = getReplies(comment.id);
     return (
       <div key={comment.id} className={level > 0 ? "ml-8 mt-2" : ""}>
-        <CommentItem comment={comment} postId={post.id} onRefresh={() => fetchComments(post.id)} onDelete={handleDeleteComment} isReply={level > 0} />
+        <CommentItem comment={comment} postId={post.id} onRefresh={() => fetchComments(post.id)} onDelete={handleDeleteComment} isReply={level > 0} onReport={onReport} />
         {replies.length > 0 && <div className="flex flex-col gap-2 mt-2">{replies.map((reply) => renderCommentThread(reply, level + 1))}</div>}
       </div>
     );
   };
 
   const LeftPanel = imageList.length > 0 ? (
-    <div className="hidden md:flex w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
+    <div className="block w-full h-[240px] md:h-full md:w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }}>
       <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
         {imageList.map((img) => {
           const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
@@ -1598,12 +1623,11 @@ function PostModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
+    <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col md:flex-row w-full md:max-w-[1000px] h-full md:max-h-[90vh] md:h-[90vh] md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
-        {/* Right Panel: Comments/Annotations */}
         <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
@@ -1646,7 +1670,13 @@ function PostModal({
                     </>
                   )}
                   {!isModeratorActive && (
-                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); onMobilizationClick(); }}>{feedT("actions.reportPost")}</button>
+                    <button
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5"
+                      style={{ color: "var(--foreground)" }}
+                      onClick={(e) => { e.stopPropagation(); onReport("post", post.id); setShowPostMenu(false); }}
+                    >
+                      {feedT("actions.reportPost")}
+                    </button>
                   )}
                 </div>
               )}
@@ -1679,37 +1709,76 @@ function PostModal({
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <button
-              className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              type="button"
+              className="flex-1 py-3 text-xs font-bold transition-all flex items-center justify-center gap-1.5 hover:bg-black/5 cursor-pointer active:bg-black/10"
               style={{
                 color: activeTab === "comments" ? "#432817" : "#8B7355",
                 borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent",
+                pointerEvents: "auto",
+                touchAction: "auto",
+                WebkitUserSelect: "none",
               }}
-              onClick={() => setActiveTab("comments")}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveTab("comments");
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveTab("comments");
+              }}
             >
-              <CommentIcon size={13} />
-              {feedT("tabs.comments", { count: comments.length })}
+              <CommentIcon size={14} />
+              <span>{feedT("tabs.comments", { count: comments.length })}</span>
             </button>
             <button
-              className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              type="button"
+              className="flex-1 py-3 text-xs font-bold transition-all flex items-center justify-center gap-1.5 hover:bg-black/5 cursor-pointer active:bg-black/10"
               style={{
                 color: activeTab === "annotations" ? "#432817" : "#8B7355",
                 borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent",
+                pointerEvents: "auto",
+                touchAction: "auto",
+                WebkitUserSelect: "none",
               }}
-              onClick={() => setActiveTab("annotations")}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveTab("annotations");
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveTab("annotations");
+              }}
             >
-              <AnnotationIcon size={13} />
-              {feedT("tabs.annotations", { count: getAcceptedAnnotationsCount(annotations) })}
+              <AnnotationIcon size={14} />
+              <span>{feedT("tabs.annotations", { count: getAcceptedAnnotationsCount(annotations) })}</span>
             </button>
             <button
-              className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              type="button"
+              className="flex-1 py-3 text-xs font-bold transition-all flex items-center justify-center gap-1.5 hover:bg-black/5 cursor-pointer active:bg-black/10"
               style={{
                 color: activeTab === "history" ? "#432817" : "#8B7355",
                 borderBottom: activeTab === "history" ? "2px solid #432817" : "2px solid transparent",
+                pointerEvents: "auto",
+                touchAction: "auto",
+                WebkitUserSelect: "none",
               }}
-              onClick={() => setActiveTab("history")}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveTab("history");
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveTab("history");
+              }}
             >
-              <HistoryIcon size={13} />
-              History
+              <HistoryIcon size={14} />
+              <span>{feedT("tabs.history") || "History"}</span>
             </button>
           </div>
 
@@ -1732,7 +1801,17 @@ function PostModal({
                 <div className="flex flex-col gap-4">
                   {annotations.length > 0 ? (
                     annotations.map((a) => (
-                      <AnnotationItem key={a.id} annotation={a} postId={post.id} postAuthorId={post.user_id} onDelete={(id) => setAnnotations(prev => prev.filter(x => x.id !== id))} onAccept={(id) => setAnnotations(prev => prev.map(x => x.id === id ? { ...x, status: "accepted" } : x))} onReject={(id) => setAnnotations(prev => prev.map(x => x.id === id ? { ...x, status: "rejected" } : x))} onRefresh={() => fetchAnnotations(post.id)} />
+                      <AnnotationItem
+                        key={a.id}
+                        annotation={a}
+                        postId={post.id}
+                        postAuthorId={post.user_id}
+                        onDelete={(id) => setAnnotations(prev => prev.filter(x => x.id !== id))}
+                        onAccept={(id) => setAnnotations(prev => prev.map(x => x.id === id ? { ...x, status: "accepted" } : x))}
+                        onReject={(id) => setAnnotations(prev => prev.map(x => x.id === id ? { ...x, status: "rejected" } : x))}
+                        onRefresh={() => fetchAnnotations(post.id)}
+                        onReport={onReport}
+                      />
                     ))
                   ) : (
                     <div className="flex flex-col items-center justify-center py-8 gap-2">
@@ -1794,10 +1873,10 @@ function PostModal({
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+              <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
-              </button>
+              </LongPressGemButton>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }}
@@ -1838,7 +1917,6 @@ function PostModal({
             </div>
           </div>
 
-          {/* input */}
           <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
             {activeTab === "comments" ? (
               <>
@@ -1922,17 +2000,21 @@ function PostCard({
   interaction,
   onInteractionChange,
   onCommentClick,
+  onAnnotationClick,
   onHistoryClick,
   onMobilizationClick,
   onDelete,
+  onReport,
 }: {
   post: ApiPost;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   onCommentClick: () => void;
+  onAnnotationClick: () => void;
   onHistoryClick: () => void;
   onMobilizationClick: () => void;
   onDelete?: (id: string) => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const [imgError, setImgError] = useState(false);
@@ -1994,14 +2076,20 @@ function PostCard({
         </div>
         <div className="relative flex items-center gap-2">
           <button
-            className="p-1 rounded hover:bg-[#FFF8E2] transition-colors"
-            style={{ color: "#8B7355" }}
+            className="p-1 rounded hover:bg-[#FFF8E2] transition-colors active:bg-[#FFF8E2]"
+            style={{ color: "#8B7355", touchAction: "auto" }}
             onClick={(e) => { e.stopPropagation(); onHistoryClick(); }}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onHistoryClick(); }}
           >
             <HistoryIcon size={18} />
           </button>
           <div className="relative" ref={menuRef}>
-            <button className="p-1 rounded hover:bg-[#FFF8E2] transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+            <button
+              className="p-1 rounded hover:bg-[#FFF8E2] transition-colors active:bg-[#FFF8E2]"
+              style={{ touchAction: "auto" }}
+              onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+              onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); setShowMenu(!showMenu); }}
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
             </button>
             {showMenu && (
@@ -2010,17 +2098,19 @@ function PostCard({
                   <>
                     {isOwner && (
                       <button
-                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5"
-                        style={{ color: "var(--foreground)" }}
+                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5 active:bg-black/5"
+                        style={{ color: "var(--foreground)", touchAction: "auto" }}
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); router.push(`/edit-post?id=${post.id}`); }}
+                        onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); setShowMenu(false); router.push(`/edit-post?id=${post.id}`); }}
                       >
                         {feedT("actions.editPost") || "Edit post"}
                       </button>
                     )}
                     <button
-                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600"
-                      style={{ color: "#7B0000" }}
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-red-600 active:opacity-70"
+                      style={{ color: "#7B0000", touchAction: "auto" }}
                       onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                      onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
                     >
                       {feedT("actions.deletePost")}
                     </button>
@@ -2028,9 +2118,10 @@ function PostCard({
                 )}
                 {!isModerator(currentUser) && (
                   <button
-                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914]"
-                    style={{ color: "#432817" }}
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:text-[#8B6914] active:opacity-70"
+                    style={{ color: "#432817", touchAction: "auto" }}
+                    onClick={(e) => { e.stopPropagation(); onReport("post", post.id); setShowMenu(false); }}
+                    onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onReport("post", post.id); setShowMenu(false); }}
                   >
                     {feedT("actions.reportPost")}
                   </button>
@@ -2120,19 +2211,30 @@ function PostCard({
 
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
-          <button
-            className="flex items-center gap-1.5 text-xs transition-all"
-            style={{ color: gemmed ? "#4FC3F7" : "#432817" }}
-            onClick={(e) => { e.stopPropagation(); onInteractionChange({ gemmed: !gemmed, gemsCount: gemmed ? gemsCount - 1 : gemsCount + 1 }); }}
+          <LongPressGemButton
+            postId={post.id} count={gemsCount}
+            className="flex items-center gap-1.5 text-xs transition-all active:opacity-70"
+            style={{ color: gemmed ? "#4FC3F7" : "#432817", touchAction: "auto" }}
+            onGemClick={(e) => { e.stopPropagation(); onInteractionChange({ gemmed: !gemmed, gemsCount: gemmed ? gemsCount - 1 : gemsCount + 1 }); }}
           >
             <GemIcon filled={gemmed} active={gemmed} />
             <span>{formatCount(gemsCount)}</span>
-          </button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
+          </LongPressGemButton>
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] active:opacity-70"
+            style={{ color: "#432817", touchAction: "auto" }}
+            onClick={(e) => { e.stopPropagation(); onCommentClick(); }}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onCommentClick(); }}
+          >
             <CommentIcon /><span>{formatCount(post.comments_count)}</span>
           </button>
-          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914]" style={{ color: "#432817" }}>
-            <AnnotationIcon /><span>0</span>
+          <button
+            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] active:opacity-70"
+            style={{ color: "#432817", touchAction: "auto" }}
+            onClick={(e) => { e.stopPropagation(); onAnnotationClick(); }}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onAnnotationClick(); }}
+          >
+            <AnnotationIcon /><span>{formatCount(interaction.annotationsCount)}</span>
           </button>
           <RepostButton
             key={`${post.id}-${reposted}-${repostsCount}`}
@@ -2152,9 +2254,10 @@ function PostCard({
             buttonStyle={{ color: "#432817" }}
           />
           <button
-            className="flex items-center gap-1.5 text-xs transition-all"
-            style={{ color: saved ? "#8B6914" : "#432817" }}
+            className="flex items-center gap-1.5 text-xs transition-all active:opacity-70"
+            style={{ color: saved ? "#8B6914" : "#432817", touchAction: "auto" }}
             onClick={(e) => { e.stopPropagation(); onInteractionChange({ saved: !saved }); }}
+            onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); onInteractionChange({ saved: !saved }); }}
           >
             <BookmarkIcon filled={saved} active={saved} />
           </button>
@@ -2409,7 +2512,7 @@ function HistoryModal({
   const imageList = post.images ?? [];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
+    <div className="fixed inset-0 z-[120] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
       <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden bg-[#FFF8E2] shadow-2xl border border-white/20" onClick={(e) => e.stopPropagation()}>
         {/* Left Side: Large image mirror */}
         <div className="w-full md:w-1/2 h-48 md:h-auto bg-black relative flex items-center justify-center overflow-hidden">
@@ -2511,10 +2614,11 @@ function HistoryModal({
           <div className="p-6 border-t flex flex-col gap-4" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <button
+                <LongPressGemButton
+                  postId={post.id} count={interaction?.gemsCount ?? 0}
                   className="flex items-center gap-1.5 text-xs font-bold"
                   style={{ color: "#432817" }}
-                  onClick={() => {
+                  onGemClick={() => {
                     if (interaction) {
                       onToggleGem(post.id, interaction.gemmed, interaction.gemsCount);
                     }
@@ -2522,7 +2626,7 @@ function HistoryModal({
                 >
                   <GemIcon size={18} filled={interaction?.gemmed ?? false} />
                   <span>{formatCount(interaction?.gemsCount ?? 0)}</span>
-                </button>
+                </LongPressGemButton>
                 <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: "#432817" }}>
                   <CommentIcon size={18} /><span>{formatCount(post.comments_count)}</span>
                 </div>
@@ -2793,7 +2897,31 @@ export default function MonumentsInDangerPage() {
     monument_type: "All",
     urgence_level: "All",
     current_status: "All",
+    expertise: "All",
   });
+  const criticalAlertsQuery = useQuery({
+    queryKey: ["posts", "critical-alerts"],
+    queryFn: async () => unwrapCriticalAlerts(await fetchJson<CriticalAlertsPayload | ApiPost[]>("posts/critical/?page_size=10")),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    targetType: ReportTargetType;
+    targetId: string;
+  }>({ isOpen: false, targetType: "post", targetId: "" });
+
+  const openReportModal = (type: ReportTargetType, id: string) => {
+    setReportModal({ isOpen: true, targetType: type, targetId: id });
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    const combinedReason = description ? `${reason}: ${description}` : reason;
+    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+  };
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const feedRef = useRef<HTMLElement | null>(null);
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -2897,17 +3025,29 @@ export default function MonumentsInDangerPage() {
     if (filters.monument_type !== "All") params.append("monument_type", filters.monument_type);
     if (filters.urgence_level !== "All") params.append("urgence_level", filters.urgence_level.toLowerCase());
     if (filters.current_status !== "All") params.append("current_status", filters.current_status.toLowerCase().replace(/\s+/g, "_"));
+    params.set("page_size", "10");
+    if (filters.expertise !== "All") params.append("expertise", filters.expertise);
 
     return `${API_URL}/api/posts/monuments-danger/?${params.toString()}`;
   };
 
-  const fetchAlerts = async (url: string) => {
+  const isDefaultAlertsFeed = !searchQuery.trim() && Object.values(activeFilters).every((value) => value === "All");
+  const alertsFeedQuery = usePosts<ApiPost>("monuments", {
+    enabled: isDefaultAlertsFeed,
+    pageSize: 10,
+    endpoint: constructUrl(activeFilters, ""),
+    prefetchNextPage: true,
+    prefetchPages: 5,
+  });
+
+  const fetchAlerts = async (url: string, reset = false) => {
     const token = getAuthToken();
     if (!token) {
       console.warn("No auth token found, skipping fetch.");
-      // Option: router.push("/login") if login is mandatory
       return;
     }
+
+    if (loading || !url) return;
 
     setLoading(true);
     try {
@@ -2916,7 +3056,6 @@ export default function MonumentsInDangerPage() {
       });
 
       if (res.status === 401) {
-        // Token might be expired
         localStorage.removeItem("accessToken");
         router.push("/login");
         return;
@@ -2924,10 +3063,18 @@ export default function MonumentsInDangerPage() {
 
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
-      const results = (data.results || data.data || data).map((p: any) =>
-        normalizeApiPost(p)
-      );
-      setPosts(results);
+      const results = (data.results || data.data || data || []).map((p: any, i: number) => ({
+        ...normalizeApiPost(p),
+        _key: (reset ? 0 : posts.length) + i
+      }));
+
+      setPosts(prev => {
+        if (reset) return results;
+        const existingIds = new Set(prev.map(p => p.id));
+        const uniqueNew = results.filter((p: ApiPost) => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
+      setNextUrl(data.next || null);
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
@@ -2935,41 +3082,35 @@ export default function MonumentsInDangerPage() {
     }
   };
 
+  useEffect(() => {
+    if (!isDefaultAlertsFeed) return;
+    setPosts(alertsFeedQuery.posts.map(normalizeApiPost));
+    setLoading(alertsFeedQuery.isFetchingNextPage);
+  }, [
+    isDefaultAlertsFeed,
+    alertsFeedQuery.posts,
+    alertsFeedQuery.isFetchingNextPage,
+  ]);
+
   // Immediate effect for filter changes
   useEffect(() => {
+    if (isDefaultAlertsFeed) return;
     fetchAlerts(constructUrl(activeFilters, searchQuery));
-  }, [activeFilters]);
+  }, [activeFilters, isDefaultAlertsFeed]);
 
   // Debounced search effect
   useEffect(() => {
+    if (isDefaultAlertsFeed) return;
     const timer = setTimeout(() => {
-      fetchAlerts(constructUrl(activeFilters, searchQuery));
+      fetchAlerts(constructUrl(activeFilters, searchQuery), true);
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, isDefaultAlertsFeed]);
 
   useEffect(() => {
-    const fetchCriticalAlerts = async () => {
-      const token = getAuthToken();
-      if (!token) return;
-
-      try {
-        const res = await fetch(`${API_URL}/api/posts/critical/`, {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const results = (data.results || data.data || data).map((p: any) =>
-            normalizeApiPost(p)
-          );
-          setCriticalPosts(results);
-        }
-      } catch (err) {
-        console.error("Fetch critical alerts error:", err);
-      }
-    };
-    fetchCriticalAlerts();
-  }, []);
+    if (!criticalAlertsQuery.data) return;
+    setCriticalPosts(unwrapCriticalAlerts(criticalAlertsQuery.data).map(normalizeApiPost));
+  }, [criticalAlertsQuery.data]);
 
   const handleApplyFilters = (filters: typeof activeFilters) => {
     setActiveFilters(filters);
@@ -2977,7 +3118,7 @@ export default function MonumentsInDangerPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchAlerts(constructUrl(activeFilters, searchQuery));
+    fetchAlerts(constructUrl(activeFilters, searchQuery), true);
   };
 
   return (
@@ -3022,25 +3163,34 @@ export default function MonumentsInDangerPage() {
                   </button>
                 </div>
                 <MobileMonumentsStrip posts={criticalPosts} />
+                {alertsFeedQuery.isInitialLoading && isDefaultAlertsFeed && posts.length === 0 && (
+                  <PostsSkeletonList count={3} />
+                )}
                 {posts.length > 0 ? (
-                  posts.map((post) => (
+                  posts.map((post, index) => (
                     <PostCard
-                      key={post.id}
+                      key={`${post.id}-${index}`}
                       post={post}
                       interaction={getInteraction(post)}
-                      onInteractionChange={(upd) => {
-                        const current = getInteraction(post);
-                        if (upd.gemmed !== undefined) handleToggleGem(post.id, current.gemmed, current.gemsCount);
-                        else if (upd.saved !== undefined) handleToggleSave(post.id, current.saved);
-                        else updateInteraction(post.id, upd);
-                      }}
+                      onInteractionChange={(upd) => updateInteraction(post.id, upd)}
                       onMobilizationClick={() => {
                         setMobilizationPost(post);
                         setIsMobilizationOpen(true);
                       }}
-                      onHistoryClick={() => { setSelectedPost(post); setSelectedPostTab("history"); }}
-                      onCommentClick={() => { setSelectedPost(post); setSelectedPostTab("comments"); }}
+                      onHistoryClick={() => {
+                        setSelectedPost(post);
+                        setSelectedPostTab("history");
+                      }}
+                      onCommentClick={() => {
+                        setSelectedPost(post);
+                        setSelectedPostTab("comments");
+                      }}
+                      onAnnotationClick={() => {
+                        setSelectedPost(post);
+                        setSelectedPostTab("annotations");
+                      }}
                       onDelete={handleDeletePost}
+                      onReport={openReportModal}
                     />
                   ))
                 ) : !loading && (
@@ -3058,6 +3208,7 @@ export default function MonumentsInDangerPage() {
                     </div>
                   )
                 }
+                <div ref={sentinelRef} className="h-4" />
               </main>
               <RightSidebar
                 onAction={() => router.push("/add-event")}
@@ -3075,22 +3226,23 @@ export default function MonumentsInDangerPage() {
           post={selectedPost}
           initialTab={selectedPostTab}
           interaction={getInteraction(selectedPost)}
-          onInteractionChange={(upd) => {
-            const current = getInteraction(selectedPost);
-            if (upd.gemmed !== undefined) handleToggleGem(selectedPost.id, current.gemmed, current.gemsCount);
-            else if (upd.saved !== undefined) handleToggleSave(selectedPost.id, current.saved);
-            else updateInteraction(selectedPost.id, upd);
-          }}
+          onInteractionChange={(upd) => updateInteraction(selectedPost.id, upd)}
           onClose={() => setSelectedPost(null)}
           onMobilizationClick={() => {
-            const currentPost = selectedPost;
-            setSelectedPost(null);
-            setMobilizationPost(currentPost);
+            setMobilizationPost(selectedPost);
             setIsMobilizationOpen(true);
           }}
           onDelete={handleDeletePost}
+          onReport={openReportModal}
         />
       )}
+
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleReportSubmit}
+        targetType={reportModal.targetType}
+      />
 
       {isMobilizationOpen && (
         <MobilizationModal
@@ -3099,7 +3251,7 @@ export default function MonumentsInDangerPage() {
             setIsMobilizationOpen(false);
             setMobilizationPost(null);
           }}
-          onSuccess={() => fetchAlerts(constructUrl(activeFilters, searchQuery))}
+          onSuccess={() => fetchAlerts(constructUrl(activeFilters, searchQuery), true)}
         />
       )}
       <HistoryModal

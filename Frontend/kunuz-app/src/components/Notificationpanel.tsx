@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -29,11 +29,35 @@ type NotificationResponse = {
   data?: {
     results?: NotificationItem[];
     unread_count?: number;
+    next?: string | null;
   };
   unread_count?: number;
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
+const NOTIFICATIONS_CACHE_KEY = "kunuz.notifications.cache.v1";
+const NOTIFICATIONS_LIMIT = 40;
+
+function readCachedNotifications(): NotificationItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(NOTIFICATIONS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as { items?: NotificationItem[] };
+    return Array.isArray(parsed.items) ? parsed.items : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCachedNotifications(items: NotificationItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify({ items, cachedAt: Date.now() }));
+  } catch {
+    // Storage can be unavailable; the panel still works without cache.
+  }
+}
 
 function getAuthToken(): string {
   if (typeof window === "undefined") return "";
@@ -42,7 +66,7 @@ function getAuthToken(): string {
 
 function groupByRecency(items: NotificationItem[]) {
   const today: NotificationItem[] = [];
-  const thisWeek: NotificationItem[] = [];
+  const thisMonth: NotificationItem[] = [];
   const older: NotificationItem[] = [];
 
   const now = Date.now();
@@ -50,32 +74,31 @@ function groupByRecency(items: NotificationItem[]) {
     const createdAt = new Date(item.created_at).getTime();
     const diffDays = Math.max(0, Math.floor((now - createdAt) / (1000 * 60 * 60 * 24)));
     if (diffDays === 0) today.push(item);
-    else if (diffDays < 7) thisWeek.push(item);
+    else if (diffDays < 31) thisMonth.push(item);
     else older.push(item);
   });
 
-  return { today, thisWeek, older };
+  return { today, thisMonth, older };
 }
 
 function Avatar({ item }: { item: NotificationItem }) {
   const initials = (item.actor_display_name || item.actor_username || "S").slice(0, 1).toUpperCase();
   return (
-    <div className="relative h-12 w-12 overflow-hidden rounded-full border border-[#D4C4AE] bg-[#EFE4D2] shadow-sm">
+    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#D1BFA5] bg-[#EFE4D2] shadow-[0_2px_5px_rgba(45,28,16,0.18)]">
       {item.actor_profile_picture ? (
         <img src={item.actor_profile_picture} alt={item.actor_display_name} className="h-full w-full object-cover" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-[#5E432C]">{initials}</div>
+        <div className="flex h-full w-full items-center justify-center text-[13px] font-bold text-[#5E432C]">{initials}</div>
       )}
-      {!item.is_read && <span className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-[#FFF8E2] bg-[#C76B2E]" />}
+      {item.is_read === false && <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full border border-[#FFF8E2] bg-[#C76B2E]" />}
     </div>
   );
 }
 
-function SectionTitle({ title, count }: { title: string; count: number }) {
+function SectionTitle({ title, withDivider = false }: { title: string; withDivider?: boolean }) {
   return (
-    <div className="flex items-center justify-between pt-4">
-      <p className="m-0 text-[12px] font-bold uppercase tracking-[0.18em] text-[#8A6A4B]">{title}</p>
-      <span className="text-[11px] text-[#A88767]">{count}</span>
+    <div className={withDivider ? "border-t border-[#9D8564] pt-3" : "pt-1"}>
+      <p className="m-0 text-[15px] font-bold text-[#3A2A1D]">{title}</p>
     </div>
   );
 }
@@ -87,10 +110,10 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
   someoneLabel: string;
 }) {
   const [responding, setResponding] = useState(false);
-   const [responded, setResponded] = useState(() => {
-  if (typeof window === "undefined") return false;
-  return localStorage.getItem(`notification_responded_${item.id}`) === "true";
-});
+  const [responded, setResponded] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(`notification_responded_${item.id}`) === "true";
+  });
 
   const handleRespond = async (status: "accepted" | "refused", e: React.MouseEvent) => {
     e.stopPropagation();
@@ -117,6 +140,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
 
   const isInvite = item.event_type === "group_invite_received";
   const isJoinRequest = item.event_type === "group_join_request";
+  const label = item.event_label || item.message;
 
   // ── changed from <button> to <div> to avoid nested <button> hydration error ──
   return (
@@ -125,16 +149,15 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
       tabIndex={0}
       onClick={() => onRead(item.id)}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onRead(item.id); }}
-      className={`flex w-full items-start gap-3 rounded-2xl border px-4 py-3 text-left transition-all cursor-pointer ${item.is_read ? "border-[#E4D8C8] bg-white/70" : "border-[#D8C1A3] bg-[#FFF8E2] shadow-[0_6px_18px_rgba(67,40,23,0.06)]"}`}
+      className={`flex w-full items-start gap-3.5 rounded-xl px-0 py-2.5 text-left transition-all cursor-pointer hover:bg-[#F3E9D0]/80 ${item.is_read === true ? "opacity-85" : "opacity-100"}`}
     >
       <Avatar item={item} />
       <div className="min-w-0 flex-1">
-        <p className="m-0 text-[14px] leading-6 text-[#2F2319]">
+        <p className="m-0 text-[14px] leading-[1.55] text-[#5D5144]">
           <span className="font-bold text-[#432817]">{item.actor_display_name || item.actor_username || someoneLabel}</span>{" "}
-          <span>{item.event_label || item.message}</span>
+          <span>{label}</span>
         </p>
-        <div className="mt-1 flex items-center gap-2 text-[12px] text-[#8A6A4B]">
-          <span className="rounded-full bg-[#F3E6D3] px-2 py-0.5 font-medium">{item.event_type.replaceAll("_", " ")}</span>
+        <div className="mt-1 flex items-center gap-2 text-[11px] text-[#82715E]">
           <span>{relativeTimeLabel}</span>
         </div>
 
@@ -145,7 +168,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
               type="button"
               disabled={responding}
               onClick={(e) => handleRespond("accepted", e)}
-              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              className="rounded-full px-3 py-1 text-[11px] font-bold transition-all"
               style={{ backgroundColor: "#432817", color: "#FFF8E2", border: "none", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
             >
               Accept
@@ -154,7 +177,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
               type="button"
               disabled={responding}
               onClick={(e) => handleRespond("refused", e)}
-              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              className="rounded-full px-3 py-1 text-[11px] font-bold transition-all"
               style={{ backgroundColor: "transparent", color: "#432817", border: "1px solid #D8C1A3", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
             >
               Decline
@@ -189,7 +212,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
                 } catch { }
                 finally { setResponding(false); }
               }}
-              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              className="rounded-full px-3 py-1 text-[11px] font-bold transition-all"
               style={{ backgroundColor: "#432817", color: "#FFF8E2", border: "none", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
             >
               Approve
@@ -218,7 +241,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
                 } catch { }
                 finally { setResponding(false); }
               }}
-              className="rounded-full px-4 py-1.5 text-[12px] font-bold transition-all"
+              className="rounded-full px-3 py-1 text-[11px] font-bold transition-all"
               style={{ backgroundColor: "transparent", color: "#432817", border: "1px solid #D8C1A3", cursor: responding ? "not-allowed" : "pointer", opacity: responding ? 0.6 : 1 }}
             >
               Reject
@@ -227,7 +250,7 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
         )}
 
         {(isInvite || isJoinRequest) && responded && (
-          <p className="mt-2 text-[12px] font-semibold" style={{ color: "#8B6914" }}>
+          <p className="mt-2 text-[11px] font-semibold" style={{ color: "#8B6914" }}>
             Response sent ✓
           </p>
         )}
@@ -245,6 +268,9 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const rtf = useMemo(() => new Intl.RelativeTimeFormat(locale, { numeric: "auto" }), [locale]);
 
@@ -259,52 +285,54 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     return rtf.format(Math.round(diffSeconds / 86400), "day");
   }, [rtf, t]);
   const navigateFromNotification = async (notification: NotificationItem) => {
-  const { event_type, target_id } = notification;
+    const { event_type, target_id } = notification;
 
-  if (event_type === "gem_on_post" || event_type === "repost_on_post") {
-  // Scroll to post in feed, no modal
-  sessionStorage.setItem("highlight_post_id", target_id);
-  router.push("/home-page");
+    if (event_type === "gem_on_post" || event_type === "repost_on_post") {
+      // Scroll to post in feed, no modal
+      sessionStorage.setItem("highlight_post_id", target_id);
+      router.replace("/home-page");
 
-  } else if (event_type === "comment_on_post") {
-  // Open post modal with comments
-  sessionStorage.setItem("open_post_id", target_id);
-  sessionStorage.setItem("open_post_tab", "comments");
-  router.push("/home-page");
+    } else if (event_type === "comment_on_post") {
+      // Open post modal with comments
+      sessionStorage.setItem("open_post_id", target_id);
+      sessionStorage.setItem("open_post_tab", "comments");
+      router.replace("/home-page");
 
- } else if (event_type === "reply_to_comment" || event_type === "gem_on_comment") {
-    try {
-      const res = await fetch(`${API_URL}/api/posts/comments/${target_id}/`, {
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const commentData = data?.data ?? data;
-      const postId = typeof commentData?.post === "string"
-        ? commentData.post
-        : String(commentData?.post?.id ?? commentData?.post?._id ?? "");
-      if (postId) {
-        sessionStorage.setItem("open_post_id", postId);
-        sessionStorage.setItem("open_post_tab", "comments");
-        router.push("/home-page");
+    } else if (event_type === "reply_to_comment" || event_type === "gem_on_comment") {
+      try {
+        const res = await fetch(`${API_URL}/api/posts/comments/${target_id}/`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const commentData = data?.data ?? data;
+        const postId = typeof commentData?.post === "string"
+          ? commentData.post
+          : String(commentData?.post?.id ?? commentData?.post?._id ?? "");
+        if (postId) {
+          sessionStorage.setItem("open_post_id", postId);
+          sessionStorage.setItem("open_post_tab", "comments");
+          router.replace("/home-page");
+        }
+      } catch { }
+
+    } else if (
+      event_type === "group_join_request" ||
+      event_type === "group_join_request_approved" ||
+      event_type === "group_join_request_rejected" ||
+      event_type === "group_invite_received" ||
+      event_type === "group_chat_message"
+    ) {
+      if (event_type === "group_chat_message") {
+        router.replace(`/group/${target_id}?tab=chat`);
+      } else {
+        router.replace(`/group/${target_id}`);
       }
-    } catch { }
-
-  } else if (
-    event_type === "group_join_request" ||
-    event_type === "group_join_request_approved" ||
-    event_type === "group_join_request_rejected" ||
-    event_type === "group_invite_received"
-  ) {
-    router.push(`/group/${target_id}`);
-  } else if (event_type === "group_chat_message" || event_type === "group_chat_message_reported") {
-    router.push(`/group/${target_id}?tab=chat`);
-  }
-  // ← NO onClose() call anywhere — this was causing the logout
-};
+    }
+  };
 
   const buildHeaders = () => {
-  
+
     const token = getAuthToken();
     const nextHeaders = new Headers();
     if (token) {
@@ -313,7 +341,8 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     return nextHeaders;
   };
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (url: string | null = `${API_URL}/api/notifications/`, isInitial = true) => {
+    if (!url) return;
     const token = getAuthToken();
     if (!token) {
       setNotifications([]);
@@ -322,27 +351,59 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
       return;
     }
 
-    setRefreshing(true);
+    if (isInitial) setRefreshing(true);
+    else setLoadingMore(true);
+
     try {
-      const [listRes, unreadRes] = await Promise.all([
-        fetch(`${API_URL}/api/notifications/`, { headers: buildHeaders() }),
-        fetch(`${API_URL}/api/notifications/unread-count/`, { headers: buildHeaders() }),
-      ]);
+      const [listRes, unreadRes] = await Promise.all(
+        isInitial
+          ? [
+            fetch(url, { headers: buildHeaders() }),
+            fetch(`${API_URL}/api/notifications/unread-count/`, { headers: buildHeaders() }),
+          ]
+          : [
+            fetch(url, { headers: buildHeaders() }),
+            Promise.resolve(null)
+          ]
+      );
 
       const listJson = (await listRes.json().catch(() => null)) as NotificationResponse | null;
-      const unreadJson = (await unreadRes.json().catch(() => null)) as NotificationResponse | null;
+      const unreadJson = unreadRes ? (await unreadRes.json().catch(() => null)) as NotificationResponse | null : null;
 
       const nextItems = listJson?.data?.results ?? [];
-      setNotifications(nextItems);
-      const rawCount = unreadJson?.data?.unread_count !== undefined ? unreadJson.data.unread_count : (unreadJson?.unread_count !== undefined ? unreadJson.unread_count : 0);
-      const count = Number(rawCount);
-      setUnreadCount(count);
-      window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: count }));
+      setNotifications(prev => {
+        if (isInitial) return nextItems;
+        const existingIds = new Set(prev.map((n: NotificationItem) => n.id));
+        const uniqueItems = nextItems.filter((n: NotificationItem) => !existingIds.has(n.id));
+        return [...prev, ...uniqueItems];
+      });
+      setNextUrl(listJson?.data?.next ?? null);
+
+      if (isInitial) {
+        const rawCount = unreadJson?.data?.unread_count !== undefined ? unreadJson.data.unread_count : (unreadJson?.unread_count !== undefined ? unreadJson.unread_count : 0);
+        const count = Number(rawCount);
+        setUnreadCount(count);
+        window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: count }));
+      }
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && nextUrl) {
+          void fetchNotifications(nextUrl, false);
+        }
+      },
+      { threshold: 1.0 }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [nextUrl, loadingMore]);
 
   useEffect(() => {
     const initialLoad = window.setTimeout(() => {
@@ -365,12 +426,17 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-const markAsRead = async (id: string) => {
+  const markAsRead = async (id: string) => {
     const token = getAuthToken();
     if (!token) return;
 
     const notification = notifications.find(n => n.id === id);
-    setNotifications((current) => current.map((item) => (item.id === id ? { ...item, is_read: true } : item)));
+    setNotifications((current) => {
+      const nextItems = current.map((item) => (item.id === id ? { ...item, is_read: true } : item));
+      writeCachedNotifications(nextItems);
+      window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: nextItems.filter((item) => item.is_read === false).length }));
+      return nextItems;
+    });
     try {
       await fetch(`${API_URL}/api/notifications/${id}/read/`, {
         method: "PATCH",
@@ -389,19 +455,17 @@ const markAsRead = async (id: string) => {
   const markAllRead = async () => {
     const token = getAuthToken();
     if (!token) return;
-
-    // Snappy UI: set local count 0 immediately
-    setUnreadCount(0);
-    window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: 0 }));
-
-    await fetch(`${API_URL}/api/notifications/read-all/`, {
-      method: "PATCH",
-      headers: buildHeaders(),
-    });
-    await fetchNotifications();
+    setNotifications((current) => current.map(item => ({ ...item, is_read: true })));
+    try {
+      await fetch(`${API_URL}/api/notifications/read-all/`, {
+        method: "PATCH",
+        headers: buildHeaders(),
+      });
+      await fetchNotifications();
+    } catch { }
   };
 
-  const { today, thisWeek, older } = groupByRecency(notifications);
+  const { today, thisMonth, older } = groupByRecency(notifications);
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-[2px]">
@@ -416,7 +480,7 @@ const markAsRead = async (id: string) => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={fetchNotifications}
+              onClick={() => fetchNotifications()}
               className="inline-flex h-10 items-center gap-2 rounded-full border border-[#D2B893] bg-white px-4 text-[13px] font-semibold text-[#432817] transition hover:bg-[#FAF1DC]"
             >
               {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
@@ -440,25 +504,25 @@ const markAsRead = async (id: string) => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto pr-1">
           {loading ? (
-            <div className="flex h-full items-center justify-center text-[#8B7355]">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t("loading")}
+            <div className="flex h-full items-center justify-center text-[12px] text-[#8B7355]">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("loading")}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-[#D7C6AF] bg-white/50 px-8 py-16 text-center text-[#7F654B]">
-              <Bell className="mb-3 h-10 w-10 text-[#C7A981]" />
-              <p className="m-0 text-lg font-semibold text-[#432817]">{t("empty.title")}</p>
-              <p className="mt-2 max-w-md text-sm leading-6 text-[#84694E]">
+            <div className="flex h-full flex-col items-center justify-center px-3 py-16 text-center text-[#7F654B]">
+              <Bell className="mb-3 h-8 w-8 text-[#C7A981]" />
+              <p className="m-0 text-[14px] font-semibold text-[#432817]">{t("empty.title")}</p>
+              <p className="mt-2 text-[11px] leading-5 text-[#84694E]">
                 {t("empty.description")}
               </p>
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               {today.length > 0 && (
-                <section className="space-y-3">
-                  <SectionTitle title={t("sections.today")} count={today.length} />
-                  <div className="space-y-3">
+                <section className="space-y-2">
+                  <SectionTitle title={t("sections.today")} />
+                  <div className="space-y-1">
                     {today.map((item) => (
                       <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
                     ))}
@@ -466,11 +530,11 @@ const markAsRead = async (id: string) => {
                 </section>
               )}
 
-              {thisWeek.length > 0 && (
-                <section className="space-y-3">
-                  <SectionTitle title={t("sections.thisWeek")} count={thisWeek.length} />
-                  <div className="space-y-3">
-                    {thisWeek.map((item) => (
+              {thisMonth.length > 0 && (
+                <section className="space-y-2">
+                  <SectionTitle title={t("sections.thisMonth")} withDivider />
+                  <div className="space-y-1">
+                    {thisMonth.map((item) => (
                       <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
                     ))}
                   </div>
@@ -478,15 +542,17 @@ const markAsRead = async (id: string) => {
               )}
 
               {older.length > 0 && (
-                <section className="space-y-3 pb-6">
-                  <SectionTitle title={t("sections.earlier")} count={older.length} />
-                  <div className="space-y-3">
+                <section className="space-y-2 pb-6">
+                  <SectionTitle title={t("sections.earlier")} withDivider />
+                  <div className="space-y-1">
                     {older.map((item) => (
                       <NotificationRow key={item.id} item={item} onRead={markAsRead} relativeTimeLabel={formatRelativeTime(item.created_at)} someoneLabel={t("someone")} />
                     ))}
                   </div>
                 </section>
               )}
+              {loadingMore && <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-[#8B7355]" /></div>}
+              <div ref={sentinelRef} className="h-4" />
             </div>
           )}
         </div>

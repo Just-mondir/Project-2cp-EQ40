@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -23,6 +23,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [signUpHovered, setSignUpHovered] = useState(false);
   const [signUpMobileHovered, setSignUpMobileHovered] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
   const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -37,7 +38,7 @@ export default function Header() {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 40);
     };
@@ -45,25 +46,40 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMobileOpen(false);
+      }
+    };
+
+    if (mobileOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [mobileOpen]);
+
   return (
     <header
       className="fixed inset-x-0 top-0 z-50 transition-colors duration-300"
       style={{
-        backgroundColor: scrolled ? "var(--background)" : "transparent",
+        backgroundColor: scrolled ? "#FFF8E2" : "transparent",
         boxShadow: scrolled ? "0 4px 18px rgba(44,26,14,0.07)" : "none",
       }}
     >
       {/* ── Main bar ── */}
       <div
-        className="flex w-full items-center justify-between px-3 sm:px-4 md:px-6 lg:px-12"
-        style={{ height: "clamp(48px, 8vh, 64px)" }}
+        className="flex w-full items-center justify-between pl-0 pr-4 sm:pr-6 lg:pr-12"
+        style={{ height: "52px" }}
       >
         {/* Logo */}
         <Link
           href="/#hero"
           onClick={handleLogoClick}
           className="flex flex-shrink-0 items-end"
-          style={{ marginBottom: "clamp(-8px, -1.5vh, -14px)", marginLeft: "clamp(4px, 2vw, 10px)" }}
+          style={{ marginBottom: "-14px", marginLeft: "10px" }}
         >
           <Image
             src="/kunuz-logo.svg"
@@ -71,7 +87,7 @@ export default function Header() {
             width={144}
             height={99}
             style={{
-              height: "clamp(48px, 7vh, 76px)",
+              height: "76px",
               width: "auto",
               filter: scrolled
                 ? "none"
@@ -82,12 +98,12 @@ export default function Header() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex flex-1 items-center justify-center gap-2 lg:gap-4 xl:gap-6">
+        <nav className="hidden md:flex flex-1 items-center justify-center gap-4 lg:gap-8 xl:gap-13">
           {NAV_LINKS.map((label) => (
             <Link
               key={label}
               href={NAV_HREFS[label]}
-              className="group relative whitespace-nowrap text-[clamp(12px,1.8vw,20px)] font-bold transition-colors duration-200"
+              className="group relative whitespace-nowrap text-[14px] md:text-[16px] lg:text-[19px] xl:text-[23px] font-bold transition-colors duration-200"
               style={{
                 fontFamily: "var(--font-lato)",
                 color: scrolled ? "var(--brown)" : "var(--cream)",
@@ -105,7 +121,7 @@ export default function Header() {
         {/* Sign Up — desktop */}
         <Link
           href="/sign-up"
-          className="hidden cursor-pointer md:flex flex-shrink-0 rounded-full border-2 px-clamp px-[clamp(12px,2vw,24px)] py-[clamp(6px,1vh,10px)] text-[clamp(11px,1.5vw,16px)] font-bold transition-all duration-300"
+          className="hidden cursor-pointer md:flex flex-shrink-0 items-center justify-center rounded-full border-2 px-3 lg:px-5 xl:px-6 py-1 lg:py-1.5 text-[12px] md:text-[13px] lg:text-[15px] font-bold transition-all duration-300"
           style={{
             borderColor: scrolled ? "var(--brown)" : "var(--cream)",
             color: scrolled ? "var(--brown)" : "var(--cream)",
@@ -117,80 +133,90 @@ export default function Header() {
         >
           Sign Up
         </Link>
-
         {/* Hamburger + Dropdown — mobile */}
-        <div
-          className="md:hidden relative"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
+        <div className="md:hidden relative" ref={menuRef}>
           {/* Hamburger */}
           <button
             type="button"
-            className="flex flex-col justify-center gap-[4px] p-2 cursor-pointer"
+            className="flex flex-col justify-center gap-[5px] p-2 cursor-pointer"
             aria-label="Toggle menu"
+            onClick={() => setMobileOpen(!mobileOpen)}
           >
             <span
-              className="block h-[2.5px] w-5 sm:w-6 rounded transition-all duration-300"
+              className="block h-[1.5px] w-6 rounded transition-all duration-300"
               style={{
-                backgroundColor: scrolled ? "var(--brown)" : "var(--cream)",
-                transform: mobileOpen ? "translateY(6px) rotate(45deg)" : "none",
+                backgroundColor: (scrolled || mobileOpen) ? "var(--brown)" : "var(--cream)",
+                transform: mobileOpen ? "translateY(7px) rotate(45deg)" : "none",
               }}
             />
             <span
-              className="block h-[2.5px] w-5 sm:w-6 rounded transition-all duration-200"
+              className="block h-[1.5px] w-6 rounded transition-all duration-200"
               style={{
-                backgroundColor: scrolled ? "var(--brown)" : "var(--cream)",
+                backgroundColor: (scrolled || mobileOpen) ? "var(--brown)" : "var(--cream)",
                 opacity: mobileOpen ? 0 : 1,
               }}
             />
             <span
-              className="block h-[2.5px] w-5 sm:w-6 rounded transition-all duration-300"
+              className="block h-[1.5px] w-6 rounded transition-all duration-300"
               style={{
-                backgroundColor: scrolled ? "var(--brown)" : "var(--cream)",
-                transform: mobileOpen ? "translateY(-6px) rotate(-45deg)" : "none",
+                backgroundColor: (scrolled || mobileOpen) ? "var(--brown)" : "var(--cream)",
+                transform: mobileOpen ? "translateY(-7px) rotate(-45deg)" : "none",
               }}
             />
           </button>
 
           {/* Dropdown */}
           <div
-            className="absolute right-0 top-full overflow-hidden transition-all duration-300 rounded-2xl"
+            className={`absolute right-0 top-[125%] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] rounded-[1.75rem]`}
             style={{
-              backgroundColor: "var(--panel-bg)",
-              maxHeight: mobileOpen ? "auto" : "0px",
+              maxHeight: mobileOpen ? "520px" : "0px",
               opacity: mobileOpen ? 1 : 0,
-              boxShadow: mobileOpen ? "0 8px 24px rgba(0,0,0,0.10)" : "none",
-              minWidth: "180px",
+              transform: mobileOpen ? "translateY(0) scale(1)" : "translateY(-10px) scale(0.98)",
+              boxShadow: mobileOpen ? "0 20px 40px -10px rgba(44, 26, 14, 0.2)" : "none",
+              minWidth: "230px",
+              backgroundColor: "rgba(255, 252, 240, 0.94)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(224, 213, 197, 0.25)",
+              transformOrigin: "top right",
             }}
           >
-            <nav className="flex flex-col gap-0 px-4 py-3 sm:px-6">
-              {NAV_LINKS.map((label) => (
+            <nav className="flex flex-col gap-0.5 px-2 py-3">
+              {NAV_LINKS.map((label, index) => (
                 <Link
                   key={label}
                   href={NAV_HREFS[label]}
-                  className="border-b py-2.5 sm:py-3 text-[14px] sm:text-[16px] font-medium transition-colors duration-200 text-[var(--brown)] hover:text-[#8B6343]"
+                  className="group flex items-center justify-between rounded-2xl px-4 py-3 text-[16px] font-bold transition-all duration-300 hover:bg-[#E0D5C5]/30"
                   style={{
                     fontFamily: "var(--font-lato)",
-                    borderColor: "rgba(59,42,26,0.10)",
+                    color: "var(--brown)",
+                    transitionDelay: mobileOpen ? `${index * 40}ms` : "0ms",
+                    transform: mobileOpen ? "translateX(0)" : "translateX(15px)",
+                    opacity: mobileOpen ? 1 : 0,
                   }}
                   onClick={() => setMobileOpen(false)}
                 >
-                  {label}
+                  <span className="relative">
+                    {label}
+                  </span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--brown)] opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0" />
                 </Link>
               ))}
+
+              <div className="mx-4 my-2 h-[1px]" style={{ backgroundColor: "rgba(59, 42, 26, 0.05)" }} />
+
               <Link
                 href="/sign-up"
-                className="mt-2 sm:mt-3 w-fit rounded-full border-2 px-4 sm:px-6 py-1.5 sm:py-2 text-[13px] sm:text-[15px] font-bold transition-all duration-300 cursor-pointer inline-block"
+                className="mx-1.5 rounded-[1.25rem] py-3.5 text-[15px] font-black transition-all duration-300 text-center uppercase tracking-widest hover:brightness-110 active:scale-[0.98]"
                 style={{
-                  borderColor: "var(--brown)",
-                  color: "var(--brown)",
+                  backgroundColor: "var(--brown)",
+                  color: "#FFF8E2",
                   fontFamily: "var(--font-lato)",
-                  backgroundColor: signUpMobileHovered
-                    ? "rgba(255,255,255,0.2)"
-                    : "transparent",
+                  boxShadow: "0 8px 16px -4px rgba(59, 42, 26, 0.3)",
+                  transform: mobileOpen ? "translateY(0)" : "translateY(15px)",
+                  opacity: mobileOpen ? 1 : 0,
+                  transitionDelay: mobileOpen ? `${NAV_LINKS.length * 40 + 50}ms` : "0ms",
                 }}
-                onMouseEnter={() => setSignUpMobileHovered(true)}
-                onMouseLeave={() => setSignUpMobileHovered(false)}
                 onClick={() => setMobileOpen(false)}
               >
                 Sign Up

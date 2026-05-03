@@ -38,6 +38,7 @@ from .serializers import (
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     def post(self, request: Request) -> Response:
         serializer = RegisterSerializer(data=request.data)
@@ -53,6 +54,7 @@ class RegisterView(APIView):
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "otp"
 
     def post(self, request: Request) -> Response:
         serializer = VerifyEmailSerializer(data=request.data)
@@ -64,6 +66,7 @@ class VerifyEmailView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
@@ -75,6 +78,7 @@ class LoginView(APIView):
 
 class VerifyLoginOTPView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "otp"
 
     def post(self, request: Request) -> Response:
         serializer = VerifyLoginOTPSerializer(data=request.data)
@@ -86,6 +90,7 @@ class VerifyLoginOTPView(APIView):
 
 class RefreshTokenView(TokenRefreshView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         response = super().post(request, *args, **kwargs)
@@ -172,6 +177,7 @@ class SearchUserView(APIView):
 class ProfilePictureUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+    throttle_scope = "upload"
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         image_file = request.FILES.get("profile_picture")
@@ -192,6 +198,7 @@ class ProfilePictureUploadView(APIView):
 
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "password_reset"
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         serializer = ForgotPasswordSerializer(data=request.data)
@@ -203,6 +210,7 @@ class ForgotPasswordView(APIView):
 
 class VerifyResetOTPView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "otp"
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         serializer = VerifyResetOTPSerializer(data=request.data)
@@ -213,6 +221,7 @@ class VerifyResetOTPView(APIView):
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "password_reset"
 
     def post(self, request: Request, *args, **kwargs) -> Response:
         serializer = ResetPasswordSerializer(data=request.data)
@@ -225,6 +234,7 @@ class ResetPasswordView(APIView):
 class GoogleAuthView(APIView):
     """Exchange a Google id_token for internal JWT tokens."""
     permission_classes = [AllowAny]
+    throttle_scope = "auth"
 
     def post(self, request: Request) -> Response:
         serializer = GoogleAuthSerializer(data=request.data)

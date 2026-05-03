@@ -146,16 +146,16 @@ export default function AddPostPage() {
     <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
       <LeftSidebar activePage="add-post" />
 
-      <div className="flex flex-col flex-1 overflow-hidden ml-0 md:ml-[68px]">
-        <div className="px-4 md:px-8 pt-4 md:pt-6 pb-2 flex-shrink-0">
+      <div className="flex flex-col flex-1 overflow-y-auto ml-0 md:ml-[80px] pb-24 md:pb-0">
+        <div className="px-8 pt-6 pb-2 flex-shrink-0">
           <BackButton />
         </div>
 
-        <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden px-4 md:px-8 pb-32 lg:pb-8 gap-6 feed-scroll">
-          <div className="w-full lg:w-[300px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-visible px-4 md:px-8 pb-8 gap-6">
+          <div className="w-full lg:w-[300px] flex flex-col flex-shrink-0">
             <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
               <h1
-                className="post-page-title"
+                className="text-2xl md:text-3xl font-extrabold"
                 style={{
                   fontFamily: "var(--font-lato), 'Lato', sans-serif",
                   fontSize: "30px",
@@ -182,11 +182,11 @@ export default function AddPostPage() {
             </div>
 
             <div
-              className="h-[300px] lg:flex-1 overflow-hidden"
+              className="flex-1"
               style={{
                 backgroundColor: "#F7F5EF",
                 borderRadius: 0,
-                marginTop: "10px",
+                marginTop: "20px",
               }}
             >
               <ImageUploadPanel
@@ -197,7 +197,7 @@ export default function AddPostPage() {
           </div>
 
           <div
-            className="flex-none lg:flex-1 overflow-visible lg:overflow-hidden flex flex-col post-panel-right post-form-panel lg:min-h-0"
+            className="flex-1 min-h-[400px] flex flex-col post-panel-right post-form-panel"
             style={{
               backgroundColor: "#F7F5EF",
               borderRadius: 0,

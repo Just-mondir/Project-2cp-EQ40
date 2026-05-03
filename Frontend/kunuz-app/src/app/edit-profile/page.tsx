@@ -102,37 +102,37 @@ export default function EditProfilePage() {
   };
 
   // ← ADDED: save profile data to backend via PATCH /api/users/me/
-const handleDone = async (formValues: {
-  firstName: string;
-  lastName: string;
-  biography: string;
-  expertise: string;
-  speciality: string;
-}) => {
-  try {
-    const res = await fetch(`${API_URL}/api/users/me/`, {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${getAuthToken()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        display_name: `${formValues.firstName} ${formValues.lastName}`.trim(), // ← fix
-        bio: formValues.biography,
-        expertise: formValues.expertise,
-        speciality: formValues.speciality,
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      console.error("Backend error details:", JSON.stringify(err));
-      return;
+  const handleDone = async (formValues: {
+    firstName: string;
+    lastName: string;
+    biography: string;
+    expertise: string;
+    speciality: string;
+  }) => {
+    try {
+      const res = await fetch(`${API_URL}/api/users/me/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          display_name: `${formValues.firstName} ${formValues.lastName}`.trim(), // ← fix
+          bio: formValues.biography,
+          expertise: formValues.expertise,
+          speciality: formValues.speciality,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        console.error("Backend error details:", JSON.stringify(err));
+        return;
+      }
+      router.back();
+    } catch (err) {
+      console.error("Network error:", err);
     }
-    router.back();
-  } catch (err) {
-    console.error("Network error:", err);
-  }
-};
+  };
 
   return (
     <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
@@ -141,7 +141,7 @@ const handleDone = async (formValues: {
       <LeftSidebar activePage="edit-profile" />
 
       {/* Content area */}
-      <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
+      <div className="flex flex-col flex-1 overflow-y-auto ml-0 md:ml-[80px] pb-24 md:pb-0">
 
         {/* Back button */}
         <div className="px-8 pt-6 pb-2 flex-shrink-0">
@@ -149,18 +149,17 @@ const handleDone = async (formValues: {
         </div>
 
         {/* Two-panel content */}
-        <div className="flex flex-1 overflow-hidden px-8 pb-8 gap-6">
+        <div className="flex flex-col lg:flex-row flex-1 overflow-visible px-4 md:px-8 pb-8 gap-6">
 
           {/* Left panel: Title + Photo Upload */}
-          <div className="w-[300px] flex flex-col flex-shrink-0 overflow-hidden">
+          <div className="w-full lg:w-[300px] flex flex-col flex-shrink-0">
 
             {/* Title */}
-            <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
+            <div className="pb-2 flex-shrink-0" style={{ marginTop: "24px" }}>
               <h1
+                className="text-2xl md:text-3xl font-extrabold"
                 style={{
                   fontFamily: "var(--font-lato), 'Lato', sans-serif",
-                  fontSize: "30px",
-                  fontWeight: 700,
                   color: "#432817",
                   lineHeight: 1.2,
                 }}
@@ -171,15 +170,12 @@ const handleDone = async (formValues: {
 
             {/* Photo Upload */}
             <div
-              className="flex flex-col items-center gap-3 cursor-pointer"
-              style={{ marginTop: "43px" }}
+              className="flex flex-col items-center gap-3 cursor-pointer mt-6"
               onClick={() => fileInputRef.current?.click()}
             >
               <div
-                className="flex items-center justify-center relative"
+                className="flex items-center justify-center relative w-full max-w-[150px] md:max-w-[276px] aspect-square"
                 style={{
-                  width: "276px",
-                  height: "276px",
                   borderRadius: "10px",
                   border: "1px dashed #D6CFC3",
                   backgroundColor: "#FFFFFF",
@@ -237,7 +233,7 @@ const handleDone = async (formValues: {
 
           {/* Right panel: ProfileForm */}
           <div
-            className="flex-1 overflow-hidden flex flex-col post-panel-right post-form-panel"
+            className="flex-1 overflow-hidden flex flex-col post-panel-right post-form-panel min-h-[400px]"
             style={{
               backgroundColor: "#F7F5EF",
               borderRadius: 0,
@@ -258,5 +254,5 @@ const handleDone = async (formValues: {
       </div>
     </div>
   );
-  
+
 }

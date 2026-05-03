@@ -99,7 +99,13 @@ from mongoengine.connection import get_db  # noqa: E402
 
 MONGODB_NAME = env("MONGODB_NAME", default="heritage_db")
 MONGODB_HOST = env("MONGODB_HOST", default="mongodb://localhost:27017")
-mongoengine.connect(db=MONGODB_NAME, host=MONGODB_HOST, tz_aware=True)
+mongoengine.connect(
+    db=MONGODB_NAME, 
+    host=MONGODB_HOST, 
+    tz_aware=True,
+    connectTimeoutMS=30000,
+    serverSelectionTimeoutMS=30000
+)
 
 try:
     users_collection = get_db().get_collection("users")
@@ -150,6 +156,19 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.AllowAny",
     ),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "10000/hour",
+        "user": "10000/hour",
+        "auth": "100/minute",
+        "otp": "20/minute",
+        "password_reset": "20/minute",
+        "upload": "100/hour",
+    },
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardResultsSetPagination",
     "PAGE_SIZE": 20,
     "EXCEPTION_HANDLER": "apps.core.exceptions.custom_exception_handler",
@@ -169,7 +188,7 @@ EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / ".test_emails"))
 BACKEND_PUBLIC_URL = env("BACKEND_PUBLIC_URL", default="http://127.0.0.1:8000")
 DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL",
-    default="Heritage Community Algeria <noreply@heritage-algeria.com>",
+    default="kunuz <noreply@kunuz.com>",
 )
 
 ACCESS_TOKEN_LIFETIME_MINUTES = env.int("ACCESS_TOKEN_LIFETIME_MINUTES", default=60)

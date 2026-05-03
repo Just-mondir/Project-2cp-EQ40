@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
+import PostQuizButton from "@/components/PostQuizButton";
 import { LongPressGemButton } from "@/components/GemUsersModal";
 import LocationWorldCard, { localizeLocationLabel } from "@/components/LocationWorldCard";
 import LeftSidebar from "@/components/LeftSidebar";
@@ -256,7 +257,9 @@ async function submitReport(
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(data?.message || "Failed to submit report.");
+    const errorMsg = data?.message || "Failed to submit report.";
+    const details = data?.errors ? Object.values(data.errors).flat().join(" ") : "";
+    throw new Error(details ? `${errorMsg} ${details}` : errorMsg);
   }
 }
 
@@ -1395,14 +1398,14 @@ function PostModal({
         scrollEl.scrollLeft = 0;
       }
     }
-  },  [post?.id, initialTab]);
+  }, [post?.id, initialTab]);
 
   useEffect(() => {
-  if (!post) return;
-  fetchComments(post.id);
-  fetchAnnotations(post.id);
-  if (post.post_type === "alert") fetchHistory(post.id);
-}, [post?.id]);
+    if (!post) return;
+    fetchComments(post.id);
+    fetchAnnotations(post.id);
+    if (post.post_type === "alert") fetchHistory(post.id);
+  }, [post?.id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -2004,6 +2007,7 @@ function PostModal({
             </div>
             <div className="flex items-center gap-4">
               <AiPostInsight postId={post.id} title={post.title} buttonClassName="flex items-center gap-1 text-xs transition-all" />
+              <PostQuizButton postId={post.id} title={post.title} buttonClassName="flex items-center gap-1 text-xs transition-all" />
               <button className="transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
                 <BookmarkIcon size={18} filled={saved} active={saved} />
               </button>
@@ -2542,6 +2546,7 @@ function PostCard({
         </div>
         <div className="flex items-center gap-4">
           <AiPostInsight postId={post.id} title={post.title} />
+          <PostQuizButton postId={post.id} title={post.title} />
           <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
             <BookmarkIcon filled={saved} active={saved} />
           </button>

@@ -58,9 +58,9 @@ class ReportCreateSerializer(serializers.Serializer):
                 }
             )
 
-        if len(reason) < 10:
+        if len(reason) < 4:
             raise serializers.ValidationError(
-                {"reason": "Reason must be at least 10 characters."}
+                {"reason": "Reason must be at least 4 characters."}
             )
 
         if not target_id:
@@ -81,27 +81,27 @@ class ReportCreateSerializer(serializers.Serializer):
                 )
 
         elif target_type == "post":
+            from bson.errors import InvalidId
             try:
-                post_pk = int(target_id)
-            except (ValueError, TypeError):
+                if Post.objects(id=target_id, is_deleted=False).count() == 0:
+                    raise serializers.ValidationError(
+                        {"target_id": "Post not found."}
+                    )
+            except InvalidId:
                 raise serializers.ValidationError(
-                    {"target_id": "target_id must be a valid integer for post targets."}
-                )
-            if not Post.objects.filter(id=post_pk, is_deleted=False).exists():
-                raise serializers.ValidationError(
-                    {"target_id": "Post not found."}
+                    {"target_id": "Invalid post ID format."}
                 )
 
         elif target_type == "comment":
+            from bson.errors import InvalidId
             try:
-                comment_pk = int(target_id)
-            except (ValueError, TypeError):
+                if Comment.objects(id=target_id).count() == 0:
+                    raise serializers.ValidationError(
+                        {"target_id": "Comment not found."}
+                    )
+            except InvalidId:
                 raise serializers.ValidationError(
-                    {"target_id": "target_id must be a valid integer for comment targets."}
-                )
-            if not Comment.objects.filter(id=comment_pk).exists():
-                raise serializers.ValidationError(
-                    {"target_id": "Comment not found."}
+                    {"target_id": "Invalid comment ID format."}
                 )
 
         elif target_type == "annotation":

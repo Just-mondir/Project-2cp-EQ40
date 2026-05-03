@@ -215,7 +215,8 @@
       },
       "tabs": {
         "comments": "Commentaires ({count})",
-        "annotations": "Annotations ({count})"
+        "annotations": "Annotations ({count})",
+        "history": "Historique"
       },
       "placeholders": {
         "reply": "Écrire une réponse...",
@@ -266,7 +267,6 @@
         "communities": "Communautés",
         "monuments": "Monuments en danger",
         "events": "Événements",
-        "addPost": "Ajouter",
         "notifications": "Notifications",
         "profile": "Profil",
         "help": "Aide"
@@ -653,6 +653,7 @@
       },
       "sections": {
         "today": "Aujourd'hui",
+        "thisMonth": "Ce mois-ci",
         "thisWeek": "Cette semaine",
         "earlier": "Plus tôt"
       },
@@ -882,7 +883,7 @@
         },
         "stats": {
           "posts": "Publications",
-          "likes": "J'aime",
+          "likes": "Gems",
           "events": "\u00c9v\u00e9nements"
         },
         "empty": {

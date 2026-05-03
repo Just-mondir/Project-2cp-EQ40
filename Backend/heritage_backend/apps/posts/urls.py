@@ -12,6 +12,7 @@ from .views import (
     MyRepostedPostsView,
     PostDetailView,
     PostAIInsightView,
+    PostQuizView,
     PostImageUploadView,
     PostListCreateView,
     SaveToggleView,
@@ -71,6 +72,7 @@ urlpatterns = [
 
     path("posts/<str:pk>/images/", PostImageUploadView.as_view(), name="post-images"),
     path("posts/<str:pk>/ai-insight/", PostAIInsightView.as_view(), name="post-ai-insight"),
+    path("posts/<str:pk>/quiz/", PostQuizView.as_view(), name="post-quiz"),
     path("posts/<str:pk>/gems/", PostGemUsersView.as_view(), name="post-gem-users"),
     path("posts/<str:pk>/reposts/users/", PostRepostUsersView.as_view(), name="post-repost-users"),
     path("posts/<str:pk>/gem/", GemToggleView.as_view(), name="post-gem"),

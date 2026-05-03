@@ -2,12 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Bell } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { normalizeThemePathname } from "@/lib/themeRoutes";
+import NotificationPanel from "@/components/Notificationpanel";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
+const DEFAULT_PROFILE = {
+  displayName: "Ait Abderrahim Maria",
+  username: "",
+  profilePicture: "",
+};
+
+function resolveProfilePictureUrl(profilePicture) {
+  const value = String(profilePicture ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `${API_URL}${value}`;
+  return value;
+}
 
 function KunuzSidebarIcon() {
   return (
@@ -43,52 +56,61 @@ export default function LeftSidebar({
 }) {
   const t = useTranslations("auth.sidebar");
   const pathname = usePathname();
-  const [username, setUsername] = useState(() => {
-    if (typeof window === "undefined") return "";
-
-    try {
-      const direct =
-        localStorage.getItem("username") ||
-        localStorage.getItem("user_username") ||
-        "";
-      if (direct) return direct;
-
-      const storedUser = localStorage.getItem("user");
-      if (!storedUser) return "";
-
-      const parsed = JSON.parse(storedUser);
-      return parsed?.username || parsed?.user_username || "";
-    } catch {
-      return "";
-    }
-  });
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [profileImageError, setProfileImageError] = useState(false);
 
   useEffect(() => {
-    if (!username) {
-      // Fetch if not in localStorage
-      const fetchUser = async () => {
-        try {
-          const token = localStorage.getItem("accessToken");
-          if (!token) return;
-          const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "") || "http://127.0.0.1:8000";
-          const res = await fetch(`${API_URL}/api/users/me/`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) return;
-          const data = await res.json();
-          const realUser = data.data ?? data;
-          const fetchedUn = realUser.username || realUser.user_username || "";
-          if (fetchedUn) {
-            setUsername(fetchedUn);
-            localStorage.setItem("username", fetchedUn);
-          }
-        } catch (err) {
-          console.error("Error fetching me:", err);
-        }
+    let active = true;
+
+    const applyProfile = (rawUser) => {
+      const nextProfile = {
+        displayName: String(rawUser?.display_name || rawUser?.full_name || DEFAULT_PROFILE.displayName),
+        username: String(rawUser?.username || rawUser?.user_username || ""),
+        profilePicture: String(rawUser?.profile_picture || rawUser?.avatar || rawUser?.photoURL || ""),
       };
-      fetchUser();
+      if (!active) return;
+      setProfile(nextProfile);
+      setProfileImageError(false);
+      if (nextProfile.username) {
+        localStorage.setItem("username", nextProfile.username);
+      }
+    };
+
+    try {
+      const rawAuth =
+        localStorage.getItem("authUser") ||
+        localStorage.getItem("user") ||
+        localStorage.getItem("user_data");
+      if (rawAuth) {
+        const parsed = JSON.parse(rawAuth);
+        applyProfile(parsed);
+      }
+    } catch {
+      setProfile(DEFAULT_PROFILE);
+      setProfileImageError(false);
     }
-  }, [username]);
+
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+        const res = await fetch(`${API_URL}/api/users/me/`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const realUser = data.data ?? data;
+        applyProfile(realUser);
+      } catch (err) {
+        console.error("Error fetching me:", err);
+      }
+    };
+    void fetchUser();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Colours based on variant â€” add-post uses page-matching bg
   const isSpecialBg = activePage === "add-post" || variant === "add-post" || activePage === "edit-profile" || variant === "edit-profile" || activePage === "create-group" || variant === "create-group" || activePage === "edit-group" || variant === "edit-group";
@@ -106,17 +128,8 @@ export default function LeftSidebar({
     : (isSpecialBg ? "var(--panel-hover)" : "var(--sidebar-hover)");
   const navActiveBg = isLegacyRoute ? "var(--legacy-route-sidebar-active-bg)" : "var(--nav-active-bg)";
   const navActiveIcon = isLegacyRoute ? "var(--legacy-route-sidebar-active-icon)" : "var(--nav-active-icon)";
-  const overlayBg = isLegacyRoute ? "var(--legacy-route-overlay-bg)" : "var(--overlay-bg)";
-  const overlayItemBg = isLegacyRoute ? "var(--legacy-route-overlay-item-bg)" : "var(--overlay-item)";
-  const overlayBorder = isLegacyRoute ? "var(--legacy-route-overlay-border)" : "var(--border-soft)";
-  const overlayDivider = isLegacyRoute ? "var(--legacy-route-overlay-divider)" : "var(--border-soft)";
-  const mutedText = isLegacyRoute ? "var(--legacy-route-muted-text)" : "var(--text-muted)";
-  const foregroundText = isLegacyRoute ? "var(--legacy-route-foreground-text)" : "var(--foreground)";
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const notifContainerRef = useRef(null);
 
   const fetchUnreadCount = async () => {
     const token = localStorage.getItem("accessToken");
@@ -132,7 +145,8 @@ export default function LeftSidebar({
         const json = await response.json();
         // Handle both { data: { unread_count: N } } and { unread_count: N }
         const count = json?.data?.unread_count !== undefined ? json.data.unread_count : (json?.unread_count !== undefined ? json.unread_count : 0);
-        setUnreadCount(Number(count));
+        const parsedCount = Number(count);
+        setUnreadCount(Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 0);
       }
     } catch (err) {
       console.error("Error fetching unread count:", err);
@@ -140,7 +154,9 @@ export default function LeftSidebar({
   };
 
   useEffect(() => {
-    void Promise.resolve().then(fetchUnreadCount);
+    const initialLoad = window.setTimeout(() => {
+      void fetchUnreadCount();
+    }, 0);
     const interval = setInterval(() => {
       const token = localStorage.getItem("accessToken");
       if (token) fetchUnreadCount();
@@ -148,8 +164,11 @@ export default function LeftSidebar({
 
     const handleUpdate = (e) => {
       const newCount = Number(e.detail);
-      if (!isNaN(newCount)) {
-        setUnreadCount(newCount);
+      if (Number.isFinite(newCount)) {
+        // Defer state update to avoid setState during another component render.
+        window.setTimeout(() => {
+          setUnreadCount(newCount > 0 ? newCount : 0);
+        }, 0);
       } else {
         fetchUnreadCount();
       }
@@ -157,56 +176,18 @@ export default function LeftSidebar({
 
     window.addEventListener("refresh-unread-count", handleUpdate);
     return () => {
+      window.clearTimeout(initialLoad);
       clearInterval(interval);
       window.removeEventListener("refresh-unread-count", handleUpdate);
     };
   }, [pathname]); // Also refetch on navigation
 
-  const fetchMiniNotifications = async () => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
-      setNotifications([]);
-      return;
-    }
-
-    setNotifLoading(true);
-    try {
-      const response = await fetch(`${API_URL}/api/notifications/?page_size=4`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        setNotifications([]);
-        return;
-      }
-      const data = await response.json();
-      setNotifications(data?.data?.results ?? []);
-    } catch {
-      setNotifications([]);
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
   useEffect(() => {
     if (!isNotifOpen) return;
-
-    const loadNotifications = async () => {
-      await fetchMiniNotifications();
-      await fetchUnreadCount();
-    };
-
-    void loadNotifications();
-  }, [isNotifOpen]);
-
-  useEffect(() => {
-    if (!isNotifOpen) return;
-    const handleOutsideClick = (event) => {
-      if (notifContainerRef.current && !notifContainerRef.current.contains(event.target)) {
-        setIsNotifOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    const timer = window.setTimeout(() => {
+      void fetchUnreadCount();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [isNotifOpen]);
 
   const navItems = useMemo(
@@ -264,7 +245,7 @@ export default function LeftSidebar({
         key: "notifications",
         label: t("nav.notifications"),
         href: "/notifications",
-        hasBadge: unreadCount > 0,
+        hasBadge: Number.isFinite(unreadCount) && unreadCount > 0,
         path: (
           <>
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -273,20 +254,9 @@ export default function LeftSidebar({
         ),
       },
       {
-        key: "add-post",
-        label: t("nav.addPost") || "Add Post",
-        href: "/add-post",
-        path: (
-          <>
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </>
-        ),
-      },
-      {
         key: "profile",
-        label: t("nav.profile"),
-        href: username ? `/user/${username}` : "#",
+        label: profile.username ? `@${profile.username}` : t("nav.profile"),
+        href: profile.username ? `/user/${profile.username}` : "#",
         path: (
           <>
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -294,8 +264,20 @@ export default function LeftSidebar({
           </>
         ),
       },
+      {
+        key: "help",
+        label: t("nav.help"),
+        href: "/help",
+        path: (
+          <>
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </>
+        ),
+      },
     ],
-    [t, username, unreadCount],
+    [t, profile.username, unreadCount],
   );
 
   return (
@@ -312,13 +294,12 @@ export default function LeftSidebar({
           <KunuzSidebarIcon />
         </Link>
 
-        <nav className="flex flex-col items-center gap-5">
+        <nav className="flex flex-col items-center gap-6">
           {navItems.map((item) => {
             const isActive = activePage === item.key;
             const strokeCol = isActive ? navActiveIcon : iconDefault;
             const fillCol = isActive ? navActiveIcon : "none";
 
-            if (item.key === "add-post") return null; // Hide in desktop sidebar, it's usually elsewhere or too much
             const iconEl = (
               <>
                 <svg
@@ -345,7 +326,7 @@ export default function LeftSidebar({
 
             if (item.key === "notifications") {
               return (
-                <div key={item.key} className="relative group" ref={notifContainerRef}>
+                <div key={item.key} className="relative group">
                   <button
                     type="button"
                     className="relative p-2.5 rounded-xl transition-all duration-200 block"
@@ -377,58 +358,12 @@ export default function LeftSidebar({
                     {item.label}
                   </span>
 
-                  {isNotifOpen && (
-                    <div
-                      className="rtl-sidebar-overlay absolute left-full ml-4 top-1/2 -translate-y-1/2 w-[320px] rounded-2xl border p-4 z-[70]"
-                      style={{
-                        backgroundColor: overlayBg,
-                        borderColor: overlayBorder,
-                        boxShadow: "0 16px 36px rgba(46, 25, 11, 0.22)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="text-sm font-bold" style={{ color: foregroundText }}>
-                          {t("overlay.title")}
-                        </p>
-                        <Bell size={14} color={mutedText} />
-                      </div>
-
-                      {notifLoading ? (
-                        <p className="text-xs" style={{ color: mutedText }}>{t("overlay.loading")}</p>
-                      ) : notifications.length === 0 ? (
-                        <p className="text-xs leading-5" style={{ color: mutedText }}>
-                          {t("overlay.empty")}
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {notifications.map((notification) => (
-                            <div key={notification.id} className="rounded-xl p-2.5" style={{ backgroundColor: overlayItemBg }}>
-                              <p className="text-[12px] font-semibold leading-5" style={{ color: foregroundText }}>
-                                {notification.actor_display_name || t("overlay.someone")} {notification.event_label || notification.message}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="mt-3 pt-3 border-t" style={{ borderColor: overlayDivider }}>
-                        <Link
-                          href="/notifications"
-                          className="inline-flex items-center justify-center text-xs font-semibold rounded-lg px-3 py-2"
-                          style={{ backgroundColor: navActiveBg, color: navActiveIcon }}
-                          onClick={() => setIsNotifOpen(false)}
-                        >
-                          {t("overlay.viewAll")}
-                        </Link>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             }
 
             return (
-              <div key={item.key} className="relative group">
+              <div key={item.key} className={`relative group${item.key === "help" ? " mt-25" : ""}`}>
                 <Link
                   href={item.href}
                   className="relative p-2.5 rounded-xl transition-all duration-200 block"
@@ -462,49 +397,12 @@ export default function LeftSidebar({
             );
           })}
 
-          <div className="h-40" />
-
-          <div className="relative group">
-            <Link
-              href="/help"
-              className="p-2.5 rounded-xl transition-all duration-200 block"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = iconHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "transparent";
-              }}
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={iconDefault}
-                strokeWidth="1.8"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </Link>
-
-            <span
-              className="rtl-sidebar-tooltip absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-50"
-              style={{
-                backgroundColor: navActiveBg,
-                color: navActiveIcon,
-              }}
-            >
-              {t("nav.help")}
-            </span>
-          </div>
         </nav>
       </aside>
 
       {/* Mobile Bottom Navigation */}
       <nav
-        className={`rtl-mobile-sidebar fixed bottom-0 left-0 right-0 h-16 md:hidden flex items-center justify-around z-[100] px-4 border-t${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
+        className={`rtl-mobile-sidebar fixed bottom-0 left-0 right-0 h-16 md:hidden flex items-center justify-around z-[100] px-4${isLegacyRoute ? " legacy-route-sidebar" : ""}`}
         style={{
           backgroundColor: sidebarBg,
           borderColor: isLegacyRoute ? "var(--legacy-route-mobile-border)" : "var(--border-soft)",
@@ -512,22 +410,11 @@ export default function LeftSidebar({
         }}
       >
         {navItems.map((item) => {
-          if (item.key === "add-post") return null;
           const isActive = activePage === item.key;
           const strokeCol = isActive ? navActiveIcon : iconDefault;
           const fillCol = isActive ? navActiveIcon : "none";
-
-          return (
-            <Link
-              key={item.key}
-              href={item.href}
-              className="relative p-2.5 rounded-xl transition-all duration-300"
-              style={{
-                backgroundColor: isActive ? navActiveBg : "transparent",
-                transform: isActive ? "scale(1.1)" : "scale(1)",
-                boxShadow: isActive ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
-              }}
-            >
+          const mobileIcon = (
+            <>
               <svg
                 width="20"
                 height="20"
@@ -543,10 +430,45 @@ export default function LeftSidebar({
               {item.hasBadge && (
                 <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#FF0000] rounded-full border-2 border-white z-20" />
               )}
+            </>
+          );
+
+          if (item.key === "notifications") {
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setIsNotifOpen(true)}
+                className="relative p-2.5 rounded-xl transition-all duration-300"
+                style={{
+                  backgroundColor: isNotifOpen ? navActiveBg : "transparent",
+                  transform: isNotifOpen ? "scale(1.1)" : "scale(1)",
+                  boxShadow: isNotifOpen ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
+                }}
+                aria-label={item.label}
+              >
+                {mobileIcon}
+              </button>
+            );
+          }
+
+          return (
+            <Link
+              key={item.key}
+              href={item.href}
+              className="relative p-2.5 rounded-xl transition-all duration-300"
+              style={{
+                backgroundColor: isActive ? navActiveBg : "transparent",
+                transform: isActive ? "scale(1.1)" : "scale(1)",
+                boxShadow: isActive ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
+              }}
+            >
+              {mobileIcon}
             </Link>
           );
         })}
       </nav>
+      {isNotifOpen && <NotificationPanel onClose={() => setIsNotifOpen(false)} />}
     </>
   );
 }

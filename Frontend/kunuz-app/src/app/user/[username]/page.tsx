@@ -1,46 +1,27 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard, Mail, Lock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
-import { LongPressGemButton } from "@/components/GemUsersModal";
 import RepostButton, { RepostIcon } from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import { logoutClient } from "@/lib/session";
+import { ProfileGridSkeleton } from "@/components/PostSkeletons";
+import { fetchProfileTabPosts, profileTabQueryKey, useProfile, useProfileTab } from "@/hooks/useProfile";
 
 import LocationWorldCard from "@/components/LocationWorldCard";
 
 import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
 import NotificationModal from "@/components/NotificationModal";
+import ReportModal from "@/components/ReportModal";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-
-const PROFILE_TAG_TRANSLATIONS: Record<string, Record<string, string>> = {
-  fr: {
-    Amateur: "Amateur",
-    Student: "Étudiant",
-    Researcher: "Chercheur",
-    Historian: "Historien",
-    "Tour Guide": "Guide touristique",
-    Architect: "Architecte",
-  },
-  ar: {
-    Amateur: "هاو",
-    Student: "طالب",
-    Researcher: "باحث",
-    Historian: "مؤرخ",
-    "Tour Guide": "مرشد سياحي",
-    Architect: "مهندس معماري",
-  },
-};
-
-function translateProfileTag(tag: string, locale: string) {
-  return PROFILE_TAG_TRANSLATIONS[locale]?.[tag] ?? tag;
-}
 
 function stripHtmlFallback(html: string): string {
   let result = html;
@@ -79,6 +60,28 @@ function getAuthUser(): { id?: string; username?: string; display_name?: string 
   } catch {
     return null;
   }
+}
+
+function getCachedProfileInfo(): Partial<ProfileInfo> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("authUser") || localStorage.getItem("user");
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed ?? {
+      username: localStorage.getItem("username") || localStorage.getItem("user_username") || "",
+    };
+  } catch {
+    return {
+      username: localStorage.getItem("username") || localStorage.getItem("user_username") || "",
+    };
+  }
+}
+
+function getPaginatedCount(payload: unknown): number | null {
+  const data = payload as { count?: unknown; data?: { count?: unknown } };
+  const rawCount = data.count ?? data.data?.count;
+  const count = Number(rawCount);
+  return Number.isFinite(count) ? count : null;
 }
 
 
@@ -156,6 +159,13 @@ type PostInteraction = {
   commentsCount: number;
   annotationsCount: number;
 };
+
+type ProfileTabId = "grid" | "gems" | "saved" | "reposts" | "events" | "alerts";
+const profileTabMemory = new Map<string, ApiPost[]>();
+
+function profileTabMemoryKey(username: string | undefined, tab: ProfileTabId, isOwnProfile: boolean) {
+  return `${isOwnProfile ? "own" : "public"}:${username ?? ""}:${tab}`;
+}
 
 type Annotation = {
   id: string;
@@ -238,7 +248,11 @@ async function submitReport(targetType: ReportTargetType, targetId: string, reas
     body: JSON.stringify({ target_type: targetType, target_id: targetId, reason }),
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(data?.message || "Failed to submit report.");
+  if (!res.ok) {
+    const errorMsg = data?.message || "Failed to submit report.";
+    const details = data?.errors ? Object.values(data.errors).flat().join(" ") : "";
+    throw new Error(details ? `${errorMsg} ${details}` : errorMsg);
+  }
 }
 
 function formatDate(dateStr: string) {
@@ -413,6 +427,25 @@ const GemIcon = ({ size = 18, filled = false, className = "", active = false }: 
   </svg>
 );
 
+const TreasureChestIcon = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 10.5h15v9H4.5z" />
+    <path d="M7.25 10.5l1.35-5.4h7.7l1.45 5.4" />
+    <path d="M8.6 5.1l-3.4 5.4" />
+    <path d="M16.3 5.1l3.5 5.4" />
+    <path d="M4.5 13.25h15" />
+    <path d="M11.95 10.5v9" />
+    <path d="M7 13.25v6.25" />
+    <path d="M5.65 19.5h2.7v-4.85h-2.7z" />
+    <path d="M10.2 14.9h3.55v2.45H10.2z" />
+    <path d="M12.65 4.2l1.65 1.65-1.65 1.65L11 5.85z" />
+    <circle cx="15.9" cy="8.05" r="1.15" />
+    <circle cx="10" cy="8.4" r="0.9" />
+    <path d="M17.4 7.35l1.1-.95" />
+    <path d="M14.65 8.95l-1.05.95" />
+  </svg>
+);
+
 const CommentIcon = ({ size = 18, className = "" }: { size?: number; className?: string }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -529,10 +562,19 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 /* ───────────────── COMMENT ITEM ───────────────── */
 
 function CommentItem({
-  comment, postId, onRefresh, onDelete, isReply = false,
+  comment,
+  postId,
+  onRefresh,
+  onDelete,
+  isReply = false,
+  onReport,
 }: {
-  comment: CommentNode; postId: string; onRefresh?: () => void;
-  onDelete?: (commentId: string) => void; isReply?: boolean;
+  comment: CommentNode;
+  postId: string;
+  onRefresh?: () => void;
+  onDelete?: (commentId: string) => void;
+  isReply?: boolean;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const router = useRouter();
   const commonT = useTranslations("auth.common");
@@ -630,16 +672,9 @@ function CommentItem({
     } catch { }
   };
 
-  const handleReportComment = async () => {
-    const reason = window.prompt(feedT("prompts.reportComment"));
-    if (!reason || !reason.trim()) return;
-    try {
-      await submitReport("comment", comment.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.commentReported"));
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : feedT("feedback.commentReportFailed"));
-    }
+  const handleReportComment = () => {
+    onReport("comment", comment.id);
+    setShowMenu(false);
   };
 
   return (
@@ -704,11 +739,23 @@ function CommentItem({
 /* ───────────────── ANNOTATION ITEM ───────────────── */
 
 function AnnotationItem({
-  annotation, postId, postAuthorId, onDelete, onAccept, onReject, onRefresh,
+  annotation,
+  postId,
+  postAuthorId,
+  onDelete,
+  onAccept,
+  onReject,
+  onRefresh,
+  onReport,
 }: {
-  annotation: Annotation; postId: string; postAuthorId?: string;
-  onDelete: (id: string) => void; onAccept: (id: string) => void;
-  onReject: (id: string) => void; onRefresh: () => void;
+  annotation: Annotation;
+  postId: string;
+  postAuthorId?: string;
+  onDelete: (id: string) => void;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  onRefresh?: () => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -765,22 +812,15 @@ function AnnotationItem({
       });
       if (!res.ok) return;
       setIsEditing(false);
-      onRefresh();
+      onRefresh?.();
     } catch { }
   };
 
   const handleCancelEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(false); };
 
-  const handleReportAnnotation = async () => {
-    const reason = window.prompt(feedT("prompts.reportAnnotation"));
-    if (!reason || !reason.trim()) return;
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.annotationReported"));
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : feedT("feedback.annotationReportFailed"));
-    }
+  const handleReport = () => {
+    onReport("annotation", annotation.id);
+    setShowMenu(false);
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
@@ -812,7 +852,7 @@ function AnnotationItem({
                   </>
                 )}
                 {!canDelete && (
-                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportAnnotation}>{feedT("actions.reportAnnotation")}</button>
+                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReport}>{feedT("actions.reportAnnotation")}</button>
                 )}
                 {isPostAuthor && annotation.status === "pending" && (
                   <>
@@ -845,7 +885,14 @@ function AnnotationItem({
 /* ───────────────── POST MODAL ───────────────── */
 
 function PostModal({
-  post, onClose, interaction, onInteractionChange, onDeletePost, loggedInUsername, initialTab = "comments",
+  post,
+  onClose,
+  interaction,
+  onInteractionChange,
+  onDeletePost,
+  loggedInUsername,
+  initialTab = "comments",
+  onReport,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -854,6 +901,7 @@ function PostModal({
   onDeletePost: (postId: string) => void;
   loggedInUsername: string;
   initialTab?: "comments" | "annotations";
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -1046,14 +1094,21 @@ function PostModal({
     const replies = getReplies(comment.id);
     return (
       <div key={comment.id} className={level > 0 ? "ml-8 mt-2" : ""}>
-        <CommentItem comment={comment} postId={post.id} onRefresh={() => fetchComments(post.id)} onDelete={handleDeleteComment} isReply={level > 0} />
+        <CommentItem
+          comment={comment}
+          postId={post.id}
+          onRefresh={() => fetchComments(post.id)}
+          onDelete={handleDeleteComment}
+          isReply={level > 0}
+          onReport={onReport}
+        />
         {replies.length > 0 && <div className="flex flex-col gap-2 mt-2">{replies.map((reply) => renderCommentThread(reply, level + 1))}</div>}
       </div>
     );
   };
 
   const LeftPanel = imageList.length > 0 ? (
-    <div className="flex w-full md:w-1/2 h-[250px] md:h-full flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
+    <div className="block w-full h-[240px] md:h-full md:w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
       <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
         {imageList.map((img) => {
           const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
@@ -1115,76 +1170,90 @@ function PostModal({
   return (
     <>
       <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title={userPageT("modals.deletePost.title")} message={userPageT("modals.deletePost.message")} primaryAction={{ label: userPageT("modals.deletePost.confirm"), onClick: confirmDeletePost }} secondaryAction={{ label: userPageT("modals.deletePost.cancel"), onClick: () => setShowDeleteModal(false) }} />
-      <div className="fixed inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] h-full md:h-[90vh] rounded-none md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="relative flex flex-col md:flex-row w-full md:max-w-[1000px] h-full md:max-h-[90vh] md:h-[90vh] md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
           {LeftPanel}
-          <div className="w-full md:w-1/2 flex flex-col flex-1 h-full min-h-0" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
             <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
               <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
               <div className="ml-3 flex-1">
                 <div className="flex items-center gap-2">
-                  <button className="font-bold text-base hover:underline text-left" style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }} onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}>
+                  <button className="font-bold text-sm hover:underline text-left block truncate" style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }} onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}>
                     {post.user_display_name || post.user_username}
                   </button>
-                  <p className="text-[11px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+                  <p className="text-[11px] block" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
                 </div>
               </div>
               <div className="relative" ref={postMenuRef}>
-                <button className="p-1 rounded hover:bg-[#E0D5C5] mr-2" onClick={() => setShowPostMenu(!showPostMenu)}>
+                <button className="p-1 rounded hover:bg-[#E0D5C5] mr-2 transition-colors" onClick={() => setShowPostMenu(!showPostMenu)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
                 </button>
                 {showPostMenu && (
-                  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+                  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
                     {canDelete ? (
                       <>
                         {isOwner && (
-                          <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
+                          <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5" style={{ color: "var(--foreground)" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
                         )}
-                        <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#C0392B]" style={{ color: "#C0392B" }} onClick={handleDeletePost}>{commonT("delete")}</button>
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]" style={{ color: "#7B0000" }} onClick={handleDeletePost}>{commonT("delete")}</button>
                       </>
                     ) : (
-                      <button className="block w-full text-left px-4 py-2 text-sm font-bold hover:bg-[#F0EAD8]" style={{ color: "#C0392B" }} onClick={() => { setShowPostMenu(false); if (!isLoggedIn) { router.push("/login"); return; } }}>{feedT("actions.reportPost")}</button>
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817" }}
+                        onClick={() => {
+                          setShowPostMenu(false);
+                          if (!isLoggedIn) { router.push("/login"); return; }
+                          onReport("post", post.id);
+                        }}
+                      >
+                        {feedT("actions.reportPost")}
+                      </button>
                     )}
                   </div>
                 )}
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5]">
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto feed-scroll">
-              <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-                  <LocationWorldCard
-                    location={post.location}
-                    region={post.region}
-                    textStyle={{ color: "#8B7355" }}
-                    iconColor="#8B7355"
-                    iconSize={13}
-                    buttonClassName="mb-1"
-                  />
-                  <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
-                  {isContentLong && !contentExpanded ? (
-                    <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
-                      {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
-                      <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
-                    </p>
-                  ) : (
-                    <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-                  )}
-                  {isContentLong && contentExpanded && (
-                    <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
-                  )}
-                </div>
 
-              <div className="sticky top-0 z-10 flex border-b flex-shrink-0" style={{ backgroundColor: "#FFF8E2", borderColor: "#E0D5C5" }}>
-                <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
-                  <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
-                </button>
-                <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
-                  <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
-                </button>
+            {imageList.length > 0 && (
+              <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+                <LocationWorldCard
+                  location={post.location}
+                  region={post.region}
+                  textStyle={{ color: "#8B7355" }}
+                  iconColor="#8B7355"
+                  iconSize={13}
+                  buttonClassName="mb-1"
+                />
+                <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+                {isContentLong && !contentExpanded ? (
+                  <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                    {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+                  </p>
+                ) : (
+                  <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                )}
+                {isContentLong && contentExpanded && (
+                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+                )}
               </div>
+            )}
+
+            <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
+                <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
+              </button>
+              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
+                <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto feed-scroll">
               {activeTab === "comments" && (
                 <div className="px-5 py-3 flex flex-col gap-3">
                   {topLevelComments.length === 0 ? (
@@ -1207,7 +1276,17 @@ function PostModal({
                       <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.annotations")}</p>
                     </div>
                   ) : annotations.map((annotation) => (
-                    <AnnotationItem key={annotation.id} annotation={annotation} postId={post.id} postAuthorId={post.user_id} onDelete={handleDeleteAnnotation} onAccept={handleAcceptAnnotation} onReject={handleRejectAnnotation} onRefresh={() => fetchAnnotations(post.id)} />
+                    <AnnotationItem
+                      key={annotation.id}
+                      annotation={annotation}
+                      postId={post.id}
+                      postAuthorId={post.user_id}
+                      onDelete={handleDeleteAnnotation}
+                      onAccept={handleAcceptAnnotation}
+                      onReject={handleRejectAnnotation}
+                      onRefresh={() => fetchAnnotations(post.id)}
+                      onReport={onReport}
+                    />
                   ))}
                 </div>
               )}
@@ -1272,7 +1351,6 @@ function PostModal({
   );
 }
 function BioText({ bio }: { bio: string }) {
-  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const lines = 2;
   const isLong = bio.length > 120;
@@ -1297,7 +1375,7 @@ function BioText({ bio }: { bio: string }) {
           style={{ color: "#8B6914", background: "none", border: "none", padding: 0, cursor: "pointer" }}
           onClick={() => setExpanded(prev => !prev)}
         >
-          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
+          {expanded ? "See less" : "See more"}
         </button>
       )}
     </div>
@@ -1308,16 +1386,21 @@ function BioText({ bio }: { bio: string }) {
 function ProfileHeader({
   profileInfo,
   isOwnProfile,
+  gemsCount,
+  postsCount,
+  eventsCount,
 }: {
   profileInfo: ProfileInfo;
   isOwnProfile: boolean;
+  gemsCount: number;
+  postsCount: number;
+  eventsCount: number;
 }) {
   const router = useRouter();
   const dashboardT = useTranslations("auth.profilePopups.dashboard");
   const addPostT = useTranslations("auth.pages.addPost");
   const editProfileT = useTranslations("auth.pages.editProfile");
   const userPageT = useTranslations("auth.pages.userProfile");
-  const locale = useLocale();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -1464,25 +1547,26 @@ function ProfileHeader({
 
           <div className="flex items-center gap-6 mb-4">
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.posts_count}</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{postsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.posts")}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.likes_count}</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{gemsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.likes")}</span>
             </div>
+
             <div className="flex items-center gap-1.5">
-              <span className="font-bold" style={{ color: "#432817" }}>{profileInfo.events_count}</span>
+              <span className="font-bold" style={{ color: "#432817" }}>{eventsCount}</span>
               <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.events")}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-3 mb-4">
             {profileInfo.expertise && (
-              <span className="text-sm" style={{ color: "#432817" }}>#{translateProfileTag(profileInfo.expertise, locale)}</span>
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.expertise}</span>
             )}
             {profileInfo.speciality && (
-              <span className="text-sm" style={{ color: "#432817" }}>#{translateProfileTag(profileInfo.speciality, locale)}</span>
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.speciality}</span>
             )}
           </div>
 
@@ -1508,14 +1592,29 @@ function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: str
     { id: "grid", icon: <GridIcon size={20} /> },
     { id: "reposts", icon: <RepostIcon size={20} /> },
     ...(isOwnProfile ? [{ id: "gems", icon: <GemIcon size={20} /> }, { id: "saved", icon: <BookmarkIcon size={20} /> }] : []),
-    { id: "events", icon: <CalendarIcon size={20} /> },
-    { id: "alerts", icon: <DangerIcon size={20} /> },
+    { id: "events", icon: <CalendarIcon size={20} />, hideOnMobile: true },
+    { id: "alerts", icon: <DangerIcon size={20} />, hideOnMobile: true },
   ];
+  const tabLabels: Record<string, string> = {
+    grid: "Posts",
+    reposts: "Reposts",
+    gems: "Your treasure",
+    saved: "Saved",
+    events: "Events",
+    alerts: "Monuments in danger",
+  };
 
   return (
     <div className="flex items-center justify-between px-4 md:px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
-      {tabs.map((tab) => (
-        <button key={tab.id} title={tab.id === "reposts" ? "Reposts" : tab.id} aria-label={tab.id === "reposts" ? "Reposts" : tab.id} onClick={() => setActiveTab(tab.id)} className="p-3 transition-all duration-200 hover:opacity-70 relative" style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}>
+      {tabs.map((tab: any) => (
+        <button
+          key={tab.id}
+          title={tabLabels[tab.id] ?? tab.id}
+          aria-label={tabLabels[tab.id] ?? tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`p-3 transition-all duration-200 hover:opacity-70 relative ${tab.hideOnMobile ? "hidden md:block" : ""}`}
+          style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}
+        >
           {tab.icon}
           {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: "#432817" }} />}
         </button>
@@ -1600,10 +1699,26 @@ function PostsGrid({
 
 export default function ProfilePage() {
   const userPageT = useTranslations("auth.pages.userProfile");
-  const [loggedInUsername, setLoggedInUsername] = useState("");
+  const queryClient = useQueryClient();
+  const cachedProfile = useMemo(() => getCachedProfileInfo(), []);
+  const [loggedInUsername, setLoggedInUsername] = useState(() => cachedProfile?.username ?? getAuthUser()?.username ?? "");
   const [activeTab, setActiveTab] = useState("grid");
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    targetType: ReportTargetType;
+    targetId: string;
+  }>({ isOpen: false, targetType: "post", targetId: "" });
+
+  const openReportModal = (type: ReportTargetType, id: string) => {
+    setReportModal({ isOpen: true, targetType: type, targetId: id });
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    const combinedReason = description ? `${reason}: ${description}` : reason;
+    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+  };
 
   const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -1617,29 +1732,250 @@ export default function ProfilePage() {
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [alertPosts, setAlertPosts] = useState<ApiPost[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
 
   // ← state for real profile info from backend
-  const [profileInfo, setProfileInfo] = useState<ProfileInfo>({
-    username: "",
-    display_name: "",
-    bio: "",
-    expertise: "",
-    speciality: "",
-    profile_picture: null,
-    badge: null,
-    is_verified: false,
-    role: "",
-    posts_count: 0,
-    likes_count: 0,
-    events_count: 0,
-  });
-
   const params = useParams();
   const viewedUsername = typeof params?.username === "string" ? params.username : loggedInUsername;
   const isOwnProfile = !!loggedInUsername && !!viewedUsername && loggedInUsername === viewedUsername;
+  const initialProfileInfo = useMemo<ProfileInfo>(() => ({
+    username: isOwnProfile ? cachedProfile?.username ?? "" : viewedUsername || "",
+    display_name: isOwnProfile ? cachedProfile?.display_name ?? cachedProfile?.username ?? "" : viewedUsername || "",
+    bio: isOwnProfile ? cachedProfile?.bio ?? "" : "",
+    expertise: isOwnProfile ? cachedProfile?.expertise ?? "" : "",
+    speciality: isOwnProfile ? cachedProfile?.speciality ?? "" : "",
+    profile_picture: isOwnProfile ? cachedProfile?.profile_picture ?? null : null,
+    badge: isOwnProfile ? cachedProfile?.badge ?? null : null,
+    is_verified: isOwnProfile ? cachedProfile?.is_verified ?? false : false,
+    role: isOwnProfile ? cachedProfile?.role ?? "" : "",
+    posts_count: isOwnProfile ? cachedProfile?.posts_count ?? 0 : 0,
+    likes_count: isOwnProfile ? cachedProfile?.likes_count ?? 0 : 0,
+    events_count: isOwnProfile ? cachedProfile?.events_count ?? 0 : 0,
+  }), [cachedProfile, isOwnProfile, viewedUsername]);
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo>(initialProfileInfo);
+  const [gemmedPostsCount, setGemmedPostsCount] = useState<number | null>(null);
+  const [profilePostsCount, setProfilePostsCount] = useState<number | null>(null);
+  const [profileEventsCount, setProfileEventsCount] = useState<number | null>(null);
   const visibleTab = !isOwnProfile && (activeTab === "gems" || activeTab === "saved") ? "grid" : activeTab;
+  const profileQuery = useProfile<Partial<ProfileInfo>>(viewedUsername, isOwnProfile);
+  const gridTabQuery = useProfileTab<ApiPost>(viewedUsername, "grid", isOwnProfile, visibleTab === "grid");
+  const gemsTabQuery = useProfileTab<ApiPost>(viewedUsername, "gems", isOwnProfile, isOwnProfile && visibleTab === "gems");
+  const savedTabQuery = useProfileTab<ApiPost>(viewedUsername, "saved", isOwnProfile, isOwnProfile && visibleTab === "saved");
+  const repostsTabQuery = useProfileTab<ApiPost>(viewedUsername, "reposts", isOwnProfile, visibleTab === "reposts");
+  const eventsTabQuery = useProfileTab<ApiPost>(viewedUsername, "events", isOwnProfile, visibleTab === "events");
+  const alertsTabQuery = useProfileTab<ApiPost>(viewedUsername, "alerts", isOwnProfile, visibleTab === "alerts");
+  const tabMemoryKeys = useMemo(() => ({
+    grid: profileTabMemoryKey(viewedUsername, "grid", isOwnProfile),
+    gems: profileTabMemoryKey(viewedUsername, "gems", isOwnProfile),
+    saved: profileTabMemoryKey(viewedUsername, "saved", isOwnProfile),
+    reposts: profileTabMemoryKey(viewedUsername, "reposts", isOwnProfile),
+    events: profileTabMemoryKey(viewedUsername, "events", isOwnProfile),
+    alerts: profileTabMemoryKey(viewedUsername, "alerts", isOwnProfile),
+  }), [viewedUsername, isOwnProfile]);
+
+  const rememberedAllPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.grid) ?? [], [tabMemoryKeys.grid]);
+  const rememberedGemmedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.gems) ?? [], [tabMemoryKeys.gems]);
+  const rememberedSavedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.saved) ?? [], [tabMemoryKeys.saved]);
+  const rememberedRepostedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.reposts) ?? [], [tabMemoryKeys.reposts]);
+  const rememberedEventPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.events) ?? [], [tabMemoryKeys.events]);
+  const rememberedAlertPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.alerts) ?? [], [tabMemoryKeys.alerts]);
+
+  const displayedAllPosts = useMemo(
+    () => {
+      const mapped = gridTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (allPosts.length > 0 ? allPosts : rememberedAllPosts);
+    },
+    [gridTabQuery.data, allPosts, rememberedAllPosts],
+  );
+  const displayedGemmedPosts = useMemo(
+    () => {
+      const mapped = gemsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (gemmedPosts.length > 0 ? gemmedPosts : rememberedGemmedPosts);
+    },
+    [gemsTabQuery.data, gemmedPosts, rememberedGemmedPosts],
+  );
+  const displayedSavedPosts = useMemo(
+    () => {
+      const mapped = savedTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (savedPosts.length > 0 ? savedPosts : rememberedSavedPosts);
+    },
+    [savedTabQuery.data, savedPosts, rememberedSavedPosts],
+  );
+  const displayedRepostedPosts = useMemo(
+    () => {
+      const mapped = repostsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (repostedPosts.length > 0 ? repostedPosts : rememberedRepostedPosts);
+    },
+    [repostsTabQuery.data, repostedPosts, rememberedRepostedPosts],
+  );
+  const displayedEventPosts = useMemo(
+    () => {
+      const mapped = eventsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (eventPosts.length > 0 ? eventPosts : rememberedEventPosts);
+    },
+    [eventsTabQuery.data, eventPosts, rememberedEventPosts],
+  );
+  const displayedAlertPosts = useMemo(
+    () => {
+      const mapped = alertsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (alertPosts.length > 0 ? alertPosts : rememberedAlertPosts);
+    },
+    [alertsTabQuery.data, alertPosts, rememberedAlertPosts],
+  );
+
+  useEffect(() => {
+    setProfileInfo(initialProfileInfo);
+  }, [initialProfileInfo]);
+
+  useEffect(() => {
+    setAllPosts([]);
+    setGemmedPosts([]);
+    setGemmedPostsCount(null);
+    setProfilePostsCount(null);
+    setProfileEventsCount(null);
+    setSavedPosts([]);
+    setRepostedPosts([]);
+    setEventPosts([]);
+    setAlertPosts([]);
+    setActiveTab("grid");
+  }, [viewedUsername]);
+
+  useEffect(() => {
+    if (!viewedUsername) return;
+    const tabs: Array<"grid" | "gems" | "saved" | "reposts" | "events" | "alerts"> = isOwnProfile
+      ? ["grid", "gems", "saved", "reposts", "events", "alerts"]
+      : ["grid", "reposts", "events", "alerts"];
+    tabs.forEach((tab) => {
+      queryClient.prefetchQuery({
+        queryKey: profileTabQueryKey(viewedUsername, tab, isOwnProfile),
+        queryFn: () => fetchProfileTabPosts<ApiPost>(viewedUsername, tab, isOwnProfile),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+    });
+  }, [queryClient, viewedUsername, isOwnProfile]);
+
+  useEffect(() => {
+    const data = profileQuery.data;
+    if (!data) return;
+    setProfileInfo({
+      username: data.username ?? "",
+      display_name: data.display_name ?? data.username ?? "",
+      bio: data.bio ?? "",
+      expertise: data.expertise ?? "",
+      speciality: data.speciality ?? "",
+      profile_picture: data.profile_picture ?? null,
+      badge: data.badge ?? null,
+      is_verified: data.is_verified ?? false,
+      role: data.role ?? "",
+      posts_count: data.posts_count ?? displayedAllPosts.length,
+      likes_count: data.likes_count ?? 0,
+      events_count: data.events_count ?? displayedEventPosts.length,
+    });
+  }, [profileQuery.data, displayedAllPosts.length, displayedEventPosts.length]);
+
+  useEffect(() => {
+    if (!isOwnProfile || !viewedUsername) return;
+    let cancelled = false;
+
+    const fetchGemmedPostsCount = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/posts/gemed/?page_size=1`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const count = getPaginatedCount(data);
+        if (!cancelled && count !== null) {
+          setGemmedPostsCount(count);
+        }
+      } catch { }
+    };
+
+    void fetchGemmedPostsCount();
+    return () => { cancelled = true; };
+  }, [isOwnProfile, viewedUsername]);
+
+  useEffect(() => {
+    if (!viewedUsername) return;
+    let cancelled = false;
+
+    const fetchProfileCounts = async () => {
+      const headers = { Authorization: `Bearer ${getAuthToken()}` };
+      try {
+        const [postsRes, eventsRes] = await Promise.all([
+          fetch(`${API_URL}/api/posts/user/${viewedUsername}/?page_size=1`, { headers }),
+          fetch(`${API_URL}/api/posts/user/${viewedUsername}/events/?page_size=1`, { headers }),
+        ]);
+
+        if (postsRes.ok) {
+          const data = await postsRes.json();
+          const count = getPaginatedCount(data);
+          if (!cancelled && count !== null) setProfilePostsCount(count);
+        }
+
+        if (eventsRes.ok) {
+          const data = await eventsRes.json();
+          const count = getPaginatedCount(data);
+          if (!cancelled && count !== null) setProfileEventsCount(count);
+        }
+      } catch { }
+    };
+
+    void fetchProfileCounts();
+    return () => { cancelled = true; };
+  }, [viewedUsername]);
+
+  useEffect(() => {
+    if (!gridTabQuery.data) return;
+    const mapped = gridTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (allPosts.length > 0 || rememberedAllPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.grid, mapped);
+    setAllPosts(mapped);
+  }, [gridTabQuery.data, tabMemoryKeys.grid, allPosts.length, rememberedAllPosts.length]);
+
+  useEffect(() => {
+    if (!gemsTabQuery.data) return;
+    const mapped = gemsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (gemmedPosts.length > 0 || rememberedGemmedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.gems, mapped);
+    setGemmedPosts(mapped);
+  }, [gemsTabQuery.data, tabMemoryKeys.gems, gemmedPosts.length, rememberedGemmedPosts.length]);
+
+  useEffect(() => {
+    if (!savedTabQuery.data) return;
+    const mapped = savedTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (savedPosts.length > 0 || rememberedSavedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.saved, mapped);
+    setSavedPosts(mapped);
+  }, [savedTabQuery.data, tabMemoryKeys.saved, savedPosts.length, rememberedSavedPosts.length]);
+
+  useEffect(() => {
+    if (!repostsTabQuery.data) return;
+    const mapped = repostsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (repostedPosts.length > 0 || rememberedRepostedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.reposts, mapped);
+    setRepostedPosts(mapped);
+  }, [repostsTabQuery.data, tabMemoryKeys.reposts, repostedPosts.length, rememberedRepostedPosts.length]);
+
+  useEffect(() => {
+    if (!eventsTabQuery.data) return;
+    const mapped = eventsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (eventPosts.length > 0 || rememberedEventPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.events, mapped);
+    setEventPosts(mapped);
+  }, [eventsTabQuery.data, tabMemoryKeys.events, eventPosts.length, rememberedEventPosts.length]);
+
+  useEffect(() => {
+    if (!alertsTabQuery.data) return;
+    const mapped = alertsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (alertPosts.length > 0 || rememberedAlertPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.alerts, mapped);
+    setAlertPosts(mapped);
+  }, [alertsTabQuery.data, tabMemoryKeys.alerts, alertPosts.length, rememberedAlertPosts.length]);
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -1654,7 +1990,7 @@ export default function ProfilePage() {
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
-      const allPostsFlat = [...allPosts, ...gemmedPosts, ...savedPosts, ...repostedPosts, ...eventPosts, ...alertPosts];
+      const allPostsFlat = [...displayedAllPosts, ...displayedGemmedPosts, ...displayedSavedPosts, ...displayedRepostedPosts, ...displayedEventPosts, ...displayedAlertPosts];
       const sourcePost = allPostsFlat.find((p) => p.id === postId);
       const existing = prev[postId] ?? {
         gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
@@ -1670,12 +2006,22 @@ export default function ProfilePage() {
   };
 
   const deletePostFromLists = (postId: string) => {
+    const deletedPost = [...displayedAllPosts, ...displayedGemmedPosts, ...displayedSavedPosts, ...displayedRepostedPosts, ...displayedEventPosts, ...displayedAlertPosts]
+      .find((post) => post.id === postId);
     setAllPosts((prev) => prev.filter((p) => p.id !== postId));
     setGemmedPosts((prev) => prev.filter((p) => p.id !== postId));
     setSavedPosts((prev) => prev.filter((p) => p.id !== postId));
     setRepostedPosts((prev) => prev.filter((p) => p.id !== postId));
     setEventPosts((prev) => prev.filter((p) => p.id !== postId));
     setAlertPosts((prev) => prev.filter((p) => p.id !== postId));
+    Object.values(tabMemoryKeys).forEach((key) => {
+      const remembered = profileTabMemory.get(key);
+      if (remembered) profileTabMemory.set(key, remembered.filter((post) => post.id !== postId));
+    });
+    setProfilePostsCount((current) => current === null ? current : Math.max(current - 1, 0));
+    if (deletedPost?.post_type === "event") {
+      setProfileEventsCount((current) => current === null ? current : Math.max(current - 1, 0));
+    }
   };
 
   /* ── Fetch logged in user ── */
@@ -1695,6 +2041,7 @@ export default function ProfilePage() {
   // ← fetch real profile info + likes + events + posts counts
   useEffect(() => {
     if (!viewedUsername) return;
+    if (profileQuery.data || profileQuery.isFetching) return;
     const fetchProfile = async () => {
       try {
         const endpoint = isOwnProfile
@@ -1761,62 +2108,117 @@ export default function ProfilePage() {
       }
     };
     fetchProfile();
-  }, [viewedUsername, isOwnProfile]);
+  }, [viewedUsername, isOwnProfile, profileQuery.data, profileQuery.isFetching]);
 
-  /* ── Fetch posts ── */
+  /* ── Fetch posts logic with pagination ── */
+  const fetchTabPosts = async (url: string, tab: string, isInitial = false) => {
+    if (!url) return;
+    isInitial ? (
+      tab === "grid" ? setLoadingPosts(true) :
+        tab === "gems" ? setLoadingGemmed(true) :
+          tab === "saved" ? setLoadingSaved(true) :
+            tab === "reposts" ? setLoadingReposts(true) :
+              tab === "events" ? setLoadingEvents(true) :
+                setLoadingAlerts(true)
+    ) : setLoadingMore(true);
+
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const results = (data.results ?? data).map(mapPost);
+
+      const setter =
+        tab === "grid" ? setAllPosts :
+          tab === "gems" ? setGemmedPosts :
+            tab === "saved" ? setSavedPosts :
+              tab === "reposts" ? setRepostedPosts :
+                tab === "events" ? setEventPosts :
+                  setAlertPosts;
+
+      setter(prev => {
+        if (isInitial) return results;
+        const existingIds = new Set(prev.map((p: ApiPost) => p.id));
+        const uniqueNew = results.filter((p: ApiPost) => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
+      setNextUrl(data.next ?? null);
+    } catch (err) {
+      console.error(`Error fetching ${tab}:`, err);
+    } finally {
+      isInitial ? (
+        tab === "grid" ? setLoadingPosts(false) :
+          tab === "gems" ? setLoadingGemmed(false) :
+            tab === "saved" ? setLoadingSaved(false) :
+              tab === "reposts" ? setLoadingReposts(false) :
+                tab === "events" ? setLoadingEvents(false) :
+                  setLoadingAlerts(false)
+      ) : setLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
     if (!viewedUsername) return;
+    if (gridTabQuery.data || gridTabQuery.isFetching) return;
     const fetchAllPosts = async () => {
       setLoadingPosts(true);
-      let url: string | null = `${API_URL}/api/posts/user/${viewedUsername}/`;
-      const collected: ApiPost[] = [];
+      const url = `${API_URL}/api/posts/user/${viewedUsername}/?page_size=10`;
       try {
-        while (url) {
-          const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
-          if (!res.ok) break;
-          const data: any = await res.json();
-          collected.push(...(data.results ?? []).map(mapPost));
-          url = data.next ?? null;
-        }
+        const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data: any = await res.json();
+        const count = getPaginatedCount(data);
+        if (count !== null) setProfilePostsCount(count);
+        const collected = (data.results ?? data.data?.results ?? data.data ?? data ?? []).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.grid, collected);
         setAllPosts(collected);
       } catch (err) { console.error("Error fetching posts:", err); }
       finally { setLoadingPosts(false); }
     };
     fetchAllPosts();
-  }, [viewedUsername]);
+  }, [viewedUsername, gridTabQuery.data, gridTabQuery.isFetching, tabMemoryKeys.grid]);
 
   useEffect(() => {
     if (!isOwnProfile || visibleTab !== "gems") return;
+    if (gemsTabQuery.data || gemsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingGemmed(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/gemed/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setGemmedPosts((data.results ?? data).map(mapPost));
+        const count = getPaginatedCount(data);
+        if (count !== null) setGemmedPostsCount(count);
+        const mapped = (data.results ?? data.data?.results ?? data.data ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.gems, mapped);
+        setGemmedPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingGemmed(false); }
     };
     fetch_();
-  }, [visibleTab, isOwnProfile]);
+  }, [visibleTab, isOwnProfile, gemsTabQuery.data, gemsTabQuery.isFetching, tabMemoryKeys.gems]);
 
   useEffect(() => {
     if (!isOwnProfile || visibleTab !== "saved") return;
+    if (savedTabQuery.data || savedTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingSaved(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/saved/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setSavedPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.saved, mapped);
+        setSavedPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingSaved(false); }
     };
     fetch_();
-  }, [visibleTab, isOwnProfile]);
+  }, [visibleTab, isOwnProfile, savedTabQuery.data, savedTabQuery.isFetching, tabMemoryKeys.saved]);
 
   useEffect(() => {
     if (visibleTab !== "reposts" || !viewedUsername) return;
+    if (repostsTabQuery.data || repostsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingReposts(true);
       try {
@@ -1826,46 +2228,116 @@ export default function ProfilePage() {
         const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setRepostedPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.reposts, mapped);
+        setRepostedPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingReposts(false); }
     };
     fetch_();
-  }, [visibleTab, isOwnProfile, viewedUsername]);
+  }, [visibleTab, isOwnProfile, viewedUsername, repostsTabQuery.data, repostsTabQuery.isFetching, tabMemoryKeys.reposts]);
 
   useEffect(() => {
     if (visibleTab !== "events" || !viewedUsername) return;
+    if (eventsTabQuery.data || eventsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingEvents(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/events/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setEventPosts((data.results ?? data).map(mapPost));
+        const count = getPaginatedCount(data);
+        if (count !== null) setProfileEventsCount(count);
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.events, mapped);
+        setEventPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingEvents(false); }
     };
     fetch_();
-  }, [visibleTab, viewedUsername]);
+  }, [visibleTab, viewedUsername, eventsTabQuery.data, eventsTabQuery.isFetching, tabMemoryKeys.events]);
 
   useEffect(() => {
     if (visibleTab !== "alerts" || !viewedUsername) return;
+    if (alertsTabQuery.data || alertsTabQuery.isFetching) return;
     const fetch_ = async () => {
       setLoadingAlerts(true);
       try {
         const res = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/alerts/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
         if (!res.ok) return;
         const data = await res.json();
-        setAlertPosts((data.results ?? data).map(mapPost));
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.alerts, mapped);
+        setAlertPosts(mapped);
       } catch (err) { console.error(err); }
       finally { setLoadingAlerts(false); }
     };
     fetch_();
-  }, [visibleTab, viewedUsername]);
+  }, [visibleTab, viewedUsername, alertsTabQuery.data, alertsTabQuery.isFetching, tabMemoryKeys.alerts]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && nextUrl) {
+          fetchTabPosts(nextUrl, visibleTab, false);
+        }
+      },
+      { threshold: 1.0 }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [nextUrl, loadingMore, visibleTab]);
 
   const openPost = (post: ApiPost, tab: "comments" | "annotations" = "comments") => {
     setSelectedPost(post);
     setSelectedPostTab(tab);
+  };
+
+  const isGridLoading = displayedAllPosts.length === 0 && (loadingPosts || gridTabQuery.isLoading);
+  const isGemsLoading = displayedGemmedPosts.length === 0 && (loadingGemmed || gemsTabQuery.isLoading);
+  const isSavedLoading = displayedSavedPosts.length === 0 && (loadingSaved || savedTabQuery.isLoading);
+  const isRepostsLoading = displayedRepostedPosts.length === 0 && (loadingReposts || repostsTabQuery.isLoading);
+  const isEventsLoading = displayedEventPosts.length === 0 && (loadingEvents || eventsTabQuery.isLoading);
+  const isAlertsLoading = displayedAlertPosts.length === 0 && (loadingAlerts || alertsTabQuery.isLoading);
+  const profileGemsCount = isOwnProfile
+    ? gemmedPostsCount ?? Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length)
+    : profileInfo.likes_count;
+  const profilePostsDisplayCount = profilePostsCount ?? Math.max(profileInfo.posts_count, displayedAllPosts.length, rememberedAllPosts.length, allPosts.length);
+  const profileEventsDisplayCount = profileEventsCount ?? Math.max(profileInfo.events_count, displayedEventPosts.length, rememberedEventPosts.length, eventPosts.length);
+
+  const handleSelectedPostInteractionChange = (post: ApiPost, update: Partial<PostInteraction>) => {
+    const previousInteraction = getInteraction(post);
+    updateInteraction(post.id, update);
+
+    if (!isOwnProfile || typeof update.gemmed !== "boolean" || update.gemmed === previousInteraction.gemmed) return;
+
+    setGemmedPostsCount((current) => {
+      const fallback = Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length);
+      const base = current ?? fallback;
+      return update.gemmed ? base + 1 : Math.max(base - 1, 0);
+    });
+
+    if (update.gemmed) {
+      setGemmedPosts((current) => current.some((item) => item.id === post.id) ? current : [post, ...current]);
+      const remembered = profileTabMemory.get(tabMemoryKeys.gems) ?? [];
+      if (!remembered.some((item) => item.id === post.id)) {
+        profileTabMemory.set(tabMemoryKeys.gems, [post, ...remembered]);
+      }
+    } else {
+      setGemmedPosts((current) => current.filter((item) => item.id !== post.id));
+      const remembered = profileTabMemory.get(tabMemoryKeys.gems);
+      if (remembered) profileTabMemory.set(tabMemoryKeys.gems, remembered.filter((item) => item.id !== post.id));
+    }
+  };
+
+  const updateRepostDescriptionInLists = (postId: string, description: string) => {
+    const applyDescription = (post: ApiPost) => (
+      post.id === postId ? { ...post, repost_description: description } : post
+    );
+    setSelectedPost(prev => prev && prev.id === postId ? { ...prev, repost_description: description } : prev);
+    setRepostedPosts(prev => prev.map(applyDescription));
+    const remembered = profileTabMemory.get(tabMemoryKeys.reposts);
+    if (remembered) profileTabMemory.set(tabMemoryKeys.reposts, remembered.map(applyDescription));
   };
 
   return (
@@ -1875,52 +2347,68 @@ export default function ProfilePage() {
           post={selectedPost}
           initialTab={selectedPostTab}
           interaction={getInteraction(selectedPost)}
-          onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
+          onInteractionChange={(update) => handleSelectedPostInteractionChange(selectedPost, update)}
           onDeletePost={deletePostFromLists}
           onClose={() => setSelectedPost(null)}
           loggedInUsername={loggedInUsername}
+          onReport={openReportModal}
         />
       )}
+
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleReportSubmit}
+        targetType={reportModal.targetType}
+      />
 
       <LeftSidebar activePage={isOwnProfile ? "profile" : ""} />
 
       <main className="md:pl-[80px] px-4 pb-16 md:pb-0">
         <div className="max-w-4xl mx-auto">
-          <ProfileHeader profileInfo={profileInfo} isOwnProfile={isOwnProfile} />
+          <ProfileHeader
+            profileInfo={profileInfo}
+            isOwnProfile={isOwnProfile}
+            gemsCount={profileGemsCount}
+            postsCount={profilePostsDisplayCount}
+            eventsCount={profileEventsDisplayCount}
+          />
           <ProfileTabs activeTab={visibleTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
 
           {visibleTab === "grid" && (
-            loadingPosts ? <Spinner /> :
-              allPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message={userPageT("empty.posts")} /> :
-                <PostsGrid posts={allPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isGridLoading ? <ProfileGridSkeleton /> :
+              displayedAllPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message={userPageT("empty.posts")} /> :
+                <PostsGrid posts={displayedAllPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && visibleTab === "gems" && (
-            loadingGemmed ? <Spinner /> :
-              gemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message={userPageT("empty.treasure")} /> :
-                <PostsGrid posts={gemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isGemsLoading ? <ProfileGridSkeleton /> :
+              displayedGemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message={userPageT("empty.treasure")} /> :
+                <PostsGrid posts={displayedGemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {isOwnProfile && visibleTab === "saved" && (
-            loadingSaved ? <Spinner /> :
-              savedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message={userPageT("empty.collection")} /> :
-                <PostsGrid posts={savedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isSavedLoading ? <ProfileGridSkeleton /> :
+              displayedSavedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message={userPageT("empty.collection")} /> :
+                <PostsGrid posts={displayedSavedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {visibleTab === "reposts" && (
             <>
-              {loadingReposts ? <Spinner /> :
-                repostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message={userPageT("empty.reposts")} /> :
-                  <PostsGrid posts={repostedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />}
+              {isRepostsLoading ? <ProfileGridSkeleton /> :
+                displayedRepostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message={userPageT("empty.reposts")} /> :
+                  <PostsGrid posts={displayedRepostedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />}
             </>
           )}
           {visibleTab === "events" && (
-            loadingEvents ? <Spinner /> :
-              eventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message={userPageT("empty.events")} /> :
-                <PostsGrid posts={eventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isEventsLoading ? <ProfileGridSkeleton /> :
+              displayedEventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message={userPageT("empty.events")} /> :
+                <PostsGrid posts={displayedEventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
           {visibleTab === "alerts" && (
-            loadingAlerts ? <Spinner /> :
-              alertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message={userPageT("empty.alerts")} /> :
-                <PostsGrid posts={alertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+            isAlertsLoading ? <ProfileGridSkeleton /> :
+              displayedAlertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message={userPageT("empty.alerts")} /> :
+                <PostsGrid posts={displayedAlertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
           )}
+          {loadingMore && <Spinner />}
+          <div ref={sentinelRef} className="h-4" />
         </div>
       </main>
     </div>

@@ -95,6 +95,14 @@ export default function ThemeToggle({
 
   useEffect(() => {
     applyTheme(theme);
+
+    const handleUpdate = () => {
+      const next = window.localStorage.getItem("theme-mode") === "dark" ? "dark" : "light";
+      setTheme(next);
+    };
+
+    window.addEventListener("theme-updated", handleUpdate);
+    return () => window.removeEventListener("theme-updated", handleUpdate);
   }, [pathname, theme]);
 
   if (!shouldShowToggle) {
@@ -106,6 +114,7 @@ export default function ThemeToggle({
     setTheme(nextTheme);
     if (typeof window !== "undefined") {
       window.localStorage.setItem("theme-mode", nextTheme);
+      window.dispatchEvent(new CustomEvent("theme-updated"));
     }
     applyTheme(nextTheme);
   };
@@ -125,12 +134,12 @@ export default function ThemeToggle({
       style={
         isInline
           ? {
-              opacity: 1,
-              color: foregroundColor,
-              borderColor,
-              background: hovered ? hoverBackgroundColor : backgroundColor,
-              boxShadow: shadow,
-            }
+            opacity: 1,
+            color: foregroundColor,
+            borderColor,
+            background: hovered ? hoverBackgroundColor : backgroundColor,
+            boxShadow: shadow,
+          }
           : { opacity: 1 }
       }
     >

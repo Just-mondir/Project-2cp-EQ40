@@ -103,13 +103,23 @@ export function GemUsersModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border-soft, #E0D5C5)" }}>
-          <div>
-            <p className="m-0 text-sm font-black uppercase tracking-wider" style={{ color: "var(--foreground, #432817)" }}>
-              Gems
-            </p>
-            <p className="m-0 text-xs" style={{ color: "var(--text-muted, #8B7355)" }}>
-              {count} member{count === 1 ? "" : "s"}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ color: "#4FC3F7", backgroundColor: "rgba(67, 40, 23, 0.08)" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 3h12l4 6-10 13L2 9z" />
+                <path d="M2 9h20" />
+                <path d="M12 22L6 9l3-6" />
+                <path d="M12 22l6-13-3-6" />
+              </svg>
+            </div>
+            <div>
+              <p className="m-0 text-sm font-black uppercase tracking-wider" style={{ color: "var(--foreground, #432817)" }}>
+                Gems
+              </p>
+              <p className="m-0 text-xs" style={{ color: "var(--text-muted, #8B7355)" }}>
+                {count} member{count === 1 ? "" : "s"}
+              </p>
+            </div>
           </div>
           <button
             type="button"

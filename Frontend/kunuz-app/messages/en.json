@@ -215,7 +215,8 @@
       },
       "tabs": {
         "comments": "Comments ({count})",
-        "annotations": "Annotations ({count})"
+        "annotations": "Annotations ({count})",
+        "history": "History"
       },
       "placeholders": {
         "reply": "Write a reply...",
@@ -252,7 +253,8 @@
         "heritageType": "Heritage Type",
         "urgencyLevel": "Urgency Level",
         "mobilizationStatus": "Mobilization Status",
-        "eventStatus": "Event Status"
+        "eventStatus": "Event Status",
+        "expertise": "Expertise"
       },
       "eventStatuses": {
         "upcoming": "Upcoming",
@@ -266,7 +268,6 @@
         "communities": "Communities",
         "monuments": "Monuments in Danger",
         "events": "Events",
-        "addPost": "Add Post",
         "notifications": "Notifications",
         "profile": "Profile",
         "help": "Help"
@@ -572,8 +573,9 @@
         "amateur": "Amateur",
         "student": "Student",
         "researcher": "Researcher",
+        "architect": "Architect",
         "historian": "Historian",
-        "tourGuide": "Tour Guide"
+        "guide": "Guide"
       },
       "badge": {
         "request": "Request badge",
@@ -653,6 +655,7 @@
       },
       "sections": {
         "today": "Today",
+        "thisMonth": "This month",
         "thisWeek": "This week",
         "earlier": "Earlier"
       },
@@ -882,7 +885,7 @@
         },
         "stats": {
           "posts": "Posts",
-          "likes": "Likes",
+          "likes": "Gems",
           "events": "Events"
         },
         "empty": {

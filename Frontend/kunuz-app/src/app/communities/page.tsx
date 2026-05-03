@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
@@ -12,6 +11,10 @@ import LocationWorldCard from "@/components/LocationWorldCard";
 import MyGroupsModal from "@/components/MyGroupsModal";
 import SuggestedGroupsModal from "@/components/SuggestedGroupsModal";
 import ActionConfirmModal from "@/components/ActionConfirmModal";
+import { PostsSkeletonList } from "@/components/PostSkeletons";
+import { usePosts } from "@/hooks/usePosts";
+import ReportModal from "@/components/ReportModal";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 
 
 
@@ -441,7 +444,6 @@ function PostTags({ tags }: { tags: string[] }) {
 const CONTENT_LIMIT = 160;
 
 function ExpandableContent({ content, className = "", style = {} }: { content: string; className?: string; style?: React.CSSProperties }) {
-  const feedT = useTranslations("auth.feed");
   const [expanded, setExpanded] = useState(false);
   const strippedText = content.replace(/<[^>]*>/g, "");
   const isLong = strippedText.length > CONTENT_LIMIT;
@@ -454,7 +456,7 @@ function ExpandableContent({ content, className = "", style = {} }: { content: s
       )}
       {isLong && (
         <button className="font-semibold" style={{ color: "#8B6914" }} onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}>
-          {expanded ? feedT("actions.seeLess") : feedT("actions.seeMore")}
+          {expanded ? "See less" : "See more"}
         </button>
       )}
     </div>
@@ -478,7 +480,6 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 function PostDetailBadge({ post }: { post: ApiPost }) {
-  const feedT = useTranslations("auth.feed");
   if (post.post_type === "event" && post.event_details) {
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
@@ -489,7 +490,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
           <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
         </div>
       </div>
@@ -498,16 +499,7 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
 
   if (post.post_type === "alert" && post.alert_details) {
     const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
-    const statusKeyMap: Record<string, string> = {
-      restored: "statuses.restored",
-      under_intervention: "statuses.underIntervention",
-      destroyed: "statuses.destroyed",
-      alert: "statuses.alert",
-    };
-    const statusLabel = statusKeyMap[post.alert_details.current_status]
-      ? feedT(statusKeyMap[post.alert_details.current_status] as any)
-      : post.alert_details.current_status;
-    const urgencyKey = post.alert_details.urgence_level as "low" | "medium" | "high" | "critical";
+    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
     return (
       <div className="mx-5 mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
@@ -517,9 +509,9 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
           </svg>
         </div>
         <div className="flex flex-col min-w-0">
-          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>{feedT("labels.alert")}</span>
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold" style={{ color: level.dot }}>{feedT(`urgency.${urgencyKey}` as any)}</span>
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
           </div>
         </div>
@@ -538,14 +530,15 @@ function CommentItem({
   onRefresh,
   onDelete,
   isReply = false,
+  onReport,
 }: {
   comment: CommentNode;
   postId: string;
   onRefresh?: () => void;
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
-  const feedT = useTranslations("auth.feed");
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [gemmed, setGemmed] = useState(comment.is_gemmed);
@@ -674,7 +667,7 @@ function CommentItem({
   };
 
   const handleReportComment = async () => {
-    const reason = window.prompt(feedT("prompts.reportComment"));
+    const reason = window.prompt("Why are you reporting this comment?");
     if (!reason || !reason.trim()) return;
 
     try {
@@ -862,6 +855,7 @@ function AnnotationItem({
   onAccept,
   onReject,
   onRefresh,
+  onReport,
 }: {
   annotation: Annotation;
   postId: string;
@@ -870,8 +864,8 @@ function AnnotationItem({
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   onRefresh?: () => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
-  const feedT = useTranslations("auth.feed");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(annotation.text ?? "");
@@ -975,23 +969,15 @@ function AnnotationItem({
     setIsEditing(false);
   };
 
-  const handleReport = async () => {
-    const reason = window.prompt(feedT("prompts.reportAnnotation"));
-    if (!reason || !reason.trim()) return;
-
-    try {
-      await submitReport("annotation", annotation.id, reason.trim());
-      setShowMenu(false);
-      window.alert(feedT("feedback.annotationReported"));
-    } catch {
-      window.alert(feedT("feedback.annotationReportFailed"));
-    }
+  const handleReport = () => {
+    onReport("annotation", annotation.id);
+    setShowMenu(false);
   };
 
   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
-    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
-    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
-    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: "Pending" },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: "Accepted" },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: "Rejected" },
   };
 
   const sc = statusColors[annotation.status] ?? statusColors.pending;
@@ -1065,9 +1051,9 @@ function AnnotationItem({
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[var(--panel-hover)]"
                     style={{ color: "var(--foreground)" }}
-                        onClick={handleReport}
-                      >
-                        {feedT("actions.reportAnnotation")}
+                    onClick={handleReport}
+                  >
+                    Report annotation
                   </button>
                 )}
 
@@ -1159,7 +1145,7 @@ function FilterSection({
 }: {
   isVisible: boolean;
   onClose: () => void;
-  onApply: (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => void;
+  onApply: (filters: { region: string; post_type: string; historical_period: string; monument_type: string; expertise: string }) => void;
 }) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [choices, setChoices] = useState<{
@@ -1167,12 +1153,14 @@ function FilterSection({
     post_types: string[];
     historical_periods: string[];
     monument_types: string[];
-  }>({ regions: [], post_types: [], historical_periods: [], monument_types: [] });
+    expertises: string[];
+  }>({ regions: [], post_types: [], historical_periods: [], monument_types: [], expertises: [] });
 
   const [region, setRegion] = useState("All");
   const [postType, setPostType] = useState("All");
   const [historicalPeriod, setHistoricalPeriod] = useState("All");
   const [monumentType, setMonumentType] = useState("All");
+  const [expertise, setExpertise] = useState("All");
 
   useEffect(() => {
     if (isVisible) setIsAnimating(true);
@@ -1198,7 +1186,8 @@ function FilterSection({
     setPostType("All");
     setHistoricalPeriod("All");
     setMonumentType("All");
-    onApply({ region: "", post_type: "", historical_period: "", monument_type: "" });
+    setExpertise("All");
+    onApply({ region: "", post_type: "", historical_period: "", monument_type: "", expertise: "" });
     onClose();
   };
 
@@ -1208,6 +1197,7 @@ function FilterSection({
       post_type: postType === "All" ? "" : postType,
       historical_period: historicalPeriod === "All" ? "" : historicalPeriod,
       monument_type: monumentType === "All" ? "" : monumentType,
+      expertise: expertise === "All" ? "" : expertise,
     });
     onClose();
   };
@@ -1217,6 +1207,7 @@ function FilterSection({
     { label: "Geographical Regions", options: ["All", ...choices.regions], value: region, onChange: setRegion },
     { label: "Historical Periods", options: ["All", ...choices.historical_periods], value: historicalPeriod, onChange: setHistoricalPeriod },
     { label: "Heritage Type", options: ["All", ...choices.monument_types], value: monumentType, onChange: setMonumentType },
+    { label: "Expertise", options: ["All", ...choices.expertises], value: expertise, onChange: setExpertise },
   ];
 
   return (
@@ -1276,6 +1267,7 @@ export function PostModal({
   onInteractionChange,
   initialTab = "comments",
   onDelete,
+  onReport,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -1283,6 +1275,7 @@ export function PostModal({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
   onDelete?: (postId: string) => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
 
@@ -1300,7 +1293,6 @@ export function PostModal({
   const postMenuRef = useRef<HTMLDivElement | null>(null);
   const imageScrollRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
-  const feedT = useTranslations("auth.feed");
   const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
 
   const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
@@ -1550,6 +1542,7 @@ export function PostModal({
           postId={post.id}
           onRefresh={() => fetchComments(post.id)}
           onDelete={handleDeleteComment}
+          onReport={onReport}
           isReply={level > 0}
         />
         {replies.length > 0 && (
@@ -1639,7 +1632,7 @@ export function PostModal({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>{feedT("labels.event")}</span>
+            <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: "#5C7A3E" }}>Event</span>
             <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
           </div>
         </div>
@@ -1647,23 +1640,14 @@ export function PostModal({
 
       {post.post_type === "alert" && post.alert_details && (() => {
         const level = URGENCY_COLORS[post.alert_details!.urgence_level] ?? URGENCY_COLORS.medium;
-        const statusKeyMap: Record<string, string> = {
-          restored: "statuses.restored",
-          under_intervention: "statuses.underIntervention",
-          destroyed: "statuses.destroyed",
-          alert: "statuses.alert",
-        };
-        const statusLabel = statusKeyMap[post.alert_details!.current_status]
-          ? feedT(statusKeyMap[post.alert_details!.current_status] as any)
-          : post.alert_details!.current_status;
-        const urgencyKey = post.alert_details!.urgence_level as "low" | "medium" | "high" | "critical";
+        const statusLabel = STATUS_LABELS[post.alert_details!.current_status] ?? post.alert_details!.current_status;
         return (
           <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>{feedT("labels.alert")} · {feedT(`urgency.${urgencyKey}` as any)}</span>
+              <span className="text-[10px] font-black uppercase tracking-wider block" style={{ color: level.dot }}>Alert · {level.label}</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
             </div>
           </div>
@@ -1685,25 +1669,25 @@ export function PostModal({
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "var(--panel-bg)" }} onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col md:flex-row w-full md:max-w-[1000px] h-full md:max-h-[90vh] md:h-[90vh] md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
-        <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
-          <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "var(--border-soft)" }}>
+        <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
-            <div className="ml-3 flex-1">
+            <div className="ml-3 flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <button
-                  className="font-bold text-base hover:underline text-left"
-                  style={{ color: "var(--foreground)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                  className="font-bold text-sm block truncate"
+                  style={{ color: "#432817", background: "none", border: "none", padding: 0 }}
                   onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}
                 >
                   {post.user_display_name || post.user_username}
                 </button>
-                <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{formatDate(post.created_at)}</p>
+                <span className="text-[10px] block" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</span>
               </div>
             </div>
             <div className="relative" ref={postMenuRef}>
@@ -1713,10 +1697,10 @@ export function PostModal({
               {showPostMenu && (
                 <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "var(--background)" }}>
                   {canDelete && (
-                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "#ef4444" }} onClick={() => setConfirmAction("delete")}>{feedT("actions.deletePost")}</button>
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "#ef4444" }} onClick={() => setConfirmAction("delete")}>Delete post</button>
                   )}
                   {!isModeratorActive && (
-                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => setShowPostMenu(false)}>{feedT("actions.reportPost")}</button>
+                    <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[var(--panel-hover)]" style={{ color: "var(--foreground)" }} onClick={() => { onReport("post", post.id); setShowPostMenu(false); }}>Report post</button>
                   )}
                 </div>
               )}
@@ -1749,13 +1733,13 @@ export function PostModal({
               {isContentLong && !contentExpanded ? (
                 <p className="text-xs leading-relaxed mt-1" style={{ color: "var(--foreground)" }}>
                   {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>See more</button>
                 </p>
               ) : (
                 <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
               )}
               {isContentLong && contentExpanded && (
-                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>See less</button>
               )}
 
 
@@ -1772,7 +1756,7 @@ export function PostModal({
               onClick={() => setActiveTab("comments")}
             >
               <CommentIcon size={13} />
-              {feedT("tabs.comments", { count: comments.length })}
+              Comments ({comments.length})
             </button>
             <button
               className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
@@ -1783,7 +1767,7 @@ export function PostModal({
               onClick={() => setActiveTab("annotations")}
             >
               <AnnotationIcon size={13} />
-              {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
+              Annotations ({acceptedAnnotationsCount})
             </button>
           </div>
 
@@ -1794,7 +1778,7 @@ export function PostModal({
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <CommentIcon size={28} className="opacity-30" />
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                      {feedT("empty.comments")}
+                      No comments yet. Be the first to comment!
                     </p>
                   </div>
                 ) : (
@@ -1814,7 +1798,7 @@ export function PostModal({
                 ) : annotations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <AnnotationIcon size={28} className="opacity-30" />
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{feedT("empty.annotations")}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>No annotations yet. Be the first to annotate!</p>
                   </div>
                 ) : (
                   annotations.map((annotation) => (
@@ -1827,6 +1811,7 @@ export function PostModal({
                       onAccept={handleAcceptAnnotation}
                       onReject={handleRejectAnnotation}
                       onRefresh={() => fetchAnnotations(post.id)}
+                      onReport={onReport}
                     />
                   ))
                 )}
@@ -1836,23 +1821,23 @@ export function PostModal({
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "var(--border-soft)" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onClick={handleGem}>
+              <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onGemClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
-              </button>
+              </LongPressGemButton>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "comments" ? "var(--foreground)" : "var(--text-muted)" }}
                 onClick={() => setActiveTab("comments")}
               >
-                <CommentIcon size={14} /> {formatCount(comments.length)}
+                <CommentIcon size={14} /> {formatCount(interaction.commentsCount)}
               </button>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "annotations" ? "var(--foreground)" : "var(--text-muted)" }}
                 onClick={() => setActiveTab("annotations")}
               >
-                <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
+                <AnnotationIcon size={14} /> {formatCount(interaction.annotationsCount)}
               </button>
               <RepostButton
                 key={`${post.id}-${reposted}-${repostsCount}`}
@@ -1879,7 +1864,7 @@ export function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder={feedT("placeholders.comment")}
+                  placeholder="Add a comment"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }}
@@ -1898,7 +1883,7 @@ export function PostModal({
               <>
                 <input
                   type="text"
-                  placeholder={feedT("placeholders.annotation")}
+                  placeholder="Add an annotation"
                   value={newAnnotationText}
                   onChange={(e) => setNewAnnotationText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }}
@@ -1925,10 +1910,9 @@ export function PostModal({
 
 function MobileGroupsStrip({ groups }: { groups: Group[] }) {
   const router = useRouter();
-  const t = useTranslations("auth.pages.home");
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="localized-container-title text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>{t("guilds.title")}</h3>
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>Popular Groups</h3>
       <div
         className="flex gap-3 overflow-x-auto pb-2"
         style={{
@@ -1950,7 +1934,7 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
                 className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2"
               />
               <span
-                className="localized-container-title text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
+                className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
                 style={{
                   color: "var(--foreground)",
                   fontFamily: "var(--font-lato)",
@@ -1962,7 +1946,7 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
                 {group.name}
               </span>
               <span
-                className="localized-container-text text-[8px] text-center leading-tight line-clamp-2 mb-2"
+                className="text-[8px] text-center leading-tight line-clamp-2 mb-2"
                 style={{
                   color: "var(--text-muted)",
                   fontFamily: "var(--font-lato)",
@@ -1972,20 +1956,20 @@ function MobileGroupsStrip({ groups }: { groups: Group[] }) {
               >
                 {group.description?.replace(/<[^>]*>/g, "")}
               </span>
-              <span className="localized-member-count flex items-center gap-1 text-[9px] font-medium" style={{ color: "#8B6914" }}>
+              <span className="flex items-center gap-1 text-[9px] font-medium" style={{ color: "#8B6914" }}>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                {t("community.members", { count: formatCount(group.member_count || 0) })}
+                {formatCount(group.member_count || 0)}
               </span>
               <button
                 className="mt-3 w-full text-[9px] py-1.5 rounded-full font-bold transition-colors hover:opacity-90"
                 style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
                 onClick={() => router.push(`/group/${group.id}`)}
-              >{t("community.visit")}</button>
+              >Visit</button>
             </div>
           </div>
         ))}
@@ -2012,19 +1996,18 @@ function RightSidebar({
   onViewAllSuggestedGroups: () => void;
 }) {
   const router = useRouter();
-  const t = useTranslations("auth.pages.home");
   return (
     <aside className="w-[350px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:block overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
         {/* Header: title + Create button */}
         <div className="flex justify-between items-center mb-5 flex-shrink-0">
-          <h2 className="localized-container-title text-xl font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>{t("community.groupsTitle")}</h2>
+          <h2 className="text-xl font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>Groups</h2>
           <button
             className="text-[11px] px-3 py-1.5 rounded-full font-bold transition-colors hover:opacity-90"
-            style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
+            style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
             onClick={onCreateGroup}
           >
-            {t("community.createGroup")}
+            Create new group
           </button>
         </div>
 
@@ -2041,15 +2024,15 @@ function RightSidebar({
           {myGroups.length > 0 && (
             <div>
               <div className="flex justify-between items-center mb-3">
-                <h3 className="localized-container-title text-sm font-bold" style={{ color: "var(--foreground)" }}>{t("community.yourGroups")}</h3>
+                <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Your Groups</h3>
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "rgba(107, 62, 38, 0.1)", color: "#6B3E26" }}>{myGroups.length}</span>
                   <button
                     onClick={onViewAllMyGroups}
                     className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-80"
-                    style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
+                    style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
                   >
-                    {t("community.viewAll")}
+                    View all
                   </button>
                 </div>
               </div>
@@ -2066,14 +2049,14 @@ function RightSidebar({
                       className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
                     />
                     <div className="flex flex-col justify-center min-w-0 flex-1">
-                      <span className="localized-container-title font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                      <span className="localized-member-count text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{t("community.members", { count: formatCount(group.member_count || 0) })}</span>
+                      <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                      <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
                     </div>
                     <button
                       className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90 flex-shrink-0"
                       style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
                       onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
-                    >{t("community.visit")}</button>
+                    >Visit</button>
                   </div>
                 ))}
               </div>
@@ -2083,13 +2066,13 @@ function RightSidebar({
           {/* Suggested Groups Section */}
           <div>
             <div className="flex justify-between items-center mb-3">
-              <h3 className="localized-container-title text-sm font-bold" style={{ color: "var(--foreground)" }}>{t("community.suggestedGroups")}</h3>
+              <h3 className="text-sm font-bold" style={{ color: "var(--foreground)" }}>Suggested Groups</h3>
               <button
                 onClick={onViewAllSuggestedGroups}
                 className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-80"
-                style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
+                style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
               >
-                {t("community.viewAll")}
+                View all
               </button>
             </div>
             <div className="flex flex-col gap-2">
@@ -2103,14 +2086,14 @@ function RightSidebar({
                       className="w-[32px] h-[32px] rounded-full object-cover flex-shrink-0 shadow-sm border border-white"
                     />
                     <div className="flex flex-col justify-center min-w-0 flex-1">
-                      <span className="localized-container-title font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
-                      <span className="localized-member-count text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{t("community.members", { count: formatCount(group.member_count || 0) })}</span>
+                      <span className="font-bold text-xs truncate leading-tight" style={{ color: "var(--foreground)" }}>{group.name}</span>
+                      <span className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>{formatCount(group.member_count || 0)} members</span>
                     </div>
                     <button
                       className="text-[9px] px-3 py-0.5 rounded-full font-bold transition-colors hover:opacity-90"
                       style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
                       onClick={(e) => { e.stopPropagation(); router.push(`/group/${group.id}`); }}
-                    >{t("community.visit")}</button>
+                    >Visit</button>
                   </div>
                 ))}
             </div>
@@ -2133,6 +2116,7 @@ export function PostCard({
   onInteractionChange,
   groupDetails,
   onDelete,
+  onReport,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -2142,9 +2126,8 @@ export function PostCard({
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   groupDetails?: any;
   onDelete?: (postId: string) => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
-  const feedT = useTranslations("auth.feed");
-  const t = useTranslations("auth.pages.home");
   const [imgError, setImgError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -2229,8 +2212,7 @@ export function PostCard({
 
   return (
     <div
-      className={`rounded-xl mb-5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""
-        }`}
+      className={`rounded-none md:rounded-xl mb-1 md:mb-5 transition-all duration-200 md:hover:-translate-y-0.5 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
       style={{
         boxShadow: "0 2px 16px rgba(67,40,23,0.08)",
         backgroundColor: "var(--panel-bg)",
@@ -2249,84 +2231,181 @@ export function PostCard({
                 className="absolute -bottom-1 -right-0 border-2 rounded-full overflow-hidden"
                 style={{ borderColor: 'var(--panel-bg)', backgroundColor: 'var(--panel-bg)' }}
               >
-                <UserAvatar profilePicture={post.user_profile_picture} size={22} iconSize={13} />
+                <UserAvatar profilePicture={post.user_profile_picture} size={18} iconSize={10} />
               </div>
             </div>
           ) : (
             <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
           )}
-          <div className="ml-3 flex flex-col justify-center min-w-0">
-            {groupDetails ? (
-              /* Group name first (bold), then username beneath */
-              <>
-                <span
-                  className="font-bold text-sm tracking-wide truncate leading-tight"
-                  style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
+
+          <div className="ml-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              {groupDetails && (
+                <button
+                  className="font-bold text-sm hover:underline"
+                  style={{ color: "#432817" }}
+                  onClick={(e) => { e.stopPropagation(); router.push(`/group/${groupDetails.id}`); }}
                 >
                   {groupDetails.name}
-                </span>
-                <button
-                  className="text-[11px] mt-0.5 truncate text-left hover:underline"
-                  style={{ color: "var(--text-muted)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                  onClick={(e) => { e.stopPropagation(); if (!post.user_username) return; router.push(`/user/${post.user_username}`); }}
-                >
-                  {post.user_display_name || post.user_username}
                 </button>
-              </>
-            ) : (
-              /* No group context: show user name and @handle */
-              <>
-                <button
-                  className="font-bold text-sm tracking-wide hover:underline text-left truncate leading-tight"
-                  style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                  onClick={(e) => { e.stopPropagation(); if (!post.user_username) return; router.push(`/user/${post.user_username}`); }}
-                >
-                  {post.user_display_name || post.user_username}
-                </button>
-                <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-                  @{post.user_username}
-                </p>
-              </>
-            )}
+              )}
+              {groupDetails && <span className="text-[10px]" style={{ color: "#8B7355" }}>•</span>}
+              <button
+                className="font-bold text-sm hover:underline text-left"
+                style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                onClick={(e) => { e.stopPropagation(); if (!post.user_username) return; router.push(`/user/${post.user_username}`); }}
+              >
+                {post.user_display_name || post.user_username}
+              </button>
+              <p className="text-[10px]" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <p className="text-[10px] whitespace-nowrap opacity-60" style={{ color: "var(--text-muted)" }}>
-            {t("community.postedIn", { date: formatDate(post.created_at) })}
-          </p>
-          <div className="relative">
-            <button className="p-1 rounded transition-colors hover:bg-black/5" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--foreground)"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
-            </button>
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "var(--panel-bg)", border: "1px solid var(--border-soft)" }}>
-                {canDelete && (
-                  <>
-                    {isOwner && (
-                      <button
-                        className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap"
-                        style={{ color: "var(--foreground)" }}
-                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("edit"); }}
-                      >
-                        {feedT("actions.editPost")}
-                      </button>
-                    )}
+        <div className="relative">
+          <button className="p-1 rounded hover:bg-black/5 transition-colors" onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "var(--overlay-bg)", border: "1px solid var(--border-soft)", minWidth: "140px" }}>
+              {canDelete && (
+                <>
+                  {isOwner && (
                     <button
-                      className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-red-500/10 whitespace-nowrap"
-                      style={{ color: "#ef4444" }}
-                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                      className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5"
+                      style={{ color: "var(--foreground)" }}
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("edit"); }}
                     >
-                      {feedT("actions.deletePost")}
+                      Edit post
                     </button>
-                  </>
-                )}
-                {!isModeratorActive && (
-                  <button className="block w-full text-left px-4 py-2 text-xs font-bold transition-colors hover:bg-black/5 whitespace-nowrap" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
-                )}
+                  )}
+                  <button
+                    className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-red-50"
+                    style={{ color: "#7B0000" }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); setConfirmAction("delete"); }}
+                  >
+                    Delete post
+                  </button>
+                </>
+              )}
+              {!isModeratorActive && (
+                <button
+                  className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5"
+                  style={{ color: "var(--foreground)" }}
+                  onClick={(e) => { e.stopPropagation(); onReport("post", post.id); setShowMenu(false); }}
+                >
+                  Report post
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="px-5 pb-2">
+        <LocationWorldCard
+          location={post.location}
+          region={post.region}
+          textStyle={{ color: "#8B7355" }}
+          iconColor="#8B7355"
+          iconSize={14}
+        />
+      </div>
+
+      <PostDetailBadge post={post} />
+
+      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "var(--foreground)" }}>
+        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+      </h3>
+
+      <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "var(--foreground)" }} />
+      <PostTags tags={tags} />
+
+      {imageList.length > 0 && (
+        <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
+          {imgError ? (
+            <div className="w-full rounded-xl flex items-center justify-center bg-gradient-to-br from-[#E0D5C5] to-[#C8A96E]" style={{ height: 400 }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+            </div>
+          ) : (
+            <div className="relative w-full overflow-hidden rounded-xl h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
+              <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
+                {imageList.map((img, i) => {
+                  const imageUrl = img?.image
+                    ? img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image
+                    : "";
+                  const bgImageUrl = imageUrl ? encodeURI(imageUrl) : "";
+                  return (
+                    <div key={i} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
+                      {bgImageUrl && (
+                        <>
+                          <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(20px)", transform: "scale(1.1)" }} />
+                          <div className="absolute inset-0 bg-black/30" />
+                        </>
+                      )}
+                      {imageUrl && (
+                        <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
+              {imageList.length > 1 && currentImageIndex > 0 && (
+                <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all hover:scale-105" style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+              )}
+              {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
+                <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-all hover:scale-105" style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.3)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                </button>
+              )}
+              {imageList.length > 1 && (
+                <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full px-2.5 py-1.5 backdrop-blur-md bg-black/20 border border-white/10">
+                  {imageList.map((_, i) => (
+                    <button key={i} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(i); }} className="transition-all" style={{ width: currentImageIndex === i ? 16 : 6, height: 6, borderRadius: 999, background: currentImageIndex === i ? "#fff" : "rgba(255,255,255,0.4)" }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "var(--border-soft)" }}>
+        <div className="flex items-center gap-5">
+          <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1.5 text-xs transition-all font-bold" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onGemClick={handleGem}>
+            <GemIcon filled={gemmed} active={gemmed} />
+            <span>{formatCount(gemsCount)}</span>
+          </LongPressGemButton>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer font-bold" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); onCommentClick(); }}>
+            <CommentIcon />
+            <span>{formatCount(commentsCount)}</span>
+          </button>
+          <button className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer font-bold" style={{ color: "var(--foreground)" }} onClick={(e) => { e.stopPropagation(); onAnnotationClick(); }}>
+            <AnnotationIcon />
+            <span>{formatCount(annotationsCount)}</span>
+          </button>
+          <RepostButton
+            key={`${post.id}-${reposted}-${repostsCount}`}
+            postId={post.id}
+            initialReposted={reposted}
+            initialCount={repostsCount}
+            style={{ color: "var(--foreground)" }}
+            onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+              onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+            }}
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <AiPostInsight
+            postId={post.id}
+            title={post.title}
+            buttonStyle={{ color: "var(--foreground)" }}
+          />
+          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
+            <BookmarkIcon filled={saved} active={saved} />
+          </button>
         </div>
       </div>
 
@@ -2336,7 +2415,7 @@ export function PostCard({
         onConfirm={() => {
           if (confirmAction === "delete") {
             handleDelete();
-          } else if (confirmAction === "edit" && post) {
+          } else if (confirmAction === "edit") {
             router.push(`/edit-post?id=${post.id}`);
           }
           setConfirmAction(null);
@@ -2344,129 +2423,8 @@ export function PostCard({
         title={confirmAction === "delete" ? "Delete Post" : "Edit Post"}
         message={confirmAction === "delete" ? "Are you sure you want to delete this post? This action cannot be undone." : "Are you sure you want to edit this post?"}
         confirmText={confirmAction === "delete" ? "Delete" : "Edit"}
-        confirmColor={confirmAction === "delete" ? "#ef4444" : "#8B6914"}
+        confirmColor={confirmAction === "delete" ? "#C0392B" : "#8B6914"}
       />
-
-      <div className="px-5 pb-2">
-        <LocationWorldCard
-          location={post.location}
-          region={post.region}
-          textStyle={{ color: "var(--text-muted)" }}
-          iconColor="var(--text-muted)"
-          iconSize={14}
-        />
-      </div>
-
-      <PostDetailBadge post={post} />
-
-      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "var(--foreground)" }}>
-        <div dangerouslySetInnerHTML={{ __html: post.title }} />
-      </h3>
-
-      <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "var(--foreground)" }} />
-      <PostTags tags={tags} />
-
-      {imageList.length > 0 && (
-        <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
-          {imgError ? (
-            <div className="w-full rounded-lg flex items-center justify-center" style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
-            </div>
-          ) : (
-            <div className="relative w-full overflow-hidden rounded-lg h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
-              <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
-                {imageList.map((img) => {
-                  const imageUrl = img?.image
-                    ? img.image.startsWith("/media/")
-                      ? `${API_URL}${img.image}`
-                      : img.image
-                    : "";
-                  const bgImageUrl = imageUrl ? encodeURI(imageUrl) : "";
-                  return (
-                    <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
-                      {bgImageUrl ? (
-                        <>
-                          <div className="absolute inset-0" style={{ backgroundImage: `url("${bgImageUrl}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
-                          <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
-                        </>
-                      ) : null}
-                      {imageUrl ? (
-                        <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" onError={() => setImgError(true)} />
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-              {imageList.length > 1 && currentImageIndex > 0 && (
-                <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-                </button>
-              )}
-              {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
-                <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-                </button>
-              )}
-              {imageList.length > 1 && (
-                <>
-                  <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
-                    {imageList.map((_, index) => (
-                      <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "var(--background)" : "rgba(255,255,255,0.5)" }} />
-                    ))}
-                  </div>
-                  <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>{currentImageIndex + 1}/{imageList.length}</div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "var(--panel-hover)" }}>
-        <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "var(--foreground)" }} onClick={handleGem}>
-            <GemIcon filled={gemmed} active={gemmed} />
-            <span>{formatCount(gemsCount)}</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[var(--accent-gold)] cursor-pointer"
-            style={{ color: "var(--foreground)" }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onCommentClick();
-            }}
-          >
-            <CommentIcon />
-            <span>{formatCount(commentsCount)}</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 text-xs transition-colors hover:text-[var(--accent-gold)] cursor-pointer"
-            style={{ color: "var(--foreground)" }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onAnnotationClick();
-            }}
-          >
-            <AnnotationIcon />
-            <span>{formatCount(annotationsCount)}</span>
-          </button>
-          <RepostButton
-            key={`${post.id}-${reposted}-${repostsCount}`}
-            postId={post.id}
-            initialReposted={reposted}
-            initialCount={repostsCount}
-            onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
-              onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
-            }}
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <AiPostInsight postId={post.id} title={post.title} />
-          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: saved ? "#8B6914" : "var(--foreground)" }} onClick={handleSave}>
-            <BookmarkIcon filled={saved} active={saved} />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -2475,7 +2433,6 @@ export function PostCard({
 
 export default function CommunitiesPageRoute() {
   const router = useRouter();
-  const t = useTranslations("auth.pages.home");
   const [posts, setPosts] = useState<ApiPost[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [myGroups, setMyGroups] = useState<Group[]>([]);
@@ -2493,7 +2450,36 @@ export default function CommunitiesPageRoute() {
   const [activeFilters, setActiveFilters] = useState<{ region: string; post_type: string; historical_period: string; monument_type: string } | null>(null);
   const [nextUrl, setNextUrl] = useState<string | null>(`${API_URL}/api/groups/posts/`);
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+  const communitiesFeedQuery = usePosts<ApiPost>("groups", {
+    enabled: !activeFilters,
+    pageSize: 10,
+    prefetchNextPage: true,
+    prefetchPages: 5,
+  });
+  const displayedPosts = useMemo(
+    () => !activeFilters
+      ? communitiesFeedQuery.posts.map((post, index) => ({
+        ...normalizeApiPost(post),
+        _key: index,
+      }))
+      : posts,
+    [activeFilters, communitiesFeedQuery.posts, posts],
+  );
 
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    targetType: "post" | "comment" | "annotation";
+    targetId: string;
+  }>({ isOpen: false, targetType: "post", targetId: "" });
+
+  const openReportModal = (type: "post" | "comment" | "annotation", id: string) => {
+    setReportModal({ isOpen: true, targetType: type, targetId: id });
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    const combinedReason = description ? `${reason}: ${description}` : reason;
+    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+  };
 
   const fetchGroups = async () => {
     try {
@@ -2526,35 +2512,37 @@ export default function CommunitiesPageRoute() {
     fetchMyGroups();
   }, []);
 
-  const normalizeApiPost = (raw: any, fallback?: ApiPost): ApiPost => ({
-    id: String(raw?.id ?? fallback?.id ?? ""),
-    user_id: raw?.user_id ?? fallback?.user_id ?? "",
-    user_display_name: raw?.user_display_name ?? fallback?.user_display_name ?? "",
-    user_username: raw?.user_username ?? fallback?.user_username ?? "",
-    user_profile_picture: raw?.user_profile_picture ?? fallback?.user_profile_picture ?? "",
-    title: raw?.title ?? fallback?.title ?? "",
-    content: raw?.content ?? fallback?.content ?? "",
-    post_type: raw?.post_type ?? fallback?.post_type ?? "",
-    region: raw?.region ?? fallback?.region ?? "",
-    location: raw?.location ?? fallback?.location ?? "",
-    gems_count: raw?.gems_count ?? fallback?.gems_count ?? 0,
-    comments_count: raw?.comments_count ?? fallback?.comments_count ?? 0,
-    accepted_annotations_count:
-      raw?.accepted_annotations_count ?? fallback?.accepted_annotations_count ?? 0,
-    is_gemmed: raw?.is_gemmed ?? fallback?.is_gemmed ?? false,
-    is_saved: raw?.is_saved ?? fallback?.is_saved ?? false,
-    is_reposted: raw?.is_reposted ?? fallback?.is_reposted ?? false,
-    reposts_count: raw?.reposts_count ?? fallback?.reposts_count ?? 0,
-    images: Array.isArray(raw?.images) ? raw.images : fallback?.images ?? [],
-    tags: Array.isArray(raw?.tags) ? raw.tags : fallback?.tags ?? [],
-    historical_period: raw?.historical_period ?? fallback?.historical_period ?? "",
-    monument_type: raw?.monument_type ?? fallback?.monument_type ?? "",
-    created_at: raw?.created_at ?? fallback?.created_at ?? "",
-    group_id: raw?.group_id ?? raw?.thematic_group ?? fallback?.group_id ?? undefined,
-    alert_details: raw?.alert_details ?? fallback?.alert_details ?? null,
-    event_details: raw?.event_details ?? fallback?.event_details ?? null,
-    _key: fallback?._key,
-  });
+  function normalizeApiPost(raw: any, fallback?: ApiPost): ApiPost {
+    return {
+      id: String(raw?.id ?? fallback?.id ?? ""),
+      user_id: raw?.user_id ?? fallback?.user_id ?? "",
+      user_display_name: raw?.user_display_name ?? fallback?.user_display_name ?? "",
+      user_username: raw?.user_username ?? fallback?.user_username ?? "",
+      user_profile_picture: raw?.user_profile_picture ?? fallback?.user_profile_picture ?? "",
+      title: raw?.title ?? fallback?.title ?? "",
+      content: raw?.content ?? fallback?.content ?? "",
+      post_type: raw?.post_type ?? fallback?.post_type ?? "",
+      region: raw?.region ?? fallback?.region ?? "",
+      location: raw?.location ?? fallback?.location ?? "",
+      gems_count: raw?.gems_count ?? fallback?.gems_count ?? 0,
+      comments_count: raw?.comments_count ?? fallback?.comments_count ?? 0,
+      accepted_annotations_count:
+        raw?.accepted_annotations_count ?? fallback?.accepted_annotations_count ?? 0,
+      is_gemmed: raw?.is_gemmed ?? fallback?.is_gemmed ?? false,
+      is_saved: raw?.is_saved ?? fallback?.is_saved ?? false,
+      is_reposted: raw?.is_reposted ?? fallback?.is_reposted ?? false,
+      reposts_count: raw?.reposts_count ?? fallback?.reposts_count ?? 0,
+      images: Array.isArray(raw?.images) ? raw.images : fallback?.images ?? [],
+      tags: Array.isArray(raw?.tags) ? raw.tags : fallback?.tags ?? [],
+      historical_period: raw?.historical_period ?? fallback?.historical_period ?? "",
+      monument_type: raw?.monument_type ?? fallback?.monument_type ?? "",
+      created_at: raw?.created_at ?? fallback?.created_at ?? "",
+      group_id: raw?.group_id ?? raw?.thematic_group ?? fallback?.group_id ?? undefined,
+      alert_details: raw?.alert_details ?? fallback?.alert_details ?? null,
+      event_details: raw?.event_details ?? fallback?.event_details ?? null,
+      _key: fallback?._key,
+    };
+  }
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -2569,7 +2557,7 @@ export default function CommunitiesPageRoute() {
 
   const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
     setPostInteractions((prev) => {
-      const sourcePost = posts.find((p) => p.id === postId);
+      const sourcePost = displayedPosts.find((p) => p.id === postId);
       const existing = prev[postId] ?? {
         gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
         gemsCount: sourcePost?.gems_count ?? 0,
@@ -2597,6 +2585,22 @@ export default function CommunitiesPageRoute() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (activeFilters) return;
+    const formatted = communitiesFeedQuery.posts.map((post, index) => ({
+      ...normalizeApiPost(post),
+      _key: index,
+    }));
+    setPosts(formatted);
+    setNextUrl(communitiesFeedQuery.hasNextPage ? "__react-query-next-page__" : null);
+    setLoading(communitiesFeedQuery.isFetchingNextPage);
+  }, [
+    activeFilters,
+    communitiesFeedQuery.posts,
+    communitiesFeedQuery.hasNextPage,
+    communitiesFeedQuery.isFetchingNextPage,
+  ]);
 
   const handleSearch = (q: string) => {
     setSearchQuery(q);
@@ -2664,7 +2668,7 @@ export default function CommunitiesPageRoute() {
     }
   };
 
-  const handleApplyFilter = async (filters: { region: string; post_type: string; historical_period: string; monument_type: string }) => {
+  const handleApplyFilter = async (filters: { region: string; post_type: string; historical_period: string; monument_type: string; expertise: string }) => {
     const hasFilter = Object.values(filters).some((v) => v !== "");
     if (!hasFilter) {
       setActiveFilters(null);
@@ -2679,6 +2683,7 @@ export default function CommunitiesPageRoute() {
     if (filters.post_type) params.append("post_type", filters.post_type);
     if (filters.historical_period) params.append("historical_period", filters.historical_period);
     if (filters.monument_type) params.append("monument_type", filters.monument_type);
+    if (filters.expertise) params.append("expertise", filters.expertise);
     try {
       const res = await fetch(`${API_URL}/api/posts/filter/?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -2699,6 +2704,12 @@ export default function CommunitiesPageRoute() {
     const observer = new IntersectionObserver(
       async (entries) => {
         if (!entries[0].isIntersecting || loading || !nextUrl) return;
+        if (!activeFilters) {
+          if (communitiesFeedQuery.hasNextPage && !communitiesFeedQuery.isFetchingNextPage) {
+            await communitiesFeedQuery.fetchNextPage();
+          }
+          return;
+        }
         try {
           setLoading(true);
           const resolvedNextUrl =
@@ -2740,12 +2751,20 @@ export default function CommunitiesPageRoute() {
           setLoading(false);
         }
       },
-      { threshold: 1.0 }
+      { rootMargin: "1800px 0px", threshold: 0.01 }
     );
 
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length]);
+  }, [
+    nextUrl,
+    loading,
+    posts.length,
+    activeFilters,
+    communitiesFeedQuery.hasNextPage,
+    communitiesFeedQuery.isFetchingNextPage,
+    communitiesFeedQuery.fetchNextPage,
+  ]);
 
   useEffect(() => {
     const feedElement = feedRef.current;
@@ -2757,16 +2776,16 @@ export default function CommunitiesPageRoute() {
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
+      <div className="flex h-[100dvh] overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
         <LeftSidebar activePage="communities" />
-        <div className="flex h-full w-full max-w-[1200px] md:ml-[80px] pb-16 md:pb-0">
+        <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0">
           <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
-              <div className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--panel-bg)", border: isFocused ? "1px solid var(--foreground)" : "1px solid var(--foreground)", boxShadow: isFocused ? "0 0 0 3px rgba(67,40,23,0.15)" : "0 1px 8px rgba(67,40,23,0.06)" }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            <div className="sticky top-0 z-40 px-4 md:px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
+              <form onSubmit={(e) => e.preventDefault()} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
-                  placeholder={t("search.placeholder")}
+                  placeholder="Search posts, groups..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   onFocus={() => setIsFocused(true)}
@@ -2774,108 +2793,34 @@ export default function CommunitiesPageRoute() {
                   className="flex-1 ml-3 outline-none bg-transparent text-sm"
                   style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                 />
-                <button className="flex-shrink-0 p-1 rounded hover:bg-[var(--panel-hover)] transition-colors" onClick={() => setShowFilter(!showFilter)}>
+                <button type="button" className="flex-shrink-0 p-1 rounded hover:bg-[var(--panel-hover)] transition-colors" onClick={() => setShowFilter(!showFilter)}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" />
                     <circle cx="8" cy="6" r="1.5" fill="var(--foreground)" /><circle cx="16" cy="12" r="1.5" fill="var(--foreground)" /><circle cx="10" cy="18" r="1.5" fill="var(--foreground)" />
                   </svg>
                 </button>
-              </div>
+              </form>
               <FilterSection isVisible={showFilter} onClose={() => setShowFilter(false)} onApply={handleApplyFilter} />
-              {searchQuery && isFocused && (
-                <div className="absolute top-[60px] left-6 right-6 z-[70] rounded-2xl overflow-hidden shadow-2xl" style={{ backgroundColor: "var(--overlay-bg)", border: "1px solid var(--border-soft)" }}>
-                  {searchLoading ? (
-                    <div className="flex justify-center py-4">
-                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--border-soft)", borderTopColor: "#8B6914" }} />
-                    </div>
-                  ) : (
-                    <div className="max-h-[400px] overflow-y-auto feed-scroll">
-                      {searchResults?.users && searchResults.users.length > 0 && (
-                        <div className="px-4 pt-3 pb-1">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.users")}</p>
-                          {searchResults.users.map((user) => (
-                            <button
-                              key={user.id}
-                              className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
-                              onMouseDown={() => { window.location.href = `/user/${user.username}`; }}
-                            >
-                              <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--border-soft)" }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--text-muted)" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{user.display_name}</p>
-                                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>@{user.username}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {searchResults?.groups && searchResults.groups.length > 0 && (
-                        <div className="px-4 pt-3 pb-1">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>Groups</p>
-                          {searchResults.groups.map((group) => (
-                            <button
-                              key={group.id}
-                              className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
-                              onMouseDown={() => { window.location.href = `/group/${group.id}`; }}
-                            >
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "var(--border-soft)" }}>
-                                <PeopleIcon size={14} />
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold" style={{ color: "var(--foreground)" }}>{group.name}</p>
-                                <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{group.description?.replace(/<[^>]*>/g, "").slice(0, 40)}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {searchResults?.posts && searchResults.posts.length > 0 && (
-                        <div className="px-4 pt-2 pb-3">
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: "var(--text-muted)" }}>{t("search.sections.posts")}</p>
-                          {searchResults.posts.map((post) => (
-                            <button
-                              key={post.id}
-                              className="w-full flex items-start gap-3 px-2 py-2 rounded-xl hover:bg-[var(--panel-hover)] transition-colors text-left"
-                              onMouseDown={() => setSelectedPost(post as any)}
-                            >
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5" style={{ backgroundColor: "var(--border-soft)" }}>
-                                <CommentIcon size={12} />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-xs font-bold truncate" style={{ color: "var(--foreground)" }}>{post.title?.replace(/<[^>]*>/g, "")}</p>
-                                <p className="text-[10px] truncate" style={{ color: "var(--text-muted)" }}>{post.content?.replace(/<[^>]*>/g, "").slice(0, 60)}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      {searchResults && searchResults.users.length === 0 && searchResults.posts.length === 0 && (!searchResults.groups || searchResults.groups.length === 0) && (
-                        <div className="flex flex-col items-center py-6 gap-1">
-                          <p className="text-xs font-bold" style={{ color: "var(--text-muted)" }}>{t("search.noResults", { query: searchQuery })}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-0 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} />
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
-                    {t("community.feedTitle")}
+                    Community Feed
                   </h2>
                 </div>
-                {posts.length === 0 && !loading && (
+                {communitiesFeedQuery.isInitialLoading && !activeFilters && displayedPosts.length === 0 && (
+                  <PostsSkeletonList count={3} />
+                )}
+                {displayedPosts.length === 0 && !loading && !(communitiesFeedQuery.isInitialLoading && !activeFilters) && (
                   <div className="flex flex-col items-center py-20 text-center">
-                    <p className="font-bold text-lg" style={{ color: "var(--text-muted)" }}>{t("community.noPostsTitle")}</p>
-                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>{t("community.noPostsDescription")}</p>
+                    <p className="font-bold text-lg" style={{ color: "var(--text-muted)" }}>No posts found</p>
+                    <p className="text-sm" style={{ color: "var(--text-muted)" }}>Be the first to share something in this community!</p>
                   </div>
                 )}
-                {posts.map((post, index) => (
+                {displayedPosts.map((post, index) => (
                   <React.Fragment key={`${post.id}-${index}`}>
                     <PostCard
                       groupDetails={groups.find(g => g.id === post.group_id) || undefined}
@@ -2890,6 +2835,7 @@ export default function CommunitiesPageRoute() {
                       onAnnotationClick={() => {
                         openPostModal(post, "annotations");
                       }}
+                      onReport={openReportModal}
                     />
                   </React.Fragment>
                 ))}
@@ -2921,8 +2867,16 @@ export default function CommunitiesPageRoute() {
           onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
           onClose={() => setSelectedPost(null)}
           onDelete={handleDeletePost}
+          onReport={openReportModal}
         />
       )}
+
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleReportSubmit}
+        targetType={reportModal.targetType}
+      />
       <MyGroupsModal
         isOpen={isMyGroupsModalOpen}
         onClose={() => setIsMyGroupsModalOpen(false)}

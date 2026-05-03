@@ -4,10 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
-const PLATFORM_BROWN = "#432817";
-const PLATFORM_BEIGE = "#F6EAD2";
-const PLATFORM_BROWN_MUTED = "#8B7355";
-const PLATFORM_BEIGE_MUTED = "#BFAF96";
+const SAVE_ACTIVE_COLOR = "#8B6914";
 
 function getAuthToken(): string {
   if (typeof window === "undefined") return "";
@@ -24,22 +21,6 @@ function resolveProfilePictureUrl(profilePicture?: string): string {
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
   if (value.startsWith("/")) return `${API_URL}${value}`;
   return value;
-}
-
-function useIsDarkTheme() {
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-    const syncTheme = () => setIsDarkTheme(root.dataset.theme === "dark");
-    syncTheme();
-    const observer = new MutationObserver(syncTheme);
-    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
-
-  return isDarkTheme;
 }
 
 function RepostIcon({ size = 18, active = false }: { size?: number; active?: boolean }) {
@@ -59,7 +40,6 @@ function RepostIcon({ size = 18, active = false }: { size?: number; active?: boo
       <path d="M3 11V9a3 3 0 0 1 3-3h15" />
       <path d="M7 22l-4-4 4-4" />
       <path d="M21 13v2a3 3 0 0 1-3 3H3" />
-      {active && <path d="m9 12.5 2.1 2.1L15.5 10" strokeWidth="2.35" />}
     </svg>
   );
 }
@@ -208,6 +188,94 @@ function RepostUsersModal({
   );
 }
 
+function RepostComposerModal({
+  loading,
+  onClose,
+  onSubmit,
+}: {
+  loading: boolean;
+  onClose: () => void;
+  onSubmit: (description: string) => void;
+}) {
+  const [description, setDescription] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center px-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/55" />
+      <div
+        className="relative z-[121] w-full max-w-[430px] overflow-hidden rounded-2xl shadow-2xl"
+        style={{ backgroundColor: "var(--panel-bg, #FFF8E2)", border: "1px solid var(--border-soft, #E0D5C5)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--border-soft, #E0D5C5)" }}>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full" style={{ color: SAVE_ACTIVE_COLOR, backgroundColor: "rgba(67, 40, 23, 0.08)" }}>
+              <RepostIcon size={18} active />
+            </div>
+            <div>
+              <p className="m-0 text-sm font-black" style={{ color: "var(--foreground, #432817)" }}>
+                Repost to your profile
+              </p>
+              <p className="m-0 text-xs" style={{ color: "var(--text-muted, #8B7355)" }}>
+                Add a description, or repost directly.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/5"
+            style={{ color: "var(--foreground, #432817)" }}
+            onClick={onClose}
+            aria-label="Close"
+            disabled={loading}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-5">
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+            placeholder="Add your thoughts..."
+            rows={5}
+            className="w-full resize-none rounded-xl px-4 py-3 text-sm outline-none"
+            style={{ backgroundColor: "var(--background, #FFF8E2)", color: "var(--foreground, #432817)", border: "1px solid var(--border-soft, #E0D5C5)" }}
+            autoFocus
+          />
+          <div className="mt-2 flex items-center justify-between text-xs" style={{ color: "var(--text-muted, #8B7355)" }}>
+            <span>Optional</span>
+            <span>{description.length}/500</span>
+          </div>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              className="rounded-full px-4 py-2 text-sm font-bold transition-opacity hover:opacity-80"
+              style={{ color: "var(--foreground, #432817)" }}
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="rounded-full px-5 py-2 text-sm font-black transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: "var(--foreground, #432817)", color: "var(--background, #FFF8E2)" }}
+              onClick={() => onSubmit(description)}
+              disabled={loading}
+            >
+              {loading ? "Reposting..." : "Repost"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RepostButton({
   postId,
   initialReposted = false,
@@ -230,11 +298,12 @@ export default function RepostButton({
   const [reposted, setReposted] = useState(initialReposted);
   const [count, setCount] = useState(initialCount);
   const [showUsers, setShowUsers] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const longPressedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isDarkTheme = useIsDarkTheme();
-  const activeColor = isDarkTheme ? PLATFORM_BEIGE : PLATFORM_BROWN;
-  const inactiveColor = isDarkTheme ? PLATFORM_BEIGE_MUTED : PLATFORM_BROWN_MUTED;
+  const activeColor = SAVE_ACTIVE_COLOR;
+  const inactiveColor = style?.color ?? "var(--foreground, #432817)";
 
   const clearPressTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -251,12 +320,7 @@ export default function RepostButton({
     }, 600);
   };
 
-  const handleClick = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (longPressedRef.current) {
-      longPressedRef.current = false;
-      return;
-    }
+  const submitRepostToggle = async (description = "") => {
     const previousReposted = reposted;
     const previousCount = count;
     const nextReposted = !previousReposted;
@@ -267,9 +331,11 @@ export default function RepostButton({
     onChange?.({ reposted: nextReposted, repostsCount: nextCount });
 
     try {
+      setSubmitting(true);
       const res = await fetch(`${API_URL}/api/posts/${postId}/repost/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ description: description.trim() }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error("Failed to toggle repost");
@@ -278,11 +344,27 @@ export default function RepostButton({
       setReposted(serverReposted);
       setCount(serverCount);
       onChange?.({ reposted: serverReposted, repostsCount: serverCount });
+      setShowComposer(false);
     } catch {
       setReposted(previousReposted);
       setCount(previousCount);
       onChange?.({ reposted: previousReposted, repostsCount: previousCount });
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const handleClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (longPressedRef.current) {
+      longPressedRef.current = false;
+      return;
+    }
+    if (!reposted) {
+      setShowComposer(true);
+      return;
+    }
+    await submitRepostToggle();
   };
 
   return (
@@ -314,6 +396,15 @@ export default function RepostButton({
         {showCount && <span>{formatCount(count)}</span>}
       </button>
       {showUsers && <RepostUsersModal postId={postId} count={count} activeColor={activeColor} onClose={() => setShowUsers(false)} />}
+      {showComposer && (
+        <RepostComposerModal
+          loading={submitting}
+          onClose={() => {
+            if (!submitting) setShowComposer(false);
+          }}
+          onSubmit={(description) => submitRepostToggle(description)}
+        />
+      )}
     </>
   );
 }

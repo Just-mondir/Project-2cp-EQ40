@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import AuthenticatedControls from "@/components/AuthenticatedControls";
-import LocaleProvider from "@/components/LocaleProvider";
+import MobileEdgeTabs from "@/components/MobileEdgeTabs";
 
 const PUBLIC_PATHS = new Set([
   "/",
@@ -17,6 +17,23 @@ const PUBLIC_PATHS = new Set([
   "/guidelines",
   "/legal",
 ]);
+
+const DALTONISM_MODES = ["deuteranopia", "protanopia", "tritanopia"] as const;
+
+function applyDaltonismForRoute() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  const modes = ["deuteranopia", "protanopia", "tritanopia"];
+
+  modes.forEach(mode => {
+    root.classList.remove(`daltonism-${mode}`);
+  });
+
+  const storedMode = localStorage.getItem("daltonism-mode");
+  if (storedMode && modes.includes(storedMode)) {
+    root.classList.add(`daltonism-${storedMode}`);
+  }
+}
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -41,6 +58,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [mounted, isAuthenticated, isPublicRoute, router]);
 
+  useEffect(() => {
+    if (!mounted) return;
+    applyDaltonismForRoute();
+
+    const handleUpdate = () => applyDaltonismForRoute();
+    window.addEventListener("daltonism-updated", handleUpdate);
+    return () => window.removeEventListener("daltonism-updated", handleUpdate);
+  }, [mounted, isPublicRoute, pathname]);
+
   // Hide protected content during initial SSR and hydration to prevent flash
   if (!mounted && !isPublicRoute) {
     return <div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }} />;
@@ -50,16 +76,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!isAuthenticated) {
-    return <div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }} />;
-  }
-
-  return (
-    <LocaleProvider>
+  if (isAuthenticated) {
+    return (
       <div className="authenticated-app-shell">
         <AuthenticatedControls />
+        <MobileEdgeTabs />
         {children}
       </div>
-    </LocaleProvider>
-  );
+    );
+  }
+
+  return <div style={{ minHeight: "100vh", backgroundColor: "var(--background)" }} />;
 }

@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchJson } from "@/lib/apiClient";
 
 type Monument = {
   src: string;
@@ -19,6 +21,11 @@ type AlertApiPost = {
     urgence_level?: string;
     current_status?: string;
   };
+};
+
+type AlertsPayload = {
+  data?: { results?: AlertApiPost[] } | AlertApiPost[];
+  results?: AlertApiPost[];
 };
 
 const fallbackMonuments: Monument[] = [
@@ -50,58 +57,53 @@ const fallbackMonuments: Monument[] = [
 
 export default function MonumentsInDanger() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const [monuments, setMonuments] = useState<Monument[]>(fallbackMonuments);
+  const monumentsQuery = useQuery({
+    queryKey: ["landing", "monuments-in-danger"],
+    queryFn: async () => {
+      const payload = await fetchJson<AlertsPayload | AlertApiPost[]>("/posts/?post_type=alert&page_size=3");
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload.data)) return payload.data;
+      return payload.data?.results ?? payload.results ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    async function fetchMonuments() {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/posts/?post_type=alert`
-        );
-        if (!res.ok) return;
-        const data = await res.json();
+  const monuments = useMemo(() => {
+    const stripHtml = (html = "") => {
+      let result = html;
+      let prev: string;
+      do {
+        prev = result;
+        result = prev.replace(/<[^>]*>/g, "");
+      } while (result !== prev);
+      return result;
+    };
 
-        const fetched: Monument[] = ((data.results || []) as AlertApiPost[])
-          .filter((post) => post.images?.[0]?.image)
-          .slice(0, 3)
-          .map((post) => {
-            const stripHtml = (html: string) => {
-              if (!html) return "";
-              let result = html;
-              let prev: string;
-              do {
-                prev = result;
-                result = prev.replace(/<[^>]*>/g, "");
-              } while (result !== prev);
-              return result;
-            };
-            const cleanTitle = stripHtml(post.title || "");
+    const fetched = (monumentsQuery.data ?? [])
+      .filter((post) => post.images?.[0]?.image)
+      .slice(0, 3)
+      .map((post) => {
+        const cleanTitle = stripHtml(post.title || "");
+        const imgPath = post.images?.[0]?.image || "";
+        const imageUrl = imgPath.startsWith("http")
+          ? imgPath
+          : `https://res.cloudinary.com/dq3jtkxtp/image/upload/${imgPath}`;
 
-            // Handle image URL correctly:
-            const imgPath = post.images?.[0]?.image || "";
-            const imageUrl = imgPath.startsWith("http")
-              ? imgPath
-              : `https://res.cloudinary.com/dq3jtkxtp/image/upload/${imgPath}`;
+        return {
+          src: imageUrl || "/fallback-image.jpg",
+          alt: cleanTitle,
+          name: cleanTitle,
+          boldLocation: post.region || post.location || "Unknown",
+          urgenceLevel: post.alert_details?.urgence_level || "unknown",
+          currentStatus: post.alert_details?.current_status || "unknown",
+        };
+      });
 
-            return {
-              src: imageUrl || "/fallback-image.jpg",  // Fallback image if URL is not found
-              alt: cleanTitle,
-              name: cleanTitle,
-              boldLocation: post.region || post.location || "Unknown",
-              urgenceLevel: post.alert_details?.urgence_level || "unknown",
-              currentStatus: post.alert_details?.current_status || "unknown",
-            };
-          });
+    return fetched.length > 0 ? fetched : fallbackMonuments;
+  }, [monumentsQuery.data]);
 
-        if (fetched.length > 0) setMonuments(fetched);
-      } catch {
-        console.error("Failed to fetch monuments.");
-      }
-    }
-    fetchMonuments();
-  }, []);
-
-  const active = monuments[activeIndex];
+  const active = monuments[Math.min(activeIndex, monuments.length - 1)];
 
   return (
     <section

@@ -4,18 +4,26 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import AiPostInsight from "@/components/AiPostInsight";
 import RepostButton from "@/components/RepostButton";
 import LeftSidebar from "@/components/LeftSidebar";
 import LocationWorldCard from "@/components/LocationWorldCard";
 import ActionConfirmModal from "@/components/ActionConfirmModal";
+import { PostsSkeletonList } from "@/components/PostSkeletons";
+import { usePosts } from "@/hooks/usePosts";
+import { fetchUpcomingEventsWithFallback, upcomingEventsQueryKey } from "@/lib/upcomingEvents";
+import ReportModal from "@/components/ReportModal";
+import { LongPressGemButton } from "@/components/GemUsersModal";
 import {
   EVENT_STATUS_VALUES,
+  EXPERTISE_VALUES,
   HISTORICAL_PERIOD_VALUES,
   MONUMENT_TYPE_VALUES,
   REGION_VALUES,
   translateEventStatus,
+  translateExpertise,
   translateHistoricalPeriod,
   translateMonumentType,
   translateRegion,
@@ -499,6 +507,37 @@ function PostDetailBadge({ post }: { post: ApiPost }) {
   return null;
 }
 
+type ReportTargetType = "post" | "comment" | "annotation";
+
+async function submitReport(
+  targetType: ReportTargetType,
+  targetId: string,
+  reason: string,
+): Promise<void> {
+  const token = getAuthToken();
+
+  const res = await fetch(`${API_URL}/api/reports/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      target_type: targetType,
+      target_id: targetId,
+      reason,
+    }),
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const errorMsg = data?.message || "Failed to submit report.";
+    const details = data?.errors ? Object.values(data.errors).flat().join(" ") : "";
+    throw new Error(details ? `${errorMsg} ${details}` : errorMsg);
+  }
+}
+
 /* ─────────────────── COMMENT ITEM ─────────────────── */
 
 function CommentItem({
@@ -507,12 +546,14 @@ function CommentItem({
   onRefresh,
   onDelete,
   isReply = false,
+  onReport,
 }: {
   comment: CommentNode;
   postId: string;
   onRefresh?: () => void;
   onDelete?: (commentId: string) => void;
   isReply?: boolean;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const router = useRouter();
@@ -601,6 +642,11 @@ function CommentItem({
     } catch { }
   };
 
+  const handleReportComment = () => {
+    onReport("comment", comment.id);
+    setShowMenu(false);
+  };
+
   const handleSubmitReply = async () => {
     if (!replyText.trim()) return;
 
@@ -676,7 +722,7 @@ function CommentItem({
                   <button
                     className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
                     style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
-                    onClick={() => setShowMenu(false)}
+                    onClick={handleReportComment}
                   >
                     {feedT("actions.reportComment")}
                   </button>
@@ -760,6 +806,7 @@ function AnnotationItem({
   onAccept,
   onReject,
   onRefresh,
+  onReport,
 }: {
   annotation: Annotation;
   postId: string;
@@ -768,6 +815,7 @@ function AnnotationItem({
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
   onRefresh?: () => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const commonT = useTranslations("auth.common");
   const feedT = useTranslations("auth.feed");
@@ -813,6 +861,11 @@ function AnnotationItem({
         setShowMenu(false);
       }
     } catch { }
+  };
+
+  const handleReport = () => {
+    onReport("annotation", annotation.id);
+    setShowMenu(false);
   };
 
   const handleAccept = async () => {
@@ -976,12 +1029,14 @@ function AnnotationItem({
 function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; onClose: () => void; onApply: (filters: any) => void }) {
   const filtersT = useTranslations("auth.filters");
   const postFormT = useTranslations("auth.postForm");
+  const profileFormT = useTranslations("auth.profileForm");
   const [isAnimating, setIsAnimating] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({
     region: "All",
     historical_period: "All",
     monument_type: "All",
     status: "All",
+    expertise: "All",
   });
 
   useEffect(() => {
@@ -995,6 +1050,7 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
     { key: "historical_period", label: filtersT("labels.historicalPeriod"), options: ["All", ...HISTORICAL_PERIOD_VALUES] },
     { key: "monument_type", label: filtersT("labels.heritageType"), options: ["All", ...MONUMENT_TYPE_VALUES] },
     { key: "status", label: filtersT("labels.eventStatus"), options: ["All", ...EVENT_STATUS_VALUES] },
+    { key: "expertise", label: filtersT("labels.expertise"), options: ["All", ...EXPERTISE_VALUES] },
   ];
 
   const handleSelectChange = (key: string, value: string) => {
@@ -1006,7 +1062,8 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
       region: "All",
       historical_period: "All",
       monument_type: "All",
-      status: "All"
+      status: "All",
+      expertise: "All"
     };
     setSelectedFilters(reset);
     onApply(reset);
@@ -1057,7 +1114,11 @@ function FilterSection({ isVisible, onClose, onApply }: { isVisible: boolean; on
                               ? translateHistoricalPeriod(opt, postFormT)
                               : filter.key === "monument_type"
                                 ? translateMonumentType(opt, postFormT)
-                                : translateEventStatus(opt, filtersT)}
+                                : filter.key === "status"
+                                  ? translateEventStatus(opt, filtersT)
+                                  : filter.key === "expertise"
+                                    ? translateExpertise(opt, profileFormT)
+                                    : opt}
                       </option>
                     ))}
                   </select>
@@ -1091,139 +1152,209 @@ const UPCOMING_EVENTS_MOCKS = Array(5).fill({
   end_date: "21/09/2026",
 }).map((item, index) => ({ ...item, id: index + 1 }));
 
-/* ─────────────────── MOBILE EVENTS STRIP ─────────────────── */
+function normalizeEventPost(post: any, key = 0): ApiPost {
+  return {
+    id: String(post.id),
+    user_display_name: post.user_display_name ?? "",
+    user_username: post.user_username ?? "",
+    user_profile_picture: post.user_profile_picture ?? "",
+    title: post.title ?? "",
+    content: post.content ?? "",
+    post_type: post.post_type ?? "",
+    region: post.region ?? "",
+    location: post.location ?? "",
+    gems_count: post.gems_count ?? 0,
+    comments_count: post.comments_count ?? 0,
+    images: Array.isArray(post.images) ? post.images : [],
+    tags: Array.isArray(post.tags) ? post.tags : [],
+    historical_period: post.historical_period ?? "",
+    monument_type: post.monument_type ?? "",
+    created_at: post.created_at ?? "",
+    alert_details: post.alert_details ?? null,
+    event_details: post.event_details ?? null,
+    _key: key,
+  };
+}
 
-function MobileEventsStrip() {
-  const pageT = useTranslations("auth.pages.events");
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+type UpcomingEventPost = {
+  id: string;
+  title?: string;
+  user_display_name?: string;
+  user_username?: string;
+  location?: string;
+  region?: string;
+  images?: Array<{ image?: string }>;
+  event_details?: {
+    starts_at?: string;
+    ends_at?: string;
+  };
+};
+
+type UpcomingEventItem = {
+  id: string;
+  user_name: string;
+  event_image: string;
+  title: string;
+  location: string;
+  start_date: string;
+  end_date: string;
+};
+
+const UPCOMING_EVENTS_CACHE_KEY = "kunuz_upcoming_events_cache_v1";
+const UPCOMING_EVENTS_CACHE_TTL = 5 * 60 * 1000;
+let upcomingEventsMemoryCache: { data: UpcomingEventPost[]; savedAt: number } | null = null;
+
+function readUpcomingEventsCache() {
+  const now = Date.now();
+  if (upcomingEventsMemoryCache && now - upcomingEventsMemoryCache.savedAt < UPCOMING_EVENTS_CACHE_TTL) {
+    return upcomingEventsMemoryCache.data;
+  }
+  if (typeof window === "undefined") return [];
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(UPCOMING_EVENTS_CACHE_KEY) || "null") as
+      | { data?: UpcomingEventPost[]; savedAt?: number }
+      | null;
+    if (cached?.data?.length && cached.savedAt && now - cached.savedAt < UPCOMING_EVENTS_CACHE_TTL) {
+      upcomingEventsMemoryCache = { data: cached.data, savedAt: cached.savedAt };
+      return cached.data;
+    }
+  } catch { }
+  return [];
+}
+
+function saveUpcomingEventsCache(data: UpcomingEventPost[]) {
+  if (data.length === 0) return;
+  const cached = { data, savedAt: Date.now() };
+  upcomingEventsMemoryCache = cached;
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(UPCOMING_EVENTS_CACHE_KEY, JSON.stringify(cached));
+  } catch { }
+}
+
+function useUpcomingEvents(pageT: ReturnType<typeof useTranslations>) {
+  const [eventPosts, setEventPosts] = useState<UpcomingEventPost[]>(() => readUpcomingEventsCache());
+  const eventsQuery = useQuery({
+    queryKey: upcomingEventsQueryKey,
+    queryFn: () => fetchUpcomingEventsWithFallback<UpcomingEventPost>(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    initialData: () => {
+      const cached = readUpcomingEventsCache();
+      return cached.length > 0 ? cached : undefined;
+    },
+  });
 
   useEffect(() => {
-    async function fetchUpcoming() {
-      try {
-        const token = getAuthToken();
-        const res = await fetch(`${API_URL}/api/posts/upcoming-events/`, {
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const results = Array.isArray(data.results) ? data.results : data;
-          if (Array.isArray(results) && results.length > 0) {
-            setUpcomingEvents(results.slice(0, 5).map((event: any) => {
-              const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
-              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "";
-              const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
-              const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
-              return {
-                id: event.id,
-                user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
-                event_image: imageUrl,
-                title: event.title,
-                location: event.location || event.region || pageT("defaultLocation"),
-                start_date: sDate,
-                end_date: eDate,
-              };
-            }));
-          } else {
-            setUpcomingEvents([]);
-          }
-        } else {
-          setUpcomingEvents([]);
-        }
-      } catch (e) {
-        console.error("Failed to fetch upcoming events", e);
-        setUpcomingEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUpcoming();
-  }, [pageT]);
+    if (!eventsQuery.data) return;
+    setEventPosts(eventsQuery.data);
+    saveUpcomingEventsCache(eventsQuery.data);
+  }, [eventsQuery.data]);
+
+  const upcomingEvents = useMemo<UpcomingEventItem[]>(() => {
+    return eventPosts.slice(0, 5).map((event) => {
+      const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
+      const imgPath = imgObj?.image ?? "";
+      const imageUrl = imgPath ? (imgPath.startsWith("/media/") ? `${API_URL}${imgPath}` : imgPath) : "";
+      const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
+      const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
+      return {
+        id: String(event.id),
+        user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
+        event_image: imageUrl,
+        title: event.title ?? "",
+        location: event.location || event.region || pageT("defaultLocation"),
+        start_date: sDate,
+        end_date: eDate,
+      };
+    });
+  }, [eventPosts, pageT]);
+
+  return { upcomingEvents, loading: eventsQuery.isLoading && eventPosts.length === 0 };
+}
+
+/* ─────────────────── MOBILE EVENTS STRIP ─────────────────── */
+
+function MobileEventsStrip({ onPostClick }: { onPostClick: (postId: string) => void }) {
+  const pageT = useTranslations("auth.pages.events");
+  const { upcomingEvents, loading } = useUpcomingEvents(pageT);
+
+  if (upcomingEvents.length === 0 && !loading) return null;
 
   return (
     <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>{pageT("upcomingTitle")}</h3>
+      <h3 className="text-xs font-bold mb-3 uppercase tracking-widest" style={{ color: "#8B7355", fontFamily: "var(--font-lato)" }}>
+        {pageT("upcomingTitle")}
+      </h3>
       <div
-        className="flex gap-3 overflow-x-auto pb-4"
+        className="flex flex-nowrap gap-3 overflow-x-auto pb-4 w-full snap-x"
         style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
           WebkitOverflowScrolling: "touch"
         }}
       >
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          .flex.gap-3.overflow-x-auto::-webkit-scrollbar {
-            height: 6px;
-            display: block;
-            background: transparent;
-          }
-          .flex.gap-3.overflow-x-auto::-webkit-scrollbar-thumb {
-            background: rgba(67, 40, 23, 0.2);
-            border-radius: 999px;
-          }
-        `}} />
         {loading ? (
           <div className="flex justify-center py-4 w-full">
             <div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
           </div>
         ) : (
-          upcomingEvents.length === 0 ? (
-            <div className="flex w-full justify-center text-xs font-bold py-4 opacity-50" style={{ color: "var(--brown)" }}>
-              {pageT("noUpcoming")}
-            </div>
-          ) : (
-            upcomingEvents.map((eventItem, i) => (
-              <div
-                key={i}
-                className="flex-shrink-0 cursor-pointer transition-all duration-200 hover:scale-105"
-                style={{ width: "140px" }}
-              >
-                <div className="flex flex-col">
-                  {eventItem.event_image && (
-                    <img
-                      src={eventItem.event_image}
-                      alt="event"
-                      className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm"
-                    />
-                  )}
-                  <span
-                    className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
-                    style={{
-                      color: "#432817",
-                      fontFamily: "var(--font-lato)",
-                      maxWidth: "120px",
-                      wordBreak: "break-word",
-                      hyphens: "auto"
-                    }}
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(eventItem.title) }}
+          upcomingEvents.map((eventItem, i) => (
+            <div
+              key={i}
+              className="flex-shrink-0 snap-center cursor-pointer transition-all duration-200 active:scale-95"
+              style={{ width: "140px" }}
+              onClick={() => onPostClick(eventItem.id)}
+            >
+              <div className="flex flex-col">
+                {eventItem.event_image && (
+                  <img
+                    src={eventItem.event_image}
+                    alt="event"
+                    className="w-[120px] h-[80px] object-cover rounded-xl mb-2 flex-shrink-0 border-2 border-white shadow-sm"
                   />
-                  <span
-                    className="text-[8px] text-center leading-tight line-clamp-1 mb-1"
-                    style={{
-                      color: "#8B7355",
-                      fontFamily: "var(--font-lato)"
-                    }}
-                  >
-                    {eventItem.user_name}
+                )}
+                <span
+                  className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
+                  style={{
+                    color: "#432817",
+                    fontFamily: "var(--font-lato)",
+                    maxWidth: "120px",
+                    wordBreak: "break-word",
+                    hyphens: "auto"
+                  }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(eventItem.title) }}
+                />
+                <span
+                  className="text-[8px] text-center leading-tight line-clamp-1 mb-1"
+                  style={{
+                    color: "#8B7355",
+                    fontFamily: "var(--font-lato)"
+                  }}
+                >
+                  {eventItem.user_name}
+                </span>
+                <div className="flex items-center gap-1 mb-1 justify-center">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#8B6914", flexShrink: 0 }}>
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  <span className="text-[8px] font-medium truncate" style={{ color: "#8B6914", maxWidth: "90px" }}>
+                    {eventItem.location}
                   </span>
-                  <div className="flex flex-col gap-1 text-center">
-                    <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                        <circle cx="12" cy="10" r="3" />
-                      </svg>
-                      {eventItem.location}
-                    </span>
-                    <span className="flex items-center justify-center gap-1 text-[8px] font-medium" style={{ color: "#8B6914" }}>
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 6v6l4 2" />
-                      </svg>
-                      {eventItem.start_date} {eventItem.end_date ? `- ${eventItem.end_date}` : ""}
-                    </span>
-                  </div>
+                </div>
+                <div className="flex items-center gap-1 justify-center">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#8B6914", flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                  <span className="text-[8px] font-medium" style={{ color: "#8B6914" }}>
+                    {eventItem.start_date}{eventItem.end_date ? ` - ${eventItem.end_date}` : ""}
+                  </span>
                 </div>
               </div>
-            )))
+            </div>
+          ))
         )}
       </div>
     </div>
@@ -1234,56 +1365,17 @@ function MobileEventsStrip() {
 
 function RightSidebar({ onPostClick }: { onPostClick: (postId: string) => void }) {
   const pageT = useTranslations("auth.pages.events");
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchUpcoming() {
-      try {
-        const token = getAuthToken();
-        const res = await fetch(`${API_URL}/api/posts/upcoming-events/`, {
-          headers: { Authorization: token ? `Bearer ${token}` : "" },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const results = Array.isArray(data.results) ? data.results : data;
-          if (Array.isArray(results) && results.length > 0) {
-            setUpcomingEvents(results.slice(0, 5).map((event: any) => {
-              const imgObj = Array.isArray(event.images) && event.images.length > 0 ? event.images[0] : null;
-              const imageUrl = imgObj ? (imgObj.image.startsWith("/media/") ? `${API_URL}${imgObj.image}` : imgObj.image) : "";
-              const sDate = event.event_details?.starts_at ? new Date(event.event_details.starts_at).toLocaleDateString("fr-FR") : "";
-              const eDate = event.event_details?.ends_at ? new Date(event.event_details.ends_at).toLocaleDateString("fr-FR") : "";
-              return {
-                id: event.id,
-                user_name: event.user_display_name || event.user_username || pageT("unknownUser"),
-                event_image: imageUrl,
-                title: event.title,
-                location: event.location || event.region || pageT("defaultLocation"),
-                start_date: sDate,
-                end_date: eDate,
-              };
-            }));
-          } else {
-            setUpcomingEvents([]);
-          }
-        } else {
-          setUpcomingEvents([]);
-        }
-      } catch (e) {
-        console.error("Failed to fetch upcoming events", e);
-        setUpcomingEvents([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchUpcoming();
-  }, [pageT]);
+  const { upcomingEvents, loading } = useUpcomingEvents(pageT);
 
   return (
-    <aside className="w-[380px] xl:w-[500px] flex-shrink-0 pl-6 pr-5 pt-4 h-full hidden lg:block overflow-hidden">
+    <aside className="w-[320px] xl:w-[380px] flex-shrink-0 pl-5 pr-4 pt-4 h-full hidden lg:flex flex-col overflow-hidden">
       <div className="sticky top-0 h-full flex flex-col">
-        <h2 className="text-xl font-bold mb-5 flex-shrink-0 text-center" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>{pageT("upcomingTitle")}</h2>
-        <div className="flex flex-col gap-3 flex-shrink-0">
+        {/* Centered Title - Aligned with Monuments page */}
+        <h2 className="text-2xl font-bold mb-8 text-center" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
+          {pageT("upcomingTitle")}
+        </h2>
+        {/* Scrollable list - Aligned with Monuments page */}
+        <div className="w-full flex flex-col gap-4 overflow-y-auto pr-2 pb-10 hide-scrollbar" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
           {loading ? (
             <div className="flex justify-center py-4"><div className="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} /></div>
           ) : upcomingEvents.length === 0 ? (
@@ -1291,41 +1383,40 @@ function RightSidebar({ onPostClick }: { onPostClick: (postId: string) => void }
               {pageT("noUpcoming")}
             </div>
           ) : upcomingEvents.map((eventItem, i) => (
-            <div key={i} onClick={() => onPostClick(eventItem.id)} className="flex px-5 py-3 mb-2.5 bg-white rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg shadow-sm" style={{ boxShadow: "0 4px 16px rgba(67,40,23,0.06)", backgroundColor: "rgba(255,255,255,0.6)" }}>
-              {/* Event Image: square 80x80, 20px radius */}
+            <div
+              key={i}
+              onClick={() => onPostClick(eventItem.id)}
+              className="bg-white rounded-xl p-4 flex flex-row items-start gap-3 transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(44,26,14,0.14)] hover:bg-[#FFFCF2] cursor-pointer"
+            >
+              {/* Thumbnail on left - Aligned with Monuments page */}
               {eventItem.event_image && (
-                <div className="w-[85px] h-[85px] flex-shrink-0 mr-4">
-                  <img src={eventItem.event_image} alt="event" className="w-full h-full object-cover rounded-[20px]" />
+                <div className="flex-shrink-0">
+                  <img src={eventItem.event_image} alt="event" className="w-12 h-12 rounded-full object-cover shrink-0 shadow-sm" />
                 </div>
               )}
 
               {/* Content on the right */}
-              <div className="flex flex-col justify-between flex-1 min-w-0">
-                <div>
-                  {/* Line 1: User name and icon */}
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#E0D5C5", color: "#8B7355" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      </svg>
-                    </div>
-                    <span className="text-[11px] font-bold truncate" style={{ color: "#8B7355" }}>{eventItem.user_name}</span>
-                  </div>
+              <div className="flex flex-col gap-1 min-w-0 justify-center flex-1">
+                <h3 className="font-bold text-sm text-[#2C1A0E] truncate" style={{ fontFamily: "var(--font-lato)" }}>
+                  {stripHtml(eventItem.title)}
+                </h3>
 
-                  {/* Line 2: Title */}
-                  <span className="font-bold text-[14px] leading-snug line-clamp-2 mb-1.5" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(eventItem.title) }}></span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#E0D5C5", color: "#8B7355" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                  </div>
+                  <span className="text-[10px] font-bold truncate" style={{ color: "#8B7355" }}>{eventItem.user_name}</span>
                 </div>
 
-                {/* Line 3: Location and Time */}
-                <div className="flex items-center justify-between mt-auto overflow-hidden whitespace-nowrap">
-                  <span className="flex items-center gap-1 text-[10px] font-bold truncate pr-3 flex-1" style={{ color: "#8B6914" }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-[#5a4a3a] mt-0.5">
+                  <div className="flex items-center gap-1 truncate max-w-[120px]">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#7a5a3a", flexShrink: 0 }}>
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                    </svg>
                     <span className="truncate">{eventItem.location}</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-[10px] font-bold flex-shrink-0" style={{ color: "#8B6914" }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
-                    {eventItem.start_date} {eventItem.end_date ? `- ${eventItem.end_date}` : ""}
-                  </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1344,12 +1435,14 @@ function PostModal({
   interaction,
   onInteractionChange,
   initialTab = "comments",
+  onReport,
 }: {
   post: ApiPost | null;
   onClose: () => void;
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   initialTab?: "comments" | "annotations";
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
@@ -1619,6 +1712,7 @@ function PostModal({
           onRefresh={() => fetchComments(post.id)}
           onDelete={handleDeleteComment}
           isReply={level > 0}
+          onReport={onReport}
         />
         {replies.length > 0 && (
           <div className="flex flex-col gap-2 mt-2">
@@ -1631,7 +1725,7 @@ function PostModal({
 
   const LeftPanel = imageList.length > 0 ? (
     <div
-      className="hidden md:flex w-1/2 flex-shrink-0 relative overflow-hidden"
+      className="block w-full h-[240px] md:h-full md:w-1/2 flex-shrink-0 relative overflow-hidden"
       style={{ backgroundColor: "#000" }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -1760,19 +1854,19 @@ function PostModal({
     </div >
   );
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
+    <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative flex flex-col md:flex-row w-full max-w-[1000px] max-h-[90vh] h-[90vh] rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex flex-col md:flex-row w-full md:max-w-[1000px] h-full md:max-h-[90vh] md:h-[90vh] md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF" }} onClick={(e) => e.stopPropagation()}>
         {LeftPanel}
 
         {/* Right Panel: Comments/Annotations */}
-        <div className="w-full md:w-1/2 flex flex-col overflow-hidden h-full" style={{ backgroundColor: "#FFF8E2" }}>
+        <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
                 <button
-                  className="font-bold text-base hover:underline text-left"
+                  className="font-bold text-sm hover:underline text-left block truncate"
                   style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }}
                   onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}
                 >
@@ -1818,31 +1912,33 @@ function PostModal({
             </button>
           </div>
 
-          <div className={`px-5 pt-3 pb-3 border-b flex-shrink-0 ${imageList.length === 0 ? "block md:hidden" : ""}`} style={{ borderColor: "#E0D5C5" }}>
-            <LocationWorldCard
-              location={post.location}
-              region={post.region}
-              textStyle={{ color: "#8B7355" }}
-              iconColor="#8B7355"
-              iconSize={13}
-              buttonClassName="mb-1"
-            />
-            <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+          {imageList.length > 0 && (
+            <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+              <LocationWorldCard
+                location={post.location}
+                region={post.region}
+                textStyle={{ color: "#8B7355" }}
+                iconColor="#8B7355"
+                iconSize={13}
+                buttonClassName="mb-1"
+              />
+              <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
 
-            {isContentLong && !contentExpanded ? (
-              <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
-                {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
-                <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
-              </p>
-            ) : (
-              <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
-            )}
-            {isContentLong && contentExpanded && (
-              <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
-            )}
+              {isContentLong && !contentExpanded ? (
+                <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                  {post.content.replace(/<[^>]*>/g, "").slice(0, CONTENT_LIMIT) + "… "}
+                  <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+                </p>
+              ) : (
+                <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+              )}
+              {isContentLong && contentExpanded && (
+                <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+              )}
 
 
-          </div>
+            </div>
+          )}
 
           <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
             <button
@@ -1908,7 +2004,8 @@ function PostModal({
                       onDelete={handleDeleteAnnotation}
                       onAccept={handleAcceptAnnotation}
                       onReject={handleRejectAnnotation}
-                      onRefresh={() => fetchAnnotations(post.id)}
+                      onRefresh={async () => fetchAnnotations(post.id)}
+                      onReport={onReport}
                     />
                   ))
                 )}
@@ -1918,10 +2015,10 @@ function PostModal({
 
           <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
             <div className="flex items-center gap-4">
-              <button className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+              <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
                 <GemIcon size={14} filled={gemmed} active={gemmed} />
                 {formatCount(gemsCount)}
-              </button>
+              </LongPressGemButton>
               <button
                 className="flex items-center gap-1 text-xs transition-all"
                 style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }}
@@ -2035,6 +2132,7 @@ function PostCard({
   interaction,
   onInteractionChange,
   onDelete,
+  onReport,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -2043,6 +2141,7 @@ function PostCard({
   interaction: PostInteraction;
   onInteractionChange: (update: Partial<PostInteraction>) => void;
   onDelete?: (postId: string) => void;
+  onReport: (type: ReportTargetType, id: string) => void;
 }) {
   const feedT = useTranslations("auth.feed");
   const currentUser = getAuthUser();
@@ -2112,13 +2211,13 @@ function PostCard({
 
   return (
     <div
-      className={`md:rounded-xl mb-2 sm:mb-5 border-b border-black/5 md:border-b-0 md:border-transparent transition-all duration-200 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
+      className={`rounded-none md:rounded-xl mb-1 md:mb-5 border-b border-black/5 md:border-b-0 md:border-transparent transition-all duration-200 cursor-pointer ${isNew ? "post-fade-in" : ""}`}
       style={{ boxShadow: "0 2px 16px rgba(67,40,23,0.08)", backgroundColor: "var(--light)" }}
       onClick={onCommentClick}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(67,40,23,0.14)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(67,40,23,0.08)"; }}
     >
-      <div className="flex items-center px-5 pt-4 pb-2">
+      <div className="flex items-center px-4 md:px-5 pt-4 pb-2">
         <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -2159,7 +2258,13 @@ function PostCard({
                 </>
               )}
               {!isModeratorActive && (
-                <button className="text-sm font-bold whitespace-nowrap" style={{ color: "#432817" }} onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}>{feedT("actions.reportPost")}</button>
+                <button
+                  className="text-sm font-bold whitespace-nowrap block w-full text-left py-2"
+                  style={{ color: "#432817" }}
+                  onClick={(e) => { e.stopPropagation(); onReport("post", post.id); setShowMenu(false); }}
+                >
+                  {feedT("actions.reportPost")}
+                </button>
               )}
             </div>
           )}
@@ -2178,21 +2283,21 @@ function PostCard({
 
       <PostDetailBadge post={post} />
 
-      <h3 className="px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
-        <div dangerouslySetInnerHTML={{ __html: post.title }} />
+      <h3 className="px-4 md:px-5 pb-2 text-xl font-bold prose prose-sm max-w-none" style={{ color: "#432817" }}>
+        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
       </h3>
 
-      <ExpandableContent content={post.content} className="px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
+      <ExpandableContent content={post.content} className="px-4 md:px-5 pb-2 text-sm leading-relaxed" style={{ color: "#432817" }} />
       <PostTags tags={tags} />
 
       {imageList.length > 0 && (
-        <div className="relative px-4 pb-3" onClick={(e) => e.stopPropagation()}>
+        <div className="relative px-0 md:px-4 pb-3" onClick={(e) => e.stopPropagation()}>
           {imgError ? (
             <div className="w-full rounded-lg flex items-center justify-center" style={{ height: 460, background: "linear-gradient(135deg, #C8A96E, #8B6914)" }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
             </div>
           ) : (
-            <div className="relative w-full overflow-hidden rounded-lg h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
+            <div className="relative w-full overflow-hidden rounded-none md:rounded-lg h-[300px] sm:h-[400px] md:h-[460px]" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.1)" }}>
               <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" }}>
                 {imageList.map((img) => {
                   const imageUrl = img?.image
@@ -2243,10 +2348,10 @@ function PostCard({
 
       <div className="flex items-center justify-between px-5 py-3 border-t" style={{ borderColor: "#F0EAD8" }}>
         <div className="flex items-center gap-5">
-          <button className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onClick={handleGem}>
+          <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1.5 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
             <GemIcon filled={gemmed} active={gemmed} />
             <span>{formatCount(gemsCount)}</span>
-          </button>
+          </LongPressGemButton>
           <button
             className="flex items-center gap-1.5 text-xs transition-colors hover:text-[#8B6914] cursor-pointer"
             style={{ color: "#432817" }}
@@ -2313,7 +2418,7 @@ function PostCard({
 
 /* ───────────────── MAIN PAGE ───────────────── */
 
-export default function HomePageRoute() {
+export default function EventsPage() {
   const pageT = useTranslations("auth.pages.events");
   const tCommon = useTranslations("auth.common");
   const [posts, setPosts] = useState<ApiPost[]>([]);
@@ -2329,6 +2434,7 @@ export default function HomePageRoute() {
     historical_period: "All",
     monument_type: "All",
     status: "All",
+    expertise: "All",
   });
 
   const handleEventClick = (postId: string) => {
@@ -2346,13 +2452,43 @@ export default function HomePageRoute() {
     if (filters.historical_period !== "All") params.append("historical_period", filters.historical_period);
     if (filters.monument_type !== "All") params.append("monument_type", filters.monument_type);
     if (filters.status !== "All") params.append("status", filters.status.toLowerCase());
+    params.set("page_size", "10");
+    if (filters.expertise !== "All") params.append("expertise", filters.expertise);
 
     return `${API_URL}/api/posts/events/filter/?${params.toString()}`;
   };
 
-  const [nextUrl, setNextUrl] = useState<string | null>(constructUrl({ region: "All", historical_period: "All", monument_type: "All", status: "All" }, ""));
+  const [nextUrl, setNextUrl] = useState<string | null>(constructUrl({ region: "All", historical_period: "All", monument_type: "All", status: "All", expertise: "All" }, ""));
 
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+  const isDefaultEventsFeed = !searchQuery.trim() && Object.values(activeFilters).every((value) => value === "All");
+  const eventsFeedQuery = usePosts<ApiPost>("events", {
+    enabled: isDefaultEventsFeed,
+    pageSize: 10,
+    prefetchNextPage: true,
+    prefetchPages: 5,
+  });
+  const displayedPosts = useMemo(
+    () => isDefaultEventsFeed
+      ? eventsFeedQuery.posts.map((post, index) => normalizeEventPost(post, index))
+      : posts,
+    [isDefaultEventsFeed, eventsFeedQuery.posts, posts],
+  );
+
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    targetType: ReportTargetType;
+    targetId: string;
+  }>({ isOpen: false, targetType: "post", targetId: "" });
+
+  const openReportModal = (type: ReportTargetType, id: string) => {
+    setReportModal({ isOpen: true, targetType: type, targetId: id });
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    const combinedReason = description ? `${reason}: ${description}` : reason;
+    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+  };
 
   const getInteraction = (post: ApiPost): PostInteraction =>
     postInteractions[post.id] ?? {
@@ -2426,28 +2562,13 @@ export default function HomePageRoute() {
         return;
       }
       const data = await res.json();
-      const formattedPosts: ApiPost[] = (data.results || data).map((post: any, i: number) => ({
-        id: String(post.id),
-        user_display_name: post.user_display_name ?? "",
-        user_username: post.user_username ?? "",
-        user_profile_picture: post.user_profile_picture ?? "",
-        title: post.title ?? "",
-        content: post.content ?? "",
-        post_type: post.post_type ?? "",
-        region: post.region ?? "",
-        location: post.location ?? "",
-        gems_count: post.gems_count ?? 0,
-        comments_count: post.comments_count ?? 0,
-        images: Array.isArray(post.images) ? post.images : [],
-        tags: Array.isArray(post.tags) ? post.tags : [],
-        historical_period: post.historical_period ?? "",
-        monument_type: post.monument_type ?? "",
-        created_at: post.created_at ?? "",
-        alert_details: post.alert_details ?? null,
-        event_details: post.event_details ?? null,
-        _key: (reset ? 0 : posts.length) + i,
-      }));
-      setPosts(prev => reset ? formattedPosts : [...prev, ...formattedPosts]);
+      const formattedPosts: ApiPost[] = (data.results || data).map((post: any, i: number) => normalizeEventPost(post, (reset ? 0 : posts.length) + i));
+      setPosts(prev => {
+        if (reset) return formattedPosts;
+        const existingIds = new Set(prev.map((p: ApiPost) => p.id));
+        const uniqueNew = formattedPosts.filter((p: ApiPost) => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
       setNextUrl(data.next ?? null);
     } catch (err) {
       console.error("Error fetching posts:", err);
@@ -2457,18 +2578,45 @@ export default function HomePageRoute() {
   };
 
   useEffect(() => {
+    if (!isDefaultEventsFeed) return;
+    const formattedPosts: ApiPost[] = eventsFeedQuery.posts.map((post: any, i: number) => normalizeEventPost(post, i));
+    setPosts(formattedPosts);
+    setNextUrl(eventsFeedQuery.hasNextPage ? "__react-query-next-page__" : null);
+    setLoading(eventsFeedQuery.isFetchingNextPage);
+  }, [
+    isDefaultEventsFeed,
+    eventsFeedQuery.posts,
+    eventsFeedQuery.hasNextPage,
+    eventsFeedQuery.isFetchingNextPage,
+  ]);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loading && nextUrl) {
+          if (isDefaultEventsFeed) {
+            if (eventsFeedQuery.hasNextPage && !eventsFeedQuery.isFetchingNextPage) {
+              eventsFeedQuery.fetchNextPage();
+            }
+            return;
+          }
           fetchPosts(nextUrl);
         }
       },
-      { threshold: 1.0 }
+      { rootMargin: "1800px 0px", threshold: 0.01 }
     );
 
     if (sentinelRef.current) observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [nextUrl, loading, posts.length]);
+  }, [
+    nextUrl,
+    loading,
+    posts.length,
+    isDefaultEventsFeed,
+    eventsFeedQuery.hasNextPage,
+    eventsFeedQuery.isFetchingNextPage,
+    eventsFeedQuery.fetchNextPage,
+  ]);
 
   const handleApplyFilters = (filters: typeof activeFilters) => {
     setActiveFilters(filters);
@@ -2507,7 +2655,7 @@ export default function HomePageRoute() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
+                  onBlur={() => setTimeout(() => setIsFocused(false), 200)}
                   className="flex-1 ml-3 outline-none bg-transparent text-sm"
                   style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}
                 />
@@ -2523,20 +2671,24 @@ export default function HomePageRoute() {
 
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-0 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                <MobileEventsStrip />
-                {posts.length === 0 && !loading ? (
+                <MobileEventsStrip onPostClick={handleEventClick} />
+                {eventsFeedQuery.isInitialLoading && isDefaultEventsFeed && displayedPosts.length === 0 && (
+                  <PostsSkeletonList count={3} />
+                )}
+                {displayedPosts.length === 0 && !loading && !(eventsFeedQuery.isInitialLoading && isDefaultEventsFeed) ? (
                   <div className="flex flex-col items-center justify-center py-20 text-center opacity-60">
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4"><circle cx="12" cy="12" r="10" /><line x1="8" y1="12" x2="16" y2="12" /></svg>
                     <p className="text-sm font-bold" style={{ color: "var(--brown)" }}>{pageT("noResults")}</p>
                   </div>
                 ) : (
-                  posts.map((post, index) => (
+                  displayedPosts.map((post, index) => (
                     <React.Fragment key={post._key ?? post.id ?? index}>
                       <PostCard
                         post={post}
                         isNew={index >= newPostStart && newPostStart !== -1}
                         interaction={getInteraction(post)}
-                        onInteractionChange={(update) => updateInteraction(post.id, update)}
+                        onInteractionChange={(u) => updateInteraction(post.id, u)}
+                        onDelete={handleDeletePost}
                         onCommentClick={() => {
                           setSelectedPost(post);
                           setSelectedPostTab("comments");
@@ -2545,7 +2697,7 @@ export default function HomePageRoute() {
                           setSelectedPost(post);
                           setSelectedPostTab("annotations");
                         }}
-                        onDelete={handleDeletePost}
+                        onReport={openReportModal}
                       />
                     </React.Fragment>
                   ))
@@ -2568,11 +2720,18 @@ export default function HomePageRoute() {
           post={selectedPost}
           initialTab={selectedPostTab}
           interaction={getInteraction(selectedPost)}
-          onInteractionChange={(update) => updateInteraction(selectedPost.id, update)}
+          onInteractionChange={(u) => updateInteraction(selectedPost.id, u)}
           onClose={() => setSelectedPost(null)}
+          onReport={openReportModal}
         />
-      )
-      }
+      )}
+
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleReportSubmit}
+        targetType={reportModal.targetType}
+      />
     </>
   );
 }
