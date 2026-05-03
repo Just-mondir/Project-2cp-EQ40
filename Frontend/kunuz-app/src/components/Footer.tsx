@@ -24,7 +24,8 @@ export default function Footer() {
     pathname.startsWith("/edit-profile") ||
     pathname.startsWith("/create-group") ||
     pathname.startsWith("/edit-group") ||
-    pathname.startsWith("/group")
+    pathname.startsWith("/group") ||
+     pathname.startsWith("/moderator-page")
   ) {
     return null;
   }

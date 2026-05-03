@@ -1320,11 +1320,22 @@ function ProfileHeader({
   const locale = useLocale();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
-  const [showDashboardModal, setShowDashboardModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<any>(null);
+  const isMod = profileInfo.role === "moderator" || profileInfo.role === "admin";
   const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showDashboardModal, setShowDashboardModal] = useState(false);
 
-
+  useEffect(() => {
+  function handleClickOutside(event: MouseEvent) {
+    if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      setShowMenu(false);
+    }
+  }
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
 
   const handleLogout = async () => {
     await logoutClient();
@@ -1352,12 +1363,46 @@ function ProfileHeader({
 
     <div className="flex flex-col pt-8 pb-6 px-6 relative">
       {isOwnProfile && (
-        <div className="absolute top-4 right-6">
-          <button className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors" onClick={() => setShowDashboardModal(true)}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+  <div className="absolute top-4 right-6" ref={menuRef}>
+    <button
+      className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors"
+      onClick={() => setShowMenu(!showMenu)}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+    </button>
+
+    {showMenu && (
+      <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2", minWidth: "200px" }}>
+        {isMod ? (
+          <>
+            <button
+              className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-[#F0EAD8]"
+              style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+              onClick={() => { setShowMenu(false); setShowDashboardModal(true); }}
+            >
+              Dashboard
+            </button>
+            <button
+              className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-[#F0EAD8]"
+              style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+              onClick={() => { setShowMenu(false); router.push("/moderator-page"); }}
+            >
+              Platform Statistics
+            </button>
+          </>
+        ) : (
+          <button
+            className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap hover:bg-[#F0EAD8]"
+            style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+            onClick={() => { setShowMenu(false); setShowDashboardModal(true); }}
+          >
+            Dashboard
           </button>
-        </div>
-      )}
+        )}
+      </div>
+    )}
+  </div>
+)}
 
       {/* ── Popups ── */}
       {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}

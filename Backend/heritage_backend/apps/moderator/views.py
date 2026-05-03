@@ -58,7 +58,14 @@ class UserListView(APIView):
     permission_classes = [IsModeratorOrAdmin]
     def get(self, request: Request) -> Response:
         query = request.query_params.get("q", "").strip()
-        users = User.objects(is_active=True)
+        users = User.objects(
+            __raw__={
+                "$or": [
+                    {"is_active": True},
+                    {"moderation_status": {"$in": ["suspended", "banned"]}},
+                ]
+            }
+        )
         if query:
             users = users.filter(
                 __raw__={
@@ -134,7 +141,7 @@ class UserModerationView(APIView):
             user.suspended_until = None
         elif action == "suspend":
             user.moderation_status = "suspended"
-            user.is_active = False
+            user.is_active = True
             user.suspended_until = suspended_until
         else:
             user.moderation_status = "active"

@@ -24,7 +24,7 @@ class ModeratorRoleUpdateSerializer(serializers.Serializer):
 
 
 class ModeratorActionSerializer(serializers.Serializer):
-    action = serializers.ChoiceField(choices=("ban", "suspend", "reactivate"))
+    action = serializers.ChoiceField(choices=("ban", "suspend", "unsuspend", "unban", "reactivate"))
     reason = serializers.CharField(required=False, allow_blank=True, default="")
     suspended_until = serializers.DateTimeField(required=False, allow_null=True)
 

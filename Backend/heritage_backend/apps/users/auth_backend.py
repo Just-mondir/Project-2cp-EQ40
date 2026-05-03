@@ -47,15 +47,23 @@ class MongoEngineJWTAuthentication(JWTAuthentication):
         except (User.DoesNotExist, Exception):
             raise AuthenticationFailed("User not found", code="user_not_found")
 
+        moderation_status = getattr(user, "moderation_status", "active")
+        suspended_until = getattr(user, "suspended_until", None)
+        if moderation_status == "banned":
+            raise AuthenticationFailed("User is banned", code="user_banned")
+
+        if moderation_status == "suspended":
+            if suspended_until and suspended_until <= timezone.now():
+                user.moderation_status = "active"
+                user.suspended_until = None
+                user.moderation_reason = ""
+                user.is_active = True
+                user.save()
+            else:
+                raise AuthenticationFailed("User is suspended", code="user_suspended")
+
         if not user.is_active:
             raise AuthenticationFailed("User is inactive", code="user_inactive")
-
-        if getattr(user, "moderation_status", "active") in {"suspended", "banned"}:
-            raise AuthenticationFailed("User is moderated out", code="user_moderated_out")
-
-        suspended_until = getattr(user, "suspended_until", None)
-        if suspended_until and suspended_until > timezone.now():
-            raise AuthenticationFailed("User is suspended", code="user_suspended")
 
         return user
 

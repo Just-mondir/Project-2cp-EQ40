@@ -239,7 +239,10 @@ class ThematicGroupDetailView(APIView):
         group = self._get_group(group_id)
         if not group:
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
-        if not request.user.is_authenticated or not user_is_group_admin(str(request.user.id), group):
+        user_role = getattr(request.user, "role", "")
+        is_platform_mod = user_role in ("moderator", "admin") or getattr(request.user, "is_staff", False)
+
+        if not request.user.is_authenticated or (not user_is_group_admin(str(request.user.id), group) and not is_platform_mod):
             return api_error("Only the group admin can delete this group.", status_code=status.HTTP_403_FORBIDDEN)
 
         GroupMembership.objects(group=group).delete()
@@ -296,8 +299,10 @@ class GroupMemberRemoveView(APIView):
         group = get_group_by_id(group_id)
         if not group:
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
-        if not user_is_group_admin(str(request.user.id), group):
-            return api_error("Only the group admin can remove members.", status_code=status.HTTP_403_FORBIDDEN)
+        requester_is_group_admin = user_is_group_admin(str(request.user.id), group)
+        requester_is_platform_moderator = getattr(request.user, "role", "") in {"moderator", "admin"}
+        if not (requester_is_group_admin or requester_is_platform_moderator):
+            return api_error("Only the group admin or a moderator can remove members.", status_code=status.HTTP_403_FORBIDDEN)
         if str(member_id) == str(group.admin_id):
             return api_error("The group admin cannot be removed.", status_code=status.HTTP_400_BAD_REQUEST)
 
@@ -422,15 +427,15 @@ class GroupInvitationCreateView(APIView):
         invitation = GroupInvitation(group=group, sender_id=str(request.user.id), recipient_id=recipient_id)
         invitation.save()
         notify(
-    event_type="group_invite_received",
-    actor_id=str(request.user.id),
-    actor_name=getattr(request.user, "display_name", "Someone"),
-    recipient_id=recipient_id,
-    target_type="group",
-    target_id=str(group.id),
-    group_name=group.name,
-    invitation_id=str(invitation.id),
-)
+            event_type="group_invite_received",
+            actor_id=str(request.user.id),
+            actor_name=getattr(request.user, "display_name", "Someone"),
+            recipient_id=recipient_id,
+            target_type="group",
+            target_id=str(group.id),
+            group_name=group.name,
+            invitation_id=str(invitation.id),
+        )    
         return api_success("Invitation sent successfully.", GroupInvitationSerializer(invitation).data, status_code=status.HTTP_201_CREATED)
 
 

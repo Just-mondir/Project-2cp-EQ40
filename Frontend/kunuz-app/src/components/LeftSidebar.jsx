@@ -140,7 +140,7 @@ export default function LeftSidebar({
   };
 
   useEffect(() => {
-    fetchUnreadCount();
+    void Promise.resolve().then(fetchUnreadCount);
     const interval = setInterval(() => {
       const token = localStorage.getItem("accessToken");
       if (token) fetchUnreadCount();
