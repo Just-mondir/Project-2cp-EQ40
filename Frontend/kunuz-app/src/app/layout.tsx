@@ -60,6 +60,11 @@ export default function RootLayout({
         if (daltonismMode !== "off") {
           document.documentElement.classList.add("daltonism-" + daltonismMode);
         }
+
+        // Dyslexia Mode Resolver
+        if (localStorage.getItem("dyslexia_mode") === "1") {
+          document.body.classList.add("dyslexia-mode");
+        }
       } catch (e) {}
     })();
   `;
@@ -128,6 +133,136 @@ export default function RootLayout({
           </LocaleProvider>
         </ReactQueryProvider>
         <Footer />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+            (function () {
+              const STORAGE_KEY = 'screen_reader_enabled';
+              let isActive = false;
+              let lastSpokenLabel = '';
+              let lastSpokenTime = 0;
+              const LABEL_COOLDOWN = 300; // ms - prevent rapid repeat
+
+              // Extract text label from element with priority
+              function getElementLabel(el) {
+                const label = 
+                  el.getAttribute('data-sound-label') ||
+                  el.getAttribute('aria-label') ||
+                  el.getAttribute('title') ||
+                  el.getAttribute('alt') ||
+                  (el.innerText && el.innerText.trim()) ||
+                  el.getAttribute('placeholder');
+
+                return label ? label.trim() : null;
+              }
+
+              // Speak label using SpeechSynthesis
+              function speakLabel(label) {
+                if (!label || !isActive) return;
+
+                // Prevent rapid repeats of the same label
+                const now = Date.now();
+                if (label === lastSpokenLabel && now - lastSpokenTime < LABEL_COOLDOWN) {
+                  return;
+                }
+
+                try {
+                  // Cancel any ongoing speech
+                  window.speechSynthesis.cancel();
+
+                  // Create and configure utterance
+                  const utterance = new SpeechSynthesisUtterance(label);
+                  utterance.lang = 'en-US';
+                  utterance.rate = 0.9;
+                  utterance.pitch = 1;
+                  utterance.volume = 1;
+
+                  // Track spoken label and time
+                  lastSpokenLabel = label;
+                  lastSpokenTime = now;
+
+                  // Speak
+                  window.speechSynthesis.speak(utterance);
+                } catch (e) {
+                  console.log('Speech failed:', e);
+                }
+              }
+
+              // Handle element hover - read any element with text/label
+              function handleElementHover(e) {
+                if (!isActive) return;
+
+                const target = e.target;
+                let current = target;
+
+                // Traverse up to find readable element
+                for (let i = 0; i < 5; i++) {
+                  if (!current) break;
+
+                  const label = getElementLabel(current);
+                  if (label) {
+                    speakLabel(label);
+                    break;
+                  }
+
+                  current = current.parentElement;
+                }
+              }
+
+              // Toggle screen reader mode
+              function toggleMode(enabled) {
+                isActive = enabled;
+                btn.classList.toggle('active', enabled);
+                document.getElementById('screen-reader-btn-label').textContent = enabled
+                  ? 'Screen Reader ON'
+                  : 'Screen Reader';
+                localStorage.setItem(STORAGE_KEY, enabled ? '1' : '0');
+
+                if (!enabled) {
+                  window.speechSynthesis.cancel();
+                  lastSpokenLabel = '';
+                }
+              }
+
+              // Create floating toggle button
+              const btn = document.createElement('button');
+              btn.id = 'screen-reader-toggle-btn';
+              btn.setAttribute('aria-label', 'Toggle screen reader');
+              btn.innerHTML = \`
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                     stroke-width="1.5" stroke-linecap="round" style="flex-shrink:0">
+                  <circle cx="8" cy="5" r="2"/>
+                  <path d="M3 10c1-1 2.5-2 5-2s4 1 5 2"/>
+                  <path d="M2 13c1.5-1.5 3.5-2.5 6-2.5s4.5 1 6 2.5"/>
+                </svg>
+                <span id="screen-reader-btn-label">Screen Reader</span>
+              \`;
+              document.body.appendChild(btn);
+
+              // Button click handler - toggle mode
+              btn.addEventListener('click', () => {
+                toggleMode(!isActive);
+              });
+
+              // Hover detection for reading elements
+              document.addEventListener('mouseover', handleElementHover, true);
+
+              // Restore saved preference on load
+              const saved = localStorage.getItem(STORAGE_KEY);
+              if (saved === '1') {
+                // Request user interaction before enabling speech
+                const enableOnInteraction = () => {
+                  toggleMode(true);
+                  document.removeEventListener('click', enableOnInteraction);
+                  document.removeEventListener('keydown', enableOnInteraction);
+                };
+                document.addEventListener('click', enableOnInteraction);
+                document.addEventListener('keydown', enableOnInteraction);
+              }
+            })();
+            `,
+          }}
+        />
       </body>
     </html>
   );

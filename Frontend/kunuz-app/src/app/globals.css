@@ -1,6 +1,35 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* === OpenDyslexic Font === */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-BoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+}
+
 :root {
   --background: #FFF8E2;
   --foreground: #432817;
@@ -968,6 +997,214 @@ html[data-theme="dark"][data-theme-scope="home"] .post-form-dropdown-menu {
 html[data-theme="dark"][data-theme-scope="home"] .post-form-control::placeholder {
   color: var(--text-muted) !important;
 }
+
+/* ===== Screen Reader Accessibility Mode ===== */
+
+/* Floating screen reader toggle button */
+#screen-reader-toggle-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10001;
+  background: #ffffff;
+  border: 1.5px solid #d0cfc8;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: background 0.15s, border-color 0.15s;
+  color: #3d3d3a;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  line-height: normal !important;
+}
+
+#screen-reader-toggle-btn:hover {
+  background: #f5f4ef;
+  border-color: #ccc9c0;
+}
+
+#screen-reader-toggle-btn.active {
+  background: #fef3c7;
+  border-color: #a16207;
+  color: #92400e;
+}
+
+#screen-reader-toggle-btn svg {
+  flex-shrink: 0;
+}
+
+/* Dark theme support for screen reader */
+html[data-theme="dark"] #screen-reader-toggle-btn {
+  background: #2a2018;
+  border-color: #544038;
+  color: #f6ead2;
+}
+
+html[data-theme="dark"] #screen-reader-toggle-btn:hover {
+  background: #3a2c20;
+  border-color: #6a5048;
+}
+
+html[data-theme="dark"] #screen-reader-toggle-btn.active {
+  background: #4a3828;
+  border-color: #d4a017;
+  color: #ffd700;
+}
+
+/* Responsive: adjust button position on mobile */
+@media (max-width: 640px) {
+  #screen-reader-toggle-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+}
+
+/* === End Screen Reader Mode === */
+
+/* ===== Dyslexia Accessibility Mode ===== */
+
+/* Apply OpenDyslexic font to all text elements in dyslexia mode */
+body.dyslexia-mode,
+body.dyslexia-mode p,
+body.dyslexia-mode span,
+body.dyslexia-mode li,
+body.dyslexia-mode label,
+body.dyslexia-mode input,
+body.dyslexia-mode textarea,
+body.dyslexia-mode button,
+body.dyslexia-mode a,
+body.dyslexia-mode td,
+body.dyslexia-mode th,
+body.dyslexia-mode h1,
+body.dyslexia-mode h2,
+body.dyslexia-mode h3,
+body.dyslexia-mode h4,
+body.dyslexia-mode h5,
+body.dyslexia-mode h6,
+body.dyslexia-mode div,
+body.dyslexia-mode article,
+body.dyslexia-mode section {
+  font-family: 'OpenDyslexic', sans-serif !important;
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.22em !important;
+  line-height: 1.9 !important;
+}
+
+/* Constrain line length for better readability */
+body.dyslexia-mode p,
+body.dyslexia-mode li,
+body.dyslexia-mode td,
+body.dyslexia-mode article,
+body.dyslexia-mode section {
+  max-width: 70ch;
+}
+
+/* Reading ruler — horizontal highlight that follows the mouse */
+#dyslexia-ruler {
+  display: none;
+  position: fixed;
+  left: 0;
+  width: 100%;
+  height: 2.4em;
+  background: rgba(255, 220, 100, 0.18);
+  border-top: 1.5px solid rgba(255, 200, 60, 0.35);
+  border-bottom: 1.5px solid rgba(255, 200, 60, 0.35);
+  pointer-events: none;
+  z-index: 9999;
+  transition: top 0.07s linear;
+}
+
+body.dyslexia-mode #dyslexia-ruler {
+  display: block;
+}
+
+/* Floating toggle button */
+#dyslexia-toggle-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  background: #ffffff;
+  border: 1.5px solid #d0cfc8;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: background 0.15s, border-color 0.15s;
+  color: #3d3d3a;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  line-height: normal !important;
+}
+
+#dyslexia-toggle-btn:hover {
+  background: #f5f4ef;
+  border-color: #ccc9c0;
+}
+
+#dyslexia-toggle-btn.active {
+  background: #fffbea;
+  border-color: #d4a017;
+  color: #7a5c00;
+}
+
+#dyslexia-toggle-btn svg {
+  flex-shrink: 0;
+}
+
+/* Responsive: adjust button position on mobile */
+@media (max-width: 640px) {
+  #dyslexia-toggle-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+}
+
+/* Dark theme support for dyslexia mode */
+html[data-theme="dark"] body.dyslexia-mode #dyslexia-toggle-btn {
+  background: #2a2018;
+  border-color: #544038;
+  color: #f6ead2;
+}
+
+html[data-theme="dark"] body.dyslexia-mode #dyslexia-toggle-btn:hover {
+  background: #3a2c20;
+  border-color: #6a5048;
+}
+
+html[data-theme="dark"] body.dyslexia-mode #dyslexia-toggle-btn.active {
+  background: #4a3828;
+  border-color: #d4a017;
+  color: #ffd700;
+}
+
+/* Override body dyslexia styling to preserve original font for button */
+body.dyslexia-mode #dyslexia-toggle-btn,
+body.dyslexia-mode #dyslexia-toggle-btn span {
+  font-family: system-ui, -apple-system, sans-serif !important;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  line-height: 1.5 !important;
+}
+
+/* === End Dyslexia Mode === */
 
 html[data-theme="dark"][data-theme-scope="home"] .profile-form-badge-text {
   color: var(--text-muted) !important;
