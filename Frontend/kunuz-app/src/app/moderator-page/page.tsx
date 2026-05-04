@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import AnalyticsChart from "@/components/AnalyticsChart";
+import useAnalytics from "@/hooks/useAnalytics";
 import LeftSidebar from "@/components/LeftSidebar";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -549,16 +551,21 @@ export default function ModeratorUsers() {
   const [suspendDateById, setSuspendDateById] = useState<Record<string, string>>({});
   const [listLoading, setListLoading] = useState(true);
   const [groupToDelete, setGroupToDelete] = useState<GroupRow | null>(null);
-const [deletingGroup, setDeletingGroup] = useState(false);
-const [groupMembersPopup, setGroupMembersPopup] = useState<GroupRow | null>(null);
-const [popupMembers, setPopupMembers] = useState<{ id: string; username: string; display_name: string; profile_picture?: string; is_admin: boolean; role: string }[]>([]);
-const [popupMembersLoading] = useState(false);
-const [popupRemoving, setPopupRemoving] = useState<string | null>(null);
-
-const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
-  id: string; username: string; display_name: string; profile_picture?: string; is_admin: boolean; role: string;
-} | null>(null);
-
+  const [deletingGroup, setDeletingGroup] = useState(false);
+  const [groupMembersPopup, setGroupMembersPopup] = useState<GroupRow | null>(null);
+  const [popupMembers, setPopupMembers] = useState<
+    { id: string; username: string; display_name: string; profile_picture?: string; is_admin: boolean; role: string }[]
+  >([]);
+  const [popupMembersLoading] = useState(false);
+  const [popupRemoving, setPopupRemoving] = useState<string | null>(null);
+  const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
+    id: string;
+    username: string;
+    display_name: string;
+    profile_picture?: string;
+    is_admin: boolean;
+    role: string;
+  } | null>(null);
   const [moderatorProfile, setModeratorProfile] = useState<ModeratorProfile>({
     name: "Moderator",
     username: "@moderator",
@@ -570,6 +577,8 @@ const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
     visitors: 0,
     posts: 0,
   });
+  const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d" | "90d">("30d");
+  const analytics = useAnalytics(analyticsRange);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [rolesByUserId, setRolesByUserId] = useState<Record<string, UserRole>>({});
@@ -1066,6 +1075,19 @@ const statCards = [
                 {isEditingRoles ? "< Back" : "Edit roles"}
               </button>
             )}
+          </div>
+
+          <div className="mb-8">
+            <AnalyticsChart
+              labels={analytics.labels}
+              members={analytics.members}
+              groups={analytics.groups}
+              visitors={analytics.visitors}
+              posts={analytics.posts}
+              loading={analytics.loading}
+              range={analyticsRange}
+              onRangeChange={setAnalyticsRange}
+            />
           </div>
 
           <div className="rounded-3xl p-6 shadow-sm sm:p-8" style={{ backgroundColor: "#FFF8E2" }}>
