@@ -69,6 +69,8 @@ class PostListSerializer(serializers.Serializer):
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
     user_profile_picture = serializers.SerializerMethodField()
+    user_expertise = serializers.SerializerMethodField()
+    user_role = serializers.SerializerMethodField()
     title = serializers.SerializerMethodField()
     post_type = serializers.CharField()
     content = serializers.CharField()
@@ -107,6 +109,14 @@ class PostListSerializer(serializers.Serializer):
     def get_user_profile_picture(self, obj):
         user = _get_user_by_id(obj.author_id)
         return user.profile_picture if user else ""
+
+    def get_user_expertise(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return getattr(user, "expertise", "") if user else ""
+
+    def get_user_role(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return getattr(user, "role", "") if user else ""
 
     def get_title(self, obj):
         return obj.title
@@ -178,6 +188,8 @@ class PostDetailSerializer(serializers.Serializer):
     user_display_name = serializers.SerializerMethodField()
     user_username = serializers.SerializerMethodField()
     user_profile_picture = serializers.SerializerMethodField()
+    user_expertise = serializers.SerializerMethodField()
+    user_role = serializers.SerializerMethodField()
     title = serializers.CharField()
     content = serializers.CharField(required=False, allow_blank=True)
     post_type = serializers.CharField()
@@ -221,6 +233,14 @@ class PostDetailSerializer(serializers.Serializer):
     def get_user_profile_picture(self, obj):
         user = _get_user_by_id(obj.author_id)
         return user.profile_picture if user else ""
+
+    def get_user_expertise(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return getattr(user, "expertise", "") if user else ""
+
+    def get_user_role(self, obj):
+        user = _get_user_by_id(obj.author_id)
+        return getattr(user, "role", "") if user else ""
 
     def get_images(self, obj):
         images = PostImage.objects(post=obj)

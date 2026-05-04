@@ -79,7 +79,7 @@ class UserListView(APIView):
         page = paginator.paginate_queryset(users, request)
         users_data = []
         for user in page:
-            post_count = Post.objects(author_id=str(user.id)).count()
+            post_count = Post.objects(author_id=str(user.id), is_deleted=False).count()
             users_data.append({
                 "id": str(user.id),
                 "display_name": user.display_name,
@@ -143,10 +143,12 @@ class UserModerationView(APIView):
             user.moderation_status = "suspended"
             user.is_active = True
             user.suspended_until = suspended_until
-        else:
+        elif action in {"unsuspend", "unban", "reactivate"}:
             user.moderation_status = "active"
             user.is_active = True
             user.suspended_until = None
+        else:
+            return api_error("Invalid moderation action.", status_code=status.HTTP_400_BAD_REQUEST)
 
         user.moderation_reason = reason
         user.save()

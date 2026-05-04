@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useLocaleSettings } from "@/components/LocaleProvider";
 
@@ -183,6 +184,7 @@ export default function GroupHeader({
   GroupeMenuComponent,
 }: GroupHeaderProps) {
   const t = useTranslations("auth.pages.home");
+  const router = useRouter();
   const { locale } = useLocaleSettings();
   const avatarUrl = resolveUrl(group.profile_picture);
   const adminMember = members.find(m => m.is_admin);
@@ -272,7 +274,13 @@ export default function GroupHeader({
               color: tab === tabId ? "var(--foreground)" : "var(--text-muted)",
               opacity: tab === tabId ? 1 : 0.72,
             }}
-            onClick={() => onTabChange(tabId)}
+            onClick={() => {
+              if (tabId === "about" && !canUseMemberFeatures) {
+                router.push(`/group/${group.id}/about`);
+                return;
+              }
+              onTabChange(tabId);
+            }}
           >
             {tabId === "my posts"
               ? t("community.tabs.myPosts")

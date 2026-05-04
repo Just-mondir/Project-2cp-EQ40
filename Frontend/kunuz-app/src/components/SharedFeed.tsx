@@ -157,6 +157,8 @@ type ApiPost = {
   user_display_name?: string;
   user_username?: string;
   user_profile_picture?: string;
+  user_expertise?: string;
+  user_role?: string;
   username?: string;
   date?: string;
   title: string;
@@ -329,6 +331,48 @@ function UserAvatar({
         <circle cx="12" cy="7" r="4" />
       </svg>
     </div>
+  );
+}
+
+const authorExpertiseStyles: Record<string, { label: string; color: string; background: string; text: string }> = {
+  amateur: { label: "Amateur", color: "#C8A96E", background: "#C8A96E", text: "#1a0f00" },
+  student: { label: "Student", color: "#5C7A3E", background: "#E3EAD8", text: "#263816" },
+  researcher: { label: "Researcher", color: "#4A6FA5", background: "#DDE8F5", text: "#1F3655" },
+  historian: { label: "Historian", color: "#8B4513", background: "#EEDCCD", text: "#432817" },
+  guide: { label: "Tour Guide", color: "#E07B39", background: "#F8E3D6", text: "#5A2C10" },
+  architect: { label: "Architect", color: "#6B5B95", background: "#E8E2F1", text: "#32284F" },
+  unknown: { label: "No expertise", color: "#E0D5C5", background: "#F3EEE6", text: "#5B4630" },
+};
+
+function normalizeAuthorExpertise(value?: string) {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (normalized === "tour guide") return "guide";
+  return normalized || "unknown";
+}
+
+function getAuthorStyle(post: ApiPost) {
+  const role = (post.user_role ?? "").trim().toLowerCase();
+  if (role === "admin") return { label: "Admin", background: "#8B0000", text: "#FFFFFF", ring: "linear-gradient(135deg, #432817, #8B0000)" };
+  if (role === "moderator") return { label: "⚜️ Moderator", background: "#3b2314", text: "#FFF8E2", ring: "linear-gradient(135deg, #C8A96E, #8B6914)" };
+  const style = authorExpertiseStyles[normalizeAuthorExpertise(post.user_expertise)] ?? authorExpertiseStyles.unknown;
+  return { ...style, ring: style.color };
+}
+
+function AuthorAvatar({ post, size, iconSize }: { post: ApiPost; size: number; iconSize: number }) {
+  const authorStyle = getAuthorStyle(post);
+  return (
+    <div className="rounded-full flex-shrink-0 p-[3px]" style={{ background: authorStyle.ring }}>
+      <UserAvatar profilePicture={post.user_profile_picture} size={size} iconSize={iconSize} />
+    </div>
+  );
+}
+
+function AuthorBadge({ post }: { post: ApiPost }) {
+  const authorStyle = getAuthorStyle(post);
+  return (
+    <span className="rounded-full px-2 py-0.5 text-[10px] font-bold leading-none whitespace-nowrap" style={{ backgroundColor: authorStyle.background, color: authorStyle.text }}>
+      {authorStyle.label}
+    </span>
   );
 }
 
@@ -1300,6 +1344,7 @@ function PostModal({
   onMobilizationClick,
   forceIsOwner,
   isGroupAdmin = false,
+  showAuthorMarkers = true,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -1310,6 +1355,7 @@ function PostModal({
   onMobilizationClick?: () => void;
   forceIsOwner?: boolean;
   isGroupAdmin?: boolean;
+  showAuthorMarkers?: boolean;
 }) {
   const feedT = useTranslations("auth.feed");
   const locale = useLocale();
@@ -1756,7 +1802,11 @@ function PostModal({
         {/* Right Panel: Comments/Annotations */}
         <div className="w-full md:w-1/2 flex flex-col overflow-hidden" style={{ backgroundColor: "var(--background)" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "var(--border-soft)" }}>
-            <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
+            {showAuthorMarkers ? (
+              <AuthorAvatar post={post} size={38} iconSize={20} />
+            ) : (
+              <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
+            )}
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-2">
                 <button
@@ -1766,6 +1816,7 @@ function PostModal({
                 >
                   {post.user_display_name || post.user_username}
                 </button>
+                {showAuthorMarkers && <AuthorBadge post={post} />}
                 <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{formatDate(post.created_at)}</p>
               </div>
             </div>
@@ -2218,6 +2269,7 @@ function PostCard({
   groupDetails,
   onDelete,
   forceIsOwner,
+  showAuthorMarkers = true,
 }: {
   post: ApiPost;
   isNew: boolean;
@@ -2228,6 +2280,7 @@ function PostCard({
   groupDetails?: any;
   onDelete?: (postId: string) => void;
   forceIsOwner?: boolean;
+  showAuthorMarkers?: boolean;
 }) {
   const feedT = useTranslations("auth.feed");
   const t = useTranslations("auth.pages.home");
@@ -2350,11 +2403,19 @@ function PostCard({
                 className="absolute -bottom-1 -right-0 border-2 rounded-full overflow-hidden"
                 style={{ borderColor: 'var(--panel-bg)', backgroundColor: 'var(--panel-bg)' }}
               >
-                <UserAvatar profilePicture={post.user_profile_picture} size={22} iconSize={13} />
+                {showAuthorMarkers ? (
+                  <AuthorAvatar post={post} size={22} iconSize={13} />
+                ) : (
+                  <UserAvatar profilePicture={post.user_profile_picture} size={22} iconSize={13} />
+                )}
               </div>
             </div>
           ) : (
-            <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
+            showAuthorMarkers ? (
+              <AuthorAvatar post={post} size={42} iconSize={22} />
+            ) : (
+              <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
+            )
           )}
           <div className="ml-3 flex flex-col justify-center min-w-0">
             {groupDetails ? (
@@ -2366,13 +2427,16 @@ function PostCard({
                 >
                   {groupDetails.name}
                 </span>
-                <button
-                  className="text-[11px] mt-0.5 truncate text-left hover:underline"
-                  style={{ color: "var(--text-muted)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
-                  onClick={(e) => { e.stopPropagation(); if (!post.user_username) return; router.push(`/user/${post.user_username}`); }}
-                >
-                  {post.user_display_name || post.user_username}
-                </button>
+                <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
+                  <button
+                    className="text-[11px] truncate text-left hover:underline"
+                    style={{ color: "var(--text-muted)", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+                    onClick={(e) => { e.stopPropagation(); if (!post.user_username) return; router.push(`/user/${post.user_username}`); }}
+                  >
+                    {post.user_display_name || post.user_username}
+                  </button>
+                  {showAuthorMarkers && <AuthorBadge post={post} />}
+                </div>
               </>
             ) : (
               /* No group context: show user name and @handle */
@@ -2384,9 +2448,12 @@ function PostCard({
                 >
                   {post.user_display_name || post.user_username}
                 </button>
-                <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-                  @{post.user_username}
-                </p>
+                <div className="mt-0.5 flex items-center gap-1.5 min-w-0">
+                  <p className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>
+                    @{post.user_username}
+                  </p>
+                  {showAuthorMarkers && <AuthorBadge post={post} />}
+                </div>
               </>
             )}
           </div>
@@ -2615,6 +2682,8 @@ export default function CommunitiesPageRoute() {
     user_display_name: raw?.user_display_name ?? fallback?.user_display_name ?? "",
     user_username: raw?.user_username ?? fallback?.user_username ?? "",
     user_profile_picture: raw?.user_profile_picture ?? fallback?.user_profile_picture ?? "",
+    user_expertise: raw?.user_expertise ?? fallback?.user_expertise ?? "",
+    user_role: raw?.user_role ?? fallback?.user_role ?? "",
     title: raw?.title ?? fallback?.title ?? "",
     content: raw?.content ?? fallback?.content ?? "",
     post_type: raw?.post_type ?? fallback?.post_type ?? "",

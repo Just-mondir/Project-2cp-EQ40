@@ -276,6 +276,7 @@ class GroupMembersView(APIView):
                 "username": user.username,
                 "display_name": getattr(user, "display_name", user.username),
                 "profile_picture": getattr(user, "profile_picture", ""),
+                "expertise": getattr(user, "expertise", ""),
                 "badge": getattr(user, "badge", ""),
                 "is_admin": is_admin,
                 "role": "admin" if is_admin else "member",

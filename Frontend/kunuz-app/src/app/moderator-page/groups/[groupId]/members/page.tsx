@@ -185,6 +185,17 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat("en-GB").format(date);
 }
 
+function isSuspensionCurrent(user: Pick<UserRow, "moderationStatus" | "suspendedUntil">) {
+  if (user.moderationStatus !== "suspended" || !user.suspendedUntil) return false;
+  const date = new Date(user.suspendedUntil);
+  return !Number.isNaN(date.getTime()) && date > new Date();
+}
+
+function effectiveModerationStatus(user: Pick<UserRow, "moderationStatus" | "suspendedUntil">): ModerationStatus {
+  if (user.moderationStatus === "suspended" && !isSuspensionCurrent(user)) return "active";
+  return user.moderationStatus;
+}
+
 function formatCompactNumber(value: number) {
   if (!Number.isFinite(value)) return "0";
   if (value >= 1000) {
@@ -206,15 +217,16 @@ function expertiseLabel(value: string | null | undefined) {
 }
 
 function moderationDateLabel(user: UserRow) {
-  if (user.moderationStatus === "suspended") {
-    return user.suspendedUntil ? `Suspended until ${user.suspendedUntil}` : "Suspended";
+  const status = effectiveModerationStatus(user);
+  if (status === "suspended") {
+    return user.suspendedUntil ? `Suspended until ${formatDate(user.suspendedUntil)}` : "Suspended";
   }
-  if (user.moderationStatus === "banned") return "Banned";
+  if (status === "banned") return "Banned";
   return "Active";
 }
 
 function buildSuspendUntilIso(dateString?: string) {
-  if (dateString) return new Date(dateString).toISOString();
+  if (dateString) return new Date(`${dateString}T23:59:59.999`).toISOString();
   const date = new Date();
   date.setDate(date.getDate() + 7);
   return date.toISOString();
@@ -305,7 +317,7 @@ export default function ModeratorGroupMembersPage() {
               posts: user?.post_count ?? 0,
               joined: formatDate(user?.created_at),
               expertise: expertiseLabel(user?.expertise),
-              suspendedUntil: formatDate(user?.suspended_until),
+              suspendedUntil: user?.suspended_until ?? "",
               moderationStatus: user?.moderation_status ?? "active",
               role: user?.role ?? "user",
               isGroupAdmin: memberById.get(member.id)?.is_admin ?? false,
@@ -381,10 +393,15 @@ export default function ModeratorGroupMembersPage() {
         setMembers((prev) =>
           prev.map((entry) =>
             entry.id === userId
-              ? { ...entry, moderationStatus: data.moderation_status, suspendedUntil: formatDate(data.suspended_until) }
+              ? { ...entry, moderationStatus: data.moderation_status, suspendedUntil: data.suspended_until ?? "" }
               : entry,
           ),
         );
+        setSuspendDateById((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
       },
     });
   };
@@ -549,7 +566,7 @@ export default function ModeratorGroupMembersPage() {
                       {roleLabel(member.role)}
                     </span>
                     <div className="flex items-center gap-1">
-                      {member.moderationStatus === "active" ? (
+                      {effectiveModerationStatus(member) === "active" ? (
                         <input
                           type="date"
                           min={new Date().toISOString().split("T")[0]}
@@ -569,7 +586,7 @@ export default function ModeratorGroupMembersPage() {
                       )}
                     </div>
                     <div className="flex items-center justify-end gap-2">
-                      {member.moderationStatus === "active" ? (
+                      {effectiveModerationStatus(member) === "active" ? (
                         <>
                           <button
                             className="whitespace-nowrap rounded-[11px] px-3 py-1 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:text-sm"
@@ -596,9 +613,9 @@ export default function ModeratorGroupMembersPage() {
                         <button
                           className="whitespace-nowrap rounded-[11px] px-3 py-1 text-[11px] font-semibold sm:px-4 sm:text-sm"
                           style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
-                          onClick={() => openModerationConfirm(member.id, member.moderationStatus === "suspended" ? "unsuspend" : "unban")}
+                          onClick={() => openModerationConfirm(member.id, effectiveModerationStatus(member) === "suspended" ? "unsuspend" : "unban")}
                         >
-                          {member.moderationStatus === "suspended" ? "Unsuspend" : "Unban"}
+                          {effectiveModerationStatus(member) === "suspended" ? "Unsuspend" : "Unban"}
                         </button>
                       )}
                       {!member.isGroupAdmin && (

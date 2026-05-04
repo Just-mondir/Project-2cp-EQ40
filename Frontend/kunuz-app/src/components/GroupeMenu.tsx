@@ -208,7 +208,7 @@ export default function GroupOptionsMenu({
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       ),
-      onClick: () => { setOpen(false); router.push(`/group/${groupId}?tab=about`); },
+      onClick: () => { setOpen(false); router.push(`/group/${groupId}/about`); },
       danger: false,
     },
     {
@@ -236,7 +236,7 @@ export default function GroupOptionsMenu({
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       ),
-      onClick: () => { setOpen(false); router.push(`/group/${groupId}?tab=about`); },
+      onClick: () => { setOpen(false); router.push(`/group/${groupId}/about`); },
       danger: false,
     },
     {

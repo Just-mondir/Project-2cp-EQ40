@@ -128,6 +128,8 @@ type ApiPost = {
   user_display_name?: string;
   user_username?: string;
   user_profile_picture?: string;
+  user_expertise?: string;
+  user_role?: string;
   username?: string;
   date?: string;
   title: string;
@@ -289,6 +291,8 @@ function normalizeApiPost(raw: any): ApiPost {
     user_display_name: String(raw?.user_display_name ?? ""),
     user_username: String(raw?.user_username ?? ""),
     user_profile_picture: String(raw?.user_profile_picture ?? ""),
+    user_expertise: String(raw?.user_expertise ?? ""),
+    user_role: String(raw?.user_role ?? ""),
     username: String(raw?.username ?? ""),
     date: String(raw?.date ?? ""),
     title: String(raw?.title ?? ""),
@@ -352,6 +356,48 @@ function UserAvatar({
         <circle cx="12" cy="7" r="4" />
       </svg>
     </div>
+  );
+}
+
+const authorExpertiseStyles: Record<string, { label: string; color: string; background: string; text: string }> = {
+  amateur: { label: "Amateur", color: "#C8A96E", background: "#C8A96E", text: "#1a0f00" },
+  student: { label: "Student", color: "#5C7A3E", background: "#E3EAD8", text: "#263816" },
+  researcher: { label: "Researcher", color: "#4A6FA5", background: "#DDE8F5", text: "#1F3655" },
+  historian: { label: "Historian", color: "#8B4513", background: "#EEDCCD", text: "#432817" },
+  guide: { label: "Tour Guide", color: "#E07B39", background: "#F8E3D6", text: "#5A2C10" },
+  architect: { label: "Architect", color: "#6B5B95", background: "#E8E2F1", text: "#32284F" },
+  unknown: { label: "No expertise", color: "#E0D5C5", background: "#F3EEE6", text: "#5B4630" },
+};
+
+function normalizeAuthorExpertise(value?: string) {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (normalized === "tour guide") return "guide";
+  return normalized || "unknown";
+}
+
+function getAuthorStyle(post: ApiPost) {
+  const role = (post.user_role ?? "").trim().toLowerCase();
+  if (role === "admin") return { label: "Admin", background: "#8B0000", text: "#FFFFFF", ring: "linear-gradient(135deg, #432817, #8B0000)" };
+  if (role === "moderator") return { label: "⚜️ Moderator", background: "#3b2314", text: "#FFF8E2", ring: "linear-gradient(135deg, #C8A96E, #8B6914)" };
+  const style = authorExpertiseStyles[normalizeAuthorExpertise(post.user_expertise)] ?? authorExpertiseStyles.unknown;
+  return { ...style, ring: style.color };
+}
+
+function AuthorAvatar({ post, size, iconSize }: { post: ApiPost; size: number; iconSize: number }) {
+  const authorStyle = getAuthorStyle(post);
+  return (
+    <div className="rounded-full flex-shrink-0 p-[3px]" style={{ background: authorStyle.ring }}>
+      <UserAvatar profilePicture={post.user_profile_picture} size={size} iconSize={iconSize} />
+    </div>
+  );
+}
+
+function AuthorBadge({ post }: { post: ApiPost }) {
+  const authorStyle = getAuthorStyle(post);
+  return (
+    <span className="rounded-full px-2 py-0.5 text-[10px] font-bold leading-none whitespace-nowrap" style={{ backgroundColor: authorStyle.background, color: authorStyle.text }}>
+      {authorStyle.label}
+    </span>
   );
 }
 
@@ -1630,7 +1676,7 @@ function PostModal({
 
         <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
           <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
-            <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
+            <AuthorAvatar post={post} size={38} iconSize={20} />
             <div className="ml-3 flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <button
@@ -1640,6 +1686,7 @@ function PostModal({
                 >
                   {post.user_display_name || post.user_username}
                 </button>
+                <AuthorBadge post={post} />
                 <span className="text-[10px] block" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</span>
               </div>
             </div>
@@ -2061,7 +2108,7 @@ function PostCard({
       onClick={onCommentClick}
     >
       <div className="flex items-center px-5 pt-4 pb-2">
-        <UserAvatar profilePicture={post.user_profile_picture} size={42} iconSize={22} />
+        <AuthorAvatar post={post} size={42} iconSize={22} />
         <div className="ml-3 flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <button
@@ -2071,6 +2118,7 @@ function PostCard({
             >
               {post.user_display_name || post.user_username || "Anonymous"}
             </button>
+            <AuthorBadge post={post} />
             <p className="text-xs" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
           </div>
         </div>
@@ -2531,10 +2579,11 @@ function HistoryModal({
         <div className="w-full md:w-1/2 flex flex-col bg-[#FFF8E2] rounded-r-2xl overflow-hidden shadow-[-4px_0_15px_rgba(0,0,0,0.05)]">
           {/* Header row */}
           <div className="flex items-center px-5 pt-4 pb-3 border-b" style={{ borderColor: "#E0D5C5" }}>
-            <UserAvatar profilePicture={post.user_profile_picture} size={36} iconSize={18} />
+            <AuthorAvatar post={post} size={36} iconSize={18} />
             <div className="ml-3 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm" style={{ color: "#432817" }}>{post.user_display_name || post.user_username}</span>
+                <AuthorBadge post={post} />
                 <span className="text-[10px]" style={{ color: "#8B7355" }}>{pageT("history.postedIn", { date: formatDate(post.created_at) })}</span>
               </div>
             </div>
@@ -2708,7 +2757,7 @@ function MobileMonumentsStrip({ posts }: { posts: ApiPost[] }) {
                   {stripHtml(post.title)}
                 </span>
                 <div className="flex items-center gap-1 mb-1">
-                  <UserAvatar profilePicture={post.user_profile_picture} size={16} iconSize={10} />
+                  <AuthorAvatar post={post} size={16} iconSize={10} />
                   <span
                     className="text-[8px] font-medium truncate"
                     style={{
@@ -2856,7 +2905,7 @@ function RightSidebar({ onAction, onPostClick, posts }: { onAction: () => void; 
 
                   {/* User row */}
                   <div className="flex flex-row items-center gap-1.5 mt-0.5 text-[#7a5a3a]">
-                    <UserAvatar profilePicture={post.user_profile_picture} size={16} iconSize={8} />
+                    <AuthorAvatar post={post} size={16} iconSize={8} />
                     <span className="font-bold text-[10px] truncate" style={{ fontFamily: "var(--font-lato), system-ui, sans-serif" }}>{userName}</span>
                   </div>
                 </div>

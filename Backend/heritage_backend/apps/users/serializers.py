@@ -172,24 +172,20 @@ class LoginSerializer(serializers.Serializer):
             )
         moderation_status = getattr(user, "moderation_status", "active")
         suspended_until = getattr(user, "suspended_until", None)
-        if moderation_status == "banned":
-            raise serializers.ValidationError(
-                {"detail": "Account is banned."}
-            )
         if moderation_status == "suspended":
-            if suspended_until and suspended_until <= timezone.now():
+            if suspended_until and suspended_until > timezone.now():
+                raise serializers.ValidationError(
+                    {"detail": f"Your account is suspended until {suspended_until}."}
+                )
+            else:
                 user.moderation_status = "active"
                 user.suspended_until = None
                 user.moderation_reason = ""
                 user.is_active = True
                 user.save()
-            else:
-                raise serializers.ValidationError(
-                    {"detail": "Account is suspended until the suspension date passes."}
-                )
         if not user.is_active:
             raise serializers.ValidationError(
-                {"detail": "Account is deactivated."}
+                {"detail": "Your account has been permanently banned."}
             )
         attrs["user"] = user
         return attrs

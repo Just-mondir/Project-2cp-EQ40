@@ -1358,43 +1358,10 @@ class MonumentsInDangerView(APIView):
 
         posts.sort(key=lambda p: p.created_at, reverse=True)
 
-        data = []
-        for post in posts:
-            alert_detail = alert_map.get(str(post.id))
-            if alert_detail is None:
-                alert_detail = AlertDetails.objects(post=post).first()
-
-            user_obj = User.objects(id=post.author_id).first() if post.author_id else None
-
-            data.append(
-                {
-                    "id": str(post.id),
-                    "user_id": str(post.author_id) if post.author_id else "",
-                    "user_username": user_obj.username if user_obj else "unknown",
-                    "user_display_name": user_obj.display_name if user_obj else "Unknown User",
-                    "user_profile_picture": user_obj.profile_picture if user_obj else "",
-                    "title": post.title,
-                    "content": post.content,
-                    "post_type": post.post_type,
-                    "region": post.region,
-                    "location": post.location,
-                    "historical_period": post.historical_period,
-                    "monument_type": post.monument_type,
-                    "created_at": post.created_at.isoformat() if post.created_at else None,
-                    "gems_count": post.gems_count,
-                    "comments_count": post.comments_count,
-                    "images": PostImageSerializer(PostImage.objects(post=post), many=True, context={"request": request}).data,
-                    "alert_details": {
-                        "id": str(alert_detail.id),
-                        "urgence_level": alert_detail.urgence_level,
-                        "current_status": alert_detail.current_status,
-                    }
-                    if alert_detail
-                    else None,
-                }
-            )
-
-        return api_success("Monuments in danger retrieved.", data)
+        paginator = PostPagination()
+        page = paginator.paginate_queryset(posts, request)
+        serializer = PostListSerializer(page, many=True, context={"request": request})
+        return paginator.get_paginated_response(serializer.data)
 
 
 class MobilizationEventCreateView(APIView):

@@ -73,6 +73,13 @@ function fmtCount(n: number) {
   return n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
 }
 
+function formatGroupDate(value: string) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-GB");
+}
+
 function normalizeGroupText(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -213,12 +220,16 @@ type GroupDetail = {
   is_member: boolean;
   is_admin: boolean;
   rules?: string;
+  tags?: string[];
+  visibility?: string;
+  created_at: string;
 };
 type Member = {
   id: string;
   username: string;
   display_name: string;
   profile_picture?: string;
+  expertise?: string;
   is_admin: boolean;
   role: string;
 };
@@ -451,6 +462,46 @@ function Avatar({ src, size }: { src?: string; size: number }) {
   );
 }
 
+const memberExpertiseStyles: Record<string, { label: string; color: string; background: string; text: string }> = {
+  amateur: { label: "Amateur", color: "#C8A96E", background: "#C8A96E", text: "#1a0f00" },
+  student: { label: "Student", color: "#5C7A3E", background: "#E3EAD8", text: "#263816" },
+  researcher: { label: "Researcher", color: "#4A6FA5", background: "#DDE8F5", text: "#1F3655" },
+  historian: { label: "Historian", color: "#8B4513", background: "#EEDCCD", text: "#432817" },
+  guide: { label: "Tour Guide", color: "#E07B39", background: "#F8E3D6", text: "#5A2C10" },
+  architect: { label: "Architect", color: "#6B5B95", background: "#E8E2F1", text: "#32284F" },
+  unknown: { label: "No expertise", color: "#E0D5C5", background: "#F3EEE6", text: "#5B4630" },
+};
+
+function normalizeMemberExpertise(value?: string) {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (normalized === "tour guide") return "guide";
+  return normalized || "unknown";
+}
+
+function getMemberStyle(member: Member) {
+  if (member.is_admin) return { label: "Admin", background: "#E8C98B", text: "#3b2314", ring: "linear-gradient(135deg, #E0B86A, #C87945)" };
+  const style = memberExpertiseStyles[normalizeMemberExpertise(member.expertise)] ?? memberExpertiseStyles.unknown;
+  return { ...style, ring: style.color };
+}
+
+function MemberAvatarWithRing({ member, size }: { member: Member; size: number }) {
+  const style = getMemberStyle(member);
+  return (
+    <div className="rounded-full flex-shrink-0 p-[3px]" style={{ background: style.ring }}>
+      <Avatar src={member.profile_picture} size={size} />
+    </div>
+  );
+}
+
+function MemberExpertiseBadge({ member }: { member: Member }) {
+  const style = getMemberStyle(member);
+  return (
+    <span className="mt-1 w-fit max-w-full rounded-full px-2 py-0.5 text-[10px] font-bold leading-none truncate" style={{ backgroundColor: style.background, color: style.text }}>
+      {style.label}
+    </span>
+  );
+}
+
 /* ══════════════════════════════════════════════
    MAIN PAGE
    ══════════════════════════════════════════════ */
@@ -654,26 +705,116 @@ export default function GroupDetailPage() {
               {tab === "chat" ? (
                 <GroupChatSection group={group} messagesKey={groupId} />
               ) : tab === "about" ? (
-                <div className="max-w-xl">
-	                  {group.rules && (
-	                    <div className="mb-6 p-4 rounded-2xl" style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)" }}>
-	                      <h3 dir={textDirection} className="localized-container-title font-bold mb-2 text-sm" style={{ color: "var(--foreground)", textAlign }}>{t("community.groupRules")}</h3>
-	                      <p dir={textDirection} className="localized-container-text text-sm leading-relaxed whitespace-pre-line" style={{ color: "var(--text-muted)", textAlign }}>{translateGroupRules(group.rules, t)}</p>
-	                    </div>
-	                  )}
-	                  <div className="p-4 rounded-2xl" style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)" }}>
-	                    <h3 dir={textDirection} className="localized-container-title font-bold mb-3 text-sm" style={{ color: "var(--foreground)", textAlign }}>{t("community.details")}</h3>
-                    {[
-	                      { label: t("community.category"), value: translateGroupValue(group.category, locale, t) },
-	                      { label: t("community.region"), value: localizeLocationLabel(group.region, locale) },
-	                      { label: t("community.period"), value: translateGroupValue(group.historical_period, locale, t) },
-                    ].filter(d => d.value).map(d => (
-                      <div key={d.label} className="flex justify-between py-2 border-b last:border-0 text-sm" style={{ borderColor: "var(--border-soft)" }}>
-	                        <span dir={textDirection} className="localized-container-title" style={{ color: "var(--text-muted)", textAlign }}>{d.label}</span>
-	                        <span dir={textDirection} className="localized-container-text font-semibold" style={{ color: "var(--foreground)", textAlign }}>{d.value}</span>
-	                      </div>
-                    ))}
+                <div
+                  className="rounded-2xl overflow-hidden"
+                  style={{ backgroundColor: "var(--panel-bg)", boxShadow: "0 2px 14px rgba(67,40,23,0.08)" }}
+                >
+                  <div className="px-5 pt-5 pb-4">
+                    <h2 className="localized-container-title font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                      About
+                    </h2>
                   </div>
+
+                  <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                  <section className="px-5 pt-4 pb-5">
+                    <h3 className="localized-container-title mb-3 text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                      {group.name}
+                    </h3>
+                    <p className="localized-container-text text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                      {group.description || "No description provided."}
+                    </p>
+                  </section>
+
+                  <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                  <section className="px-5 pt-4 pb-5">
+                    <h3 className="localized-container-title mb-3 text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                      Rules & Guidelines
+                    </h3>
+                    {group.rules ? (
+                      <ul className="localized-container-text list-disc space-y-1 pl-5 text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                        {translateGroupRules(group.rules, t)
+                          .split(/\r?\n/)
+                          .filter(Boolean)
+                          .map((rule, index) => (
+                            <li key={index}>{rule}</li>
+                          ))}
+                      </ul>
+                    ) : (
+                      <p className="localized-container-text text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                        No rules have been added for this group yet.
+                      </p>
+                    )}
+                  </section>
+
+                  <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                  <section className="px-5 pt-4 pb-5">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <p className="localized-container-title text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                          {fmtCount(group.member_count)} Members
+                        </p>
+                        <p className="localized-container-text mt-1 text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                          A growing community of heritage enthusiasts.
+                        </p>
+                      </div>
+                      <div>
+                        <p className="localized-container-title text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                          {fmtCount(group.post_count)} Posts
+                        </p>
+                        <p className="localized-container-text mt-1 text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                          Photos, stories, and discussions about cultural heritage.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                  <section className="px-5 pt-4 pb-5">
+                    <h3 className="localized-container-title mb-3 text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                      Thematic tags
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {(group.tags?.length ? group.tags : [group.category, group.region, group.historical_period].filter(Boolean))
+                        .map((tag, index) => (
+                          <span
+                            key={`${tag}-${index}`}
+                            className="rounded-full px-3 py-1 text-[11px] font-bold"
+                            style={{ backgroundColor: "var(--border-soft)", color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}
+                          >
+                            #{tag.toString().replace(/\s+/g, "").toLowerCase()}
+                          </span>
+                        ))}
+                    </div>
+                  </section>
+
+                  <div className="mx-5 border-b" style={{ borderColor: "var(--border-soft)" }} />
+
+                  <section className="px-5 pt-4 pb-5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="localized-container-title flex-shrink-0 text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                          Managed By
+                        </span>
+                        <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-[#E3D9C4]">
+                          <img
+                            src={resolveUrl(adminMember?.profile_picture)}
+                            alt={adminMember?.display_name || adminMember?.username || "Admin"}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <span className="localized-container-text truncate text-sm font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                          {adminMember?.display_name || adminMember?.username || "Unknown admin"}
+                        </span>
+                      </div>
+                      <p className="localized-container-text flex-shrink-0 text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
+                        Active since {formatGroupDate(group.created_at)}
+                      </p>
+                    </div>
+                  </section>
                 </div>
               ) : (
                 <>
@@ -716,6 +857,7 @@ export default function GroupDetailPage() {
                       onDelete={(postId) => {
                         setPosts(prev => prev.filter(p => p.id !== postId));
                       }}
+                      showAuthorMarkers={false}
                     />
                   ))}
                   {postsLoading && (
@@ -826,6 +968,7 @@ export default function GroupDetailPage() {
             setPosts(prev => prev.filter(p => p.id !== postId));
           }}
           isGroupAdmin={group?.is_admin ?? false}
+          showAuthorMarkers={false}
         />
       )}
       {showJoinModal && (
@@ -1667,12 +1810,13 @@ function MemberRow({ member, router }: { member: Member; router: ReturnType<type
       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
       onClick={() => router.push(`/user/${member.username}`)}
     >
-      <Avatar src={member.profile_picture} size={46} />
+      <MemberAvatarWithRing member={member} size={46} />
       <div className="flex flex-col min-w-0 flex-1">
         <span className="font-bold text-[13px] truncate leading-tight" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
           {member.display_name || member.username}
         </span>
         <span className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>@{member.username}</span>
+        <MemberExpertiseBadge member={member} />
       </div>
       <button
         className="text-[10px] px-3 py-1 rounded-full font-bold flex-shrink-0 transition-colors"

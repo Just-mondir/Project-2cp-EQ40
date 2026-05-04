@@ -35,6 +35,7 @@ type Member = {
   username: string;
   display_name: string;
   profile_picture?: string;
+  expertise?: string;
   is_admin: boolean;
   role: string;
 };
@@ -61,6 +62,59 @@ function MemberAvatar({ member, size = 42 }: { member: Member; size?: number }) 
         <circle cx="12" cy="7" r="4" />
       </svg>
     </div>
+  );
+}
+
+const memberExpertiseStyles: Record<string, { label: string; color: string; background: string; text: string }> = {
+  amateur: { label: "Amateur", color: "#C8A96E", background: "#C8A96E", text: "#1a0f00" },
+  student: { label: "Student", color: "#5C7A3E", background: "#E3EAD8", text: "#263816" },
+  researcher: { label: "Researcher", color: "#4A6FA5", background: "#DDE8F5", text: "#1F3655" },
+  historian: { label: "Historian", color: "#8B4513", background: "#EEDCCD", text: "#432817" },
+  guide: { label: "Tour Guide", color: "#E07B39", background: "#F8E3D6", text: "#5A2C10" },
+  architect: { label: "Architect", color: "#6B5B95", background: "#E8E2F1", text: "#32284F" },
+  unknown: { label: "No expertise", color: "#E0D5C5", background: "#F3EEE6", text: "#5B4630" },
+};
+
+function normalizeMemberExpertise(value?: string) {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (normalized === "tour guide") return "guide";
+  return normalized || "unknown";
+}
+
+function getMemberStyle(member: Member) {
+  if (member.is_admin) return { label: "Admin", background: "#E8C98B", text: "#3b2314", ring: "linear-gradient(135deg, #E0B86A, #C87945)" };
+  const style = memberExpertiseStyles[normalizeMemberExpertise(member.expertise)] ?? memberExpertiseStyles.unknown;
+  return { ...style, ring: style.color };
+}
+
+function MemberAvatarWithRing({ member, size = 42 }: { member: Member; size?: number }) {
+  const style = getMemberStyle(member);
+  return (
+    <div style={{ borderRadius: "50%", padding: "3px", background: style.ring, flexShrink: 0 }}>
+      <MemberAvatar member={member} size={size} />
+    </div>
+  );
+}
+
+function MemberExpertiseBadge({ member }: { member: Member }) {
+  const style = getMemberStyle(member);
+  return (
+    <span style={{
+      width: "fit-content",
+      maxWidth: "100%",
+      marginTop: "4px",
+      padding: "3px 8px",
+      borderRadius: "999px",
+      backgroundColor: style.background,
+      color: style.text,
+      fontFamily: "Lato, sans-serif",
+      fontWeight: 700,
+      fontSize: "10px",
+      lineHeight: 1,
+      whiteSpace: "nowrap",
+    }}>
+      {style.label}
+    </span>
   );
 }
 
@@ -95,7 +149,7 @@ function MemberRow({
     >
       {/* Left: avatar + name */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <MemberAvatar member={member} size={42} />
+        <MemberAvatarWithRing member={member} size={42} />
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.3 }}>
           <span style={{ fontFamily: "Lato, sans-serif", fontWeight: 700, fontSize: "14px", color: "#432817" }}>
             {member.display_name || member.username}
@@ -103,6 +157,7 @@ function MemberRow({
           <span style={{ fontFamily: "Lato, sans-serif", fontWeight: 400, fontSize: "12px", color: "#8B7355" }}>
             @{member.username}
           </span>
+          <MemberExpertiseBadge member={member} />
         </div>
       </div>
 

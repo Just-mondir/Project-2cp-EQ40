@@ -31,6 +31,7 @@ class GroupMemberSerializer(serializers.Serializer):
     username = serializers.CharField()
     display_name = serializers.CharField()
     profile_picture = serializers.CharField()
+    expertise = serializers.CharField(required=False, allow_blank=True)
     badge = serializers.CharField()
     is_admin = serializers.BooleanField(default=False)
     role = serializers.CharField(default="member")
@@ -78,6 +79,9 @@ class ThematicGroupSerializer(serializers.Serializer):
     historical_period = serializers.CharField(allow_blank=True)
     region = serializers.CharField(allow_blank=True)
     rules = serializers.SerializerMethodField()
+    tags = serializers.SerializerMethodField()
+    visibility = serializers.SerializerMethodField()
+
     def get_id(self, obj) -> str:
         return str(obj.id)
 
@@ -105,6 +109,13 @@ class ThematicGroupSerializer(serializers.Serializer):
         if isinstance(rules, list):
             return "\n".join(rule for rule in rules if rule).strip()
         return rules or ""
+
+    def get_tags(self, obj) -> list[str]:
+        tags = getattr(obj, "tags", [])
+        return [str(tag) for tag in tags or []]
+
+    def get_visibility(self, obj) -> str:
+        return getattr(obj, "visibility", "public") or "public"
 
 class ThematicGroupWriteSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=160)
