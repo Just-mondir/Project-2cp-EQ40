@@ -405,6 +405,7 @@ async function submitReport(
   targetType: ReportTargetType,
   targetId: string,
   reason: string,
+  description: string = "",
 ): Promise<void> {
   const token = getAuthToken();
   const res = await fetch(`${API_URL}/api/reports/`, {
@@ -417,6 +418,7 @@ async function submitReport(
       target_type: targetType,
       target_id: targetId,
       reason,
+      description,
     }),
   });
   const data = await res.json().catch(() => null);
@@ -2966,8 +2968,7 @@ export default function MonumentsInDangerPage() {
   };
 
   const handleReportSubmit = async (reason: string, description: string) => {
-    const combinedReason = description ? `${reason}: ${description}` : reason;
-    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+    await submitReport(reportModal.targetType, reportModal.targetId, reason, description);
   };
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const feedRef = useRef<HTMLElement | null>(null);

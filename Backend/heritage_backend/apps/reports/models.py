@@ -15,7 +15,9 @@ class Report(me.Document):
     target_type = me.StringField(required=True)
     target_id = me.StringField(required=True)
     reason = me.StringField(required=True)
+    description = me.StringField(default="")
     status = me.StringField(default="pending")
+
     moderator_note = me.StringField(default="")
     resolved_by = me.StringField(null=True, default=None)
     created_at = me.DateTimeField()
@@ -51,10 +53,12 @@ class MobilizationReport(me.Document):
     )
 
     post = me.ReferenceField(Post, required=True)
+    reason = me.StringField(required=True)
     description = me.StringField(required=True)
     images = me.ListField(me.StringField(), default=list)
     previous_status = me.StringField(required=True, choices=STATUS_CHOICES)
     requested_status = me.StringField(required=True, choices=STATUS_CHOICES)
+    status = me.StringField(default="pending")
     created_by = me.StringField(required=True)
     created_at = me.DateTimeField()
     updated_at = me.DateTimeField()

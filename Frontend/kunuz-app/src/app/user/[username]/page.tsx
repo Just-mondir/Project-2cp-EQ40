@@ -1673,8 +1673,7 @@ export default function ProfilePage() {
   };
 
   const handleReportSubmit = async (reason: string, description: string) => {
-    const combinedReason = description ? `${reason}: ${description}` : reason;
-    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+    await submitReport(reportModal.targetType, reportModal.targetId, reason, description);
   };
 
   const [allPosts, setAllPosts] = useState<ApiPost[]>([]);

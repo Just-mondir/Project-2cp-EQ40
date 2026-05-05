@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { normalizeThemePathname } from "@/lib/themeRoutes";
 import NotificationPanel from "@/components/Notificationpanel";
+import ModeratorReportModal from "@/components/ModeratorReportModal";
+
+
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
 const DEFAULT_PROFILE = {
@@ -130,6 +133,8 @@ export default function LeftSidebar({
   const navActiveIcon = isLegacyRoute ? "var(--legacy-route-sidebar-active-icon)" : "var(--nav-active-icon)";
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeReportId, setActiveReportId] = useState(null);
+
 
   const fetchUnreadCount = async () => {
     const token = localStorage.getItem("accessToken");
@@ -468,7 +473,20 @@ export default function LeftSidebar({
           );
         })}
       </nav>
-      {isNotifOpen && <NotificationPanel onClose={() => setIsNotifOpen(false)} />}
+      {isNotifOpen && (
+        <NotificationPanel
+          onClose={() => setIsNotifOpen(false)}
+          onReportClick={(id) => setActiveReportId(id)}
+        />
+      )}
+      {activeReportId && (
+        <ModeratorReportModal
+          reportId={activeReportId}
+          onClose={() => setActiveReportId(null)}
+        />
+
+      )}
     </>
+
   );
 }

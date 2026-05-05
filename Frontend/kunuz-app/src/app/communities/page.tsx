@@ -218,6 +218,7 @@ async function submitReport(
   targetType: ReportTargetType,
   targetId: string,
   reason: string,
+  description: string = "",
 ): Promise<void> {
   const token = getAuthToken();
 
@@ -231,6 +232,7 @@ async function submitReport(
       target_type: targetType,
       target_id: targetId,
       reason,
+      description,
     }),
   });
 
@@ -2477,8 +2479,7 @@ export default function CommunitiesPageRoute() {
   };
 
   const handleReportSubmit = async (reason: string, description: string) => {
-    const combinedReason = description ? `${reason}: ${description}` : reason;
-    await submitReport(reportModal.targetType, reportModal.targetId, combinedReason);
+    await submitReport(reportModal.targetType, reportModal.targetId, reason, description);
   };
 
   const fetchGroups = async () => {

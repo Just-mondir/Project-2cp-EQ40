@@ -27,6 +27,9 @@ from .serializers import (
     ReportResolveSerializer,
     ReportSerializer,
 )
+from apps.notifications.registry import notify
+from apps.users.models import User
+
 
 # ---------------------------------------------------------------------------
 # POST /api/reports/  (auth)  +  GET /api/reports/  (mod)
@@ -105,11 +108,27 @@ class ReportListCreateView(APIView):
             return api_error("Validation failed.", errors, status_code=status.HTTP_400_BAD_REQUEST)
 
         report = serializer.save()
-        return api_success(
+        response = api_success(
             "Report submitted successfully.",
             ReportSerializer(report).data,
             status_code=status.HTTP_201_CREATED,
         )
+
+        # Notify all moderators
+        moderators = User.objects.filter(role="moderator")
+        actor_name = request.user.display_name or request.user.username or "Someone"
+        for mod in moderators:
+            notify(
+                event_type="content_reported",
+                actor_id=str(request.user.id),
+                actor_name=actor_name,
+                recipient_id=str(mod.id),
+                target_type=report.target_type,
+                target_id=str(report.id),
+            )
+
+        return response
+
 
 
 # ---------------------------------------------------------------------------
