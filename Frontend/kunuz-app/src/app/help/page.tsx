@@ -52,7 +52,7 @@ export default function HelpPage() {
           className="relative flex flex-col items-center justify-center text-center"
           style={{ height: "300px", minHeight: "300px" }}
         >
-          <div className="absolute inset-0" style={{ backgroundImage: "url('/timgad.png')", backgroundSize: "cover", backgroundPosition: "center" }} />
+          <div className="absolute inset-0" style={{ backgroundImage: "url('/help.png')", backgroundSize: "cover", backgroundPosition: "center" }} />
           <div className="absolute inset-0" style={{ backgroundColor: "rgba(0,0,0,0.45)" }} />
 
           <div className="relative z-10 flex flex-col items-center gap-6 px-6">

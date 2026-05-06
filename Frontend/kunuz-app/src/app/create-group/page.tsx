@@ -125,24 +125,24 @@ if (groupId && invitedUsers && invitedUsers.length > 0) {
 };
 
   return (
-    <div className="legacy-theme-page-shell flex h-[100dvh] overflow-hidden">
+    <div className="legacy-theme-page-shell flex min-h-[100dvh] overflow-y-auto md:h-[100dvh] md:overflow-hidden">
       <LeftSidebar activePage="create-group" />
 
-      <div className="flex flex-col flex-1 overflow-hidden ml-[68px]">
-        <div className="px-8 pt-6 pb-2 flex-shrink-0">
+      <div className="flex flex-col flex-1 overflow-visible pb-20 md:ml-[68px] md:overflow-hidden md:pb-0">
+        <div className="px-4 pt-5 pb-2 flex-shrink-0 sm:px-8 md:pt-6">
           <BackButton />
         </div>
 
-        <div className="flex flex-1 overflow-hidden px-8 pb-8 gap-6">
+        <div className="flex flex-1 flex-col overflow-visible px-4 pb-8 gap-5 sm:px-8 md:flex-row md:overflow-hidden md:gap-6">
 
           {/* ── Left panel ── */}
-          <div className="w-[240px] flex flex-col flex-shrink-0 overflow-hidden post-panel-left">
-            <div className="pb-4 flex-shrink-0" style={{ marginTop: "43px" }}>
+          <div className="w-full flex flex-col flex-shrink-0 overflow-visible post-panel-left md:w-[240px] md:overflow-hidden">
+            <div className="pb-4 flex-shrink-0" style={{ marginTop: "clamp(8px, 4vw, 43px)" }}>
               <h1
                 className="post-page-title"
                 style={{
                   fontFamily: "var(--font-lato), 'Lato', sans-serif",
-                  fontSize: "30px",
+                  fontSize: "clamp(24px, 7vw, 30px)",
                   fontWeight: 700,
                   color: "#432817",
                   lineHeight: 1.2,
@@ -165,7 +165,7 @@ if (groupId && invitedUsers && invitedUsers.length > 0) {
 
             <div
               style={{
-                marginTop: "24px",
+                marginTop: "clamp(8px, 4vw, 24px)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -177,7 +177,7 @@ if (groupId && invitedUsers && invitedUsers.length > 0) {
                 onClick={() => coverInputRef.current?.click()}
                 className="post-upload-slot"
                 style={{
-                  width: "210px",
+                  width: "min(100%, 210px)",
                   height: "80px",
                   borderRadius: "10px",
                   border: "1px dashed #D6CFC3",
@@ -219,7 +219,7 @@ if (groupId && invitedUsers && invitedUsers.length > 0) {
                 onClick={() => fileInputRef.current?.click()}
                 className="post-upload-slot"
                 style={{
-                  width: "210px",
+                  width: "min(100%, 210px)",
                   height: "160px",
                   borderRadius: "10px",
                   border: "1px dashed #D6CFC3",
@@ -272,7 +272,7 @@ if (groupId && invitedUsers && invitedUsers.length > 0) {
 
           {/* ── Right panel ── */}
           <div
-            className="flex-1 overflow-hidden flex flex-col post-panel-right post-form-panel"
+            className="flex-1 overflow-visible flex flex-col post-panel-right post-form-panel md:overflow-hidden"
             style={{
               backgroundColor: "#F7F5EF",
               borderRadius: 0,

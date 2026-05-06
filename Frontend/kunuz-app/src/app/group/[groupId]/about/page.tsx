@@ -364,7 +364,7 @@ export default function GroupAboutPage() {
     <div style={{ minHeight: "100vh", backgroundColor: "var(--background)", fontFamily: "Lato, sans-serif" }}>
       <LeftSidebar activePage="communities" />
 
-      <main style={{ paddingLeft: "68px" }}>
+      <main className="pb-20 md:pb-0 md:pl-[68px]">
         <GroupHeader
           group={group}
           members={members}
@@ -373,6 +373,7 @@ export default function GroupAboutPage() {
           onJoin={handleJoin}
           tab={tab}
           onTabChange={handleTabChange}
+          showMobileMembersStrip={false}
           GroupeMenuComponent={
             <GroupeMenu
               groupId={group.id}
@@ -384,7 +385,7 @@ export default function GroupAboutPage() {
           }
         />
 
-        <div style={{ maxWidth: "1152px", margin: "0 auto", padding: "24px 40px 48px" }}>
+        <div style={{ maxWidth: "1152px", margin: "0 auto", padding: "clamp(16px, 5vw, 24px) clamp(16px, 5vw, 40px) 48px" }}>
           <AboutInfoPanel about={about} admin={adminMember} />
         </div>
       </main>

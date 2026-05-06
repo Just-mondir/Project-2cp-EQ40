@@ -434,11 +434,11 @@ export default function ModeratorGroupMembersPage() {
         className="min-h-screen overflow-x-hidden px-4 py-8 pb-24 sm:px-8 md:pl-24 lg:pl-28 lg:pr-16 lg:py-10"
         style={{ backgroundColor: "#E3D9C4" }}
       >
-        <div className="w-[138.9%] origin-top-left scale-[0.72] sm:w-full sm:scale-100">
-          <div className="mb-8 flex items-center gap-6">
-            <img src={moderatorProfile.avatar} alt="profile" className="h-20 w-20 rounded-full object-cover" />
+        <div className="w-full">
+          <div className="mb-8 flex items-center gap-4 sm:gap-6">
+            <img src={moderatorProfile.avatar} alt="profile" className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20" />
             <div>
-              <h1 className="text-3xl font-bold" style={{ color: "#3b2314" }}>
+              <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: "#3b2314" }}>
                 {moderatorProfile.name}
               </h1>
               <p className="text-sm" style={{ color: "#8b6a46" }}>
@@ -448,7 +448,7 @@ export default function ModeratorGroupMembersPage() {
           </div>
 
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-0">
-            <div className="flex flex-wrap gap-10">
+            <div className="grid w-full grid-cols-2 gap-4 sm:flex sm:w-auto sm:flex-wrap sm:gap-10">
               {statCards.map((stat) => (
                 <div key={stat.label} className="text-center">
                   <p className="text-lg font-bold" style={{ color: "#3b2314" }}>
@@ -470,7 +470,7 @@ export default function ModeratorGroupMembersPage() {
             </button>
           </div>
 
-          <div className="rounded-3xl p-6 shadow-sm sm:p-8" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="overflow-x-auto rounded-3xl p-4 shadow-sm sm:p-8" style={{ backgroundColor: "#FFF8E2" }}>
             {pageError && (
               <div className="mb-6 rounded-2xl px-4 py-3 text-sm font-medium" style={{ backgroundColor: "#EAD7C9", color: "#7A3E18" }}>
                 {pageError}
@@ -504,7 +504,7 @@ export default function ModeratorGroupMembersPage() {
               </div>
             </div>
 
-            <div className="mb-3 grid px-4 text-[11px] sm:text-sm" style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate }}>
+            <div className="mb-3 grid px-4 text-[11px] sm:text-sm" style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate, minWidth: "920px" }}>
               <span className="col-span-2 font-bold">Accounts</span>
               <span className="font-bold">Posts</span>
               <span className="font-bold">Joined</span>
@@ -535,7 +535,7 @@ export default function ModeratorGroupMembersPage() {
                   <div
                     key={member.id}
                     className="grid items-center rounded-2xl px-3 py-3 text-[11px] sm:px-4 sm:text-sm"
-                    style={{ backgroundColor: "#FFF8E2", gridTemplateColumns: usersGridTemplate }}
+                    style={{ backgroundColor: "#FFF8E2", gridTemplateColumns: usersGridTemplate, minWidth: "920px" }}
                   >
                     <button
                       type="button"

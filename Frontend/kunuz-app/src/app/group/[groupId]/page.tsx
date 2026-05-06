@@ -662,10 +662,10 @@ export default function GroupDetailPage() {
   const regularMembers = members.filter(m => !m.is_admin);
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+    <div className="flex min-h-screen overflow-x-hidden" style={{ backgroundColor: "var(--background)" }}>
       <LeftSidebar activePage="communities" />
-      <div className="flex flex-col flex-1 ml-[68px]">
-        <div className="flex-1">
+      <div className="flex flex-col flex-1 md:ml-[68px] min-w-0 overflow-x-hidden">
+        <div className="flex-1 min-w-0 overflow-x-hidden">
 
           {/* ── GROUP HEADER COMPONENT ── */}
           <GroupHeader
@@ -698,10 +698,10 @@ export default function GroupDetailPage() {
           />
 
           {/* ══ TWO-COLUMN AREA ══ */}
-          <div className="max-w-6xl mx-auto flex gap-10 px-7 pt-7 pb-8 items-start">
+          <div className="max-w-6xl mx-auto flex flex-col gap-6 px-4 pt-5 pb-24 items-stretch sm:px-6 lg:flex-row lg:gap-10 lg:px-7 lg:pt-7 lg:pb-8 lg:items-start min-w-0 overflow-x-hidden">
 
             {/* ─ Left: Posts ─ */}
-            <div className="flex-[1.4] min-w-0">
+            <div className="flex-[1.4] min-w-0 overflow-x-hidden">
               {tab === "chat" ? (
                 <GroupChatSection group={group} messagesKey={groupId} />
               ) : tab === "about" ? (
@@ -1804,7 +1804,7 @@ function MemberRow({ member, router }: { member: Member; router: ReturnType<type
   const t = useTranslations("auth.pages.home");
   return (
     <div
-      className="flex items-center gap-4 py-3 px-2 rounded-xl transition-colors cursor-pointer"
+      className="flex items-start sm:items-center gap-3 sm:gap-4 py-3 px-2 rounded-xl transition-colors cursor-pointer"
       style={{ backgroundColor: "transparent" }}
       onMouseEnter={e => (e.currentTarget.style.backgroundColor = 'var(--panel-hover)')}
       onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -1816,10 +1816,19 @@ function MemberRow({ member, router }: { member: Member; router: ReturnType<type
           {member.display_name || member.username}
         </span>
         <span className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>@{member.username}</span>
-        <MemberExpertiseBadge member={member} />
+        <div className="mt-2 sm:mt-1 flex items-center justify-between gap-2">
+          <MemberExpertiseBadge member={member} />
+          <button
+            className="sm:hidden text-[10px] px-3 py-1 rounded-full font-bold flex-shrink-0 transition-colors"
+            style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
+            onClick={e => { e.stopPropagation(); router.push(`/user/${member.username}`); }}
+          >
+            {t("community.viewProfile")}
+          </button>
+        </div>
       </div>
       <button
-        className="text-[10px] px-3 py-1 rounded-full font-bold flex-shrink-0 transition-colors"
+        className="hidden sm:block text-[10px] px-3 py-1 rounded-full font-bold flex-shrink-0 transition-colors"
         style={{ backgroundColor: "var(--border-soft)", color: "var(--foreground)" }}
         onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--panel-hover)'; }}
         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--border-soft)'; }}

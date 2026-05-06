@@ -136,9 +136,7 @@ function MemberRow({
   const isBeingRemoved = removing === member.id;
 
   return (
-    <div style={{
-      display: "flex", alignItems: "center",
-      justifyContent: "space-between",
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" style={{
       padding: "10px 14px",
       borderRadius: "10px",
       backgroundColor: "var(--panel-bg, #FFF8E2)",
@@ -148,21 +146,23 @@ function MemberRow({
       onMouseLeave={e => (e.currentTarget.style.backgroundColor = "var(--panel-bg, #FFF8E2)")}
     >
       {/* Left: avatar + name */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div className="min-w-0 flex items-center gap-[10px]">
         <MemberAvatarWithRing member={member} size={42} />
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.3 }}>
-          <span style={{ fontFamily: "Lato, sans-serif", fontWeight: 700, fontSize: "14px", color: "#432817" }}>
+        <div className="min-w-0" style={{ display: "flex", flexDirection: "column", lineHeight: 1.3 }}>
+          <span className="truncate" style={{ fontFamily: "Lato, sans-serif", fontWeight: 700, fontSize: "14px", color: "#432817" }}>
             {member.display_name || member.username}
           </span>
-          <span style={{ fontFamily: "Lato, sans-serif", fontWeight: 400, fontSize: "12px", color: "#8B7355" }}>
+          <span className="truncate" style={{ fontFamily: "Lato, sans-serif", fontWeight: 400, fontSize: "12px", color: "#8B7355" }}>
             @{member.username}
           </span>
-          <MemberExpertiseBadge member={member} />
+          <div className="hidden sm:block">
+            <MemberExpertiseBadge member={member} />
+          </div>
         </div>
       </div>
 
-      {/* Right: buttons */}
-      <div style={{ display: "flex", gap: "8px" }}>
+      {/* Desktop actions */}
+      <div className="hidden sm:flex gap-2">
         <button
           onClick={() => onViewProfile(member.username)}
           style={{
@@ -193,6 +193,42 @@ function MemberRow({
     {isBeingRemoved ? t("community.removing") : t("community.remove")}
   </button>
 )}
+      </div>
+
+      {/* Mobile second line: badge + actions */}
+      <div className="sm:hidden ml-[52px] flex items-center justify-between gap-2">
+        <MemberExpertiseBadge member={member} />
+        <div className="flex gap-2">
+          <button
+            onClick={() => onViewProfile(member.username)}
+            style={{
+              height: "30px", padding: "0 12px",
+              backgroundColor: "rgba(67,40,23,0.12)", border: "none",
+              borderRadius: "8px", fontFamily: "Lato, sans-serif",
+              fontWeight: 600, fontSize: "12px", color: "#432817",
+              cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            {t("community.viewProfile")}
+          </button>
+          {currentUserIsAdmin && !member.is_admin && onRemove && (
+            <button
+              onClick={() => onRemove(member.id)}
+              disabled={isBeingRemoved}
+              style={{
+                height: "30px", padding: "0 12px",
+                backgroundColor: isBeingRemoved ? "rgba(67,40,23,0.06)" : "rgba(67,40,23,0.12)",
+                border: "none", borderRadius: "8px",
+                fontFamily: "Lato, sans-serif", fontWeight: 600,
+                fontSize: "12px", color: isBeingRemoved ? "#aaa" : "#432817",
+                cursor: isBeingRemoved ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {isBeingRemoved ? t("community.removing") : t("community.remove")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -527,7 +563,7 @@ export default function GroupMembersPage() {
     <div style={{ minHeight: "100vh", backgroundColor: "var(--background)", fontFamily: "Lato, sans-serif" }}>
       <LeftSidebar activePage="communities" />
 
-      <main style={{ paddingLeft: "68px" }}>
+      <main className="pb-20 md:pb-0 md:pl-[68px]">
         <GroupHeader
           group={group}
           members={members}
@@ -537,9 +573,10 @@ export default function GroupMembersPage() {
           tab={tab}
           onTabChange={handleTabChange}
           GroupeMenuComponent={<div />}
+          showMobileMembersStrip={false}
         />
 
-        <div style={{ maxWidth: "1152px", margin: "0 auto", padding: "24px 40px 48px" }}>
+        <div style={{ maxWidth: "1152px", margin: "0 auto", padding: "clamp(16px, 5vw, 24px) clamp(16px, 5vw, 40px) 48px" }}>
           <MembersList
             members={members}
             totalCount={group.member_count}

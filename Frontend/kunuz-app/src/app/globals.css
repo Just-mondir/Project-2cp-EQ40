@@ -1061,7 +1061,8 @@ html[data-theme="dark"] #screen-reader-toggle-btn.active {
 /* Responsive: adjust button position on mobile */
 @media (max-width: 640px) {
   #screen-reader-toggle-btn {
-    bottom: 16px;
+    top: 72px;
+    bottom: auto;
     right: 16px;
     padding: 8px 14px;
     font-size: 12px;

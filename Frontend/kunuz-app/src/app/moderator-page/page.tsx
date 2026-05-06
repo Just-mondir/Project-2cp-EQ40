@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import LeftSidebar from "@/components/LeftSidebar";
 
@@ -1026,15 +1026,15 @@ const statCards = [
         className="min-h-screen overflow-x-hidden px-4 py-8 pb-24 sm:px-8 md:pl-24 lg:pl-28 lg:pr-16 lg:py-10"
         style={{ backgroundColor: "#E3D9C4" }}
       >
-        <div className="w-[138.9%] origin-top-left scale-[0.72] sm:w-full sm:scale-100">
-          <div className="mb-8 flex items-center gap-6">
+        <div className="w-full">
+          <div className="mb-8 flex items-center gap-4 sm:gap-6">
             <img
               src={moderatorProfile.avatar}
               alt="profile"
-              className="h-20 w-20 rounded-full object-cover"
+              className="h-16 w-16 rounded-full object-cover sm:h-20 sm:w-20"
             />
             <div>
-              <h1 className="text-3xl font-bold" style={{ color: "#3b2314" }}>
+              <h1 className="text-2xl font-bold sm:text-3xl" style={{ color: "#3b2314" }}>
                 {profileLoading ? "Loading..." : moderatorProfile.name}
               </h1>
               <p className="text-sm" style={{ color: "#8b6a46" }}>
@@ -1044,7 +1044,7 @@ const statCards = [
           </div>
 
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-0">
-            <div className="flex flex-wrap gap-10">
+            <div className="grid w-full grid-cols-2 gap-4 sm:flex sm:w-auto sm:flex-wrap sm:gap-10">
               {statCards.map((stat) => (
                 <div key={stat.label} className="text-center">
                   <p className="text-lg font-bold" style={{ color: "#3b2314" }}>
@@ -1068,7 +1068,7 @@ const statCards = [
             )}
           </div>
 
-          <div className="rounded-3xl p-6 shadow-sm sm:p-8" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="overflow-x-auto rounded-3xl p-4 shadow-sm sm:p-8" style={{ backgroundColor: "#FFF8E2" }}>
             {pageError && (
               <div
                 className="mb-6 rounded-2xl px-4 py-3 text-sm font-medium"
@@ -1163,8 +1163,8 @@ const statCards = [
             {!isEditingRoles ? (
               isGroupsTab ? (
                 <div
-                  className="mb-3 grid px-4 text-[11px] sm:text-sm"
-                  style={{ color: "#3b2314", gridTemplateColumns: groupsGridTemplate }}
+                  className="mb-3 hidden sm:grid px-4 text-[11px] sm:text-sm"
+                  style={{ color: "#3b2314", gridTemplateColumns: groupsGridTemplate, minWidth: "760px" }}
                 >
                   <span className="col-span-2 font-bold">Groups</span>
                   <span className="font-bold">Members</span>
@@ -1174,8 +1174,8 @@ const statCards = [
                 </div>
               ) : (
                 <div
-                  className="mb-3 grid px-4 text-[11px] sm:text-sm"
-                  style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate }}
+                  className="mb-3 hidden sm:grid px-4 text-[11px] sm:text-sm"
+                  style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate, minWidth: "920px" }}
                 >
                   <span className="col-span-2 font-bold">Accounts</span>
                   <span className="font-bold">Posts</span>
@@ -1188,8 +1188,8 @@ const statCards = [
               )
             ) : (
               <div
-                className="mb-3 grid px-4 text-[11px] sm:text-sm"
-                style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate }}
+                className="mb-3 hidden sm:grid px-4 text-[11px] sm:text-sm"
+                style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate, minWidth: "920px" }}
               >
                 <span className="col-span-2 font-bold">Accounts</span>
                 <span className="font-bold">Posts</span>
@@ -1219,12 +1219,13 @@ const statCards = [
             ) : (
               <div className="flex flex-col gap-3">
                 {pageItems.map((item) => (
+                  <Fragment key={item.id}>
                   <div
-                    key={item.id}
-                    className="grid items-center rounded-2xl px-3 py-3 text-[11px] sm:px-4 sm:text-sm"
+                    className="hidden sm:grid items-center rounded-2xl px-3 py-3 text-[11px] sm:px-4 sm:text-sm"
                     style={{
                       backgroundColor: "#FFF8E2",
                       gridTemplateColumns: isGroupsTab && !isEditingRoles ? groupsGridTemplate : usersGridTemplate,
+                      minWidth: isGroupsTab && !isEditingRoles ? "760px" : "920px",
                     }}
                   >
                     <button
@@ -1446,6 +1447,171 @@ const statCards = [
                       </>
                     )}
                   </div>
+                {!isGroupsTab && (
+                  <div
+                    className="block sm:hidden rounded-2xl px-4 py-4"
+                    style={{ backgroundColor: "#FFF8E2" }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if ("username" in item && item.username) {
+                          router.push(`/user/${item.username.replace(/^@/, "")}`);
+                        }
+                      }}
+                      className="flex w-full min-w-0 items-start gap-3 text-left"
+                    >
+                      <img src={item.avatar} alt={item.name} className="h-10 w-10 shrink-0 rounded-full" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold" style={{ color: "#3b2314" }}>
+                          {item.name}
+                        </p>
+                        {"username" in item && (
+                          <p className="truncate text-xs" style={{ color: "#8b6a46" }}>
+                            {item.username}
+                          </p>
+                        )}
+                        {"moderationStatus" in item && effectiveModerationStatus(item) !== "active" && (
+                          <p className="mt-1 text-[11px] font-semibold" style={{ color: "#8b6a46" }}>
+                            {moderationDateLabel(item)}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "#5b4630" }}>
+                      <span>Posts: {"posts" in item ? formatCompactNumber(item.posts) : "0"}</span>
+                      <span>Joined: {"joined" in item ? item.joined : "-"}</span>
+                      <span>Role: {"role" in item ? roleLabel(rolesByUserId[item.id] ?? item.role) : "-"}</span>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {"moderationStatus" in item && effectiveModerationStatus(item) === "active" ? (
+                        <>
+                          <input
+                            type="date"
+                            min={new Date().toISOString().split("T")[0]}
+                            value={suspendDateById[item.id] || ""}
+                            onChange={(e) => setSuspendDateById(prev => ({ ...prev, [item.id]: e.target.value }))}
+                            className="rounded-full px-3 py-2 text-[12px] outline-none border-none"
+                            style={{ backgroundColor: "#E3D9C4", color: "#8b6a46", width: "145px", colorScheme: "light" }}
+                          />
+                          {!isEditingRoles ? (
+                            <>
+                              <button
+                                className="rounded-[11px] px-3 py-1.5 text-[11px] font-semibold"
+                                style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
+                                onClick={() => {
+                                  if (!suspendDateById[item.id]) {
+                                    alert("Please select a suspension end date first.");
+                                    return;
+                                  }
+                                  openModerationConfirm(item.id, "suspend");
+                                }}
+                              >
+                                Suspend
+                              </button>
+                              <button
+                                className="rounded-[11px] px-3 py-1.5 text-[11px] font-semibold"
+                                style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
+                                onClick={() => openModerationConfirm(item.id, "ban")}
+                              >
+                                Ban
+                              </button>
+                            </>
+                          ) : (
+                            <div className="relative">
+                              <button
+                                onClick={() => setOpenRoleMenuId((value) => (value === item.id ? null : item.id))}
+                                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[11px] px-3 py-1.5 text-[11px] font-semibold"
+                                style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
+                              >
+                                Edit role
+                              </button>
+                              {openRoleMenuId === item.id && (
+                                <div
+                                  className="absolute left-0 top-10 z-50 w-44 overflow-hidden rounded-2xl border shadow-md"
+                                  style={{ backgroundColor: "#FFF8E2", borderColor: "#E3D9C4" }}
+                                >
+                                  {(["moderator", "user"] as UserRole[]).map((role, index) => (
+                                    <div key={role}>
+                                      <button
+                                        onClick={() => {
+                                          setRole(item.id, role);
+                                          setOpenRoleMenuId(null);
+                                        }}
+                                        className="w-full px-4 py-3 text-left text-sm font-semibold transition-colors hover:opacity-90"
+                                        style={{ color: "#3b2314" }}
+                                      >
+                                        Set as {roleLabel(role).toLowerCase()}
+                                      </button>
+                                      {index < 1 && <div style={{ height: 1, backgroundColor: "#E3D9C4" }} />}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        !isEditingRoles && (
+                          <button
+                            className="rounded-[11px] px-3 py-1.5 text-[11px] font-semibold"
+                            style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
+                            onClick={() =>
+                              openModerationConfirm(
+                                item.id,
+                                "moderationStatus" in item && effectiveModerationStatus(item) === "suspended" ? "unsuspend" : "unban",
+                              )
+                            }
+                          >
+                            {"moderationStatus" in item && effectiveModerationStatus(item) === "suspended" ? "Unsuspend" : "Unban"}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+                {isGroupsTab && !isEditingRoles && (
+                  <div className="block sm:hidden rounded-2xl px-4 py-4" style={{ backgroundColor: "#FFF8E2" }}>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/groups/${item.id}`)}
+                      className="flex w-full min-w-0 items-start gap-3 text-left"
+                    >
+                      <img src={item.avatar} alt={item.name} className="h-10 w-10 shrink-0 rounded-full" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold" style={{ color: "#3b2314" }}>
+                          {item.name}
+                        </p>
+                      </div>
+                    </button>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "#5b4630" }}>
+                      <span>Members: {"members" in item ? formatCompactNumber(item.members) : "0"}</span>
+                      <span>Posts: {"posts" in item ? formatCompactNumber(item.posts) : "0"}</span>
+                      <span>Created: {"created" in item ? item.created : "-"}</span>
+                    </div>
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        className="rounded-[11px] px-3 py-1.5 text-[11px] font-semibold shadow-sm"
+                        style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
+                        onClick={() => router.push(`/moderator-page/groups/${item.id}/members`)}
+                      >
+                        See members
+                      </button>
+                      <button
+                        className="text-[11px] font-semibold"
+                        style={{ color: "#C0392B" }}
+                        onClick={() => setGroupToDelete(item as GroupRow)}
+                      >
+                        Delete group
+                      </button>
+                    </div>
+                  </div>
+                )}
+                  </Fragment>
                 ))}
               </div>
             )}
