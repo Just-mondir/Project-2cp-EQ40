@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { API_BASE_URL } from "@/lib/apiClient";
+import { fetchPostsPage } from "@/hooks/usePosts";
 import { normalizeThemePathname } from "@/lib/themeRoutes";
 import NotificationPanel from "@/components/Notificationpanel";
 import ModeratorReportModal from "@/components/ModeratorReportModal";
@@ -11,19 +14,17 @@ import ModeratorReportModal from "@/components/ModeratorReportModal";
 
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
+const QUICK_FEED_TARGETS = {
+  home: { section: "home", href: "/home-page", url: `${API_BASE_URL}/posts/?page_size=10` },
+  communities: { section: "groups", href: "/communities", url: `${API_BASE_URL}/groups/posts/?page_size=10` },
+  monuments: { section: "monuments", href: "/monuments-in-danger", url: `${API_BASE_URL}/posts/monuments-danger/?page_size=10` },
+  events: { section: "events", href: "/events", url: `${API_BASE_URL}/posts/events/filter/?page_size=10` },
+};
 const DEFAULT_PROFILE = {
   displayName: "Ait Abderrahim Maria",
   username: "",
   profilePicture: "",
 };
-
-function resolveProfilePictureUrl(profilePicture) {
-  const value = String(profilePicture ?? "").trim();
-  if (!value) return "";
-  if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  if (value.startsWith("/")) return `${API_URL}${value}`;
-  return value;
-}
 
 function KunuzSidebarIcon() {
   return (
@@ -58,9 +59,10 @@ export default function LeftSidebar({
   variant = "default",
 }) {
   const t = useTranslations("auth.sidebar");
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
-  const [profileImageError, setProfileImageError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -73,7 +75,6 @@ export default function LeftSidebar({
       };
       if (!active) return;
       setProfile(nextProfile);
-      setProfileImageError(false);
       if (nextProfile.username) {
         localStorage.setItem("username", nextProfile.username);
       }
@@ -89,8 +90,9 @@ export default function LeftSidebar({
         applyProfile(parsed);
       }
     } catch {
-      setProfile(DEFAULT_PROFILE);
-      setProfileImageError(false);
+      window.setTimeout(() => {
+        if (active) setProfile(DEFAULT_PROFILE);
+      }, 0);
     }
 
     const fetchUser = async () => {
@@ -134,6 +136,34 @@ export default function LeftSidebar({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeReportId, setActiveReportId] = useState(null);
+
+  const prefetchFeedTarget = useCallback((key) => {
+    const target = QUICK_FEED_TARGETS[key];
+    if (!target) return;
+
+    router.prefetch(target.href);
+    queryClient.prefetchInfiniteQuery({
+      queryKey: ["posts", target.section, 10],
+      queryFn: ({ pageParam }) => fetchPostsPage(pageParam),
+      initialPageParam: target.url,
+      getNextPageParam: (lastPage) => lastPage.next || undefined,
+      staleTime: 5 * 60 * 1000,
+    }).catch(() => undefined);
+  }, [queryClient, router]);
+
+  useEffect(() => {
+    const runPrefetch = () => {
+      Object.keys(QUICK_FEED_TARGETS).forEach(prefetchFeedTarget);
+    };
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(runPrefetch, { timeout: 1200 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timer = window.setTimeout(runPrefetch, 350);
+    return () => window.clearTimeout(timer);
+  }, [prefetchFeedTarget]);
 
 
   const fetchUnreadCount = async () => {
@@ -335,6 +365,8 @@ export default function LeftSidebar({
                   <button
                     type="button"
                     className="relative p-2.5 rounded-xl transition-all duration-200 block"
+                    aria-label={item.label}
+                    title={item.label}
                     style={{
                       backgroundColor: isActive ? navActiveBg : "transparent",
                     }}
@@ -371,14 +403,21 @@ export default function LeftSidebar({
               <div key={item.key} className={`relative group${item.key === "help" ? " mt-25" : ""}`}>
                 <Link
                   href={item.href}
+                  prefetch
                   className="relative p-2.5 rounded-xl transition-all duration-200 block"
+                  aria-label={item.label}
+                  title={item.label}
                   style={{
                     backgroundColor: isActive ? navActiveBg : "transparent",
                   }}
                   onMouseEnter={(e) => {
+                    prefetchFeedTarget(item.key);
                     if (!isActive)
                       e.currentTarget.style.backgroundColor = iconHover;
                   }}
+                  onTouchStart={() => prefetchFeedTarget(item.key)}
+                  onPointerDown={() => prefetchFeedTarget(item.key)}
+                  onFocus={() => prefetchFeedTarget(item.key)}
                   onMouseLeave={(e) => {
                     if (!isActive)
                       e.currentTarget.style.backgroundColor = "transparent";
@@ -451,6 +490,7 @@ export default function LeftSidebar({
                   boxShadow: isNotifOpen ? "0 10px 24px rgba(0,0,0,0.18)" : "none",
                 }}
                 aria-label={item.label}
+                title={item.label}
               >
                 {mobileIcon}
               </button>
@@ -461,7 +501,14 @@ export default function LeftSidebar({
             <Link
               key={item.key}
               href={item.href}
+              prefetch
               className="relative p-2.5 rounded-xl transition-all duration-300"
+              aria-label={item.label}
+              title={item.label}
+              onTouchStart={() => prefetchFeedTarget(item.key)}
+              onPointerDown={() => prefetchFeedTarget(item.key)}
+              onMouseEnter={() => prefetchFeedTarget(item.key)}
+              onFocus={() => prefetchFeedTarget(item.key)}
               style={{
                 backgroundColor: isActive ? navActiveBg : "transparent",
                 transform: isActive ? "scale(1.1)" : "scale(1)",

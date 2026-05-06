@@ -79,58 +79,100 @@ export default function ReactQueryProvider({ children }: { children: React.React
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     if (!token) return;
 
-    queryClient.prefetchQuery({
-      queryKey: ["user", "me"],
-      queryFn: async () => {
-        const user = unwrapData<{ username?: string }>(await fetchJson("/users/me/"));
-        if (user?.username) {
-          prefetchOwnProfilePosts(queryClient, user.username).catch(() => undefined);
-        }
-        return user;
-      },
-      staleTime: 60 * 1000,
-    }).catch(() => undefined);
+    const runPrefetches = () => {
+      queryClient.prefetchQuery({
+        queryKey: ["user", "me"],
+        queryFn: async () => {
+          const user = unwrapData<{ username?: string }>(await fetchJson("/users/me/"));
+          if (user?.username) {
+            prefetchOwnProfilePosts(queryClient, user.username).catch(() => undefined);
+          }
+          return user;
+        },
+        staleTime: 60 * 1000,
+      }).catch(() => undefined);
 
-    const username = getCachedUsername();
-    if (username) {
-      prefetchOwnProfilePosts(queryClient, username).catch(() => undefined);
+      const username = getCachedUsername();
+      if (username) {
+        prefetchOwnProfilePosts(queryClient, username).catch(() => undefined);
+      }
+
+      [
+        ["home", `${API_BASE_URL}/posts/?page_size=10`, 3],
+        ["events", `${API_BASE_URL}/posts/events/filter/?page_size=10`, 3],
+        ["monuments", `${API_BASE_URL}/posts/monuments-danger/?page_size=10`, 3],
+        ["groups", `${API_BASE_URL}/groups/posts/?page_size=10`, 3],
+        ["questions", `${API_BASE_URL}/posts/?post_type=question&page_size=10`, 2],
+      ].forEach(([section, url, pageCount]) => {
+        prefetchFeedPages(
+          queryClient,
+          String(section),
+          String(url),
+          Number(pageCount),
+        ).catch(() => undefined);
+      });
+
+      queryClient.prefetchQuery({
+        queryKey: upcomingEventsQueryKey,
+        queryFn: fetchUpcomingEventsWithFallback,
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+
+      queryClient.prefetchQuery({
+        queryKey: ["groups", "popular"],
+        queryFn: async () => unwrapList(await fetchJson<ListEnvelope<unknown> | unknown[]>("/groups/popular/")),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+
+      queryClient.prefetchQuery({
+        queryKey: ["posts", "critical-alerts"],
+        queryFn: async () => {
+          const page = await fetchPostsPage(`${API_BASE_URL}/posts/critical/?page_size=10`);
+          return page.results;
+        },
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+
+      queryClient.prefetchQuery({
+        queryKey: ["moderator", "stats"],
+        queryFn: async () => {
+          const [statsPayload, groupsPayload] = await Promise.all([
+            fetchJson<{ data?: { members?: number; visitors?: number; posts?: number }; members?: number; visitors?: number; posts?: number }>("/moderator/stats/"),
+            fetchJson<{ data?: { count?: number }; count?: number }>("/groups/?page=1&page_size=1"),
+          ]);
+          const platformStats = statsPayload.data ?? statsPayload;
+          const groupStats = groupsPayload.data ?? groupsPayload;
+          const stats = {
+            members: platformStats.members ?? 0,
+            groups: groupStats.count ?? 0,
+            visitors: platformStats.visitors ?? 0,
+            posts: platformStats.posts ?? 0,
+          };
+          localStorage.setItem("kunuz.moderator.stats.v1", JSON.stringify({ ...stats, cachedAt: Date.now() }));
+          return stats;
+        },
+        staleTime: 2 * 60 * 1000,
+      }).catch(() => undefined);
+
+      queryClient.prefetchQuery({
+        queryKey: ["moderator", "analytics", "30d"],
+        queryFn: async () => {
+          const payload = await fetchJson<{ data?: unknown[] } | unknown[]>("/moderator/analytics/?range=30d");
+          const snapshots = Array.isArray(payload) ? payload : Array.isArray(payload.data) ? payload.data : [];
+          localStorage.setItem("kunuz.moderator.analytics.30d", JSON.stringify({ snapshots, cachedAt: Date.now() }));
+          return snapshots;
+        },
+        staleTime: 2 * 60 * 1000,
+      }).catch(() => undefined);
+    };
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(runPrefetches, { timeout: 2500 });
+      return () => window.cancelIdleCallback(idleId);
     }
 
-    [
-      ["home", `${API_BASE_URL}/posts/?page_size=10`, 5],
-      ["events", `${API_BASE_URL}/posts/events/filter/?page_size=10`],
-      ["monuments", `${API_BASE_URL}/posts/monuments-danger/?page_size=10`],
-      ["groups", `${API_BASE_URL}/groups/posts/?page_size=10`],
-      ["questions", `${API_BASE_URL}/posts/?post_type=question&page_size=10`],
-    ].forEach(([section, url, pageCount]) => {
-      prefetchFeedPages(
-        queryClient,
-        String(section),
-        String(url),
-        typeof pageCount === "number" ? pageCount : 3,
-      ).catch(() => undefined);
-    });
-
-    queryClient.prefetchQuery({
-      queryKey: upcomingEventsQueryKey,
-      queryFn: fetchUpcomingEventsWithFallback,
-      staleTime: 5 * 60 * 1000,
-    }).catch(() => undefined);
-
-    queryClient.prefetchQuery({
-      queryKey: ["groups", "popular"],
-      queryFn: async () => unwrapList(await fetchJson<ListEnvelope<unknown> | unknown[]>("/groups/popular/")),
-      staleTime: 5 * 60 * 1000,
-    }).catch(() => undefined);
-
-    queryClient.prefetchQuery({
-      queryKey: ["posts", "critical-alerts"],
-      queryFn: async () => {
-        const page = await fetchPostsPage(`${API_BASE_URL}/posts/critical/?page_size=10`);
-        return page.results;
-      },
-      staleTime: 5 * 60 * 1000,
-    }).catch(() => undefined);
+    const timer = globalThis.setTimeout(runPrefetches, 1200);
+    return () => globalThis.clearTimeout(timer);
   }, [queryClient]);
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;

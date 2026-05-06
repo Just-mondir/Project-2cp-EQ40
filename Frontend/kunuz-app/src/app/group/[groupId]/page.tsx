@@ -204,6 +204,55 @@ function getTextDirection(locale: string) {
   return locale?.toLowerCase().startsWith("ar") ? "rtl" : "ltr";
 }
 
+function groupAboutCopy(locale: string) {
+  if (locale?.toLowerCase().startsWith("ar")) {
+    return {
+      about: "حول المجموعة",
+      noDescription: "لم يتم تقديم وصف.",
+      rules: "القواعد والإرشادات",
+      noRules: "لم تتم إضافة أي قواعد لهذه المجموعة بعد.",
+      members: "الأعضاء",
+      membersText: "مجتمع متنام من المهتمين بالتراث.",
+      posts: "المنشورات",
+      postsText: "صور وقصص ونقاشات حول التراث الثقافي.",
+      tags: "الوسوم الموضوعية",
+      managedBy: "يديره",
+      unknownAdmin: "مشرف غير معروف",
+      activeSince: "نشط منذ",
+    };
+  }
+  if (locale?.toLowerCase().startsWith("fr")) {
+    return {
+      about: "À propos",
+      noDescription: "Aucune description fournie.",
+      rules: "Règles et consignes",
+      noRules: "Aucune règle n'a encore été ajoutée pour ce groupe.",
+      members: "Membres",
+      membersText: "Une communauté grandissante de passionnés du patrimoine.",
+      posts: "Publications",
+      postsText: "Photos, récits et discussions autour du patrimoine culturel.",
+      tags: "Tags thématiques",
+      managedBy: "Géré par",
+      unknownAdmin: "Admin inconnu",
+      activeSince: "Actif depuis",
+    };
+  }
+  return {
+    about: "About",
+    noDescription: "No description provided.",
+    rules: "Rules & Guidelines",
+    noRules: "No rules have been added for this group yet.",
+    members: "Members",
+    membersText: "A growing community of heritage enthusiasts.",
+    posts: "Posts",
+    postsText: "Photos, stories, and discussions about cultural heritage.",
+    tags: "Thematic tags",
+    managedBy: "Managed By",
+    unknownAdmin: "Unknown admin",
+    activeSince: "Active since",
+  };
+}
+
 /* ─── types ─── */
 type GroupDetail = {
   id: string;
@@ -660,6 +709,7 @@ export default function GroupDetailPage() {
 
   const adminMember = members.find(m => m.is_admin);
   const regularMembers = members.filter(m => !m.is_admin);
+  const aboutCopy = groupAboutCopy(locale);
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: "var(--background)" }}>
@@ -711,7 +761,7 @@ export default function GroupDetailPage() {
                 >
                   <div className="px-5 pt-5 pb-4">
                     <h2 className="localized-container-title font-bold text-[18px]" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                      About
+                      {aboutCopy.about}
                     </h2>
                   </div>
 
@@ -722,7 +772,7 @@ export default function GroupDetailPage() {
                       {group.name}
                     </h3>
                     <p className="localized-container-text text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                      {group.description || "No description provided."}
+                      {group.description || aboutCopy.noDescription}
                     </p>
                   </section>
 
@@ -730,7 +780,7 @@ export default function GroupDetailPage() {
 
                   <section className="px-5 pt-4 pb-5">
                     <h3 className="localized-container-title mb-3 text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                      Rules & Guidelines
+                      {aboutCopy.rules}
                     </h3>
                     {group.rules ? (
                       <ul className="localized-container-text list-disc space-y-1 pl-5 text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
@@ -743,7 +793,7 @@ export default function GroupDetailPage() {
                       </ul>
                     ) : (
                       <p className="localized-container-text text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                        No rules have been added for this group yet.
+                        {aboutCopy.noRules}
                       </p>
                     )}
                   </section>
@@ -754,18 +804,18 @@ export default function GroupDetailPage() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <p className="localized-container-title text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                          {fmtCount(group.member_count)} Members
+                          {fmtCount(group.member_count)} {aboutCopy.members}
                         </p>
                         <p className="localized-container-text mt-1 text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                          A growing community of heritage enthusiasts.
+                          {aboutCopy.membersText}
                         </p>
                       </div>
                       <div>
                         <p className="localized-container-title text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                          {fmtCount(group.post_count)} Posts
+                          {fmtCount(group.post_count)} {aboutCopy.posts}
                         </p>
                         <p className="localized-container-text mt-1 text-sm leading-relaxed" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                          Photos, stories, and discussions about cultural heritage.
+                          {aboutCopy.postsText}
                         </p>
                       </div>
                     </div>
@@ -775,7 +825,7 @@ export default function GroupDetailPage() {
 
                   <section className="px-5 pt-4 pb-5">
                     <h3 className="localized-container-title mb-3 text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                      Thematic tags
+                      {aboutCopy.tags}
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {(group.tags?.length ? group.tags : [group.category, group.region, group.historical_period].filter(Boolean))
@@ -797,21 +847,21 @@ export default function GroupDetailPage() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-center gap-3">
                         <span className="localized-container-title flex-shrink-0 text-[13px] font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                          Managed By
+                          {aboutCopy.managedBy}
                         </span>
                         <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-[#E3D9C4]">
                           <img
                             src={resolveUrl(adminMember?.profile_picture)}
-                            alt={adminMember?.display_name || adminMember?.username || "Admin"}
+                            alt={adminMember?.display_name || adminMember?.username || aboutCopy.unknownAdmin}
                             className="h-full w-full object-cover"
                           />
                         </div>
                         <span className="localized-container-text truncate text-sm font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                          {adminMember?.display_name || adminMember?.username || "Unknown admin"}
+                          {adminMember?.display_name || adminMember?.username || aboutCopy.unknownAdmin}
                         </span>
                       </div>
                       <p className="localized-container-text flex-shrink-0 text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato), 'Lato', sans-serif" }}>
-                        Active since {formatGroupDate(group.created_at)}
+                        {aboutCopy.activeSince} {formatGroupDate(group.created_at)}
                       </p>
                     </div>
                   </section>

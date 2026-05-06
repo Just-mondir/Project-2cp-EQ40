@@ -141,19 +141,121 @@ export default function RootLayout({
               let isActive = false;
               let lastSpokenLabel = '';
               let lastSpokenTime = 0;
+              let availableVoices = [];
+              let voiceWarningTimer = null;
+              const warnedVoiceLocales = new Set();
               const LABEL_COOLDOWN = 300; // ms - prevent rapid repeat
+
+              function refreshVoices() {
+                try {
+                  availableVoices = window.speechSynthesis.getVoices() || [];
+                } catch (e) {
+                  availableVoices = [];
+                }
+              }
+
+              function getCurrentLocale() {
+                const locale =
+                  document.documentElement.dataset.locale ||
+                  localStorage.getItem('locale') ||
+                  document.documentElement.lang ||
+                  'en';
+
+                if (locale.toLowerCase().startsWith('fr')) return 'fr';
+                if (locale.toLowerCase().startsWith('ar')) return 'ar';
+                return 'en';
+              }
+
+              function getSpeechLanguage(locale) {
+                if (locale === 'fr') return 'fr-FR';
+                if (locale === 'ar') return 'ar-SA';
+                return 'en-US';
+              }
+
+              function getVoiceForLanguage(language) {
+                const languagePrefix = language.split('-')[0].toLowerCase();
+                if (!availableVoices.length) {
+                  refreshVoices();
+                }
+                return (
+                  availableVoices.find((voice) => voice.lang && voice.lang.toLowerCase() === language.toLowerCase()) ||
+                  availableVoices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith(languagePrefix)) ||
+                  null
+                );
+              }
+
+              function getLanguageName(locale) {
+                if (locale === 'fr') return 'French';
+                if (locale === 'ar') return 'Arabic';
+                return 'English';
+              }
+
+              function showVoiceWarning(locale) {
+                if (!voiceWarning) return;
+                if (warnedVoiceLocales.has(locale)) return;
+                warnedVoiceLocales.add(locale);
+                voiceWarning.textContent = 'No ' + getLanguageName(locale) + ' voice is installed in this browser. Using the default voice.';
+                voiceWarning.hidden = false;
+                window.clearTimeout(voiceWarningTimer);
+                voiceWarningTimer = window.setTimeout(() => {
+                  voiceWarning.hidden = true;
+                }, 4500);
+              }
+
+              function normalizeReadableText(value) {
+                return value ? value.replace(/\\s+/g, ' ').trim() : '';
+              }
+
+              function getDirectText(el) {
+                const text = Array.from(el.childNodes)
+                  .filter((node) => node.nodeType === Node.TEXT_NODE)
+                  .map((node) => node.textContent || '')
+                  .join(' ');
+                return normalizeReadableText(text);
+              }
+
+              function isLargeContainer(el) {
+                const tagName = el.tagName ? el.tagName.toLowerCase() : '';
+                if (tagName === 'html' || tagName === 'body' || tagName === 'main') return true;
+                if (tagName === 'section' || tagName === 'article' || tagName === 'aside' || tagName === 'nav' || tagName === 'footer' || tagName === 'header') return true;
+                return el.children && el.children.length > 3;
+              }
+
+              function getInteractiveLabel(el) {
+                if (!el || !el.closest) return null;
+                const interactive = el.closest('button, a, [role="button"], [role="link"], [aria-label], [title], [data-sound-label]');
+                if (!interactive || interactive === document.documentElement || interactive === document.body) return null;
+                if (interactive.closest('#screen-reader-toggle-btn, #screen-reader-voice-warning')) return null;
+                return getElementLabel(interactive);
+              }
 
               // Extract text label from element with priority
               function getElementLabel(el) {
-                const label = 
+                if (!el || el === document.documentElement || el === document.body) return null;
+                if (el.closest && el.closest('#screen-reader-toggle-btn, #screen-reader-voice-warning')) return null;
+
+                const explicitLabel =
                   el.getAttribute('data-sound-label') ||
                   el.getAttribute('aria-label') ||
                   el.getAttribute('title') ||
                   el.getAttribute('alt') ||
-                  (el.innerText && el.innerText.trim()) ||
                   el.getAttribute('placeholder');
+                if (explicitLabel) return normalizeReadableText(explicitLabel);
 
-                return label ? label.trim() : null;
+                const tagName = el.tagName ? el.tagName.toLowerCase() : '';
+                if (tagName === 'input' || tagName === 'textarea') {
+                  return normalizeReadableText(el.value || el.placeholder || '');
+                }
+
+                const directText = getDirectText(el);
+                if (directText) return directText;
+
+                if (!isLargeContainer(el) && el.children && el.children.length <= 1) {
+                  const nestedText = normalizeReadableText(el.innerText || el.textContent || '');
+                  if (nestedText.length <= 220) return nestedText;
+                }
+
+                return null;
               }
 
               // Speak label using SpeechSynthesis
@@ -172,7 +274,18 @@ export default function RootLayout({
 
                   // Create and configure utterance
                   const utterance = new SpeechSynthesisUtterance(label);
-                  utterance.lang = 'en-US';
+                  const currentLocale = getCurrentLocale();
+                  const speechLanguage = getSpeechLanguage(currentLocale);
+                  const voice = getVoiceForLanguage(speechLanguage);
+                  utterance.lang = speechLanguage;
+                  if (voice) {
+                    utterance.voice = voice;
+                  } else {
+                    showVoiceWarning(currentLocale);
+                  }
+                  if (currentLocale === 'ar') {
+                    utterance.dir = 'rtl';
+                  }
                   utterance.rate = 0.9;
                   utterance.pitch = 1;
                   utterance.volume = 1;
@@ -193,11 +306,18 @@ export default function RootLayout({
                 if (!isActive) return;
 
                 const target = e.target;
+                const interactiveLabel = getInteractiveLabel(target);
+                if (interactiveLabel) {
+                  speakLabel(interactiveLabel);
+                  return;
+                }
+
                 let current = target;
 
-                // Traverse up to find readable element
-                for (let i = 0; i < 5; i++) {
+                // Traverse only a little so hovering a card/page shell does not read the whole platform.
+                for (let i = 0; i < 3; i++) {
                   if (!current) break;
+                  if (isLargeContainer(current)) break;
 
                   const label = getElementLabel(current);
                   if (label) {
@@ -238,6 +358,29 @@ export default function RootLayout({
                 <span id="screen-reader-btn-label">Screen Reader</span>
               \`;
               document.body.appendChild(btn);
+
+              const voiceWarning = document.createElement('div');
+              voiceWarning.id = 'screen-reader-voice-warning';
+              voiceWarning.setAttribute('role', 'status');
+              voiceWarning.setAttribute('aria-live', 'polite');
+              voiceWarning.hidden = true;
+              voiceWarning.style.position = 'fixed';
+              voiceWarning.style.right = '24px';
+              voiceWarning.style.bottom = '76px';
+              voiceWarning.style.zIndex = '10002';
+              voiceWarning.style.maxWidth = '280px';
+              voiceWarning.style.padding = '8px 12px';
+              voiceWarning.style.border = '1px solid rgba(161, 98, 7, 0.28)';
+              voiceWarning.style.borderRadius = '12px';
+              voiceWarning.style.background = 'rgba(255, 251, 234, 0.96)';
+              voiceWarning.style.color = '#7a4b00';
+              voiceWarning.style.fontSize = '12px';
+              voiceWarning.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+              voiceWarning.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.12)';
+              document.body.appendChild(voiceWarning);
+
+              refreshVoices();
+              window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
 
               // Button click handler - toggle mode
               btn.addEventListener('click', () => {

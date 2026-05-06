@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import LeftSidebar from "@/components/LeftSidebar";
 import GroupHeader from "@/components/GroupHeader";
 import GroupeMenu from "@/components/GroupeMenu";
+import { useLocaleSettings } from "@/components/LocaleProvider";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
 
@@ -134,9 +135,96 @@ function aboutTags(about: AboutDetail) {
   return [about.category, about.region, about.historical_period].map(tagValue).filter(Boolean);
 }
 
-function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }) {
+function localeKey(locale: string) {
+  if (locale?.toLowerCase().startsWith("ar")) return "ar";
+  if (locale?.toLowerCase().startsWith("fr")) return "fr";
+  return "en";
+}
+
+function textDirection(locale: string) {
+  return localeKey(locale) === "ar" ? "rtl" : "ltr";
+}
+
+const ABOUT_TEXT = {
+  en: {
+    unknownAdmin: "Unknown admin",
+    description: "Description",
+    noDescription: "No description provided.",
+    whatFind: "What You'll Find Here",
+    findItems: [
+      "Photos of historical landmarks and monuments",
+      "Architecture and cultural heritage photography",
+      "Stories and historical context behind locations",
+      "Photography tips and techniques",
+      "Community discussions about heritage preservation",
+    ],
+    rules: "Rules & Guidelines",
+    noRules: "No rules have been added for this group yet.",
+    members: "Members",
+    membersText: "A growing community of heritage enthusiasts.",
+    posts: "Posts",
+    postsText: "Photos, stories, and discussions about cultural heritage.",
+    tags: "Thematic tags",
+    noTags: "No tags specified.",
+    managedBy: "Managed By",
+    activeSince: "Active since",
+    groupNotFound: "Group not found.",
+  },
+  fr: {
+    unknownAdmin: "Admin inconnu",
+    description: "Description",
+    noDescription: "Aucune description fournie.",
+    whatFind: "Ce que vous trouverez ici",
+    findItems: [
+      "Photos de monuments et sites historiques",
+      "Photographie d'architecture et de patrimoine culturel",
+      "Histoires et contexte historique des lieux",
+      "Conseils et techniques de photographie",
+      "Discussions autour de la preservation du patrimoine",
+    ],
+    rules: "Règles et consignes",
+    noRules: "Aucune règle n'a encore été ajoutée pour ce groupe.",
+    members: "Membres",
+    membersText: "Une communauté grandissante de passionnés du patrimoine.",
+    posts: "Publications",
+    postsText: "Photos, récits et discussions autour du patrimoine culturel.",
+    tags: "Tags thématiques",
+    noTags: "Aucun tag spécifié.",
+    managedBy: "Géré par",
+    activeSince: "Actif depuis",
+    groupNotFound: "Groupe introuvable.",
+  },
+  ar: {
+    unknownAdmin: "مشرف غير معروف",
+    description: "الوصف",
+    noDescription: "لم يتم تقديم وصف.",
+    whatFind: "ما ستجده هنا",
+    findItems: [
+      "صور للمعالم والمواقع التاريخية",
+      "تصوير معماري وتراث ثقافي",
+      "قصص وسياق تاريخي حول المواقع",
+      "نصائح وتقنيات في التصوير",
+      "نقاشات مجتمعية حول الحفاظ على التراث",
+    ],
+    rules: "القواعد والإرشادات",
+    noRules: "لم تتم إضافة أي قواعد لهذا المجموعة بعد.",
+    members: "الأعضاء",
+    membersText: "مجتمع متنام من المهتمين بالتراث.",
+    posts: "المنشورات",
+    postsText: "صور وقصص ونقاشات حول التراث الثقافي.",
+    tags: "الوسوم الموضوعية",
+    noTags: "لم يتم تحديد أي وسوم.",
+    managedBy: "يديره",
+    activeSince: "نشط منذ",
+    groupNotFound: "المجموعة غير موجودة.",
+  },
+} as const;
+
+function AboutInfoPanel({ about, admin, locale }: { about: AboutDetail; admin?: Member; locale: string }) {
+  const copy = ABOUT_TEXT[localeKey(locale)];
+  const direction = textDirection(locale);
   const manager = about.managed_by;
-  const managerName = manager?.display_name || manager?.username || admin?.display_name || admin?.username || "Unknown admin";
+  const managerName = manager?.display_name || manager?.username || admin?.display_name || admin?.username || copy.unknownAdmin;
   const managerAvatar = resolveUrl(manager?.profile_picture || admin?.profile_picture);
   const tags = aboutTags(about);
 
@@ -148,6 +236,8 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
         padding: "24px 28px",
         width: "100%",
         boxShadow: "0 2px 12px rgba(67,40,23,0.07)",
+        direction,
+        textAlign: direction === "rtl" ? "right" : "left",
       }}
     >
       <div style={{ borderBottom: "1px solid #D8C8B1", paddingBottom: "12px", marginBottom: "12px" }}>
@@ -157,38 +247,34 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
       </div>
 
       <div style={{ marginBottom: "8px" }}>
-        <SectionLabel label="Description" />
+        <SectionLabel label={copy.description} />
         <p style={{ margin: "8px 14px 18px", color: "#432817", fontFamily: "Lato, sans-serif", fontSize: "14px", lineHeight: 1.55 }}>
-          {about.description || "No description provided."}
+          {about.description || copy.noDescription}
         </p>
       </div>
 
       <div style={{ borderTop: "1px solid #EDE0CC", margin: "8px 0" }} />
 
       <div style={{ marginBottom: "8px" }}>
-        <SectionLabel label="What You'll Find Here" />
-        <ul style={{ margin: "8px 14px 18px", paddingLeft: "20px", color: "#432817", fontFamily: "Lato, sans-serif", fontSize: "14px", lineHeight: 1.55 }}>
-          <li>Photos of historical landmarks and monuments</li>
-          <li>Architecture and cultural heritage photography</li>
-          <li>Stories and historical context behind locations</li>
-          <li>Photography tips and techniques</li>
-          <li>Community discussions about heritage preservation</li>
+        <SectionLabel label={copy.whatFind} />
+        <ul style={{ margin: "8px 14px 18px", paddingInlineStart: "20px", color: "#432817", fontFamily: "Lato, sans-serif", fontSize: "14px", lineHeight: 1.55 }}>
+          {copy.findItems.map((item) => <li key={item}>{item}</li>)}
         </ul>
       </div>
 
       <div style={{ borderTop: "1px solid #EDE0CC", margin: "8px 0" }} />
 
       <div style={{ marginBottom: "8px" }}>
-        <SectionLabel label="Rules & Guidelines" />
+        <SectionLabel label={copy.rules} />
         {about.rules ? (
-          <ul style={{ margin: "8px 14px 18px", paddingLeft: "20px", color: "#432817", fontFamily: "Lato, sans-serif", fontSize: "14px", lineHeight: 1.55 }}>
+          <ul style={{ margin: "8px 14px 18px", paddingInlineStart: "20px", color: "#432817", fontFamily: "Lato, sans-serif", fontSize: "14px", lineHeight: 1.55 }}>
             {about.rules.split(/\r?\n/).filter(Boolean).map((rule, index) => (
               <li key={index}>{rule}</li>
             ))}
           </ul>
         ) : (
           <p style={{ margin: "8px 14px 18px", color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "14px", lineHeight: 1.55 }}>
-            No rules have been added for this group yet.
+            {copy.noRules}
           </p>
         )}
       </div>
@@ -198,18 +284,18 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", padding: "14px" }}>
         <div>
           <p style={{ margin: 0, color: "#432817", fontFamily: "Lato, sans-serif", fontSize: "14px", fontWeight: 700 }}>
-            {fmtCount(about.member_count)} Members
+            {fmtCount(about.member_count)} {copy.members}
           </p>
           <p style={{ margin: "6px 0 0", color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "13px", lineHeight: 1.45 }}>
-            A growing community of heritage enthusiasts.
+            {copy.membersText}
           </p>
         </div>
         <div>
           <p style={{ margin: 0, color: "#432817", fontFamily: "Lato, sans-serif", fontSize: "14px", fontWeight: 700 }}>
-            {fmtCount(about.post_count)} Posts
+            {fmtCount(about.post_count)} {copy.posts}
           </p>
           <p style={{ margin: "6px 0 0", color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "13px", lineHeight: 1.45 }}>
-            Photos, stories, and discussions about cultural heritage.
+            {copy.postsText}
           </p>
         </div>
       </div>
@@ -217,7 +303,7 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
       <div style={{ borderTop: "1px solid #EDE0CC", margin: "8px 0" }} />
 
       <div style={{ marginBottom: "8px" }}>
-        <SectionLabel label="Thematic tags" />
+        <SectionLabel label={copy.tags} />
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", margin: "8px 14px 18px" }}>
           {tags.length ? tags.map(tag => (
             <span
@@ -235,7 +321,7 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
               #{tag}
             </span>
           )) : (
-            <span style={{ color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "13px" }}>No tags specified.</span>
+            <span style={{ color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "13px" }}>{copy.noTags}</span>
           )}
         </div>
       </div>
@@ -244,7 +330,7 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", padding: "10px 14px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
-          <span style={{ color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "13px" }}>Managed By</span>
+          <span style={{ color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "13px" }}>{copy.managedBy}</span>
           <div style={{ width: 42, height: 42, borderRadius: "50%", overflow: "hidden", backgroundColor: "#E0D5C5", flexShrink: 0 }}>
             {managerAvatar ? (
               <img src={managerAvatar} alt={managerName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -255,7 +341,7 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
           </span>
         </div>
         <span style={{ color: "#8B7355", fontFamily: "Lato, sans-serif", fontSize: "12px", flexShrink: 0 }}>
-          {about.active_since ? `Active since ${about.active_since}` : ""}
+          {about.active_since ? `${copy.activeSince} ${about.active_since}` : ""}
         </span>
       </div>
     </div>
@@ -265,6 +351,8 @@ function AboutInfoPanel({ about, admin }: { about: AboutDetail; admin?: Member }
 export default function GroupAboutPage() {
   const router = useRouter();
   const params = useParams();
+  const { locale } = useLocaleSettings();
+  const copy = ABOUT_TEXT[localeKey(locale)];
   const groupId = params?.groupId as string;
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [about, setAbout] = useState<AboutDetail | null>(null);
@@ -353,7 +441,7 @@ export default function GroupAboutPage() {
   if (!group || !about) {
     return (
       <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "#8B7355" }}>Group not found.</p>
+        <p style={{ color: "#8B7355" }}>{copy.groupNotFound}</p>
       </div>
     );
   }
@@ -385,7 +473,7 @@ export default function GroupAboutPage() {
         />
 
         <div style={{ maxWidth: "1152px", margin: "0 auto", padding: "24px 40px 48px" }}>
-          <AboutInfoPanel about={about} admin={adminMember} />
+          <AboutInfoPanel about={about} admin={adminMember} locale={locale} />
         </div>
       </main>
     </div>

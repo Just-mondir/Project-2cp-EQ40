@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, CircleX, Loader2, RefreshCcw, CheckCheck, ChevronLeft } from "lucide-react";
+import { Bell, CircleX, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useLocaleSettings } from "@/components/LocaleProvider";
 
@@ -22,16 +22,6 @@ type NotificationItem = {
   is_read: boolean;
   created_at: string;
   extra?: { request_id?: string; invitation_id?: string };
-};
-
-type NotificationResponse = {
-  success: boolean;
-  data?: {
-    results?: NotificationItem[];
-    unread_count?: number;
-    next?: string | null;
-  };
-  unread_count?: number;
 };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
@@ -84,11 +74,11 @@ function groupByRecency(items: NotificationItem[]) {
 function Avatar({ item }: { item: NotificationItem }) {
   const initials = (item.actor_display_name || item.actor_username || "S").slice(0, 1).toUpperCase();
   return (
-    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#D1BFA5] bg-[#EFE4D2] shadow-[0_2px_5px_rgba(45,28,16,0.18)]">
+    <div className="notification-panel-avatar relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#D1BFA5] bg-[#EFE4D2] shadow-[0_2px_5px_rgba(45,28,16,0.18)]">
       {item.actor_profile_picture ? (
         <img src={item.actor_profile_picture} alt={item.actor_display_name} className="h-full w-full object-cover" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-[13px] font-bold text-[#5E432C]">{initials}</div>
+        <div className="notification-panel-avatar-text flex h-full w-full items-center justify-center text-[13px] font-bold text-[#5E432C]">{initials}</div>
       )}
       {item.is_read === false && <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full border border-[#FFF8E2] bg-[#C76B2E]" />}
     </div>
@@ -97,13 +87,13 @@ function Avatar({ item }: { item: NotificationItem }) {
 
 function SectionTitle({ title, withDivider = false }: { title: string; withDivider?: boolean }) {
   return (
-    <div className={withDivider ? "border-t border-[#9D8564] pt-3" : "pt-1"}>
-      <p className="m-0 text-[15px] font-bold text-[#3A2A1D]">{title}</p>
+    <div className={`notification-panel-section ${withDivider ? "border-t border-[#9D8564] pt-3" : "pt-1"}`}>
+      <p className="notification-panel-heading m-0 text-[15px] font-bold text-[#3A2A1D]">{title}</p>
     </div>
   );
 }
 
-function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
+const NotificationRow = memo(function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
   item: NotificationItem;
   onRead: (id: string) => void;
   relativeTimeLabel: string;
@@ -148,15 +138,15 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
       tabIndex={0}
       onClick={() => onRead(item.id)}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onRead(item.id); }}
-      className={`flex w-full items-start gap-3.5 rounded-xl px-0 py-2.5 text-left transition-all cursor-pointer hover:bg-[#F3E9D0]/80 ${item.is_read === true ? "opacity-85" : "opacity-100"}`}
+      className={`notification-panel-row flex w-full items-start gap-3.5 rounded-xl px-0 py-2.5 text-left transition-all cursor-pointer hover:bg-[#F3E9D0]/80 ${item.is_read === true ? "opacity-85" : "opacity-100"}`}
     >
       <Avatar item={item} />
       <div className="min-w-0 flex-1">
-        <p className="m-0 text-[14px] leading-[1.55] text-[#5D5144]">
-          <span className="font-bold text-[#432817]">{item.actor_display_name || item.actor_username || someoneLabel}</span>{" "}
+        <p className="notification-panel-message m-0 text-[14px] leading-[1.55] text-[#5D5144]">
+          <span className="notification-panel-actor font-bold text-[#432817]">{item.actor_display_name || item.actor_username || someoneLabel}</span>{" "}
           <span>{label}</span>
         </p>
-        <div className="mt-1 flex items-center gap-2 text-[11px] text-[#82715E]">
+        <div className="notification-panel-time mt-1 flex items-center gap-2 text-[11px] text-[#82715E]">
           <span>{relativeTimeLabel}</span>
         </div>
 
@@ -254,16 +244,16 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
       </div>
     </div>
   );
-}
+});
 
 export default function NotificationPanel({ onClose, onReportClick }: { onClose: () => void; onReportClick?: (id: string) => void }) {
 
   const t = useTranslations("auth.notificationPanel");
   const { locale } = useLocaleSettings();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => readCachedNotifications());
   const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => readCachedNotifications().length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -281,7 +271,7 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
     return rtf.format(Math.round(diffSeconds / 86400), "day");
   }, [rtf, t]);
 
-  const navigateFromNotification = async (notification: NotificationItem) => {
+  const navigateFromNotification = useCallback(async (notification: NotificationItem) => {
     const { event_type, target_id } = notification;
 
     if (event_type === "gem_on_post" || event_type === "repost_on_post") {
@@ -335,7 +325,7 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
       }
       onClose();
     }
-  };
+  }, [onClose, onReportClick, router]);
 
 
   const fetchNotifications = useCallback(async (url: string | null = `${API_URL}/api/notifications/`, isInitial = true) => {
@@ -366,10 +356,16 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
 
       const nextItems = listJson?.data?.results ?? [];
       setNotifications(prev => {
-        if (isInitial) return nextItems;
+        if (isInitial) {
+          const limitedItems = nextItems.slice(0, NOTIFICATIONS_LIMIT);
+          writeCachedNotifications(limitedItems);
+          return limitedItems;
+        }
         const existingIds = new Set(prev.map(n => n.id));
         const uniqueItems = nextItems.filter((n: NotificationItem) => !existingIds.has(n.id));
-        return [...prev, ...uniqueItems];
+        const mergedItems = [...prev, ...uniqueItems];
+        writeCachedNotifications(mergedItems.slice(0, NOTIFICATIONS_LIMIT));
+        return mergedItems;
       });
       setNextUrl(listJson?.data?.next ?? null);
 
@@ -385,12 +381,17 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
   }, []);
 
   useEffect(() => {
-    void fetchNotifications();
+    const initialFetch = window.setTimeout(() => {
+      void fetchNotifications();
+    }, notifications.length > 0 ? 150 : 0);
     const timer = window.setInterval(() => {
       void fetchNotifications();
-    }, 30000);
-    return () => window.clearInterval(timer);
-  }, [fetchNotifications]);
+    }, 60000);
+    return () => {
+      window.clearTimeout(initialFetch);
+      window.clearInterval(timer);
+    };
+  }, [fetchNotifications, notifications.length]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -405,7 +406,7 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
     return () => observer.disconnect();
   }, [nextUrl, loadingMore, fetchNotifications]);
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     const token = getAuthToken();
     if (!token) return;
 
@@ -415,13 +416,17 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
       writeCachedNotifications(nextItems);
       return nextItems;
     });
+    if (notification?.is_read === false) {
+      const nextUnreadCount = Math.max(0, unreadCount - 1);
+      setUnreadCount(nextUnreadCount);
+      window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: nextUnreadCount }));
+    }
 
     try {
       await fetch(`${API_URL}/api/notifications/${id}/read/`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
-      void fetchNotifications();
     } catch {
       void fetchNotifications();
     }
@@ -429,32 +434,38 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
     if (notification) {
       await navigateFromNotification(notification);
     }
-  };
+  }, [fetchNotifications, navigateFromNotification, notifications, unreadCount]);
 
-  const markAllRead = async () => {
+  const markAllRead = useCallback(async () => {
     const token = getAuthToken();
     if (!token) return;
-    setNotifications((current) => current.map(item => ({ ...item, is_read: true })));
+    setNotifications((current) => {
+      const nextItems = current.map(item => ({ ...item, is_read: true }));
+      writeCachedNotifications(nextItems);
+      return nextItems;
+    });
+    setUnreadCount(0);
+    window.dispatchEvent(new CustomEvent("refresh-unread-count", { detail: 0 }));
     try {
       await fetch(`${API_URL}/api/notifications/read-all/`, {
         method: "PATCH",
         headers: { Authorization: `Bearer ${token}` },
       });
-      void fetchNotifications();
     } catch { }
-  };
+  }, []);
 
-  const { today, thisMonth, older } = groupByRecency(notifications);
+  const { today, thisMonth, older } = useMemo(() => groupByRecency(notifications), [notifications]);
 
   return (
-    <div className="notification-panel-overlay fixed inset-0 z-[100] flex justify-start bg-black/60 backdrop-blur-[3px]" onClick={onClose}>
+    <div className="notification-panel-overlay fixed inset-0 z-[100] flex justify-start bg-black/60 backdrop-blur-[3px]" dir="ltr" onClick={onClose}>
       <div
-        className="flex h-full w-[440px] max-w-[94vw] flex-col bg-[#FFF8E2] px-8 py-5 text-[#432817] shadow-[18px_0_45px_rgba(14,9,5,0.28)]"
+        className="notification-panel flex h-full w-[440px] max-w-[94vw] flex-col bg-[#FFF8E2] px-8 py-5 text-[#432817] shadow-[18px_0_45px_rgba(14,9,5,0.28)]"
+        dir={locale?.toLowerCase().startsWith("ar") ? "rtl" : "ltr"}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-4">
           <div className="flex items-center gap-3">
-            <h2 className="m-0 text-[18px] font-bold text-[#342417]">{t("title")}</h2>
+            <h2 className="notification-panel-title m-0 text-[18px] font-bold text-[#342417]">{t("title")}</h2>
             {unreadCount > 0 && (
               <span className="flex h-5 items-center justify-center rounded-full bg-[#8B6A4B] px-2 text-[10px] font-bold text-white">
                 {unreadCount}
@@ -464,7 +475,7 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
           <button
             onClick={onClose}
             aria-label={t("actions.close")}
-            className="rounded-full p-0.5 text-[#9B8165] transition hover:bg-[#EFE2C6] hover:text-[#432817]"
+            className="notification-panel-close rounded-full p-0.5 text-[#9B8165] transition hover:bg-[#EFE2C6] hover:text-[#432817]"
           >
             <CircleX className="h-4 w-4" />
           </button>
@@ -472,14 +483,14 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
 
         <div className="flex-1 overflow-y-auto pr-1">
           {loading ? (
-            <div className="flex h-full items-center justify-center text-[12px] text-[#8B7355]">
+            <div className="notification-panel-muted flex h-full items-center justify-center text-[12px] text-[#8B7355]">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("loading")}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex h-full flex-col items-center justify-center px-3 py-16 text-center text-[#7F654B]">
-              <Bell className="mb-3 h-8 w-8 text-[#C7A981]" />
-              <p className="m-0 text-[14px] font-semibold text-[#432817]">{t("empty.title")}</p>
-              <p className="mt-2 text-[11px] leading-5 text-[#84694E]">
+            <div className="notification-panel-muted flex h-full flex-col items-center justify-center px-3 py-16 text-center text-[#7F654B]">
+              <Bell className="notification-panel-empty-icon mb-3 h-8 w-8 text-[#C7A981]" />
+              <p className="notification-panel-title m-0 text-[14px] font-semibold text-[#432817]">{t("empty.title")}</p>
+              <p className="mt-2 text-[11px] leading-5">
                 {t("empty.description")}
               </p>
             </div>
@@ -488,7 +499,7 @@ export default function NotificationPanel({ onClose, onReportClick }: { onClose:
               <div className="flex items-center justify-between">
                 <button
                   onClick={markAllRead}
-                  className="text-[10px] font-bold uppercase tracking-wider text-[#A07850] transition hover:text-[#432817]"
+                  className="notification-panel-action text-[10px] font-bold uppercase tracking-wider text-[#A07850] transition hover:text-[#432817]"
                 >
                   {t("actions.markAllRead")}
                 </button>

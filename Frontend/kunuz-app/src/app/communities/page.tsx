@@ -359,6 +359,57 @@ type Group = {
   admin_id: string;
 };
 
+const COMMUNITIES_POSTS_CACHE_KEY = "kunuz.communities.posts.v1";
+const COMMUNITIES_GROUPS_CACHE_KEY = "kunuz.communities.groups.v1";
+const COMMUNITIES_MY_GROUPS_CACHE_KEY = "kunuz.communities.my-groups.v1";
+
+function readCommunitiesPostsCache(): { posts: ApiPost[]; nextUrl: string | null } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(COMMUNITIES_POSTS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { posts?: ApiPost[]; nextUrl?: string | null };
+    if (!Array.isArray(parsed.posts)) return null;
+    return { posts: parsed.posts, nextUrl: parsed.nextUrl ?? null };
+  } catch {
+    return null;
+  }
+}
+
+function writeCommunitiesPostsCache(posts: ApiPost[], nextUrl: string | null) {
+  if (typeof window === "undefined" || posts.length === 0) return;
+  try {
+    window.localStorage.setItem(COMMUNITIES_POSTS_CACHE_KEY, JSON.stringify({
+      posts: posts.slice(0, 30),
+      nextUrl,
+      cachedAt: Date.now(),
+    }));
+  } catch {
+    // Cache is only for instant navigation.
+  }
+}
+
+function readGroupListCache(key: string): Group[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as { groups?: Group[] };
+    return Array.isArray(parsed.groups) ? parsed.groups : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeGroupListCache(key: string, groups: Group[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify({ groups, cachedAt: Date.now() }));
+  } catch {
+    // Cache is optional.
+  }
+}
+
 /* ─────────────────── SVG ICONS ─────────────────── */
 
 const GemIcon = ({ className = "", size = 18, filled = false, active = false }) => (
@@ -2436,8 +2487,9 @@ export function PostCard({
 export default function CommunitiesPageRoute() {
   const router = useRouter();
   const [posts, setPosts] = useState<ApiPost[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [myGroups, setMyGroups] = useState<Group[]>([]);
+  const initialCommunitiesCache = useMemo(() => readCommunitiesPostsCache(), []);
+  const [groups, setGroups] = useState<Group[]>(() => readGroupListCache(COMMUNITIES_GROUPS_CACHE_KEY));
+  const [myGroups, setMyGroups] = useState<Group[]>(() => readGroupListCache(COMMUNITIES_MY_GROUPS_CACHE_KEY));
   const [loading, setLoading] = useState(false);
   const [newPostStart, setNewPostStart] = useState(-1);
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
@@ -2455,6 +2507,9 @@ export default function CommunitiesPageRoute() {
   const communitiesFeedQuery = usePosts<ApiPost>("groups", {
     enabled: !activeFilters,
     pageSize: 10,
+    initialPage: initialCommunitiesCache
+      ? { results: initialCommunitiesCache.posts, next: initialCommunitiesCache.nextUrl }
+      : undefined,
     prefetchNextPage: true,
     prefetchPages: 5,
   });
@@ -2487,7 +2542,9 @@ export default function CommunitiesPageRoute() {
       const res = await fetch(`${API_URL}/api/groups/popular/`);
       const data = await res.json();
       const groupData = data.data?.results || data.data || data.results || data;
-      setGroups(Array.isArray(groupData) ? groupData : []);
+      const nextGroups = Array.isArray(groupData) ? groupData : [];
+      setGroups(nextGroups);
+      writeGroupListCache(COMMUNITIES_GROUPS_CACHE_KEY, nextGroups);
     } catch (err) {
       console.error("Error fetching groups:", err);
     }
@@ -2502,7 +2559,9 @@ export default function CommunitiesPageRoute() {
       });
       const data = await res.json();
       const myGData = data.data?.results || data.data || data.results || data;
-      setMyGroups(Array.isArray(myGData) ? myGData : []);
+      const nextGroups = Array.isArray(myGData) ? myGData : [];
+      setMyGroups(nextGroups);
+      writeGroupListCache(COMMUNITIES_MY_GROUPS_CACHE_KEY, nextGroups);
     } catch (err) {
       console.error("Error fetching my groups:", err);
     }
@@ -2593,14 +2652,17 @@ export default function CommunitiesPageRoute() {
       ...normalizeApiPost(post),
       _key: index,
     }));
+    const nextCacheUrl = communitiesFeedQuery.data?.pages.at(-1)?.next ?? null;
     setPosts(formatted);
     setNextUrl(communitiesFeedQuery.hasNextPage ? "__react-query-next-page__" : null);
+    writeCommunitiesPostsCache(formatted, nextCacheUrl);
     setLoading(communitiesFeedQuery.isFetchingNextPage);
   }, [
     activeFilters,
     communitiesFeedQuery.posts,
     communitiesFeedQuery.hasNextPage,
     communitiesFeedQuery.isFetchingNextPage,
+    communitiesFeedQuery.data,
   ]);
 
   const handleSearch = (q: string) => {

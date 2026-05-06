@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchJson } from "@/lib/apiClient";
 
 type AnalyticsSnapshot = {
@@ -27,6 +28,30 @@ type AnalyticsResult = {
   error: string | null;
 };
 
+const EMPTY_SNAPSHOTS: AnalyticsSnapshot[] = [];
+const ANALYTICS_CACHE_PREFIX = "kunuz.moderator.analytics";
+
+function readCachedAnalytics(range: string): AnalyticsSnapshot[] | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = window.localStorage.getItem(`${ANALYTICS_CACHE_PREFIX}.${range}`);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as { snapshots?: AnalyticsSnapshot[] };
+    return Array.isArray(parsed.snapshots) ? parsed.snapshots : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeCachedAnalytics(range: string, snapshots: AnalyticsSnapshot[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(`${ANALYTICS_CACHE_PREFIX}.${range}`, JSON.stringify({ snapshots, cachedAt: Date.now() }));
+  } catch {
+    // Cache is only a speed boost.
+  }
+}
+
 function formatLabel(dateString: string) {
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) {
@@ -39,49 +64,29 @@ function formatLabel(dateString: string) {
 }
 
 export default function useAnalytics(range: "7d" | "30d" | "90d") {
-  const [snapshots, setSnapshots] = useState<AnalyticsSnapshot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchSnapshots() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const payload = await fetchJson<
+  const query = useQuery({
+    queryKey: ["moderator", "analytics", range],
+    queryFn: async () => {
+      const payload = await fetchJson<
         AnalyticsSnapshot[] | ApiEnvelope<AnalyticsSnapshot[]>
       >(`/api/moderator/analytics/?range=${encodeURIComponent(range)}`);
 
-      if (!cancelled) {
-        if (Array.isArray(payload)) {
-          setSnapshots(payload);
-        } else if (payload && typeof payload === "object" && Array.isArray(payload.data)) {
-          setSnapshots(payload.data);
-        } else {
-          setSnapshots([]);
-        }
+      if (Array.isArray(payload)) {
+        writeCachedAnalytics(range, payload);
+        return payload;
       }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load analytics data.");
-          setSnapshots([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+      if (payload && typeof payload === "object" && Array.isArray(payload.data)) {
+        writeCachedAnalytics(range, payload.data);
+        return payload.data;
       }
-    }
+      return [];
+    },
+    initialData: () => readCachedAnalytics(range),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-    void fetchSnapshots();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [range]);
+  const snapshots = query.data ?? EMPTY_SNAPSHOTS;
 
   const labels = useMemo(
     () => snapshots.map((snapshot) => formatLabel(snapshot.date)),
@@ -100,7 +105,7 @@ export default function useAnalytics(range: "7d" | "30d" | "90d") {
     visitors,
     posts,
     snapshots,
-    loading,
-    error,
+    loading: query.isLoading,
+    error: query.error instanceof Error ? query.error.message : null,
   } as AnalyticsResult;
 }

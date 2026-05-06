@@ -22,6 +22,16 @@ type AnalyticsChartProps = {
   loading: boolean;
   range: "7d" | "30d" | "90d";
   onRangeChange: (range: "7d" | "30d" | "90d") => void;
+  text?: {
+    title: string;
+    subtitle: string;
+    members: string;
+    groups: string;
+    visitors: string;
+    posts: string;
+    loading: string;
+    empty: string;
+  };
 };
 
 const rangeOptions: Array<{ label: string; value: "7d" | "30d" | "90d" }> = [
@@ -30,12 +40,23 @@ const rangeOptions: Array<{ label: string; value: "7d" | "30d" | "90d" }> = [
   { label: "90d", value: "90d" },
 ];
 
-export default function AnalyticsChart({ labels, members, groups, visitors, posts, loading, range, onRangeChange }: AnalyticsChartProps) {
+const defaultText = {
+  title: "Platform analytics",
+  subtitle: "Recent platform snapshot history over the selected range.",
+  members: "Members",
+  groups: "Groups",
+  visitors: "Visitors",
+  posts: "Posts",
+  loading: "Loading analytics...",
+  empty: "No analytics data available for the selected range.",
+};
+
+export default function AnalyticsChart({ labels, members, groups, visitors, posts, loading, range, onRangeChange, text = defaultText }: AnalyticsChartProps) {
   const data = {
     labels,
     datasets: [
       {
-        label: "Members",
+        label: text.members,
         data: members,
         borderColor: "#8b5e3c",
         backgroundColor: "#8b5e3c",
@@ -45,7 +66,7 @@ export default function AnalyticsChart({ labels, members, groups, visitors, post
         fill: false,
       },
       {
-        label: "Groups",
+        label: text.groups,
         data: groups,
         borderColor: "#c8a87a",
         backgroundColor: "#c8a87a",
@@ -56,7 +77,7 @@ export default function AnalyticsChart({ labels, members, groups, visitors, post
         fill: false,
       },
       {
-        label: "Visitors",
+        label: text.visitors,
         data: visitors,
         borderColor: "#d4a35a",
         backgroundColor: "#d4a35a",
@@ -66,7 +87,7 @@ export default function AnalyticsChart({ labels, members, groups, visitors, post
         fill: false,
       },
       {
-        label: "Posts",
+        label: text.posts,
         data: posts,
         borderColor: "#5a8a6a",
         backgroundColor: "#5a8a6a",
@@ -124,10 +145,10 @@ export default function AnalyticsChart({ labels, members, groups, visitors, post
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold" style={{ color: "#3d2e1e" }}>
-            Platform analytics
+            {text.title}
           </h2>
           <p className="text-sm" style={{ color: "#7f674f" }}>
-            Recent platform snapshot history over the selected range.
+            {text.subtitle}
           </p>
         </div>
         <div className="flex gap-2 rounded-full bg-[#3d2e1e] p-1">
@@ -146,11 +167,11 @@ export default function AnalyticsChart({ labels, members, groups, visitors, post
       <div className="h-[320px] min-h-[320px]">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm font-semibold text-[#8b6a46]">
-            Loading analytics...
+            {text.loading}
           </div>
         ) : labels.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm font-semibold text-[#8b6a46]">
-            No analytics data available for the selected range.
+            {text.empty}
           </div>
         ) : (
           <Line data={data} options={options} />

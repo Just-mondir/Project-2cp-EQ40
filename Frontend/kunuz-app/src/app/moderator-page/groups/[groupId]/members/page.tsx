@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import LeftSidebar from "@/components/LeftSidebar";
+import { useLocaleSettings } from "@/components/LocaleProvider";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -205,24 +206,24 @@ function formatCompactNumber(value: number) {
   return String(value);
 }
 
-function roleLabel(role: UserRole) {
-  if (role === "admin") return "Admin";
-  if (role === "moderator") return "Moderator";
-  return "User";
-}
-
 function expertiseLabel(value: string | null | undefined) {
   if (!value) return "Not specified";
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function moderationDateLabel(user: UserRow) {
+function localizedRoleLabel(role: UserRole, copy: ReturnType<typeof moderatorStatsCopy>) {
+  if (role === "admin") return copy.adminRole;
+  if (role === "moderator") return copy.moderatorRole;
+  return copy.userRole;
+}
+
+function moderationDateLabel(user: UserRow, copy: ReturnType<typeof moderatorStatsCopy>) {
   const status = effectiveModerationStatus(user);
   if (status === "suspended") {
-    return user.suspendedUntil ? `Suspended until ${formatDate(user.suspendedUntil)}` : "Suspended";
+    return user.suspendedUntil ? `${copy.suspendedUntilPrefix} ${formatDate(user.suspendedUntil)}` : copy.suspendedStatus;
   }
-  if (status === "banned") return "Banned";
-  return "Active";
+  if (status === "banned") return copy.bannedStatus;
+  return copy.activeStatus;
 }
 
 function buildSuspendUntilIso(dateString?: string) {
@@ -232,11 +233,107 @@ function buildSuspendUntilIso(dateString?: string) {
   return date.toISOString();
 }
 
+function moderatorStatsCopy(locale: string) {
+  if (locale.toLowerCase().startsWith("ar")) {
+    return {
+      members: "الأعضاء",
+      groups: "المجموعات",
+      visitors: "الزوار",
+      posts: "المنشورات",
+      accounts: "الحسابات",
+      joined: "تاريخ الانضمام",
+      expertise: "الخبرة",
+      role: "الدور",
+      suspendedUntil: "موقوف إلى",
+      loading: "جار التحميل...",
+      noResults: "لا توجد نتائج",
+      tryDifferentName: "جرّب اسما مختلفا.",
+      search: "بحث",
+      back: "< رجوع",
+      suspend: "إيقاف",
+      ban: "حظر",
+      unsuspend: "إلغاء الإيقاف",
+      unban: "إلغاء الحظر",
+      remove: "إزالة",
+      adminRole: "مدير",
+      moderatorRole: "مشرف",
+      userRole: "مستخدم",
+      activeStatus: "نشط",
+      suspendedStatus: "موقوف",
+      bannedStatus: "محظور",
+      suspendedUntilPrefix: "موقوف إلى",
+    };
+  }
+
+  if (locale.toLowerCase().startsWith("fr")) {
+    return {
+      members: "Membres",
+      groups: "Groupes",
+      visitors: "Visiteurs",
+      posts: "Publications",
+      accounts: "Comptes",
+      joined: "Inscription",
+      expertise: "Expertise",
+      role: "Rôle",
+      suspendedUntil: "Suspendu jusqu'à",
+      loading: "Chargement...",
+      noResults: "Aucun résultat trouvé",
+      tryDifferentName: "Essayez un autre nom.",
+      search: "Rechercher",
+      back: "< Retour",
+      suspend: "Suspendre",
+      ban: "Bannir",
+      unsuspend: "Réactiver",
+      unban: "Débannir",
+      remove: "Retirer",
+      adminRole: "Administrateur",
+      moderatorRole: "Modérateur",
+      userRole: "Utilisateur",
+      activeStatus: "Actif",
+      suspendedStatus: "Suspendu",
+      bannedStatus: "Banni",
+      suspendedUntilPrefix: "Suspendu jusqu'au",
+    };
+  }
+
+  return {
+    members: "Members",
+    groups: "Groups",
+    visitors: "Visitors",
+    posts: "Posts",
+    accounts: "Accounts",
+    joined: "Joined",
+    expertise: "Expertise",
+    role: "Role",
+    suspendedUntil: "Suspended until",
+    loading: "Loading...",
+    noResults: "No results found",
+    tryDifferentName: "Try a different name.",
+    search: "Search",
+    back: "< Back",
+    suspend: "Suspend",
+    ban: "Ban",
+    unsuspend: "Unsuspend",
+    unban: "Unban",
+    remove: "Remove",
+    adminRole: "Admin",
+    moderatorRole: "Moderator",
+    userRole: "User",
+    activeStatus: "Active",
+    suspendedStatus: "Suspended",
+    bannedStatus: "Banned",
+    suspendedUntilPrefix: "Suspended until",
+  };
+}
+
 export default function ModeratorGroupMembersPage() {
   const router = useRouter();
   const params = useParams<{ groupId: string }>();
+  const { locale } = useLocaleSettings();
+  const statsCopy = moderatorStatsCopy(locale);
   const groupId = params.groupId;
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [pageError, setPageError] = useState("");
   const [loading, setLoading] = useState(true);
   const [confirmBusy, setConfirmBusy] = useState(false);
@@ -278,7 +375,7 @@ export default function ModeratorGroupMembersPage() {
           fetchJson<ApiEnvelope<BackendGroup>>("/api/groups/?page=1&page_size=1", token),
           fetchJson<ApiEnvelope<BackendGroup>>(`/api/groups/${groupId}/`, token),
           fetchJson<ApiEnvelope<GroupMember[]>>(`/api/groups/${groupId}/members/`, token),
-          fetchAllPages<BackendModeratorUser>("/api/moderator/users/", token),
+          fetchAllPages<BackendModeratorUser>("/api/moderator/users/?page_size=500", token),
         ]);
 
         if (cancelled) return;
@@ -340,12 +437,12 @@ export default function ModeratorGroupMembersPage() {
   }, [groupId]);
 
   const filteredMembers = useMemo(() => {
-    const value = search.trim().toLowerCase();
+    const value = deferredSearch.trim().toLowerCase();
     if (!value) return members;
     return members.filter((member) => {
       return member.name.toLowerCase().includes(value) || member.username.toLowerCase().includes(value);
     });
-  }, [members, search]);
+  }, [members, deferredSearch]);
 
   const runConfirm = async () => {
     if (!confirmConfig) return;
@@ -420,10 +517,10 @@ export default function ModeratorGroupMembersPage() {
   };
 
   const statCards = [
-    { label: "Members", value: formatCompactNumber(stats.members) },
-    { label: "Groups", value: formatCompactNumber(stats.groups) },
-    { label: "Visitors", value: formatCompactNumber(stats.visitors) },
-    { label: "Posts", value: formatCompactNumber(stats.posts) },
+    { label: statsCopy.members, value: formatCompactNumber(stats.members) },
+    { label: statsCopy.groups, value: formatCompactNumber(stats.groups) },
+    { label: statsCopy.visitors, value: formatCompactNumber(stats.visitors) },
+    { label: statsCopy.posts, value: formatCompactNumber(stats.posts) },
   ];
 
   return (
@@ -431,7 +528,7 @@ export default function ModeratorGroupMembersPage() {
       <LeftSidebar activePage="moderator" />
 
       <main
-        className="min-h-screen overflow-x-hidden px-4 py-8 pb-24 sm:px-8 md:pl-24 lg:pl-28 lg:pr-16 lg:py-10"
+        className="moderator-page min-h-screen overflow-x-hidden px-4 py-8 pb-24 sm:px-8 md:pl-24 lg:pl-28 lg:pr-16 lg:py-10"
         style={{ backgroundColor: "#E3D9C4" }}
       >
         <div className="w-[138.9%] origin-top-left scale-[0.72] sm:w-full sm:scale-100">
@@ -466,7 +563,7 @@ export default function ModeratorGroupMembersPage() {
               className="mt-2 rounded-[11px] px-6 py-2 font-semibold text-white shadow-sm transition-colors hover:opacity-90 hover:shadow-md md:mt-0"
               style={{ backgroundColor: "#3b2314" }}
             >
-              &lt; Back
+              {statsCopy.back}
             </button>
           </div>
 
@@ -484,7 +581,7 @@ export default function ModeratorGroupMembersPage() {
                   {groupHeader.name}
                 </h2>
                 <p className="text-xs font-medium" style={{ color: "#8b6a46" }}>
-                  Members
+                  {statsCopy.members}
                 </p>
               </div>
             </div>
@@ -496,7 +593,7 @@ export default function ModeratorGroupMembersPage() {
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search"
+                  placeholder={statsCopy.search}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   className="w-full bg-transparent text-sm outline-none"
@@ -504,29 +601,29 @@ export default function ModeratorGroupMembersPage() {
               </div>
             </div>
 
-            <div className="mb-3 grid px-4 text-[11px] sm:text-sm" style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate }}>
-              <span className="col-span-2 font-bold">Accounts</span>
-              <span className="font-bold">Posts</span>
-              <span className="font-bold">Joined</span>
-              <span className="font-bold">Expertise</span>
-              <span className="font-bold">Role</span>
-              <span className="font-bold">Suspended until</span>
+            <div className="moderator-table-header mb-3 grid px-4 text-[11px] sm:text-sm" style={{ color: "#3b2314", gridTemplateColumns: usersGridTemplate }}>
+              <span className="col-span-2 font-bold">{statsCopy.accounts}</span>
+              <span className="font-bold">{statsCopy.posts}</span>
+              <span className="font-bold">{statsCopy.joined}</span>
+              <span className="font-bold">{statsCopy.expertise}</span>
+              <span className="font-bold">{statsCopy.role}</span>
+              <span className="font-bold">{statsCopy.suspendedUntil}</span>
               <span className="text-right"> </span>
             </div>
 
             {loading ? (
               <div className="py-16 text-center">
                 <p className="text-base font-semibold sm:text-lg" style={{ color: "#3b2314" }}>
-                  Loading...
+                  {statsCopy.loading}
                 </p>
               </div>
             ) : filteredMembers.length === 0 ? (
               <div className="py-16 text-center">
                 <p className="text-base font-semibold sm:text-lg" style={{ color: "#3b2314" }}>
-                  No results found
+                  {statsCopy.noResults}
                 </p>
                 <p className="mt-1 text-sm" style={{ color: "#8b6a46" }}>
-                  Try a different name.
+                  {statsCopy.tryDifferentName}
                 </p>
               </div>
             ) : (
@@ -534,7 +631,7 @@ export default function ModeratorGroupMembersPage() {
                 {filteredMembers.map((member) => (
                   <div
                     key={member.id}
-                    className="grid items-center rounded-2xl px-3 py-3 text-[11px] sm:px-4 sm:text-sm"
+                    className="moderator-table-row grid items-center rounded-2xl px-3 py-3 text-[11px] sm:px-4 sm:text-sm"
                     style={{ backgroundColor: "#FFF8E2", gridTemplateColumns: usersGridTemplate }}
                   >
                     <button
@@ -544,26 +641,26 @@ export default function ModeratorGroupMembersPage() {
                     >
                       <img src={member.avatar} alt={member.name} className="h-9 w-9 shrink-0 rounded-full" />
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-bold sm:text-sm" style={{ color: "#3b2314" }}>
+                        <p className="moderator-table-primary truncate text-xs font-bold sm:text-sm" style={{ color: "#3b2314" }}>
                           {member.name}
                         </p>
-                        <p className="truncate text-[11px] sm:text-xs" style={{ color: "#8b6a46" }}>
+                        <p className="moderator-table-secondary truncate text-[11px] sm:text-xs" style={{ color: "#8b6a46" }}>
                           {member.username}
                         </p>
                       </div>
                     </button>
 
-                    <span className="truncate" style={{ color: "#5b4630" }}>
+                    <span className="moderator-table-cell truncate" style={{ color: "#5b4630" }}>
                       {formatCompactNumber(member.posts)}
                     </span>
-                    <span className="truncate" style={{ color: "#5b4630" }}>
+                    <span className="moderator-table-cell truncate" style={{ color: "#5b4630" }}>
                       {member.joined}
                     </span>
-                    <span className="truncate" style={{ color: "#5b4630" }}>
+                    <span className="moderator-table-cell truncate" style={{ color: "#5b4630" }}>
                       {member.expertise}
                     </span>
-                    <span className="truncate" style={{ color: "#5b4630" }}>
-                      {roleLabel(member.role)}
+                    <span className="moderator-table-cell truncate" style={{ color: "#5b4630" }}>
+                      {localizedRoleLabel(member.role, statsCopy)}
                     </span>
                     <div className="flex items-center gap-1">
                       {effectiveModerationStatus(member) === "active" ? (
@@ -581,7 +678,7 @@ export default function ModeratorGroupMembersPage() {
                           className="w-fit max-w-full truncate rounded-full px-2 py-1 text-[11px] sm:px-4 sm:text-xs"
                           style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
                         >
-                          {moderationDateLabel(member)}
+                          {moderationDateLabel(member, statsCopy)}
                         </span>
                       )}
                     </div>
@@ -599,14 +696,14 @@ export default function ModeratorGroupMembersPage() {
                               openModerationConfirm(member.id, "suspend");
                             }}
                           >
-                            Suspend
+                            {statsCopy.suspend}
                           </button>
                           <button
                             className="whitespace-nowrap rounded-[11px] px-3 py-1 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:text-sm"
                             style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
                             onClick={() => openModerationConfirm(member.id, "ban")}
                           >
-                            Ban
+                            {statsCopy.ban}
                           </button>
                         </>
                       ) : (
@@ -615,7 +712,7 @@ export default function ModeratorGroupMembersPage() {
                           style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
                           onClick={() => openModerationConfirm(member.id, effectiveModerationStatus(member) === "suspended" ? "unsuspend" : "unban")}
                         >
-                          {effectiveModerationStatus(member) === "suspended" ? "Unsuspend" : "Unban"}
+                          {effectiveModerationStatus(member) === "suspended" ? statsCopy.unsuspend : statsCopy.unban}
                         </button>
                       )}
                       {!member.isGroupAdmin && (
@@ -624,7 +721,7 @@ export default function ModeratorGroupMembersPage() {
                           style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
                           onClick={() => openRemoveConfirm(member)}
                         >
-                          Remove
+                          {statsCopy.remove}
                         </button>
                       )}
                     </div>

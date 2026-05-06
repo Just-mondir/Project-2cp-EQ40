@@ -253,7 +253,8 @@
         "heritageType": "نوع التراث",
         "urgencyLevel": "مستوى الخطورة",
         "mobilizationStatus": "حالة التعبئة",
-        "eventStatus": "حالة الفعالية"
+        "eventStatus": "حالة الفعالية",
+        "expertise": "الخبرة"
       },
       "eventStatuses": {
         "upcoming": "قادمة",
@@ -572,7 +573,9 @@
         "amateur": "هاوٍ",
         "student": "طالب",
         "researcher": "باحث",
+        "architect": "مهندس معماري",
         "historian": "مؤرخ",
+        "guide": "مرشد سياحي",
         "tourGuide": "مرشد سياحي"
       },
       "badge": {
