@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -7,21 +9,45 @@ from rest_framework import status
 from apps.core.responses import api_error, api_success
 from apps.users.models import User
 from apps.posts.models import Post
+from apps.thematic_groups.models import ThematicGroup
 from apps.notifications.registry import notify
-from .models import Visitor
+from .models import Visitor, PlatformSnapshot
 from .permissions import IsModeratorOrAdmin
-from .serializers import ModeratorActionSerializer, ModeratorRoleUpdateSerializer, ModeratorUserSerializer
+from .serializers import (
+    AnalyticsSnapshotSerializer,
+    ModeratorActionSerializer,
+    ModeratorRoleUpdateSerializer,
+    ModeratorUserSerializer,
+)
 from django.utils import timezone
 
 class PlatformStatsView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request: Request) -> Response:
         stats = {
             "members": User.objects().count(),
+            "groups": ThematicGroup.objects().count(),
             "visitors": Visitor.objects().count(),
             "posts": Post.objects(is_deleted=False).count(),
         }
         return api_success("Platform stats retrieved.", stats)
+
+
+class AnalyticsView(APIView):
+    permission_classes = [IsModeratorOrAdmin]
+
+    def get(self, request: Request) -> Response:
+        range_param = request.query_params.get("range", "30d").lower()
+        allowed_ranges = {"7d": 7, "30d": 30, "90d": 90}
+        days = allowed_ranges.get(range_param, 30)
+        end_date = timezone.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+        start_date = end_date - timedelta(days=days - 1)
+
+        snapshots = PlatformSnapshot.objects(date__gte=start_date).order_by("date")
+        serializer = AnalyticsSnapshotSerializer(snapshots, many=True)
+        return api_success("Analytics snapshots retrieved.", serializer.data)
+
 
 class TrackVisitorView(APIView):
     authentication_classes = []

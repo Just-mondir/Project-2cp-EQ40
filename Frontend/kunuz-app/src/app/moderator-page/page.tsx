@@ -1,7 +1,10 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import AnalyticsChart from "@/components/AnalyticsChart";
+import useAnalytics from "@/hooks/useAnalytics";
+
 import LeftSidebar from "@/components/LeftSidebar";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -415,9 +418,8 @@ function ModeratorFilterDropdown({
 
   return (
     <div
-      className={`absolute right-0 top-[52px] z-[60] w-[340px] overflow-hidden transition-all duration-400 origin-top-right ${
-        isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"
-      }`}
+      className={`absolute right-0 top-[52px] z-[60] w-[340px] overflow-hidden transition-all duration-400 origin-top-right ${isVisible ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 -translate-y-4 pointer-events-none"
+        }`}
       style={{
         backgroundColor: "#FFF8E2",
         borderRadius: "28px",
@@ -531,8 +533,11 @@ function ModeratorFilterDropdown({
 
 export default function ModeratorUsers() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
   const [activeTab, setActiveTab] = useState<"Users" | "Groups">("Users");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [draftUserFilters, setDraftUserFilters] = useState<UserFilters>(defaultUserFilters);
   const [appliedUserFilters, setAppliedUserFilters] = useState<UserFilters>(defaultUserFilters);
@@ -549,15 +554,21 @@ export default function ModeratorUsers() {
   const [suspendDateById, setSuspendDateById] = useState<Record<string, string>>({});
   const [listLoading, setListLoading] = useState(true);
   const [groupToDelete, setGroupToDelete] = useState<GroupRow | null>(null);
-const [deletingGroup, setDeletingGroup] = useState(false);
-const [groupMembersPopup, setGroupMembersPopup] = useState<GroupRow | null>(null);
-const [popupMembers, setPopupMembers] = useState<{ id: string; username: string; display_name: string; profile_picture?: string; is_admin: boolean; role: string }[]>([]);
-const [popupMembersLoading] = useState(false);
-const [popupRemoving, setPopupRemoving] = useState<string | null>(null);
-
-const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
-  id: string; username: string; display_name: string; profile_picture?: string; is_admin: boolean; role: string;
-} | null>(null);
+  const [deletingGroup, setDeletingGroup] = useState(false);
+  const [groupMembersPopup, setGroupMembersPopup] = useState<GroupRow | null>(null);
+  const [popupMembers, setPopupMembers] = useState<
+    { id: string; username: string; display_name: string; profile_picture?: string; is_admin: boolean; role: string }[]
+  >([]);
+  const [popupMembersLoading] = useState(false);
+  const [popupRemoving, setPopupRemoving] = useState<string | null>(null);
+  const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
+    id: string;
+    username: string;
+    display_name: string;
+    profile_picture?: string;
+    is_admin: boolean;
+    role: string;
+  } | null>(null);
 
   const [moderatorProfile, setModeratorProfile] = useState<ModeratorProfile>({
     name: "Moderator",
@@ -570,6 +581,8 @@ const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
     visitors: 0,
     posts: 0,
   });
+  const [analyticsRange, setAnalyticsRange] = useState<"7d" | "30d" | "90d">("30d");
+  const analytics = useAnalytics(analyticsRange);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [rolesByUserId, setRolesByUserId] = useState<Record<string, UserRole>>({});
@@ -978,10 +991,10 @@ const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
           prev.map((entry) =>
             entry.id === userId
               ? {
-                  ...entry,
-                  moderationStatus: data.moderation_status,
-                  suspendedUntil: data.suspended_until ?? "",
-                }
+                ...entry,
+                moderationStatus: data.moderation_status,
+                suspendedUntil: data.suspended_until ?? "",
+              }
               : entry,
           ),
         );
@@ -994,24 +1007,24 @@ const [popupMemberToRemove, setPopupMemberToRemove] = useState<{
     });
   };
 
-const handlePopupRemove = async (memberId: string) => {
-  if (!groupMembersPopup) return;
-  setPopupRemoving(memberId);
-  const token = getAuthToken();
-  try {
-    const res = await fetch(`${API_URL}/api/groups/${groupMembersPopup.id}/members/${memberId}/`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      setPopupMembers(prev => prev.filter(m => m.id !== memberId));
-      setGroups(prev => prev.map(g => g.id === groupMembersPopup.id ? { ...g, members: g.members - 1 } : g));
-    }
-  } catch (e) { console.error(e); }
-  finally { setPopupRemoving(null); }
-};
+  const handlePopupRemove = async (memberId: string) => {
+    if (!groupMembersPopup) return;
+    setPopupRemoving(memberId);
+    const token = getAuthToken();
+    try {
+      const res = await fetch(`${API_URL}/api/groups/${groupMembersPopup.id}/members/${memberId}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setPopupMembers(prev => prev.filter(m => m.id !== memberId));
+        setGroups(prev => prev.map(g => g.id === groupMembersPopup.id ? { ...g, members: g.members - 1 } : g));
+      }
+    } catch (e) { console.error(e); }
+    finally { setPopupRemoving(null); }
+  };
 
-const statCards = [
+  const statCards = [
     { label: "Members", value: statsLoading ? "..." : formatCompactNumber(stats.members) },
     { label: "Groups", value: statsLoading ? "..." : formatCompactNumber(stats.groups) },
     { label: "Visitors", value: statsLoading ? "..." : formatCompactNumber(stats.visitors) },
@@ -1068,7 +1081,20 @@ const statCards = [
             )}
           </div>
 
-          <div className="overflow-x-auto rounded-3xl p-4 shadow-sm sm:p-8" style={{ backgroundColor: "#FFF8E2" }}>
+          <div className="mb-8">
+  <AnalyticsChart
+    labels={analytics.labels}
+    members={analytics.members}
+    groups={analytics.groups}
+    visitors={analytics.visitors}
+    posts={analytics.posts}
+    loading={analytics.loading}
+    range={analyticsRange}
+    onRangeChange={setAnalyticsRange}
+  />
+</div>
+    
+     <div className="overflow-x-auto rounded-3xl p-6 shadow-sm sm:p-8" style={{ backgroundColor: "#FFF8E2" }}>
             {pageError && (
               <div
                 className="mb-6 rounded-2xl px-4 py-3 text-sm font-medium"
@@ -1090,9 +1116,8 @@ const statCards = [
                   <button
                     key={tab}
                     onClick={() => handleTabChange(tab)}
-                    className={`pb-2 text-base font-semibold transition-all ${
-                      activeTab === tab ? "border-b-2 border-gray-800 text-gray-800" : "text-gray-400"
-                    }`}
+                    className={`pb-2 text-base font-semibold transition-all ${activeTab === tab ? "border-b-2 border-gray-800 text-gray-800" : "text-gray-400"
+                      }`}
                   >
                     {tab}
                   </button>
@@ -1268,28 +1293,28 @@ const statCards = [
                         <span className="truncate" style={{ color: "#5b4630" }}>
                           {"role" in item ? roleLabel(rolesByUserId[item.id] ?? item.role) : ""}
                         </span>
-                       <div className="flex items-center gap-1">
-  {"moderationStatus" in item && effectiveModerationStatus(item) === "active" ? (
-    <>
-      <input
-  type="date"
-  min={new Date().toISOString().split("T")[0]}
-  value={suspendDateById[item.id] || ""}
-  onChange={(e) => setSuspendDateById(prev => ({ ...prev, [item.id]: e.target.value }))}
-  onClick={(e) => e.stopPropagation()}
-  className="rounded-full px-3 py-2 text-[12px] outline-none border-none"
-  style={{ backgroundColor: "#E3D9C4", color: "#8b6a46", width: "140px", colorScheme: "light" }}
-/>
-    </>
-  ) : (
-    <span
-      className="w-fit max-w-full truncate rounded-full px-2 py-1 text-[11px] sm:px-4 sm:text-xs"
-      style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
-    >
-      {"moderationStatus" in item ? moderationDateLabel(item) : ""}
-    </span>
-  )}
-</div>
+                        <div className="flex items-center gap-1">
+                          {"moderationStatus" in item && effectiveModerationStatus(item) === "active" ? (
+                            <>
+                              <input
+                                type="date"
+                                min={new Date().toISOString().split("T")[0]}
+                                value={suspendDateById[item.id] || ""}
+                                onChange={(e) => setSuspendDateById(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded-full px-3 py-2 text-[12px] outline-none border-none"
+                                style={{ backgroundColor: "#E3D9C4", color: "#8b6a46", width: "140px", colorScheme: "light" }}
+                              />
+                            </>
+                          ) : (
+                            <span
+                              className="w-fit max-w-full truncate rounded-full px-2 py-1 text-[11px] sm:px-4 sm:text-xs"
+                              style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
+                            >
+                              {"moderationStatus" in item ? moderationDateLabel(item) : ""}
+                            </span>
+                          )}
+                        </div>
                         <div className="relative flex justify-end">
                           <button
                             onClick={() => setOpenRoleMenuId((value) => (value === item.id ? null : item.id))}
@@ -1320,20 +1345,20 @@ const statCards = [
                                 style={{ backgroundColor: "#FFF8E2", borderColor: "#E3D9C4" }}
                               >
                                 {(["moderator", "user"] as UserRole[]).map((role, index) => (
-  <div key={role}>
-    <button
-      onClick={() => {
-        setRole(item.id, role);
-        setOpenRoleMenuId(null);
-      }}
-      className="w-full px-5 py-4 text-left font-semibold transition-colors hover:opacity-90"
-      style={{ color: "#3b2314" }}
-    >
-      Set as {roleLabel(role).toLowerCase()}
-    </button>
-    {index < 1 && <div style={{ height: 1, backgroundColor: "#E3D9C4" }} />}
-  </div>
-))}
+                                  <div key={role}>
+                                    <button
+                                      onClick={() => {
+                                        setRole(item.id, role);
+                                        setOpenRoleMenuId(null);
+                                      }}
+                                      className="w-full px-5 py-4 text-left font-semibold transition-colors hover:opacity-90"
+                                      style={{ color: "#3b2314" }}
+                                    >
+                                      Set as {roleLabel(role).toLowerCase()}
+                                    </button>
+                                    {index < 1 && <div style={{ height: 1, backgroundColor: "#E3D9C4" }} />}
+                                  </div>
+                                ))}
                               </div>
                             </>
                           )}
@@ -1351,22 +1376,22 @@ const statCards = [
                           {"created" in item ? item.created : ""}
                         </span>
                         <div className="flex items-center justify-end gap-2">
-<button
-  className="whitespace-nowrap rounded-[11px] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:py-2 sm:text-sm"
-  style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
-  onClick={() => router.push(`/moderator-page/groups/${item.id}/members`)}
->
-  See members
-</button>
+                          <button
+                            className="whitespace-nowrap rounded-[11px] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:py-2 sm:text-sm"
+                            style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
+                            onClick={() => router.push(`/moderator-page/groups/${item.id}/members`)}
+                          >
+                            See members
+                          </button>
                         </div>
                         <div className="flex items-center justify-end">
                           <button
-  className="whitespace-nowrap text-[10px] font-semibold sm:text-sm"
-  style={{ color: "#C0392B" }}
-  onClick={() => setGroupToDelete(item as GroupRow)}
->
-  Delete group
-</button>
+                            className="whitespace-nowrap text-[10px] font-semibold sm:text-sm"
+                            style={{ color: "#C0392B" }}
+                            onClick={() => setGroupToDelete(item as GroupRow)}
+                          >
+                            Delete group
+                          </button>
                         </div>
                       </>
                     ) : (
@@ -1384,39 +1409,39 @@ const statCards = [
                           {"role" in item ? roleLabel(rolesByUserId[item.id] ?? item.role) : ""}
                         </span>
                         <div className="flex items-center gap-1">
-  {"moderationStatus" in item && effectiveModerationStatus(item) === "active" ? (
-    <>
-      <input
-  type="date"
-  min={new Date().toISOString().split("T")[0]}
-  value={suspendDateById[item.id] || ""}
-  onChange={(e) => setSuspendDateById(prev => ({ ...prev, [item.id]: e.target.value }))}
-  onClick={(e) => e.stopPropagation()}
-  className="rounded-full px-3 py-2 text-[12px] outline-none border-none"
-  style={{ backgroundColor: "#E3D9C4", color: "#8b6a46", width: "140px", colorScheme: "light" }}
-/>
-    </>
-  ) : (
-    <span
-      className="w-fit max-w-full truncate rounded-full px-2 py-1 text-[11px] sm:px-4 sm:text-xs"
-      style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
-    >
-      {"moderationStatus" in item ? moderationDateLabel(item) : ""}
-    </span>
-  )}
-</div>
+                          {"moderationStatus" in item && effectiveModerationStatus(item) === "active" ? (
+                            <>
+                              <input
+                                type="date"
+                                min={new Date().toISOString().split("T")[0]}
+                                value={suspendDateById[item.id] || ""}
+                                onChange={(e) => setSuspendDateById(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                onClick={(e) => e.stopPropagation()}
+                                className="rounded-full px-3 py-2 text-[12px] outline-none border-none"
+                                style={{ backgroundColor: "#E3D9C4", color: "#8b6a46", width: "140px", colorScheme: "light" }}
+                              />
+                            </>
+                          ) : (
+                            <span
+                              className="w-fit max-w-full truncate rounded-full px-2 py-1 text-[11px] sm:px-4 sm:text-xs"
+                              style={{ backgroundColor: "#E3D9C4", color: "#3b2314" }}
+                            >
+                              {"moderationStatus" in item ? moderationDateLabel(item) : ""}
+                            </span>
+                          )}
+                        </div>
                         {"moderationStatus" in item && effectiveModerationStatus(item) === "active" ? (
                           <div className="flex items-center justify-end gap-2">
                             <button
                               className="whitespace-nowrap rounded-[11px] px-3 py-1 text-[11px] font-semibold shadow-sm transition-colors hover:opacity-90 hover:shadow-md sm:px-4 sm:text-sm"
                               style={{ backgroundColor: "#3b2314", color: "#f7ecd6" }}
                               onClick={() => {
-  if (!suspendDateById[item.id]) {
-    alert("Please select a suspension end date first.");
-    return;
-  }
-  openModerationConfirm(item.id, "suspend");
-}}
+                                if (!suspendDateById[item.id]) {
+                                  alert("Please select a suspension end date first.");
+                                  return;
+                                }
+                                openModerationConfirm(item.id, "suspend");
+                              }}
                             >
                               Suspend
                             </button>
@@ -1648,9 +1673,8 @@ const statCards = [
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`h-8 w-8 rounded-[11px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md ${
-                      safeCurrentPage === page ? "text-white" : ""
-                    }`}
+                    className={`h-8 w-8 rounded-[11px] text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md ${safeCurrentPage === page ? "text-white" : ""
+                      }`}
                     style={
                       safeCurrentPage === page
                         ? { backgroundColor: "#3b2314" }
@@ -1733,287 +1757,287 @@ const statCards = [
           </div>
         )}
         {groupToDelete && (
-  <>
-    <div
-      onClick={() => !deletingGroup && setGroupToDelete(null)}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 200 }}
-    />
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}
-      onClick={() => !deletingGroup && setGroupToDelete(null)}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "#FFF8E2",
-          borderRadius: "20px",
-          padding: "36px 32px 28px",
-          width: "400px",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          fontFamily: "var(--font-lato), 'Lato', sans-serif",
-        }}
-      >
-        {/* Icon */}
-        <div style={{
-          width: "64px", height: "64px", borderRadius: "50%",
-          border: "1.5px solid #C0392B",
-          backgroundColor: "rgba(192,57,43,0.07)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          marginBottom: "16px",
-        }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-            <path d="M10 11v6" /><path d="M14 11v6" />
-            <path d="M9 6V4h6v2" />
-          </svg>
-        </div>
-
-        <p style={{ margin: "0 0 6px", color: "#432817", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-          Delete Group
-        </p>
-        <p style={{ margin: "0 0 24px", color: "#8B7355", fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-          Are you sure you want to delete{" "}
-          <span style={{ fontWeight: 700, color: "#432817" }}>{groupToDelete.name}</span>?
-          {" "}This action cannot be undone.
-        </p>
-
-        <button
-          disabled={deletingGroup}
-          onClick={async () => {
-            setDeletingGroup(true);
-            const token = getAuthToken();
-            try {
-              const res = await fetch(`${API_URL.replace(/\/$/, "")}/api/groups/${groupToDelete.id}/`, {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (res.ok || res.status === 204) {
-                setGroups(prev => prev.filter(g => g.id !== groupToDelete.id));
-                setGroupToDelete(null);
-              }
-            } catch (e) { console.error(e); }
-            finally { setDeletingGroup(false); }
-          }}
-          style={{
-            width: "100%", height: "50px", borderRadius: "10px", border: "none",
-            backgroundColor: deletingGroup ? "rgba(192,57,43,0.5)" : "#C0392B",
-            color: "#FFFFFF", fontWeight: 700, fontSize: "16px",
-            cursor: deletingGroup ? "not-allowed" : "pointer",
-          }}
-        >
-          {deletingGroup ? "Deleting…" : "Yes, delete group"}
-        </button>
-
-        <button
-          onClick={() => !deletingGroup && setGroupToDelete(null)}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "#432817", fontWeight: 600, fontSize: "15px",
-            marginTop: "12px", opacity: 0.75,
-          }}
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </>
-)}
-{groupMembersPopup && (
-  <>
-    <div
-      onClick={() => setGroupMembersPopup(null)}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 200 }}
-    />
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
-      onClick={() => setGroupMembersPopup(null)}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "var(--panel-bg, #FFF8E2)",
-          borderRadius: "20px",
-          padding: "28px",
-          width: "100%",
-          maxWidth: "700px",
-          maxHeight: "80vh",
-          overflowY: "auto",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
-          fontFamily: "var(--font-lato), 'Lato', sans-serif",
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <span style={{ fontWeight: 700, fontSize: "20px", color: "#432817" }}>
-            {groupMembersPopup.name} — Members
-          </span>
-          <button
-            onClick={() => setGroupMembersPopup(null)}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#432817", fontSize: "22px", lineHeight: 1 }}
-          >
-            ×
-          </button>
-        </div>
-
-        <div style={{ borderBottom: "1px solid #D8C8B1", paddingBottom: "12px", marginBottom: "16px" }}>
-          <span style={{ fontWeight: 700, fontSize: "16px", color: "#432817" }}>
-            {formatCompactNumber(groupMembersPopup.members)} Members
-          </span>
-        </div>
-
-        {popupMembersLoading ? (
-          <div style={{ textAlign: "center", padding: "40px 0", color: "#8B7355" }}>Loading members…</div>
-        ) : popupMembers.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px 0", color: "#8B7355" }}>No members yet.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            {/* Admin first */}
-            {popupMembers.filter(m => m.is_admin).map(member => (
-              <div key={member.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", backgroundColor: "var(--panel-bg, #FFF8E2)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {member.profile_picture ? (
-                    <img src={member.profile_picture} alt={member.display_name} style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "#E0D5C5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="21" height="21" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                    </div>
-                  )}
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "14px", color: "#432817" }}>{member.display_name || member.username}</div>
-                    <div style={{ fontSize: "12px", color: "#8B7355" }}>@{member.username} · Admin</div>
-                  </div>
+          <>
+            <div
+              onClick={() => !deletingGroup && setGroupToDelete(null)}
+              style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 200 }}
+            />
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}
+              onClick={() => !deletingGroup && setGroupToDelete(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  backgroundColor: "#FFF8E2",
+                  borderRadius: "20px",
+                  padding: "36px 32px 28px",
+                  width: "400px",
+                  boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  fontFamily: "var(--font-lato), 'Lato', sans-serif",
+                }}
+              >
+                {/* Icon */}
+                <div style={{
+                  width: "64px", height: "64px", borderRadius: "50%",
+                  border: "1.5px solid #C0392B",
+                  backgroundColor: "rgba(192,57,43,0.07)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  marginBottom: "16px",
+                }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                    <path d="M10 11v6" /><path d="M14 11v6" />
+                    <path d="M9 6V4h6v2" />
+                  </svg>
                 </div>
-              </div>
-            ))}
 
-            {popupMembers.filter(m => m.is_admin).length > 0 && popupMembers.filter(m => !m.is_admin).length > 0 && (
-              <div style={{ borderTop: "1px solid #EDE0CC", margin: "8px 0" }} />
-            )}
+                <p style={{ margin: "0 0 6px", color: "#432817", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
+                  Delete Group
+                </p>
+                <p style={{ margin: "0 0 24px", color: "#8B7355", fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
+                  Are you sure you want to delete{" "}
+                  <span style={{ fontWeight: 700, color: "#432817" }}>{groupToDelete.name}</span>?
+                  {" "}This action cannot be undone.
+                </p>
 
-            {/* Regular members */}
-            {popupMembers.filter(m => !m.is_admin).map(member => (
-              <div key={member.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", backgroundColor: "var(--panel-bg, #FFF8E2)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {member.profile_picture ? (
-                    <img src={member.profile_picture} alt={member.display_name} style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover" }} />
-                  ) : (
-                    <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "#E0D5C5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="21" height="21" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-                    </div>
-                  )}
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "14px", color: "#432817" }}>{member.display_name || member.username}</div>
-                    <div style={{ fontSize: "12px", color: "#8B7355" }}>@{member.username}</div>
-                  </div>
-                </div>
                 <button
-  onClick={() => setPopupMemberToRemove(member)}
-  disabled={popupRemoving === member.id}
-  style={{
-    height: "30px", padding: "0 12px",
-    backgroundColor: "rgba(67,40,23,0.12)",
-    border: "none", borderRadius: "8px",
-    fontWeight: 600, fontSize: "12px",
-    color: "#432817",
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  }}
->
-  Remove
-</button>
+                  disabled={deletingGroup}
+                  onClick={async () => {
+                    setDeletingGroup(true);
+                    const token = getAuthToken();
+                    try {
+                      const res = await fetch(`${API_URL.replace(/\/$/, "")}/api/groups/${groupToDelete.id}/`, {
+                        method: "DELETE",
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      if (res.ok || res.status === 204) {
+                        setGroups(prev => prev.filter(g => g.id !== groupToDelete.id));
+                        setGroupToDelete(null);
+                      }
+                    } catch (e) { console.error(e); }
+                    finally { setDeletingGroup(false); }
+                  }}
+                  style={{
+                    width: "100%", height: "50px", borderRadius: "10px", border: "none",
+                    backgroundColor: deletingGroup ? "rgba(192,57,43,0.5)" : "#C0392B",
+                    color: "#FFFFFF", fontWeight: 700, fontSize: "16px",
+                    cursor: deletingGroup ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {deletingGroup ? "Deleting…" : "Yes, delete group"}
+                </button>
+
+                <button
+                  onClick={() => !deletingGroup && setGroupToDelete(null)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "#432817", fontWeight: 600, fontSize: "15px",
+                    marginTop: "12px", opacity: 0.75,
+                  }}
+                >
+                  Close
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+          </>
         )}
-      </div>
-    </div>
-    {popupMemberToRemove && (
-  <>
-    <div
-      onClick={() => setPopupMemberToRemove(null)}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 300 }}
-    />
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 301, display: "flex", alignItems: "center", justifyContent: "center" }}
-      onClick={() => setPopupMemberToRemove(null)}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          backgroundColor: "#FFF8E2",
-          borderRadius: "20px",
-          padding: "36px 32px 28px",
-          width: "400px",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          fontFamily: "var(--font-lato), 'Lato', sans-serif",
-        }}
-      >
-        {/* Icon */}
-        <div style={{
-          width: "64px", height: "64px", borderRadius: "50%",
-          border: "1.5px solid #C0392B",
-          backgroundColor: "rgba(192,57,43,0.07)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          marginBottom: "16px",
-        }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <line x1="18" y1="8" x2="23" y2="13" />
-            <line x1="23" y1="8" x2="18" y2="13" />
-          </svg>
-        </div>
+        {groupMembersPopup && (
+          <>
+            <div
+              onClick={() => setGroupMembersPopup(null)}
+              style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 200 }}
+            />
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+              onClick={() => setGroupMembersPopup(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  backgroundColor: "var(--panel-bg, #FFF8E2)",
+                  borderRadius: "20px",
+                  padding: "28px",
+                  width: "100%",
+                  maxWidth: "700px",
+                  maxHeight: "80vh",
+                  overflowY: "auto",
+                  boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+                  fontFamily: "var(--font-lato), 'Lato', sans-serif",
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                  <span style={{ fontWeight: 700, fontSize: "20px", color: "#432817" }}>
+                    {groupMembersPopup.name} — Members
+                  </span>
+                  <button
+                    onClick={() => setGroupMembersPopup(null)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#432817", fontSize: "22px", lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </div>
 
-        <p style={{ margin: "0 0 6px", color: "#432817", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-          Remove member?
-        </p>
-        <p style={{ margin: "0 0 24px", color: "#8B7355", fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-          Are you sure you want to remove{" "}
-          <span style={{ fontWeight: 700, color: "#432817" }}>
-            {popupMemberToRemove.display_name || popupMemberToRemove.username}
-          </span>{" "}
-          from this group?
-        </p>
+                <div style={{ borderBottom: "1px solid #D8C8B1", paddingBottom: "12px", marginBottom: "16px" }}>
+                  <span style={{ fontWeight: 700, fontSize: "16px", color: "#432817" }}>
+                    {formatCompactNumber(groupMembersPopup.members)} Members
+                  </span>
+                </div>
 
-        <button
-          disabled={popupRemoving === popupMemberToRemove.id}
-          onClick={async () => {
-            await handlePopupRemove(popupMemberToRemove.id);
-            setPopupMemberToRemove(null);
-          }}
-          style={{
-            width: "100%", height: "50px", borderRadius: "10px", border: "none",
-            backgroundColor: popupRemoving === popupMemberToRemove.id ? "rgba(192,57,43,0.5)" : "#C0392B",
-            color: "#FFFFFF", fontWeight: 700, fontSize: "16px",
-            cursor: popupRemoving === popupMemberToRemove.id ? "not-allowed" : "pointer",
-          }}
-        >
-          {popupRemoving === popupMemberToRemove.id ? "Removing…" : "Remove"}
-        </button>
+                {popupMembersLoading ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "#8B7355" }}>Loading members…</div>
+                ) : popupMembers.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "#8B7355" }}>No members yet.</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    {/* Admin first */}
+                    {popupMembers.filter(m => m.is_admin).map(member => (
+                      <div key={member.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", backgroundColor: "var(--panel-bg, #FFF8E2)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          {member.profile_picture ? (
+                            <img src={member.profile_picture} alt={member.display_name} style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "#E0D5C5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg width="21" height="21" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: "14px", color: "#432817" }}>{member.display_name || member.username}</div>
+                            <div style={{ fontSize: "12px", color: "#8B7355" }}>@{member.username} · Admin</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
 
-        <button
-          onClick={() => setPopupMemberToRemove(null)}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "#432817", fontWeight: 600, fontSize: "15px",
-            marginTop: "12px", opacity: 0.75,
-          }}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </>
-)}
-  </>
-)}
+                    {popupMembers.filter(m => m.is_admin).length > 0 && popupMembers.filter(m => !m.is_admin).length > 0 && (
+                      <div style={{ borderTop: "1px solid #EDE0CC", margin: "8px 0" }} />
+                    )}
+
+                    {/* Regular members */}
+                    {popupMembers.filter(m => !m.is_admin).map(member => (
+                      <div key={member.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "10px", backgroundColor: "var(--panel-bg, #FFF8E2)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          {member.profile_picture ? (
+                            <img src={member.profile_picture} alt={member.display_name} style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover" }} />
+                          ) : (
+                            <div style={{ width: 42, height: 42, borderRadius: "50%", backgroundColor: "#E0D5C5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg width="21" height="21" viewBox="0 0 24 24" fill="#8B7355" stroke="none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: "14px", color: "#432817" }}>{member.display_name || member.username}</div>
+                            <div style={{ fontSize: "12px", color: "#8B7355" }}>@{member.username}</div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setPopupMemberToRemove(member)}
+                          disabled={popupRemoving === member.id}
+                          style={{
+                            height: "30px", padding: "0 12px",
+                            backgroundColor: "rgba(67,40,23,0.12)",
+                            border: "none", borderRadius: "8px",
+                            fontWeight: 600, fontSize: "12px",
+                            color: "#432817",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            {popupMemberToRemove && (
+              <>
+                <div
+                  onClick={() => setPopupMemberToRemove(null)}
+                  style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 300 }}
+                />
+                <div
+                  style={{ position: "fixed", inset: 0, zIndex: 301, display: "flex", alignItems: "center", justifyContent: "center" }}
+                  onClick={() => setPopupMemberToRemove(null)}
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      backgroundColor: "#FFF8E2",
+                      borderRadius: "20px",
+                      padding: "36px 32px 28px",
+                      width: "400px",
+                      boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      fontFamily: "var(--font-lato), 'Lato', sans-serif",
+                    }}
+                  >
+                    {/* Icon */}
+                    <div style={{
+                      width: "64px", height: "64px", borderRadius: "50%",
+                      border: "1.5px solid #C0392B",
+                      backgroundColor: "rgba(192,57,43,0.07)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      marginBottom: "16px",
+                    }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <line x1="18" y1="8" x2="23" y2="13" />
+                        <line x1="23" y1="8" x2="18" y2="13" />
+                      </svg>
+                    </div>
+
+                    <p style={{ margin: "0 0 6px", color: "#432817", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
+                      Remove member?
+                    </p>
+                    <p style={{ margin: "0 0 24px", color: "#8B7355", fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
+                      Are you sure you want to remove{" "}
+                      <span style={{ fontWeight: 700, color: "#432817" }}>
+                        {popupMemberToRemove.display_name || popupMemberToRemove.username}
+                      </span>{" "}
+                      from this group?
+                    </p>
+
+                    <button
+                      disabled={popupRemoving === popupMemberToRemove.id}
+                      onClick={async () => {
+                        await handlePopupRemove(popupMemberToRemove.id);
+                        setPopupMemberToRemove(null);
+                      }}
+                      style={{
+                        width: "100%", height: "50px", borderRadius: "10px", border: "none",
+                        backgroundColor: popupRemoving === popupMemberToRemove.id ? "rgba(192,57,43,0.5)" : "#C0392B",
+                        color: "#FFFFFF", fontWeight: 700, fontSize: "16px",
+                        cursor: popupRemoving === popupMemberToRemove.id ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {popupRemoving === popupMemberToRemove.id ? "Removing…" : "Remove"}
+                    </button>
+
+                    <button
+                      onClick={() => setPopupMemberToRemove(null)}
+                      style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        color: "#432817", fontWeight: 600, fontSize: "15px",
+                        marginTop: "12px", opacity: 0.75,
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
       </main>
     </>
   );

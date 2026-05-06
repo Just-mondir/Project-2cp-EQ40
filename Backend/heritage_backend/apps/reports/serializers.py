@@ -17,6 +17,15 @@ logger = logging.getLogger(__name__)
 ALLOWED_TARGET_TYPES = {"post", "comment", "annotation", "user", "event", "group_chat_message"}
 
 
+def _get_user_by_id(user_id: str):
+    if not user_id:
+        return None
+    try:
+        return User.objects.get(id=user_id)
+    except Exception:
+        return None
+
+
 class ReportSerializer(serializers.Serializer):
     """Read-only representation of a Report document."""
 
@@ -25,14 +34,96 @@ class ReportSerializer(serializers.Serializer):
     target_type = serializers.CharField()
     target_id = serializers.CharField()
     reason = serializers.CharField()
+    description = serializers.CharField(required=False, default="")
     status = serializers.CharField()
+
     moderator_note = serializers.CharField()
     resolved_by = serializers.CharField(allow_null=True)
     created_at = serializers.DateTimeField()
     resolved_at = serializers.DateTimeField(allow_null=True)
 
+    reporter_details = serializers.SerializerMethodField()
+    target_details = serializers.SerializerMethodField()
+
     def get_id(self, obj) -> str:
         return str(obj.id)
+
+    def get_reporter_details(self, obj):
+        user = _get_user_by_id(obj.reporter_id)
+        if not user:
+            return None
+        return {
+            "id": str(user.id),
+            "display_name": user.display_name,
+            "username": user.username,
+            "profile_picture": user.profile_picture,
+        }
+
+    def get_target_details(self, obj):
+        from apps.posts.models import Post, Comment, Annotation
+        from apps.thematic_groups.models import GroupChatMessage
+        from apps.users.models import User
+        
+        try:
+            if obj.target_type == "user":
+                target = User.objects.get(id=obj.target_id)
+                return {
+                    "author_name": target.display_name,
+                    "author_username": target.username,
+                    "author_avatar": target.profile_picture,
+                    "content": f"User profile: {target.display_name}",
+                    "type": "user"
+                }
+
+            elif obj.target_type == "post":
+                target = Post.objects.get(id=obj.target_id)
+                author = _get_user_by_id(target.author_id)
+                return {
+                    "id": str(target.id),
+                    "author_name": author.display_name if author else "Unknown",
+                    "author_username": author.username if author else "",
+                    "author_avatar": author.profile_picture if author else "",
+                    "content": target.title or (target.content[:200] + "..." if len(target.content) > 200 else target.content),
+                    "type": "post",
+                    "post_type": target.post_type,
+                    "target_user_id": str(author.id) if author else None,
+                    "group_id": str(target.group_id) if target.group_id and str(target.group_id) != "None" else None
+                }
+
+            elif obj.target_type == "comment":
+                target = Comment.objects.get(id=obj.target_id)
+                author = _get_user_by_id(target.user_id)
+                post = target.post
+                return {
+                    "id": str(target.id),
+                    "author_name": author.display_name if author else "Unknown",
+                    "author_username": author.username if author else "",
+                    "author_avatar": author.profile_picture if author else "",
+                    "content": target.content,
+                    "type": "comment",
+                    "post_id": str(post.id) if post else None,
+                    "target_user_id": str(author.id) if author else None,
+                    "group_id": str(post.group_id) if post and post.group_id and str(post.group_id) != "None" else None
+                }
+
+            elif obj.target_type == "group_chat_message":
+                target = GroupChatMessage.objects.get(id=obj.target_id)
+                author = _get_user_by_id(target.author_id)
+                return {
+                    "id": str(target.id),
+                    "author_name": author.display_name if author else "Unknown",
+                    "author_username": author.username if author else "",
+                    "author_avatar": author.profile_picture if author else "",
+                    "content": target.content,
+                    "type": "chat_message",
+                    "target_user_id": str(author.id) if author else None,
+                    "group_id": str(target.group.id) if target.group and str(target.group.id) != "None" else None
+                }
+
+        except Exception as e:
+            logger.error(f"Error fetching report target details: {e}")
+            return None
+        return None
 
 
 class ReportCreateSerializer(serializers.Serializer):
@@ -41,6 +132,7 @@ class ReportCreateSerializer(serializers.Serializer):
     target_type = serializers.CharField()
     target_id = serializers.CharField()
     reason = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True, default="")
 
     def validate(self, attrs):
         target_type = attrs.get("target_type", "").strip()
@@ -140,7 +232,9 @@ class ReportCreateSerializer(serializers.Serializer):
         attrs["target_type"] = target_type
         attrs["target_id"] = target_id
         attrs["reason"] = reason
+        attrs["description"] = attrs.get("description", "").strip()
         return attrs
+
 
     def create(self, validated_data):
         reporter_id = self.context["reporter_id"]
@@ -149,7 +243,9 @@ class ReportCreateSerializer(serializers.Serializer):
             target_type=validated_data["target_type"],
             target_id=validated_data["target_id"],
             reason=validated_data["reason"],
+            description=validated_data.get("description", ""),
         )
+
         report.save()
         return report
 

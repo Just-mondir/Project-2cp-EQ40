@@ -19,6 +19,14 @@ class ModeratorUserSerializer(serializers.Serializer):
     post_count = serializers.IntegerField()
 
 
+class AnalyticsSnapshotSerializer(serializers.Serializer):
+    date = serializers.DateTimeField()
+    members = serializers.IntegerField()
+    groups = serializers.IntegerField()
+    visitors = serializers.IntegerField()
+    posts = serializers.IntegerField()
+
+
 class ModeratorRoleUpdateSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=[choice[0] for choice in ROLE_CHOICES])
 

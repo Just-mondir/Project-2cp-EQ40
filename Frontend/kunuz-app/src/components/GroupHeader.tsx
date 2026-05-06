@@ -105,6 +105,7 @@ function MobileMembersStrip({ members }: { members: Member[] }) {
 }
 
 function translateKnownGroupDescription(text: string, locale: string) {
+  if (!text) return "";
   const key = text.trim().replace(/\s+/g, " ").toLowerCase();
   const descriptions: Record<string, Record<string, string>> = {
     "a group for discovering, studying, and sharing content about sites recognized by unesco for their outstanding cultural or natural value": {
@@ -153,7 +154,7 @@ type GroupHeaderProps = {
 };
 
 
-  function DescriptionBlock({ text }: { text: string }) {
+function DescriptionBlock({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false);
   const [isClamped, setIsClamped] = useState(false);
   const ref = React.useRef<HTMLParagraphElement>(null);
@@ -286,10 +287,10 @@ export default function GroupHeader({
             {avatarUrl
               ? <img src={avatarUrl} alt={group.name} className="w-full h-full object-cover" style={{ filter: "blur(0.5px)" }} />
               : <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#6B3E26" }}>
-                  <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </div>
+                <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
             }
           </div>
           <div className="flex flex-col min-w-0 text-white">

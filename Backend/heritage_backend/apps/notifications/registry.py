@@ -22,6 +22,7 @@ EVENT_REGISTRY = {
     "badge_request_reviewed": "Your badge request was reviewed",
     "user_banned": "A moderator banned your account",
     "user_suspended": "A moderator suspended your account",
+    "content_reported": "{actor} reported a {target_type}",
 }
 
 def notify(
@@ -42,7 +43,12 @@ def notify(
         logger.warning(f"Unknown event type: {event_type}")
         template = "You have a new notification."
 
-    message = template.format(actor=actor_name, **context)
+    message = template.format(
+        actor=actor_name,
+        target_type=target_type,
+        target_id=target_id,
+        **context
+    )
 
     try:
         report = Notification(

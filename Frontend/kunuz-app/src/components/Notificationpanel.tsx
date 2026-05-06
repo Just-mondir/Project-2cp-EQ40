@@ -256,7 +256,8 @@ function NotificationRow({ item, onRead, relativeTimeLabel, someoneLabel }: {
   );
 }
 
-export default function NotificationPanel({ onClose }: { onClose: () => void }) {
+export default function NotificationPanel({ onClose, onReportClick }: { onClose: () => void; onReportClick?: (id: string) => void }) {
+
   const t = useTranslations("auth.notificationPanel");
   const { locale } = useLocaleSettings();
   const router = useRouter();
@@ -326,8 +327,16 @@ export default function NotificationPanel({ onClose }: { onClose: () => void }) 
         router.replace(`/group/${target_id}`);
       }
       onClose();
+    } else if (event_type === "content_reported") {
+      if (onReportClick) {
+        onReportClick(target_id);
+      } else {
+        router.replace("/moderator-page");
+      }
+      onClose();
     }
   };
+
 
   const fetchNotifications = useCallback(async (url: string | null = `${API_URL}/api/notifications/`, isInitial = true) => {
     if (!url) return;
