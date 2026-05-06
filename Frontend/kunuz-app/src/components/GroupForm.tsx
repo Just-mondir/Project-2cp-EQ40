@@ -283,8 +283,8 @@ export default function GroupForm({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: CREAM_PAGE, fontFamily: FONT }}>
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", scrollbarWidth: "none" }} className="hide-scrollbar">
+    <div className="group-form-root" style={{ display: "flex", flexDirection: "column", height: "100%", backgroundColor: CREAM_PAGE, fontFamily: FONT }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 32px", scrollbarWidth: "none" }} className="hide-scrollbar group-form-scroll">
         <SectionBlock>
           <SectionLabel>{t("sections.info")}</SectionLabel>
           <div style={{ marginBottom: "14px" }}>
@@ -305,7 +305,7 @@ export default function GroupForm({
         {/* Thematic tags */}
         <SectionBlock>
           <SectionLabel>{t("sections.thematicTags")}</SectionLabel>
-          <div style={{ display: "flex", gap: "16px" }}>
+          <div className="group-form-tag-grid" style={{ display: "flex", gap: "16px" }}>
             <div style={{ flex: 1 }}>
               <FieldLabel>{t("fields.historicalPeriod")}</FieldLabel>
               <StyledDropdown
@@ -339,7 +339,7 @@ export default function GroupForm({
         <SectionBlock>
           <SectionLabel>{t("sections.inviteMembers")}</SectionLabel>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className="group-form-invite-row" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <div style={{ flex: 1, ...inputStyle, padding: "10px 14px", minHeight: "42px", display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center", borderRadius: "10.75px" }}>
               {invitedUsers.length === 0 ? (
                 <span style={{ color: "#A09080", fontSize: "14px", fontStyle: "italic", fontFamily: FONT }}>
@@ -409,7 +409,7 @@ export default function GroupForm({
         </SectionBlock>
       </div >
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "16px 32px", backgroundColor: CREAM_PAGE }}>
+      <div className="group-form-actions" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "12px", padding: "16px 32px", backgroundColor: CREAM_PAGE }}>
         <button
           type="button"
           onClick={onCancel}
@@ -437,6 +437,30 @@ export default function GroupForm({
         onConfirm={handleInviteConfirm}
         alreadyInvited={invitedUsers.map((u) => u.id)}
       />
+      <style jsx>{`
+        @media (max-width: 767px) {
+          .group-form-root {
+            min-height: auto;
+          }
+          .group-form-scroll {
+            padding: 18px 16px !important;
+            overflow-y: visible !important;
+          }
+          .group-form-tag-grid,
+          .group-form-invite-row {
+            flex-direction: column !important;
+          }
+          .group-form-actions {
+            position: sticky;
+            bottom: 64px;
+            padding: 12px 16px !important;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+          }
+          .group-form-actions button {
+            flex: 1;
+          }
+        }
+      `}</style>
     </div >
   );
 }

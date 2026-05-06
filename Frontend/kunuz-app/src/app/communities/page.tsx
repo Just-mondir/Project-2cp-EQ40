@@ -2839,12 +2839,12 @@ export default function CommunitiesPageRoute() {
 
   return (
     <>
-      <div className="flex h-[100dvh] overflow-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
+      <div className="flex h-[100dvh] overflow-hidden overflow-x-hidden justify-center w-full" style={{ fontFamily: "var(--font-lato), sans-serif", backgroundColor: "var(--background)" }}>
         <LeftSidebar activePage="communities" />
-        <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0">
-          <div className="flex flex-1 flex-col">
-            <div className="sticky top-0 z-40 px-4 md:px-6 pt-4 pb-3 flex flex-col gap-4" style={{ backgroundColor: "var(--nav-bg)" }}>
-              <form onSubmit={(e) => e.preventDefault()} className="flex items-center w-full rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
+        <div className="flex h-full w-full max-w-[1180px] md:ml-[80px] pb-16 md:pb-0 overflow-x-hidden min-w-0">
+          <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
+            <div className="sticky top-0 z-40 px-4 md:px-6 pt-4 pb-3 flex flex-col gap-4 min-w-0" style={{ backgroundColor: "var(--nav-bg)" }}>
+              <form onSubmit={(e) => e.preventDefault()} className="flex items-center w-full min-w-0 rounded-full px-4 py-2.5 transition-all duration-200" style={{ backgroundColor: "var(--light)", border: isFocused ? "1px solid var(--accent-gold)" : "1px solid var(--brown)", boxShadow: isFocused ? "0 0 0 3px rgba(82, 65, 30, 0.18)" : "0 0px 0px rgba(20,12,6,0.1)" }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brown)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                 <input
                   type="text"
@@ -2867,7 +2867,7 @@ export default function CommunitiesPageRoute() {
             </div>
 
             <div className="flex flex-1 overflow-hidden">
-              <main ref={feedRef} className="flex-1 overflow-y-auto feed-scroll px-0 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+              <main ref={feedRef} className="flex-1 overflow-y-auto overflow-x-hidden feed-scroll px-3 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
                 <MobileGroupsStrip groups={groups} />
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>

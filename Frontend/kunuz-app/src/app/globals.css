@@ -1061,7 +1061,8 @@ html[data-theme="dark"] #screen-reader-toggle-btn.active {
 /* Responsive: adjust button position on mobile */
 @media (max-width: 640px) {
   #screen-reader-toggle-btn {
-    bottom: 16px;
+    top: 72px;
+    bottom: auto;
     right: 16px;
     padding: 8px 14px;
     font-size: 12px;
@@ -1334,7 +1335,19 @@ html[data-theme="dark"] .moderator-page .moderator-table-row button[style*="#432
 }
 
 html[data-theme="dark"] .moderator-page .moderator-tab-button {
-  color: #2c1a0e !important;
+  color: #f6ead2 !important;
+  border-bottom-color: #f6ead2 !important;
+}
+
+html[data-theme="dark"] .moderator-page .moderator-tab-button:hover,
+html[data-theme="dark"] .moderator-page .moderator-tab-button:focus-visible {
+  color: #fff8e2 !important;
+  border-bottom-color: #fff8e2 !important;
+}
+
+html[data-theme="dark"] .moderator-page ::selection {
+  background-color: rgba(246, 234, 210, 0.28);
+  color: #fff8e2;
 }
 
 html[data-theme="dark"][data-theme-scope="home"] .notification-panel {
