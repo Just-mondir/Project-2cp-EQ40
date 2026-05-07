@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
@@ -1959,73 +1959,227 @@ export function PostModal({
   );
 }
 
-/* ─────────────────── MOBILE GROUPS STRIP ─────────────────── */
+/* ─────────────────── MOBILE GROUPS: dynamic header + horizontal strip (desktop unchanged) ─────────────────── */
 
-function MobileGroupsStrip({ groups }: { groups: Group[] }) {
+const MOBILE_GROUPS_SCROLL_STYLE: React.CSSProperties = {
+  scrollbarWidth: "none",
+  msOverflowStyle: "none",
+  WebkitOverflowScrolling: "touch",
+};
+
+/** Header above the horizontal scroll — copy switches with scroll position when both sections exist. */
+function MobileGroupsStripDynamicHeader({
+  activeSection,
+  onViewAllMyGroups,
+  onViewAllSuggestedGroups,
+}: {
+  activeSection: "mine" | "suggested";
+  onViewAllMyGroups: () => void;
+  onViewAllSuggestedGroups: () => void;
+}) {
+  const isMine = activeSection === "mine";
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3 pr-[4.75rem] sm:pr-20 md:pr-24">
+      <h3 className="min-w-0 text-sm font-bold" style={{ color: "var(--foreground)", fontFamily: "var(--font-lato)" }}>
+        {isMine ? "Your Groups" : "Suggested Groups"}
+      </h3>
+      <button
+        type="button"
+        onClick={isMine ? onViewAllMyGroups : onViewAllSuggestedGroups}
+        className="shrink-0 rounded-full px-3 py-0.5 text-[9px] font-bold transition-opacity hover:opacity-80"
+        style={{ backgroundColor: "var(--border-soft)", color: "#432817" }}
+      >
+        View all
+      </button>
+    </div>
+  );
+}
+
+const MobileGroupCardSlide = React.forwardRef<HTMLDivElement, { group: Group }>(function MobileGroupCardSlide(
+  { group },
+  ref
+) {
   const router = useRouter();
   return (
-    <div className="lg:hidden px-4 py-4">
-      <h3 className="text-xs font-bold mb-3 uppercase tracking-wider" style={{ color: "var(--text-muted)", fontFamily: "var(--font-lato)" }}>Popular Groups</h3>
+    <div
+      ref={ref}
+      className="flex-shrink-0 opacity-95 transition-opacity hover:opacity-100"
+      style={{ width: "120px" }}
+    >
       <div
-        className="flex gap-3 overflow-x-auto pb-2"
+        className="flex flex-col items-stretch rounded-xl border border-transparent px-2 pb-2 pt-2"
         style={{
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-          WebkitOverflowScrolling: "touch"
+          height: "192px",
+          backgroundColor: "var(--panel-bg)",
+          boxShadow: "0 1px 4px rgba(67,40,23,0.08)",
+          fontFamily: "var(--font-lato)",
         }}
       >
-        {groups.slice(0, 5).map((group, i) => (
-          <div
-            key={group.id || i}
-            className="flex-shrink-0 transition-all duration-200 hover:scale-105"
-            style={{ width: "120px" }}
+        <div className="flex justify-center">
+          <img
+            src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
+            alt={group.name}
+            className="h-14 w-14 flex-shrink-0 rounded-xl border border-white object-cover shadow-sm"
+          />
+        </div>
+        <div className="mt-2 flex min-h-0 flex-1 flex-col items-center px-0.5 text-center">
+          <span
+            className="block w-full break-words text-center text-[10px] font-bold leading-snug"
+            style={{
+              color: "var(--foreground)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical" as const,
+              minHeight: "2.65em",
+              maxHeight: "2.65em",
+              overflow: "hidden",
+            }}
+            title={group.name}
           >
-            <div className="flex flex-col items-center">
-              <img
-                src={resolveProfilePictureUrl(group.profile_picture) || "/heritage-photography.jpg"}
-                alt={group.name}
-                className="w-[64px] h-[64px] rounded-xl object-cover flex-shrink-0 border-2 border-white shadow-sm mb-2"
-              />
-              <span
-                className="text-[10px] font-bold text-center leading-tight line-clamp-2 mb-1"
-                style={{
-                  color: "var(--foreground)",
-                  fontFamily: "var(--font-lato)",
-                  maxWidth: "120px",
-                  wordBreak: "break-word",
-                  hyphens: "auto"
-                }}
-              >
-                {group.name}
-              </span>
-              <span
-                className="text-[8px] text-center leading-tight line-clamp-2 mb-2"
-                style={{
-                  color: "var(--text-muted)",
-                  fontFamily: "var(--font-lato)",
-                  maxWidth: "120px",
-                  lineHeight: "1.2"
-                }}
-              >
-                {group.description?.replace(/<[^>]*>/g, "")}
-              </span>
-              <span className="flex items-center gap-1 text-[9px] font-medium" style={{ color: "#8B6914" }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                {formatCount(group.member_count || 0)}
-              </span>
-              <button
-                className="mt-3 w-full text-[9px] py-1.5 rounded-full font-bold transition-colors hover:opacity-90"
-                style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
-                onClick={() => router.push(`/group/${group.id}`)}
-              >Visit</button>
-            </div>
+            {group.name}
+          </span>
+          <span
+            className="mt-0.5 block w-full text-[7px] leading-tight opacity-75"
+            style={{
+              color: "var(--text-muted)",
+              display: "-webkit-box",
+              WebkitLineClamp: 1,
+              WebkitBoxOrient: "vertical" as const,
+              minHeight: "1.05rem",
+              maxHeight: "1.05rem",
+              overflow: "hidden",
+            }}
+            title={(group.description || "").replace(/<[^>]*>/g, "")}
+          >
+            {(group.description || "").replace(/<[^>]*>/g, "") || "\u00A0"}
+          </span>
+          <div className="min-h-0 shrink grow basis-0" aria-hidden />
+          <span className="flex shrink-0 items-center justify-center gap-1 pb-1 text-[8px] font-semibold opacity-85 text-[color:var(--foreground)]">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            {formatCount(group.member_count || 0)}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="mt-auto w-full shrink-0 rounded-full py-1.5 text-[9px] font-bold transition-colors hover:opacity-90"
+          style={{ backgroundColor: "#6B3E26", color: "#e8d9c0" }}
+          onClick={() => router.push(`/group/${group.id}`)}
+        >
+          Visit
+        </button>
+      </div>
+    </div>
+  );
+});
+
+/**
+ * Mobile: one header row that tracks horizontal scroll — Your Groups vs Suggested Groups.
+ * Strip: only your cards, thin divider, suggested cards (no labels/buttons inside the scroll).
+ */
+function MobileGroupsSidebarStrips({
+  groups,
+  myGroups,
+  onViewAllMyGroups,
+  onViewAllSuggestedGroups,
+}: {
+  groups: Group[];
+  myGroups: Group[];
+  onViewAllMyGroups: () => void;
+  onViewAllSuggestedGroups: () => void;
+}) {
+  const suggested = groups.filter((g) => !myGroups.some((mg) => mg.id === g.id));
+  const mine = myGroups.slice(0, 20);
+  const sugg = suggested.slice(0, 20);
+  const showMine = mine.length > 0;
+  const showSuggested = sugg.length > 0;
+  const bothSections = showMine && showSuggested;
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const firstSuggestedCardRef = useRef<HTMLDivElement>(null);
+  const [activeSection, setActiveSection] = useState<"mine" | "suggested">(() => (showMine ? "mine" : "suggested"));
+
+  const syncHeaderToScroll = useCallback(() => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    if (!showMine) {
+      setActiveSection("suggested");
+      return;
+    }
+    if (!showSuggested) {
+      setActiveSection("mine");
+      return;
+    }
+    const marker = firstSuggestedCardRef.current;
+    if (!marker) return;
+    const scRect = sc.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const edge = scRect.left + Math.min(56, sc.clientWidth * 0.14);
+    const next: "mine" | "suggested" = markerRect.left <= edge ? "suggested" : "mine";
+    setActiveSection((prev) => (prev === next ? prev : next));
+  }, [showMine, showSuggested]);
+
+  useLayoutEffect(() => {
+    if (!showMine) setActiveSection("suggested");
+    else if (!showSuggested) setActiveSection("mine");
+    else setActiveSection("mine");
+  }, [showMine, showSuggested, mine.length, sugg.length]);
+
+  useLayoutEffect(() => {
+    syncHeaderToScroll();
+  }, [syncHeaderToScroll, mine.length, sugg.length]);
+
+  useEffect(() => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    const ro = new ResizeObserver(() => syncHeaderToScroll());
+    ro.observe(sc);
+    return () => ro.disconnect();
+  }, [syncHeaderToScroll]);
+
+  if (!showMine && !showSuggested) return null;
+
+  return (
+    <div className="lg:hidden px-3 py-4 sm:px-4">
+      <MobileGroupsStripDynamicHeader
+        activeSection={activeSection}
+        onViewAllMyGroups={onViewAllMyGroups}
+        onViewAllSuggestedGroups={onViewAllSuggestedGroups}
+      />
+      <div
+        ref={scrollRef}
+        onScroll={syncHeaderToScroll}
+        className="flex flex-nowrap gap-3 overflow-x-auto pb-2 pr-[4.75rem] [-ms-overflow-style:none] [scrollbar-width:none] sm:pr-20 md:pr-24 [&::-webkit-scrollbar]:hidden"
+        style={MOBILE_GROUPS_SCROLL_STYLE}
+      >
+        {showMine ? mine.map((group) => <MobileGroupCardSlide key={group.id} group={group} />) : null}
+
+        {bothSections ? (
+          <div
+            className="flex h-[192px] w-3 shrink-0 flex-col items-center justify-center px-px"
+            role="separator"
+            aria-orientation="vertical"
+          >
+            <div
+              className="h-[140px] w-px shrink-0 rounded-full"
+              style={{ backgroundColor: "var(--border-soft)", opacity: 0.55 }}
+            />
           </div>
-        ))}
+        ) : null}
+
+        {showSuggested
+          ? sugg.map((group, i) => (
+              <MobileGroupCardSlide
+                ref={bothSections && i === 0 ? firstSuggestedCardRef : undefined}
+                key={group.id}
+                group={group}
+              />
+            ))
+          : null}
       </div>
     </div>
   );
@@ -2868,7 +3022,12 @@ export default function CommunitiesPageRoute() {
 
             <div className="flex flex-1 overflow-hidden">
               <main ref={feedRef} className="flex-1 overflow-y-auto overflow-x-hidden feed-scroll px-3 md:px-6 py-2" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                <MobileGroupsStrip groups={groups} />
+        <MobileGroupsSidebarStrips
+          groups={groups}
+          myGroups={myGroups}
+          onViewAllMyGroups={() => setIsMyGroupsModalOpen(true)}
+          onViewAllSuggestedGroups={() => setIsSuggestedGroupsModalOpen(true)}
+        />
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-bold" style={{ color: "var(--foreground)" }}>
                     Community Feed
