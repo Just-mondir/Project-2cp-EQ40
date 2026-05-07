@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import LeftSidebar from "@/components/LeftSidebar";
 import { useLocaleSettings } from "@/components/LocaleProvider";
+import ConfirmActionModal from "@/components/ConfirmActionModal";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -91,6 +92,7 @@ type ConfirmConfig = {
   title: string;
   subtitle: string;
   confirmLabel: string;
+  variant?: "danger" | "warning" | "neutral";
   onConfirm: () => Promise<void> | void;
 };
 
@@ -471,6 +473,7 @@ export default function ModeratorGroupMembersPage() {
             ? "The user will be permanently blocked from logging in."
             : "The user will be active again.",
       confirmLabel,
+      variant: action === "ban" || action === "suspend" ? "danger" : "warning",
       onConfirm: async () => {
         const token = getAuthToken();
         const payload =
@@ -508,6 +511,7 @@ export default function ModeratorGroupMembersPage() {
       title: "Remove member?",
       subtitle: `Remove ${user.name} from this group?`,
       confirmLabel: "Remove",
+      variant: "danger",
       onConfirm: async () => {
         const token = getAuthToken();
         await fetchJson<ApiEnvelope<null>>(`/api/groups/${groupId}/members/${user.id}/`, token, { method: "DELETE" });
@@ -732,38 +736,17 @@ export default function ModeratorGroupMembersPage() {
           </div>
         </div>
 
-        {confirmConfig && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 px-4">
-            <div className="relative w-full max-w-[315px] overflow-hidden rounded-[21px] bg-white px-6 pb-6 pt-7 shadow-xl">
-              <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: "#111111" }} />
-              <div className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full border-[3px] text-5xl font-black leading-none" style={{ borderColor: "#111111", color: "#111111" }}>
-                !
-              </div>
-              <p className="text-center text-[1.25rem] font-medium leading-tight" style={{ color: "#111111" }}>
-                {confirmConfig.title}
-              </p>
-              <p className="mt-4 text-center text-[0.95rem]" style={{ color: "#7A7A85" }}>
-                {confirmConfig.subtitle}
-              </p>
-              <button
-                onClick={() => void runConfirm()}
-                disabled={confirmBusy}
-                className="mx-auto mt-7 block w-full max-w-[214px] rounded-[11px] py-2.5 text-center text-xl font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: "#111111" }}
-              >
-                {confirmBusy ? "Please wait..." : confirmConfig.confirmLabel}
-              </button>
-              <button
-                onClick={() => !confirmBusy && setConfirmConfig(null)}
-                disabled={confirmBusy}
-                className="mt-4 w-full rounded-[11px] text-center text-xl font-medium transition-opacity hover:opacity-70 disabled:opacity-60"
-                style={{ color: "#111111" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+        <ConfirmActionModal
+          isOpen={!!confirmConfig}
+          title={confirmConfig?.title ?? ""}
+          description={confirmConfig?.subtitle ?? ""}
+          confirmText={confirmBusy ? "Please wait..." : confirmConfig?.confirmLabel ?? "Confirm"}
+          onConfirm={() => void runConfirm()}
+          onCancel={() => !confirmBusy && setConfirmConfig(null)}
+          variant={confirmConfig?.variant ?? "warning"}
+          isBusy={confirmBusy}
+          cancelText="Cancel"
+        />
       </main>
     </>
   );

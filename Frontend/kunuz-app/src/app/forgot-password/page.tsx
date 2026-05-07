@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -21,6 +21,36 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const otpDigits = Array.from({ length: 6 }, (_, index) => otp[index] ?? "");
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const nextDigit = value.slice(-1);
+    const next = otpDigits.map((digit, i) => (i === index ? nextDigit : digit)).join("");
+    setOtp(next);
+    if (nextDigit && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+    setOtp(pasted);
+    const focusIndex = Math.min(Math.max(pasted.length - 1, 0), 5);
+    otpInputRefs.current[focusIndex]?.focus();
+  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,8 +78,8 @@ export default function ResetPasswordPage() {
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp) {
-      setError("Please enter the OTP.");
+    if (otp.length !== 6) {
+      setError("Please enter the 6-digit OTP.");
       return;
     }
     setError("");
@@ -106,7 +136,7 @@ export default function ResetPasswordPage() {
           <div className="relative w-full md:w-[44%] min-h-[280px] md:min-h-full flex-shrink-0">
             <div className="absolute inset-4 md:inset-6 lg:inset-7 rounded-[32px] overflow-hidden">
               <Image
-                src="/login.png"
+                src="/login.jpg"
                 alt="Moroccan riad interior"
                 fill
                 className="object-cover object-center"
@@ -166,20 +196,41 @@ export default function ResetPasswordPage() {
                 )}
 
                 {step === 2 && (
-                  <div className="flex flex-col gap-3">
-                    <label htmlFor="otp" className="text-base lg:text-[18px] font-normal" style={{ color: "#432817", fontFamily: "var(--font-lato)" }}>
-                      6-Digit Code
+                  <div className="flex flex-col gap-10">
+                    <label
+                      className="text-base lg:text-[18px] font-normal text-center"
+                      style={{ color: "#432817", fontFamily: "var(--font-lato)" }}
+                    >
+                      Verification code
                     </label>
-                    <input
-                      id="otp"
-                      type="text"
-                      maxLength={6}
-                      value={otp}
-                      required
-                      placeholder="e.g. 123456"
-                      onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                      className="h-[47px] w-full rounded-[10px] border border-[#79747E] bg-[#F2F2F2] px-4 text-base outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] tracking-widest text-center transition-all"
-                    />
+
+                    <div className="flex justify-center gap-3 md:gap-6">
+                      {otpDigits.map((digit, index) => (
+                        <input
+                          key={index}
+                          ref={(el) => {
+                            otpInputRefs.current[index] = el;
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(index, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                          onPaste={handleOtpPaste}
+                          className="text-center font-semibold outline-none focus:ring-2 focus:ring-[#432817] focus:border-[#432817] transition-all"
+                          style={{
+                            width: "55px",
+                            height: "55px",
+                            borderRadius: "10px",
+                            border: "0.74px solid #79747E",
+                            backgroundColor: "#F2F2F2",
+                            fontSize: "20px",
+                            color: "#432817",
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
 

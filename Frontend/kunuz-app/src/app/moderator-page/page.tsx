@@ -7,6 +7,7 @@ import useAnalytics from "@/hooks/useAnalytics";
 import { useLocaleSettings } from "@/components/LocaleProvider";
 
 import LeftSidebar from "@/components/LeftSidebar";
+import ConfirmActionModal from "@/components/ConfirmActionModal";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000").replace(/\/$/, "");
 
@@ -65,6 +66,7 @@ type ConfirmConfig = {
   title: string;
   subtitle: string;
   confirmLabel: string;
+  variant?: "danger" | "warning" | "neutral";
   onConfirm: () => Promise<void> | void;
 };
 
@@ -1095,6 +1097,7 @@ export default function ModeratorUsers() {
       title: "Are you sure of saving changes?",
       subtitle: "Your role updates will be saved.",
       confirmLabel: "Save",
+      variant: "warning",
       onConfirm: async () => {
         const token = getAuthToken();
         if (!token) {
@@ -1148,6 +1151,7 @@ export default function ModeratorUsers() {
       title: `Are you sure you want to ${confirmLabel.toLowerCase()} this user?`,
       subtitle,
       confirmLabel,
+      variant: action === "ban" || action === "suspend" ? "danger" : "warning",
       onConfirm: async () => {
         const token = getAuthToken();
         if (!token) {
@@ -1916,135 +1920,43 @@ export default function ModeratorUsers() {
           </div>
         </div>
 
-        {confirmConfig && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/25 px-4">
-            <div className="relative w-full max-w-[315px] overflow-hidden rounded-[21px] bg-white px-6 pb-6 pt-7 shadow-xl">
-              <div className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: "#111111" }} />
-
-              <div
-                className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full border-[3px] text-5xl font-black leading-none"
-                style={{ borderColor: "#111111", color: "#111111" }}
-              >
-                !
-              </div>
-
-              <p className="text-center text-[1.25rem] font-medium leading-tight" style={{ color: "#111111" }}>
-                {confirmConfig.title}
-              </p>
-              <p className="mt-4 text-center text-[0.95rem]" style={{ color: "#7A7A85" }}>
-                {confirmConfig.subtitle}
-              </p>
-
-              <button
-                onClick={() => void runConfirm()}
-                disabled={confirmBusy}
-                className="mx-auto mt-7 block w-full max-w-[214px] rounded-[11px] py-2.5 text-center text-xl font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                style={{ backgroundColor: "#111111" }}
-              >
-                {confirmBusy ? "Please wait..." : confirmConfig.confirmLabel}
-              </button>
-
-              <button
-                onClick={() => !confirmBusy && setConfirmConfig(null)}
-                disabled={confirmBusy}
-                className="mt-4 w-full rounded-[11px] text-center text-xl font-medium transition-opacity hover:opacity-70 disabled:opacity-60"
-                style={{ color: "#111111" }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-        {groupToDelete && (
-          <>
-            <div
-              onClick={() => !deletingGroup && setGroupToDelete(null)}
-              style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 200 }}
-            />
-            <div
-              style={{ position: "fixed", inset: 0, zIndex: 201, display: "flex", alignItems: "center", justifyContent: "center" }}
-              onClick={() => !deletingGroup && setGroupToDelete(null)}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  backgroundColor: "#FFF8E2",
-                  borderRadius: "20px",
-                  padding: "36px 32px 28px",
-                  width: "400px",
-                  boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  fontFamily: "var(--font-lato), 'Lato', sans-serif",
-                }}
-              >
-                {/* Icon */}
-                <div style={{
-                  width: "64px", height: "64px", borderRadius: "50%",
-                  border: "1.5px solid #C0392B",
-                  backgroundColor: "rgba(192,57,43,0.07)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: "16px",
-                }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                    <path d="M10 11v6" /><path d="M14 11v6" />
-                    <path d="M9 6V4h6v2" />
-                  </svg>
-                </div>
-
-                <p style={{ margin: "0 0 6px", color: "#432817", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-                  Delete Group
-                </p>
-                <p style={{ margin: "0 0 24px", color: "#8B7355", fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-                  Are you sure you want to delete{" "}
-                  <span style={{ fontWeight: 700, color: "#432817" }}>{groupToDelete.name}</span>?
-                  {" "}This action cannot be undone.
-                </p>
-
-                <button
-                  disabled={deletingGroup}
-                  onClick={async () => {
-                    setDeletingGroup(true);
-                    const token = getAuthToken();
-                    try {
-                      const res = await fetch(`${API_URL.replace(/\/$/, "")}/api/groups/${groupToDelete.id}/`, {
-                        method: "DELETE",
-                        headers: { Authorization: `Bearer ${token}` },
-                      });
-                      if (res.ok || res.status === 204) {
-                        setGroups(prev => prev.filter(g => g.id !== groupToDelete.id));
-                        setGroupToDelete(null);
-                      }
-                    } catch (e) { console.error(e); }
-                    finally { setDeletingGroup(false); }
-                  }}
-                  style={{
-                    width: "100%", height: "50px", borderRadius: "10px", border: "none",
-                    backgroundColor: deletingGroup ? "rgba(192,57,43,0.5)" : "#C0392B",
-                    color: "#FFFFFF", fontWeight: 700, fontSize: "16px",
-                    cursor: deletingGroup ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {deletingGroup ? "Deleting…" : "Yes, delete group"}
-                </button>
-
-                <button
-                  onClick={() => !deletingGroup && setGroupToDelete(null)}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "#432817", fontWeight: 600, fontSize: "15px",
-                    marginTop: "12px", opacity: 0.75,
-                  }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </>
-        )}
+        <ConfirmActionModal
+          isOpen={!!confirmConfig}
+          title={confirmConfig?.title ?? ""}
+          description={confirmConfig?.subtitle ?? ""}
+          confirmText={confirmBusy ? "Please wait..." : confirmConfig?.confirmLabel ?? "Confirm"}
+          onConfirm={() => void runConfirm()}
+          onCancel={() => !confirmBusy && setConfirmConfig(null)}
+          variant={confirmConfig?.variant ?? "warning"}
+          isBusy={confirmBusy}
+          cancelText="Cancel"
+        />
+        <ConfirmActionModal
+          isOpen={!!groupToDelete}
+          title="Delete Group"
+          description={groupToDelete ? `Are you sure you want to delete ${groupToDelete.name}? This action cannot be undone.` : ""}
+          confirmText={deletingGroup ? "Deleting..." : "Yes, delete group"}
+          onConfirm={async () => {
+            if (!groupToDelete) return;
+            setDeletingGroup(true);
+            const token = getAuthToken();
+            try {
+              const res = await fetch(`${API_URL.replace(/\/$/, "")}/api/groups/${groupToDelete.id}/`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (res.ok || res.status === 204) {
+                setGroups(prev => prev.filter(g => g.id !== groupToDelete.id));
+                setGroupToDelete(null);
+              }
+            } catch (e) { console.error(e); }
+            finally { setDeletingGroup(false); }
+          }}
+          onCancel={() => !deletingGroup && setGroupToDelete(null)}
+          variant="danger"
+          isBusy={deletingGroup}
+          cancelText="Close"
+        />
         {groupMembersPopup && (
           <>
             <div
@@ -2154,87 +2066,21 @@ export default function ModeratorUsers() {
                 )}
               </div>
             </div>
-            {popupMemberToRemove && (
-              <>
-                <div
-                  onClick={() => setPopupMemberToRemove(null)}
-                  style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 300 }}
-                />
-                <div
-                  style={{ position: "fixed", inset: 0, zIndex: 301, display: "flex", alignItems: "center", justifyContent: "center" }}
-                  onClick={() => setPopupMemberToRemove(null)}
-                >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      backgroundColor: "#FFF8E2",
-                      borderRadius: "20px",
-                      padding: "36px 32px 28px",
-                      width: "400px",
-                      boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      fontFamily: "var(--font-lato), 'Lato', sans-serif",
-                    }}
-                  >
-                    {/* Icon */}
-                    <div style={{
-                      width: "64px", height: "64px", borderRadius: "50%",
-                      border: "1.5px solid #C0392B",
-                      backgroundColor: "rgba(192,57,43,0.07)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      marginBottom: "16px",
-                    }}>
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <line x1="18" y1="8" x2="23" y2="13" />
-                        <line x1="23" y1="8" x2="18" y2="13" />
-                      </svg>
-                    </div>
-
-                    <p style={{ margin: "0 0 6px", color: "#432817", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-                      Remove member?
-                    </p>
-                    <p style={{ margin: "0 0 24px", color: "#8B7355", fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-                      Are you sure you want to remove{" "}
-                      <span style={{ fontWeight: 700, color: "#432817" }}>
-                        {popupMemberToRemove.display_name || popupMemberToRemove.username}
-                      </span>{" "}
-                      from this group?
-                    </p>
-
-                    <button
-                      disabled={popupRemoving === popupMemberToRemove.id}
-                      onClick={async () => {
-                        await handlePopupRemove(popupMemberToRemove.id);
-                        setPopupMemberToRemove(null);
-                      }}
-                      style={{
-                        width: "100%", height: "50px", borderRadius: "10px", border: "none",
-                        backgroundColor: popupRemoving === popupMemberToRemove.id ? "rgba(192,57,43,0.5)" : "#C0392B",
-                        color: "#FFFFFF", fontWeight: 700, fontSize: "16px",
-                        cursor: popupRemoving === popupMemberToRemove.id ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      {popupRemoving === popupMemberToRemove.id ? "Removing…" : "Remove"}
-                    </button>
-
-                    <button
-                      onClick={() => setPopupMemberToRemove(null)}
-                      style={{
-                        background: "none", border: "none", cursor: "pointer",
-                        color: "#432817", fontWeight: 600, fontSize: "15px",
-                        marginTop: "12px", opacity: 0.75,
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+            <ConfirmActionModal
+              isOpen={!!popupMemberToRemove}
+              title="Remove member?"
+              description={popupMemberToRemove ? `Are you sure you want to remove ${popupMemberToRemove.display_name || popupMemberToRemove.username} from this group?` : ""}
+              confirmText={popupMemberToRemove && popupRemoving === popupMemberToRemove.id ? "Removing..." : "Remove"}
+              onConfirm={async () => {
+                if (!popupMemberToRemove) return;
+                await handlePopupRemove(popupMemberToRemove.id);
+                setPopupMemberToRemove(null);
+              }}
+              onCancel={() => setPopupMemberToRemove(null)}
+              variant="danger"
+              isBusy={!!popupMemberToRemove && popupRemoving === popupMemberToRemove.id}
+              cancelText="Cancel"
+            />
           </>
         )}
       </main>

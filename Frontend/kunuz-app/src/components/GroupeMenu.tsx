@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import LeaveGroupModal from "@/components/LeaveGroupeModal";
+import ConfirmActionModal from "@/components/ConfirmActionModal";
 import { useTranslations } from "next-intl";
 
 const API_URL = "http://127.0.0.1:8000";
@@ -14,107 +15,6 @@ function getToken(): string {
   return localStorage.getItem("accessToken") || "";
 }
 
-// ── Backdrop ──
-function Backdrop({ onClick }: { onClick: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 100 }}
-    />
-  );
-}
-
-// ── Confirm delete modal ──
-function DeleteConfirmModal({
-  groupName,
-  onConfirm,
-  onCancel,
-  deleting,
-}: {
-  groupName: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  deleting: boolean;
-}) {
-  const t = useTranslations("auth.pages.home");
-  return (
-    <>
-      <Backdrop onClick={onCancel} />
-      <div style={{ position: "fixed", inset: 0, zIndex: 101, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            backgroundColor: "var(--panel-bg)",
-            border: "1px solid var(--border-soft)",
-            borderRadius: "20px",
-            padding: "36px 32px 28px",
-            width: "400px",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            animation: "popIn 0.22s cubic-bezier(0.34,1.56,0.64,1)",
-          }}
-        >
-          {/* Icon */}
-          <div style={{
-            width: "64px", height: "64px", borderRadius: "50%",
-            border: "1.5px solid #C0392B",
-            backgroundColor: "rgba(192,57,43,0.07)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            marginBottom: "16px",
-          }}>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C0392B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6" /><path d="M14 11v6" />
-              <path d="M9 6V4h6v2" />
-            </svg>
-          </div>
-
-          <p style={{ margin: "0 0 6px", color: "var(--foreground)", fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "22px", textAlign: "center" }}>
-            {t("community.deleteGroupTitle")}
-          </p>
-          <p style={{ margin: "0 0 24px", color: "var(--text-muted)", fontFamily: "'Lato', sans-serif", fontWeight: 400, fontSize: "14px", textAlign: "center", lineHeight: 1.5 }}>
-            {t("community.deleteGroupMessage", { groupName })}
-          </p>
-
-          {/* Delete button */}
-          <button
-            onClick={onConfirm}
-            disabled={deleting}
-            style={{
-              width: "100%", height: "50px", borderRadius: "10px", border: "none",
-              backgroundColor: "#C0392B", color: "#FFFFFF",
-              fontFamily: "'Lato', sans-serif", fontWeight: 700, fontSize: "16px",
-              cursor: deleting ? "not-allowed" : "pointer",
-              opacity: deleting ? 0.6 : 1,
-              transition: "background 0.18s", marginTop: "6px",
-            }}
-            onMouseEnter={(e) => { if (!deleting) e.currentTarget.style.backgroundColor = "#a93226"; }}
-            onMouseLeave={(e) => { if (!deleting) e.currentTarget.style.backgroundColor = "#C0392B"; }}
-          >
-            {deleting ? t("community.deletingGroup") : t("community.deleteGroupConfirm")}
-          </button>
-
-          {/* Cancel */}
-          <button
-            onClick={onCancel}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--foreground)", fontFamily: "'Lato', sans-serif", fontWeight: 600, fontSize: "15px", marginTop: "12px", opacity: 0.75 }}
-          >
-            {t("community.close")}
-          </button>
-        </div>
-      </div>
-      <style>{`
-        @keyframes popIn {
-          from { transform: scale(0.88); opacity: 0; }
-          to   { transform: scale(1);    opacity: 1; }
-        }
-      `}</style>
-    </>
-  );
-}
 
 // ── Main component ──
 export default function GroupOptionsMenu({
@@ -136,7 +36,25 @@ export default function GroupOptionsMenu({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const handleLeaveGroup = async () => {
+    setLeaving(true);
+    const token = getToken();
+    try {
+      await fetch(`${API_URL}/api/groups/${groupId}/leave/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      router.push("/communities");
+    } catch (e) {
+      console.error("❌ Error leaving group:", e);
+    } finally {
+      setLeaving(false);
+      setShowLeaveModal(false);
+    }
+  };
+
 
   // Close on outside click
   useEffect(() => {
@@ -273,13 +191,8 @@ export default function GroupOptionsMenu({
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
       ),
-      onClick: async () => {
+      onClick: () => {
         setOpen(false);
-        const token = getToken();
-        await fetch(`${API_URL}/api/groups/${groupId}/leave/`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
         setShowLeaveModal(true);
       },
       danger: true,
@@ -351,24 +264,26 @@ export default function GroupOptionsMenu({
         )}
       </div>
       {showLeaveModal && (
-        <LeaveGroupModal onClose={() => { setShowLeaveModal(false); router.push("/communities"); }} />
-      )}
-      {/* Delete confirmation modal */}
-      {showDeleteConfirm && (
-        <DeleteConfirmModal
+        <LeaveGroupModal
           groupName={groupName}
-          onConfirm={handleDelete}
-          onCancel={() => setShowDeleteConfirm(false)}
-          deleting={deleting}
+          onConfirm={handleLeaveGroup}
+          onClose={() => !leaving && setShowLeaveModal(false)}
+          leaving={leaving}
         />
       )}
+      {/* Delete confirmation modal */}
+      <ConfirmActionModal
+        isOpen={showDeleteConfirm}
+        title={t("community.deleteGroupTitle")}
+        description={t("community.deleteGroupMessage", { groupName })}
+        confirmText={deleting ? t("community.deletingGroup") : t("community.deleteGroupConfirm")}
+        onConfirm={handleDelete}
+        onCancel={() => !deleting && setShowDeleteConfirm(false)}
+        variant="danger"
+        isBusy={deleting}
+        cancelText={t("community.close")}
+      />
 
-      <style>{`
-        @keyframes popIn {
-          from { transform: scale(0.88) translateY(-4px); opacity: 0; }
-          to   { transform: scale(1)    translateY(0);    opacity: 1; }
-        }
-      `}</style>
     </>
   );
 }

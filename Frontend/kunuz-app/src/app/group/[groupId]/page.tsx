@@ -1029,6 +1029,7 @@ export default function GroupDetailPage() {
           isOpen={showInviteModal}
           onClose={() => setShowInviteModal(false)}
           onConfirm={handleInvite}
+          excludedUserIds={members.map((member) => member.id)}
         />
       )}
       {showAddPost && (

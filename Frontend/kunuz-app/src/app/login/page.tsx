@@ -23,6 +23,84 @@ export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const formatSuspendedUntil = (message: string) => {
+    const match = message.match(/\d{4}-\d{2}-\d{2}([tT ][\d:.+-Z]*)?/);
+    if (!match) return "";
+    const date = new Date(match[0].replace(" ", "T"));
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(date);
+  };
+
+  const resolveAuthErrorMessage = (rawMessage: string) => {
+    const lower = rawMessage.toLowerCase();
+    if (lower.includes("no account found") || lower.includes("user not found")) {
+      return "This account doesn't exist. Please sign up to create a new account.";
+    }
+    if (lower.includes("banned")) {
+      return "You are banned.";
+    }
+    if (lower.includes("suspend")) {
+      const suspendedUntil = formatSuspendedUntil(rawMessage);
+      return suspendedUntil ? `You are suspended until ${suspendedUntil}.` : "You are suspended.";
+    }
+    return rawMessage;
+  };
+
+  const extractBackendAuthMessage = (payload: any, fallback: string) => {
+    if (!payload || typeof payload !== "object") return fallback;
+
+    if (typeof payload.message === "string" && payload.message.trim()) {
+      return payload.message;
+    }
+    if (typeof payload.detail === "string" && payload.detail.trim()) {
+      return payload.detail;
+    }
+    if (typeof payload.error === "string" && payload.error.trim()) {
+      return payload.error;
+    }
+    if (payload.errors && typeof payload.errors === "object") {
+      const firstValue = Object.values(payload.errors)[0];
+      if (Array.isArray(firstValue) && typeof firstValue[0] === "string") {
+        return firstValue[0];
+      }
+      if (typeof firstValue === "string") {
+        return firstValue;
+      }
+    }
+    return fallback;
+  };
+
+  const moderationMessageFromUser = (user: Record<string, unknown> | undefined) => {
+    if (!user) return "";
+
+    const moderationStatus = String(user.moderation_status ?? "").toLowerCase();
+    const isBannedFlag = Boolean(user.is_banned);
+    const isSuspendedFlag = Boolean(user.is_suspended);
+    const suspendedUntilValue = user.suspended_until;
+    const suspendedUntil =
+      typeof suspendedUntilValue === "string" && suspendedUntilValue.trim()
+        ? suspendedUntilValue
+        : "";
+
+    if (moderationStatus === "banned" || isBannedFlag) {
+      return "You are banned.";
+    }
+
+    if (moderationStatus === "suspended" || isSuspendedFlag) {
+      if (suspendedUntil) {
+        const formatted = formatSuspendedUntil(suspendedUntil);
+        if (formatted) return `You are suspended until ${formatted}.`;
+      }
+      return "You are suspended.";
+    }
+
+    return "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -35,21 +113,20 @@ export default function LoginPage() {
         password,
       });
 
+      const responseUser = response.user as Record<string, unknown> | undefined;
+      const moderationMessage = moderationMessageFromUser(responseUser);
+      if (moderationMessage) {
+        setError(moderationMessage);
+        return;
+      }
+
       saveAuthTokens(response);
       clearPendingAuthContext();
 
-      // Check if the user still needs to complete their profile
-      const user = response.user as Record<string, unknown> | undefined;
       router.push("/home-page");
     } catch (submitError: any) {
       const message = submitError instanceof Error ? submitError.message : "Login failed.";
-
-      // Customize error message for non-existent accounts
-      if (message.toLowerCase().includes("no account found") || message.toLowerCase().includes("user not found")) {
-        setError("This account doesn't exist. Please sign up to create a new account.");
-      } else {
-        setError(message);
-      }
+      setError(resolveAuthErrorMessage(message));
     } finally {
       setIsSubmitting(false);
     }
@@ -79,19 +156,29 @@ export default function LoginPage() {
           body: JSON.stringify({ token: tokenResponse.access_token }),
         });
 
-        const data = await res.json();
+        let data: any = null;
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
         if (!res.ok || !data?.data) {
-          throw new Error(data?.message ?? "Google authentication failed.");
+          throw new Error(extractBackendAuthMessage(data, "Google authentication failed."));
+        }
+
+        const user = data.data.user as Record<string, unknown> | undefined;
+        const moderationMessage = moderationMessageFromUser(user);
+        if (moderationMessage) {
+          setError(moderationMessage);
+          return;
         }
 
         saveAuthTokens(data.data);
         clearPendingAuthContext();
-
-        const user = data.data.user as Record<string, unknown> | undefined;
         router.push("/home-page");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Google login failed.";
-        setError(msg);
+        setError(resolveAuthErrorMessage(msg));
       } finally {
         setIsGoogleLoading(false);
       }

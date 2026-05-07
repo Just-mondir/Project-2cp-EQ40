@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import ConfirmActionModal from "@/components/ConfirmActionModal";
 
 const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
@@ -89,8 +90,9 @@ function UserAvatar({ user, size = 40 }: { user: User; size?: number }) {
 interface InviteUsersModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (users: User[]) => void;
+  onConfirm: (users: User[]) => Promise<void> | void;
   alreadyInvited?: string[];
+  excludedUserIds?: string[];
 }
 
 export default function InviteUsersModal({
@@ -98,12 +100,15 @@ export default function InviteUsersModal({
   onClose,
   onConfirm,
   alreadyInvited = [],
+  excludedUserIds = [],
 }: InviteUsersModalProps) {
   const t = useTranslations("auth.inviteUsers");
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<User[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set(alreadyInvited));
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   useEffect(() => {
     const handle = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -116,11 +121,12 @@ export default function InviteUsersModal({
     const timer = setTimeout(async () => {
       setLoading(true);
       const res = await searchUsers(search);
-      setResults(res);
+      const excluded = new Set(excludedUserIds.map((id) => String(id)));
+      setResults(res.filter((user) => !excluded.has(user.id)));
       setLoading(false);
     }, 250);
     return () => clearTimeout(timer);
-  }, [search, isOpen]);
+  }, [search, isOpen, excludedUserIds]);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -131,10 +137,16 @@ export default function InviteUsersModal({
     });
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const confirmed = results.filter((u) => selected.has(u.id));
-    onConfirm(confirmed);
-    onClose();
+    if (confirmed.length === 0 || sending) return;
+    setSending(true);
+    try {
+      await onConfirm(confirmed);
+      setShowSuccessPopup(true);
+    } finally {
+      setSending(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -168,6 +180,7 @@ export default function InviteUsersModal({
         <button
           onClick={handleConfirm}
           title={t("confirmSelection")}
+          disabled={sending}
           style={{
             position: "absolute",
             top: "16px",
@@ -183,6 +196,7 @@ export default function InviteUsersModal({
             color: ESPRESSO,
             opacity: 0.7,
             transition: "opacity 0.15s",
+            pointerEvents: sending ? "none" : "auto",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
           onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
@@ -374,6 +388,22 @@ export default function InviteUsersModal({
           )}
         </div>
       </div>
+      <ConfirmActionModal
+        isOpen={showSuccessPopup}
+        title="Invitation sent"
+        description="Invitation sent successfully."
+        confirmText="Close"
+        onConfirm={() => {
+          setShowSuccessPopup(false);
+          onClose();
+        }}
+        onCancel={() => {
+          setShowSuccessPopup(false);
+          onClose();
+        }}
+        variant="neutral"
+        showCancelButton={false}
+      />
     </div>
   );
 }
