@@ -53,7 +53,7 @@ class PostPagination(PageNumberPagination):
 
 
 def _save_post_images(post: Post, image_files) -> None:
-    existing_count = PostImage.objects(post=post).count()
+    existing_count = PostImage.objects(post=post, is_deleted=False).count()
     allowed = 5 - existing_count
     for img in list(image_files)[:allowed]:
         url = upload_to_cloudinary(img, folder="posts")
@@ -366,7 +366,7 @@ class PostDetailView(APIView):
         post = serializer.save()
         image_files = request.FILES.getlist("uploaded_images")
         if image_files:
-            existing_count = PostImage.objects(post=post).count()
+            existing_count = PostImage.objects(post=post, is_deleted=False).count()
             if existing_count + len(image_files) > 5:
                 return api_error(f"A post can have at most 5 images. This post already has {existing_count}.", status_code=status.HTTP_400_BAD_REQUEST)
             _save_post_images(post, image_files)
@@ -400,7 +400,7 @@ class PostImageUploadView(APIView):
         images = request.FILES.getlist("images")
         if not images:
             return api_error("No images provided.", status_code=status.HTTP_400_BAD_REQUEST)
-        existing_count = PostImage.objects(post=post).count()
+        existing_count = PostImage.objects(post=post, is_deleted=False).count()
         if existing_count + len(images) > 5:
             return api_error(f"A post can have at most 5 images. This post already has {existing_count}.", status_code=status.HTTP_400_BAD_REQUEST)
         created = []
@@ -418,7 +418,7 @@ class PostImageDeleteView(APIView):
 
     def delete(self, request: Request, pk: str) -> Response:
         try:
-            image = PostImage.objects.get(id=pk)
+            image = PostImage.objects.get(id=pk, is_deleted=False)
         except PostImage.DoesNotExist:
             return api_error("Image not found.", status_code=status.HTTP_404_NOT_FOUND)
         post = image.post
@@ -429,7 +429,8 @@ class PostImageDeleteView(APIView):
             cloudinary.uploader.destroy(public_id)
         except Exception:
             pass
-        image.delete()
+        image.is_deleted = True
+        image.save()
         return api_success("Image deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -441,9 +442,10 @@ class GemToggleView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        gem = Gem.objects(post=post, user_id=str(request.user.id)).first()
+        gem = Gem.objects(post=post, user_id=str(request.user.id), is_deleted=False).first()
         if gem:
-            gem.delete()
+            gem.is_deleted = True
+            gem.save()
             return api_success("Gem removed.", {"liked": False, "gems_count": post.gems_count})
         Gem(post=post, user_id=str(request.user.id)).save()
         if post.author_id != str(request.user.id):
@@ -460,7 +462,7 @@ class PostGemUsersView(APIView):
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        gems = Gem.objects(post=post).order_by("-created_at")
+        gems = Gem.objects(post=post, is_deleted=False).order_by("-created_at")
         user_ids = [gem.user_id for gem in gems if gem.user_id]
         users_by_id = {str(user.id): user for user in User.objects(id__in=user_ids)}
         users = []
@@ -489,9 +491,10 @@ class CommentGemToggleView(APIView):
             comment = Comment.objects.get(id=pk)
         except Comment.DoesNotExist:
             return api_error("Comment not found.", status_code=status.HTTP_404_NOT_FOUND)
-        gem = CommentGem.objects(comment=comment, user_id=str(request.user.id)).first()
+        gem = CommentGem.objects(comment=comment, user_id=str(request.user.id), is_deleted=False).first()
         if gem:
-            gem.delete()
+            gem.is_deleted = True
+            gem.save()
             return api_success("Gem removed from comment.", {"liked": False, "gems_count": comment.gems_count})
         CommentGem(comment=comment, user_id=str(request.user.id)).save()
         if comment.user_id != str(request.user.id):
@@ -507,9 +510,10 @@ class SaveToggleView(APIView):
             post = Post.objects.get(id=pk, is_deleted=False)
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
-        save = Save.objects(post=post, user_id=str(request.user.id)).first()
+        save = Save.objects(post=post, user_id=str(request.user.id), is_deleted=False).first()
         if save:
-            save.delete()
+            save.is_deleted = True
+            save.save()
             return api_success("Post unsaved.", {"saved": False})
         Save(post=post, user_id=str(request.user.id)).save()
         return api_success("Post saved.", {"saved": True}, status.HTTP_201_CREATED)
@@ -533,12 +537,13 @@ class RepostToggleView(APIView):
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        repost = Repost.objects(post=post, user_id=str(request.user.id), is_deleted=False).first()
         if repost:
-            repost.delete()
+            repost.is_deleted = True
+            repost.save()
             return api_success(
                 "Repost removed.",
-                {"reposted": False, "reposts_count": Repost.objects(post=post).count()},
+                {"reposted": False, "reposts_count": Repost.objects(post=post, is_deleted=False).count()},
             )
 
         description = self._clean_description(request.data.get("description", ""))
@@ -557,7 +562,7 @@ class RepostToggleView(APIView):
             "Post reposted.",
             {
                 "reposted": True,
-                "reposts_count": Repost.objects(post=post).count(),
+                "reposts_count": Repost.objects(post=post, is_deleted=False).count(),
                 "repost_description": description,
             },
             status.HTTP_201_CREATED,
@@ -568,7 +573,7 @@ class RepostToggleView(APIView):
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        repost = Repost.objects(post=post, user_id=str(request.user.id), is_deleted=False).first()
         if not repost:
             return api_error("Repost not found.", status_code=status.HTTP_404_NOT_FOUND)
 
@@ -578,7 +583,7 @@ class RepostToggleView(APIView):
             "Repost description updated.",
             {
                 "reposted": True,
-                "reposts_count": Repost.objects(post=post).count(),
+                "reposts_count": Repost.objects(post=post, is_deleted=False).count(),
                 "repost_description": repost.description,
             },
         )
@@ -588,7 +593,7 @@ class RepostToggleView(APIView):
         if not post:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        repost = Repost.objects(post=post, user_id=str(request.user.id)).first()
+        repost = Repost.objects(post=post, user_id=str(request.user.id), is_deleted=False).first()
         if not repost:
             return api_error("Repost not found.", status_code=status.HTTP_404_NOT_FOUND)
 
@@ -598,7 +603,7 @@ class RepostToggleView(APIView):
             "Repost description removed.",
             {
                 "reposted": True,
-                "reposts_count": Repost.objects(post=post).count(),
+                "reposts_count": Repost.objects(post=post, is_deleted=False).count(),
                 "repost_description": "",
             },
         )
@@ -613,7 +618,7 @@ class PostRepostUsersView(APIView):
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        reposts = Repost.objects(post=post).order_by("-created_at")
+        reposts = Repost.objects(post=post, is_deleted=False).order_by("-created_at")
         user_ids = [repost.user_id for repost in reposts if repost.user_id]
         users_by_id = {str(user.id): user for user in User.objects(id__in=user_ids)}
         users = []
@@ -701,7 +706,7 @@ class CommentListCreateView(APIView):
         except Post.DoesNotExist:
             return api_error("Post not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        comments = Comment.objects(post=post).order_by("created_at")
+        comments = Comment.objects(post=post, is_deleted=False).order_by("created_at")
         serializer = CommentSerializer(
             comments,
             many=True,
@@ -773,7 +778,7 @@ class CommentDetailView(APIView):
 
     def _get_comment(self, pk: str):
         try:
-            return Comment.objects.get(id=pk)
+            return Comment.objects.get(id=pk, is_deleted=False)
         except Comment.DoesNotExist:
             return None
 
@@ -822,13 +827,15 @@ class CommentDetailView(APIView):
         if not (is_owner or is_mod or is_group_admin):
             return api_error("You can only delete your own comments.", status_code=status.HTTP_403_FORBIDDEN)
 
-        replies = Comment.objects(parent=comment)
+        replies = Comment.objects(parent=comment, is_deleted=False)
         for reply in replies:
-            CommentGem.objects(comment=reply).delete()
-            reply.delete()
+            CommentGem.objects(comment=reply, is_deleted=False).update(set__is_deleted=True)
+            reply.is_deleted = True
+            reply.save()
 
-        CommentGem.objects(comment=comment).delete()
-        comment.delete()
+        CommentGem.objects(comment=comment, is_deleted=False).update(set__is_deleted=True)
+        comment.is_deleted = True
+        comment.save()
 
         return api_success("Comment deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
@@ -851,7 +858,7 @@ class MySavedPostsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        saves = Save.objects(user_id=str(request.user.id))
+        saves = Save.objects(user_id=str(request.user.id), is_deleted=False)
         post_ids = []
         for save in saves:
             try:
@@ -870,7 +877,7 @@ class MyRepostedPostsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        reposts = Repost.objects(user_id=str(request.user.id)).order_by("-created_at")
+        reposts = Repost.objects(user_id=str(request.user.id), is_deleted=False).order_by("-created_at")
         post_ids = []
         for repost in reposts:
             try:
@@ -895,7 +902,7 @@ class UserRepostedPostsView(APIView):
             user = User.objects.get(username=username)
         except User.DoesNotExist:
             return Response({"detail": "User not found."}, status=404)
-        reposts = Repost.objects(user_id=str(user.id)).order_by("-created_at")
+        reposts = Repost.objects(user_id=str(user.id), is_deleted=False).order_by("-created_at")
         post_ids = []
         for repost in reposts:
             try:
@@ -916,7 +923,7 @@ class MyGemedPostsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        gems = Gem.objects(user_id=str(request.user.id))
+        gems = Gem.objects(user_id=str(request.user.id), is_deleted=False)
         post_ids = []
         for gem in gems:
             try:
@@ -1121,10 +1128,11 @@ class AnnotationListCreateView(APIView):
         user_id = str(request.user.id)
 
         if post.author_id == user_id:
-            annotations = Annotation.objects(post=post).order_by("-created_at")
+            annotations = Annotation.objects(post=post, is_deleted=False).order_by("-created_at")
         else:
             annotations = Annotation.objects(
                 post=post,
+                is_deleted=False,
                 __raw__={
                     "$or": [
                         {"status": "accepted"},
@@ -1154,7 +1162,7 @@ class AnnotationDetailView(APIView):
 
     def _get_annotation(self, annotation_id: str):
         try:
-            return Annotation.objects.get(id=annotation_id)
+            return Annotation.objects.get(id=annotation_id, is_deleted=False)
         except Annotation.DoesNotExist:
             return None
 
@@ -1184,7 +1192,8 @@ class AnnotationDetailView(APIView):
             return api_error("Annotation not found.", status_code=status.HTTP_404_NOT_FOUND)
         if annotation.user_id != str(request.user.id) and not _is_moderator(request.user):
             return api_error("You can only delete your own annotation.", status_code=status.HTTP_403_FORBIDDEN)
-        annotation.delete()
+        annotation.is_deleted = True
+        annotation.save()
         return api_success("Annotation deleted.", status_code=status.HTTP_204_NO_CONTENT)
 
 

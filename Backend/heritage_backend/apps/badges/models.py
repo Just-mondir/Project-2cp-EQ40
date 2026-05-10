@@ -18,6 +18,7 @@ class BadgeRequest(me.Document):
     reviewed_by_id = me.StringField(default="")
     created_at = me.DateTimeField(default=timezone.now)
     reviewed_at = me.DateTimeField(null=True, default=None)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "badge_requests",

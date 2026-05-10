@@ -22,6 +22,7 @@ class Report(me.Document):
     resolved_by = me.StringField(null=True, default=None)
     created_at = me.DateTimeField()
     resolved_at = me.DateTimeField(null=True, default=None)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "reports",
@@ -62,6 +63,7 @@ class MobilizationReport(me.Document):
     created_by = me.StringField(required=True)
     created_at = me.DateTimeField()
     updated_at = me.DateTimeField()
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "mobilization_reports",

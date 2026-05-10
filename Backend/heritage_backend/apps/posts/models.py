@@ -87,11 +87,11 @@ class Post(me.Document):
 
     @property
     def gems_count(self) -> int:
-        return Gem.objects(post=self).count()
+        return Gem.objects(post=self, is_deleted=False).count()
 
     @property
     def comments_count(self) -> int:
-        return Comment.objects(post=self).count()
+        return Comment.objects(post=self, is_deleted=False).count()
 
     def __str__(self) -> str:
         return f"{self.title} ({self.post_type})"
@@ -101,6 +101,7 @@ class EventDetails(me.Document):
     post = me.ReferenceField(Post, required=True)
     starts_at = me.DateTimeField(required=True)
     ends_at = me.DateTimeField(null=True)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {"collection": "event_details"}
 
@@ -112,6 +113,7 @@ class AlertDetails(me.Document):
     post = me.ReferenceField(Post, required=True)
     urgence_level = me.StringField(choices=URGENCE_CHOICES, required=True)
     current_status = me.StringField(choices=STATUS_CHOICES, default="alert")
+    is_deleted = me.BooleanField(default=False)
 
     meta = {"collection": "alert_details"}
 
@@ -120,6 +122,7 @@ class PostImage(me.Document):
     post = me.ReferenceField(Post, required=True)
     image = me.StringField(max_length=500, required=True)
     uploaded_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {"collection": "post_images"}
 
@@ -128,6 +131,7 @@ class Gem(me.Document):
     post = me.ReferenceField(Post, required=True)
     user_id = me.StringField(required=True)
     created_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "gems",
@@ -139,6 +143,7 @@ class Save(me.Document):
     post = me.ReferenceField(Post, required=True)
     user_id = me.StringField(required=True)
     created_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "saves",
@@ -151,6 +156,7 @@ class Repost(me.Document):
     user_id = me.StringField(required=True)
     description = me.StringField(default="")
     created_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "reposts",
@@ -164,6 +170,7 @@ class Comment(me.Document):
     parent = me.ReferenceField("self", null=True, default=None)
     user_id = me.StringField(required=True)
     content = me.StringField(required=True)
+    is_deleted = me.BooleanField(default=False)
     created_at = me.DateTimeField(default=timezone.now)
     updated_at = me.DateTimeField(default=timezone.now)
 
@@ -178,13 +185,14 @@ class Comment(me.Document):
 
     @property
     def gems_count(self) -> int:
-        return CommentGem.objects(comment=self).count()
+        return CommentGem.objects(comment=self, is_deleted=False).count()
 
 
 class CommentGem(me.Document):
     comment = me.ReferenceField(Comment, required=True)
     user_id = me.StringField(required=True)
     created_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "comment_gems",
@@ -205,6 +213,7 @@ class Annotation(me.Document):
         choices=["pending", "accepted", "rejected"],
         default="pending"
     )
+    is_deleted = me.BooleanField(default=False)
     created_at = me.DateTimeField(default=timezone.now)
     updated_at = me.DateTimeField(default=timezone.now)
     validated_by_id = me.StringField(default="")
@@ -220,6 +229,7 @@ class MobilizationEvent(me.Document):
     previous_status = me.StringField(default="")
     current_status = me.StringField(default="")
     images = me.ListField(me.StringField(), default=list)
+    is_deleted = me.BooleanField(default=False)
     created_at = me.DateTimeField(default=timezone.now)
 
     meta = {

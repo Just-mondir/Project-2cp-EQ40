@@ -64,5 +64,8 @@ class NotificationSerializer(serializers.Serializer):
             "badge_request_reviewed": "reviewed your badge request",
             "user_banned": "banned your account",
             "user_suspended": "suspended your account",
+            "content_reported": "reported content",
+            "group_content_reported": "reported content in your group",
+            "group_reported": "reported a group",
         }
         return labels.get(getattr(obj, "event_type", ""), getattr(obj, "message", ""))

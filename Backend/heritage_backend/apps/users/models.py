@@ -100,6 +100,7 @@ class User(me.Document):
     suspended_until = me.DateTimeField(null=True, default=None)
     created_at = me.DateTimeField(default=timezone.now)
     updated_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "users",
@@ -193,6 +194,7 @@ class OTPCode(me.Document):
     is_used = me.BooleanField(default=False)
     expires_at = me.DateTimeField(required=True)
     created_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "otp_codes",
@@ -213,6 +215,7 @@ class BlacklistedToken(me.Document):
 
     jti = me.StringField(unique=True, required=True)
     blacklisted_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "blacklisted_tokens",
@@ -224,6 +227,7 @@ class Visitor(me.Document):
     
     ip_address = me.StringField(required=True)
     visited_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "visitors",

@@ -48,7 +48,7 @@ class ReportListCreateView(APIView):
 
     # ----- Moderator: list all reports -----
     def get(self, request: Request) -> Response:
-        qs = Report.objects.all()
+        qs = Report.objects(is_deleted=False)
 
         # Optional filters
         status_filter = request.query_params.get("status")
@@ -114,18 +114,122 @@ class ReportListCreateView(APIView):
             status_code=status.HTTP_201_CREATED,
         )
 
-        # Notify all moderators
-        moderators = User.objects.filter(role="moderator")
         actor_name = request.user.display_name or request.user.username or "Someone"
-        for mod in moderators:
+        reason = report.reason or ""
+
+        # ---- Determine group context ----
+        group = None
+        group_admin_id = None
+        target_description = f"{report.target_type} ({report.target_id})"
+
+        try:
+            from apps.thematic_groups.models import ThematicGroup
+
+            if report.target_type == "group":
+                group = ThematicGroup.objects.get(id=report.target_id, is_deleted=False)
+                target_description = group.name
+            elif report.target_type == "post":
+                target_post = Post.objects.get(id=report.target_id)
+                target_description = target_post.title or target_post.content[:100]
+                if target_post.group_id:
+                    group = ThematicGroup.objects.get(id=target_post.group_id, is_deleted=False)
+            elif report.target_type == "comment":
+                from apps.posts.models import Comment
+                comment = Comment.objects.get(id=report.target_id)
+                target_description = comment.content[:100]
+                if comment.post and comment.post.group_id:
+                    group = ThematicGroup.objects.get(id=comment.post.group_id, is_deleted=False)
+            elif report.target_type == "group_chat_message":
+                from apps.thematic_groups.models import GroupChatMessage
+                msg = GroupChatMessage.objects.get(id=report.target_id)
+                target_description = msg.text[:100] if msg.text else "Media message"
+                if msg.group:
+                    group = msg.group
+
+            if group:
+                group_admin_id = str(group.admin_id)
+        except Exception:
+            pass
+
+        # ---- Send notifications ----
+        from apps.reports.email_utils import send_report_notification_email
+
+        if report.target_type == "group" and group:
+            # Group itself is reported → notify platform moderators
+            platform_mods = User.objects(role__in=["moderator", "admin"], is_active=True, is_deleted=False)
+            mod_emails = [mod.email for mod in platform_mods if mod.email]
+            for mod in platform_mods:
+                notify(
+                    event_type="group_reported",
+                    actor_id=str(request.user.id),
+                    actor_name=actor_name,
+                    recipient_id=str(mod.id),
+                    target_type="group",
+                    target_id=str(report.id),
+                    group_name=group.name,
+                )
+            # Send email to platform moderators
+            try:
+                send_report_notification_email(
+                    recipient_emails=mod_emails,
+                    reporter_name=actor_name,
+                    target_type="group",
+                    target_description=group.name,
+                    reason=reason,
+                    context_label=f"Group: {group.name}",
+                )
+            except Exception:
+                pass
+
+        elif group and group_admin_id:
+            # Content inside a group → notify group admin + platform moderators
             notify(
-                event_type="content_reported",
+                event_type="group_content_reported",
                 actor_id=str(request.user.id),
                 actor_name=actor_name,
-                recipient_id=str(mod.id),
+                recipient_id=group_admin_id,
                 target_type=report.target_type,
                 target_id=str(report.id),
+                group_name=group.name,
             )
+            # Also send email to group admin
+            try:
+                admin_user = User.objects.get(id=group_admin_id)
+                if admin_user.email:
+                    send_report_notification_email(
+                        recipient_emails=[admin_user.email],
+                        reporter_name=actor_name,
+                        target_type=report.target_type,
+                        target_description=target_description,
+                        reason=reason,
+                        context_label=f"Group: {group.name}",
+                    )
+            except Exception:
+                pass
+            # Also notify platform moderators
+            platform_mods = User.objects(role__in=["moderator", "admin"], is_active=True, is_deleted=False)
+            for mod in platform_mods:
+                notify(
+                    event_type="content_reported",
+                    actor_id=str(request.user.id),
+                    actor_name=actor_name,
+                    recipient_id=str(mod.id),
+                    target_type=report.target_type,
+                    target_id=str(report.id),
+                )
+
+        else:
+            # Non-group content → notify platform moderators only (existing behavior)
+            moderators = User.objects(role__in=["moderator", "admin"], is_active=True, is_deleted=False)
+            for mod in moderators:
+                notify(
+                    event_type="content_reported",
+                    actor_id=str(request.user.id),
+                    actor_name=actor_name,
+                    recipient_id=str(mod.id),
+                    target_type=report.target_type,
+                    target_id=str(report.id),
+                )
 
         return response
 
@@ -143,7 +247,7 @@ class MyReportsView(APIView):
 
     def get(self, request: Request) -> Response:
         reporter_id = str(request.user.id)
-        qs = Report.objects(reporter_id=reporter_id).order_by("-created_at")
+        qs = Report.objects(reporter_id=reporter_id, is_deleted=False).order_by("-created_at")
 
         paginator = StandardResultsSetPagination()
         page_size = paginator.get_page_size(request)
@@ -181,7 +285,7 @@ class ReportDetailView(APIView):
 
     def get(self, request: Request, report_id: str) -> Response:
         try:
-            report = Report.objects.get(id=ObjectId(report_id))
+            report = Report.objects.get(id=ObjectId(report_id), is_deleted=False)
         except (Report.DoesNotExist, InvalidId):
             return api_error("Report not found.", status_code=status.HTTP_404_NOT_FOUND)
 
@@ -203,7 +307,7 @@ class ReportResolveView(APIView):
 
     def patch(self, request: Request, report_id: str) -> Response:
         try:
-            report = Report.objects.get(id=ObjectId(report_id))
+            report = Report.objects.get(id=ObjectId(report_id), is_deleted=False)
         except (Report.DoesNotExist, InvalidId):
             return api_error("Report not found.", status_code=status.HTTP_404_NOT_FOUND)
 
@@ -232,7 +336,7 @@ class MobilizationReportListCreateView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request: Request) -> Response:
-        qs = MobilizationReport.objects.all()
+        qs = MobilizationReport.objects(is_deleted=False)
 
         post_id = request.query_params.get("post_id")
 
@@ -382,7 +486,8 @@ class MobilizationReportDetailView(APIView):
                 status_code=status.HTTP_403_FORBIDDEN,
             )
 
-        report.delete()
+        report.is_deleted = True
+        report.save()
 
         return api_success(
             "Mobilization report deleted successfully.",
@@ -392,6 +497,6 @@ class MobilizationReportDetailView(APIView):
 
 def _get_mobilization_report(report_id: str):
     try:
-        return MobilizationReport.objects.get(id=ObjectId(report_id))
+        return MobilizationReport.objects.get(id=ObjectId(report_id), is_deleted=False)
     except (MobilizationReport.DoesNotExist, InvalidId):
         return None

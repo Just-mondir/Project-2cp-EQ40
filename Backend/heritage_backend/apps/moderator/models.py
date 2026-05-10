@@ -1,8 +1,9 @@
-from mongoengine import Document, StringField, DateTimeField, IntField
+from mongoengine import Document, StringField, DateTimeField, IntField, BooleanField
 
 class Visitor(Document):
     ip_address = StringField(required=True)
     date = DateTimeField(required=True)
+    is_deleted = BooleanField(default=False)
     meta = {
         "indexes": [
             {"fields": ["ip_address", "date"], "unique": True}
@@ -16,6 +17,7 @@ class PlatformSnapshot(Document):
     groups = IntField(default=0)
     visitors = IntField(default=0)
     posts = IntField(default=0)
+    is_deleted = BooleanField(default=False)
 
     meta = {
         "collection": "platform_snapshots",

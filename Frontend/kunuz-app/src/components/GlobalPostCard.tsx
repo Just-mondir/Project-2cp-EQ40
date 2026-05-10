@@ -207,11 +207,7 @@ type CommentNode = {
 
 type ReportTargetType = "post" | "comment" | "annotation";
 
-async function submitReport(
-  targetType: ReportTargetType,
-  targetId: string,
-  reason: string,
-): Promise<void> {
+async function submitReport(targetType: ReportTargetType, targetId: string, reason: string, description?: string): Promise<void> {
   const token = getAuthToken();
 
   const res = await fetch(`${API_URL}/api/reports/`, {
@@ -224,6 +220,7 @@ async function submitReport(
       target_type: targetType,
       target_id: targetId,
       reason,
+      description,
     }),
   });
 

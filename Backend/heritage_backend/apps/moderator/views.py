@@ -26,9 +26,9 @@ class PlatformStatsView(APIView):
 
     def get(self, request: Request) -> Response:
         stats = {
-            "members": User.objects().count(),
-            "groups": ThematicGroup.objects().count(),
-            "visitors": Visitor.objects().count(),
+            "members": User.objects(is_deleted=False).count(),
+            "groups": ThematicGroup.objects(is_deleted=False).count(),
+            "visitors": Visitor.objects(is_deleted=False).count(),
             "posts": Post.objects(is_deleted=False).count(),
         }
         return api_success("Platform stats retrieved.", stats)
@@ -44,7 +44,7 @@ class AnalyticsView(APIView):
         end_date = timezone.now().replace(hour=23, minute=59, second=59, microsecond=999999)
         start_date = end_date - timedelta(days=days - 1)
 
-        snapshots = PlatformSnapshot.objects(date__gte=start_date).order_by("date")
+        snapshots = PlatformSnapshot.objects(date__gte=start_date, is_deleted=False).order_by("date")
         serializer = AnalyticsSnapshotSerializer(snapshots, many=True)
         return api_success("Analytics snapshots retrieved.", serializer.data)
 
@@ -65,7 +65,7 @@ class TrackVisitorView(APIView):
             second=0,
             microsecond=0,
         )
-        visitor = Visitor.objects(ip_address=ip, date=today).first()
+        visitor = Visitor.objects(ip_address=ip, date=today, is_deleted=False).first()
         if not visitor:
             Visitor(
                 ip_address=ip,

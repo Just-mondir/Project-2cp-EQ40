@@ -59,12 +59,12 @@ class NotificationSerializerTests(SimpleTestCase):
 
 class NotificationViewSmokeTests(SimpleTestCase):
     def setUp(self):
-        Notification.objects.delete()
+        Notification.objects.update(set__is_deleted=True)
         self.factory = APIRequestFactory()
         self.user = SimpleNamespace(id="recipient-1", is_authenticated=True)
 
     def tearDown(self):
-        Notification.objects.delete()
+        Notification.objects.update(set__is_deleted=True)
 
     def test_list_view_returns_user_notifications(self):
         Notification(

@@ -12,7 +12,7 @@ from .models import GroupMembership, ThematicGroup
 
 def get_group_by_id(group_id: str) -> ThematicGroup | None:
     try:
-        return ThematicGroup.objects.get(id=group_id)
+        return ThematicGroup.objects.get(id=group_id, is_deleted=False)
     except (ThematicGroup.DoesNotExist, Exception):
         return None
 
@@ -28,7 +28,7 @@ def user_is_group_member(user_id: str, group: ThematicGroup | str) -> bool:
     group_obj = group if isinstance(group, ThematicGroup) else get_group_by_id(str(group))
     if not group_obj:
         return False
-    return GroupMembership.objects(group=group_obj, user_id=str(user_id)).count() > 0
+    return GroupMembership.objects(group=group_obj, user_id=str(user_id), is_deleted=False).count() > 0
 
 
 def user_can_access_group(user_id: str, group: ThematicGroup | str) -> bool:
@@ -36,7 +36,7 @@ def user_can_access_group(user_id: str, group: ThematicGroup | str) -> bool:
 
 
 def accessible_group_ids_for_user(user_id: str) -> set[str]:
-    memberships = GroupMembership.objects(user_id=str(user_id))
+    memberships = GroupMembership.objects(user_id=str(user_id), is_deleted=False)
     return {str(membership.group.id) for membership in memberships}
 
 

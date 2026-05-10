@@ -23,6 +23,8 @@ EVENT_REGISTRY = {
     "user_banned": "A moderator banned your account",
     "user_suspended": "A moderator suspended your account",
     "content_reported": "{actor} reported a {target_type}",
+    "group_content_reported": "{actor} reported a {target_type} in your group {group_name}",
+    "group_reported": "{actor} reported the group {group_name}",
 }
 
 def notify(

@@ -40,9 +40,9 @@ class BadgeRequestListCreateView(APIView):
 
     def get(self, request: Request) -> Response:
         if getattr(request.user, "role", None) in ("moderator", "admin") or getattr(request.user, "is_staff", False):
-            qs = BadgeRequest.objects.all()
+            qs = BadgeRequest.objects(is_deleted=False)
         else:
-            qs = BadgeRequest.objects(user_id=str(request.user.id))
+            qs = BadgeRequest.objects(user_id=str(request.user.id), is_deleted=False)
         qs = qs.order_by("-created_at")
 
         paginator = StandardResultsSetPagination()
@@ -98,7 +98,7 @@ class BadgeRequestDetailView(APIView):
 
     def get(self, request: Request, request_id: str) -> Response:
         try:
-            badge_request = BadgeRequest.objects.get(id=ObjectId(request_id))
+            badge_request = BadgeRequest.objects.get(id=ObjectId(request_id), is_deleted=False)
         except (BadgeRequest.DoesNotExist, InvalidId):
             return api_error("Badge request not found.", status_code=status.HTTP_404_NOT_FOUND)
         if not (getattr(request.user, "role", None) in ("moderator", "admin") or getattr(request.user, "is_staff", False)) and badge_request.user_id != str(request.user.id):
@@ -111,7 +111,7 @@ class BadgeRequestReviewView(APIView):
 
     def patch(self, request: Request, request_id: str) -> Response:
         try:
-            badge_request = BadgeRequest.objects.get(id=ObjectId(request_id))
+            badge_request = BadgeRequest.objects.get(id=ObjectId(request_id), is_deleted=False)
         except (BadgeRequest.DoesNotExist, InvalidId):
             return api_error("Badge request not found.", status_code=status.HTTP_404_NOT_FOUND)
 

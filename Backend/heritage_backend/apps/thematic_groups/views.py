@@ -134,7 +134,7 @@ class ThematicGroupListCreateView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request: Request) -> Response:
-        qs = ThematicGroup.objects.all()
+        qs = ThematicGroup.objects(is_deleted=False)
         category = request.query_params.get("category", "").strip()
         if category:
             qs = qs.filter(category=category)
@@ -155,7 +155,7 @@ class GroupSearchView(APIView):
 
     def get(self, request: Request) -> Response:
         query = request.query_params.get("q", "").strip()
-        groups = ThematicGroup.objects.all()
+        groups = ThematicGroup.objects(is_deleted=False)
         if query:
             groups = groups.filter(
                 __raw__=_search_query(
@@ -245,10 +245,24 @@ class ThematicGroupDetailView(APIView):
         if not request.user.is_authenticated or (not user_is_group_admin(str(request.user.id), group) and not is_platform_mod):
             return api_error("Only the group admin can delete this group.", status_code=status.HTTP_403_FORBIDDEN)
 
-        GroupMembership.objects(group=group).delete()
-        GroupJoinRequest.objects(group=group).delete()
-        GroupInvitation.objects(group=group).delete()
-        group.delete()
+        GroupMembership.objects(group=group).update(set__is_deleted=True)
+        GroupJoinRequest.objects(group=group).update(set__is_deleted=True)
+        GroupInvitation.objects(group=group).update(set__is_deleted=True)
+        GroupChatMessage.objects(group=group).update(set__is_deleted=True)
+        # Cascade to posts and their children
+        group_posts = Post.objects(group_id=str(group.id), is_deleted=False)
+        for post in group_posts:
+            from apps.posts.models import Comment, CommentGem, Gem, Save, Repost, PostImage, Annotation
+            Comment.objects(post=post, is_deleted=False).update(set__is_deleted=True)
+            Gem.objects(post=post, is_deleted=False).update(set__is_deleted=True)
+            Save.objects(post=post, is_deleted=False).update(set__is_deleted=True)
+            Repost.objects(post=post, is_deleted=False).update(set__is_deleted=True)
+            PostImage.objects(post=post, is_deleted=False).update(set__is_deleted=True)
+            Annotation.objects(post=post, is_deleted=False).update(set__is_deleted=True)
+            post.is_deleted = True
+            post.save()
+        group.is_deleted = True
+        group.save()
 
         return api_success("Group deleted successfully.", data=None, status_code=status.HTTP_204_NO_CONTENT)
 
@@ -263,7 +277,7 @@ class GroupMembersView(APIView):
         requester_is_admin = bool(
             request.user.is_authenticated and user_is_group_admin(str(request.user.id), group)
         )
-        members = GroupMembership.objects(group=group)
+        members = GroupMembership.objects(group=group, is_deleted=False)
         users = []
         for membership in members:
             try:
@@ -307,11 +321,12 @@ class GroupMemberRemoveView(APIView):
         if str(member_id) == str(group.admin_id):
             return api_error("The group admin cannot be removed.", status_code=status.HTTP_400_BAD_REQUEST)
 
-        membership = GroupMembership.objects(group=group, user_id=str(member_id)).first()
+        membership = GroupMembership.objects(group=group, user_id=str(member_id), is_deleted=False).first()
         if not membership:
             return api_error("Member not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        membership.delete()
+        membership.is_deleted = True
+        membership.save()
         return api_success("Member removed successfully.", data=None)
 
 
@@ -325,7 +340,7 @@ class GroupJoinRequestView(APIView):
         user_id = str(request.user.id)
         if user_can_access_group(user_id, group):
             return api_error("You are already a member of this group.", status_code=status.HTTP_409_CONFLICT)
-        if GroupJoinRequest.objects(group=group, requester_id=user_id, status="pending").count() > 0:
+        if GroupJoinRequest.objects(group=group, requester_id=user_id, status="pending", is_deleted=False).count() > 0:
             return api_error("You already have a pending request for this group.", status_code=status.HTTP_409_CONFLICT)
         join_request = GroupJoinRequest(group=group, requester_id=user_id)
         join_request.save()
@@ -456,7 +471,7 @@ class GroupInvitationResponseView(APIView):
         invitation.responded_at = timezone.now()
         invitation.save()
         if status_value == "accepted":
-            pending_request = GroupJoinRequest.objects(group=invitation.group, requester_id=str(request.user.id), status="pending").first()
+            pending_request = GroupJoinRequest.objects(group=invitation.group, requester_id=str(request.user.id), status="pending", is_deleted=False).first()
             if not pending_request:
                 new_request = GroupJoinRequest(group=invitation.group, requester_id=str(request.user.id))
                 new_request.save()
@@ -485,12 +500,13 @@ class LeaveGroupView(APIView):
         group = get_group_by_id(group_id)
         if not group:
             return api_error("Group not found.", status_code=status.HTTP_404_NOT_FOUND)
-        membership = GroupMembership.objects(group=group, user_id=str(request.user.id)).first()
+        membership = GroupMembership.objects(group=group, user_id=str(request.user.id), is_deleted=False).first()
         if not membership:
             return api_error("You are not a member of this group.", status_code=status.HTTP_400_BAD_REQUEST)
         if user_is_group_admin(str(request.user.id), group):
             return api_error("The admin cannot leave the group without transferring ownership.", status_code=status.HTTP_400_BAD_REQUEST)
-        membership.delete()
+        membership.is_deleted = True
+        membership.save()
         return api_success("You left the group successfully.", data=None)
 
 
@@ -901,7 +917,8 @@ class GroupChatMuteView(APIView):
 
         if duration == "off":
             if mute:
-                mute.delete()
+                mute.is_deleted = True
+                mute.save()
             return api_success("Group chat notifications unmuted.", self._serialize_mute(None))
 
         if not mute:
@@ -936,7 +953,7 @@ class PopularGroupsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request: Request) -> Response:
-        groups = list(ThematicGroup.objects.all())
+        groups = list(ThematicGroup.objects(is_deleted=False))
         member_counts = _group_member_counts()
         groups.sort(
             key=lambda group: (
@@ -964,7 +981,7 @@ class MyGroupsView(APIView):
                 continue
             if group is not None:
                 group_ids.append(group.id)
-        groups = ThematicGroup.objects(id__in=group_ids).order_by("-created_at")
+        groups = ThematicGroup.objects(id__in=group_ids, is_deleted=False).order_by("-created_at")
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(groups, request)
         serializer = ThematicGroupSerializer(page, many=True, context={"request": request})
@@ -992,7 +1009,7 @@ class SuggestedGroupsView(APIView):
         if not categories:
             return api_success("Suggested groups retrieved successfully.", [])
 
-        suggested_groups = ThematicGroup.objects(category__in=list(categories), id__nin=joined_group_ids)
+        suggested_groups = ThematicGroup.objects(category__in=list(categories), id__nin=joined_group_ids, is_deleted=False)
         suggested_groups = list(suggested_groups)
         member_counts = _group_member_counts()
         suggested_groups.sort(

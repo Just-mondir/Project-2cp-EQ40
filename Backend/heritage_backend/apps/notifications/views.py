@@ -24,7 +24,7 @@ class NotificationListView(APIView):
 
     def get(self, request: Request) -> Response:
         recipient_id = str(request.user.id)
-        qs = Notification.objects(recipient_id=recipient_id).order_by("-created_at")
+        qs = Notification.objects(recipient_id=recipient_id, is_deleted=False).order_by("-created_at")
 
         # Optional filter for unread only
         is_read_filter = request.query_params.get("is_read")
@@ -65,7 +65,7 @@ class UnreadCountView(APIView):
 
     def get(self, request: Request) -> Response:
         recipient_id = str(request.user.id)
-        count = Notification.objects(recipient_id=recipient_id, is_read=False).count()
+        count = Notification.objects(recipient_id=recipient_id, is_read=False, is_deleted=False).count()
         return api_success(
             "Unread count retrieved.",
             {"unread_count": count},
@@ -80,7 +80,7 @@ class NotificationMarkReadView(APIView):
     def patch(self, request: Request, notification_id: str) -> Response:
         recipient_id = str(request.user.id)
         try:
-            notification = Notification.objects.get(id=ObjectId(notification_id), recipient_id=recipient_id)
+            notification = Notification.objects.get(id=ObjectId(notification_id), recipient_id=recipient_id, is_deleted=False)
         except (Notification.DoesNotExist, InvalidId):
             return api_error("Notification not found.", status_code=status.HTTP_404_NOT_FOUND)
 
@@ -100,5 +100,5 @@ class NotificationMarkAllReadView(APIView):
 
     def patch(self, request: Request) -> Response:
         recipient_id = str(request.user.id)
-        Notification.objects(recipient_id=recipient_id, is_read=False).update(set__is_read=True)
+        Notification.objects(recipient_id=recipient_id, is_read=False, is_deleted=False).update(set__is_read=True)
         return api_success("All notifications marked as read.", data=None)

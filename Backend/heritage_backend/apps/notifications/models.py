@@ -17,6 +17,7 @@ class Notification(me.Document):
     message = me.StringField(default="")
     is_read = me.BooleanField(default=False)
     extra = me.DictField(default=dict)
+    is_deleted = me.BooleanField(default=False)
     created_at = me.DateTimeField()
 
     meta = {

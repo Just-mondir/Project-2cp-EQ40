@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"date":{"$numberInt":"1"}},"name":"date_1","background":false,"unique":true}],"uuid":"e8cfdfcc87e04db6a5f1cfb89ce69b49","collectionName":"platform_snapshots","type":"collection"}

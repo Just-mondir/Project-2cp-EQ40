@@ -14,7 +14,7 @@ from .models import MobilizationReport, Report
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_TARGET_TYPES = {"post", "comment", "annotation", "user", "event", "group_chat_message"}
+ALLOWED_TARGET_TYPES = {"post", "comment", "annotation", "user", "event", "group_chat_message", "group"}
 
 
 def _get_user_by_id(user_id: str):
@@ -120,6 +120,21 @@ class ReportSerializer(serializers.Serializer):
                     "group_id": str(target.group.id) if target.group and str(target.group.id) != "None" else None
                 }
 
+            elif obj.target_type == "group":
+                from apps.thematic_groups.models import ThematicGroup
+                target = ThematicGroup.objects.get(id=obj.target_id)
+                admin = _get_user_by_id(str(target.admin_id))
+                return {
+                    "id": str(target.id),
+                    "author_name": admin.display_name if admin else "Unknown",
+                    "author_username": admin.username if admin else "",
+                    "author_avatar": admin.profile_picture if admin else "",
+                    "content": target.name,
+                    "type": "group",
+                    "target_user_id": str(admin.id) if admin else None,
+                    "group_id": str(target.id),
+                }
+
         except Exception as e:
             logger.error(f"Error fetching report target details: {e}")
             return None
@@ -145,7 +160,7 @@ class ReportCreateSerializer(serializers.Serializer):
                 {
                     "target_type": (
                         "target_type must be one of: "
-                        "post, comment, annotation, user, event, group_chat_message."
+                        "post, comment, annotation, user, event, group_chat_message, group."
                     )
                 }
             )
@@ -187,7 +202,7 @@ class ReportCreateSerializer(serializers.Serializer):
         elif target_type == "comment":
             from bson.errors import InvalidId
             try:
-                if Comment.objects(id=target_id).count() == 0:
+                if Comment.objects(id=target_id, is_deleted=False).count() == 0:
                     raise serializers.ValidationError(
                         {"target_id": "Comment not found."}
                     )
@@ -198,7 +213,7 @@ class ReportCreateSerializer(serializers.Serializer):
 
         elif target_type == "annotation":
             try:
-                Annotation.objects.get(id=target_id)
+                Annotation.objects.get(id=target_id, is_deleted=False)
             except Annotation.DoesNotExist:
                 raise serializers.ValidationError(
                     {"target_id": "Annotation not found."}
@@ -219,11 +234,21 @@ class ReportCreateSerializer(serializers.Serializer):
                     {"target_id": "Group chat message not found."}
                 )
 
+        elif target_type == "group":
+            from apps.thematic_groups.models import ThematicGroup
+            try:
+                ThematicGroup.objects.get(id=target_id, is_deleted=False)
+            except Exception:
+                raise serializers.ValidationError(
+                    {"target_id": "Group not found."}
+                )
+
         if Report.objects(
             reporter_id=reporter_id,
             target_type=target_type,
             target_id=target_id,
             status="pending",
+            is_deleted=False,
         ).count() > 0:
             raise serializers.ValidationError(
                 {"non_field_errors": "You already have a pending report for this target."}

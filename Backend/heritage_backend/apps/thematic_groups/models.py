@@ -84,6 +84,7 @@ class ThematicGroup(me.Document):
     tags       = me.ListField(me.StringField(), default=list)
     visibility = me.StringField(choices=("public", "private"), default="public")
     admin_id = me.StringField(required=True)
+    is_deleted = me.BooleanField(default=False)
     created_at = me.DateTimeField(default=timezone.now)
     updated_at = me.DateTimeField(default=timezone.now)
 
@@ -105,6 +106,7 @@ class GroupMembership(me.Document):
     group = me.ReferenceField(ThematicGroup, required=True)
     user_id = me.StringField(required=True)
     joined_at = me.DateTimeField(default=timezone.now)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "group_memberships",
@@ -121,6 +123,7 @@ class GroupJoinRequest(me.Document):
     created_at = me.DateTimeField(default=timezone.now)
     reviewed_by_id = me.StringField(default="")
     reviewed_at = me.DateTimeField(null=True, default=None)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "group_join_requests",
@@ -141,6 +144,7 @@ class GroupInvitation(me.Document):
     status = me.StringField(default="pending")
     created_at = me.DateTimeField(default=timezone.now)
     responded_at = me.DateTimeField(null=True, default=None)
+    is_deleted = me.BooleanField(default=False)
 
     meta = {
         "collection": "group_invitations",
@@ -182,6 +186,7 @@ class GroupChatMute(me.Document):
     user_id = me.StringField(required=True)
     muted_until = me.DateTimeField(null=True, default=None)
     muted_forever = me.BooleanField(default=False)
+    is_deleted = me.BooleanField(default=False)
     updated_at = me.DateTimeField(default=timezone.now)
 
     meta = {

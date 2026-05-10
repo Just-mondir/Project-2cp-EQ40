@@ -40,7 +40,7 @@ def generate_otp_code() -> str:
 def create_hashed_otp(user: User, purpose: str) -> Tuple[OTPCode, str]:
     """Create a new hashed OTP for a given user and purpose, replacing any existing unused one."""
     # Delete previous unused OTPs for this user/purpose
-    OTPCode.objects(user=user, purpose=purpose, is_used=False).delete()
+    OTPCode.objects(user=user, purpose=purpose, is_used=False).update(set__is_deleted=True)
 
     plain_code = generate_otp_code()
     hashed_code = make_password(plain_code)
