@@ -50,6 +50,9 @@ function navigateToContent(
     } else if (target_type === "user") {
         onClose();
         router.push(`/user/${target_details.author_username}`);
+    } else if (target_type === "group") {
+        onClose();
+        router.push(`/group/${target_id}`);
     }
 }
 

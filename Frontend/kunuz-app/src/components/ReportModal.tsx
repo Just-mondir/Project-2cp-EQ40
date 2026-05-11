@@ -8,7 +8,7 @@ const ESPRESSO = "#432817";
 const CREAM_PAGE = "#F7F5EF";
 const MINT = "#1B8561";
 
-type ReportType = "post" | "comment" | "annotation" | "user";
+type ReportType = "post" | "comment" | "annotation" | "user" | "group";
 
 interface ReportModalProps {
     isOpen: boolean;

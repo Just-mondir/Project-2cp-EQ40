@@ -155,23 +155,39 @@ class ReportListCreateView(APIView):
         from apps.reports.email_utils import send_report_notification_email
 
         if report.target_type == "group" and group:
-            # Group itself is reported → notify platform moderators
+            # Group itself is reported → notify platform moderators AND group admin
             platform_mods = User.objects(role__in=["moderator", "admin"], is_active=True, is_deleted=False)
-            mod_emails = [mod.email for mod in platform_mods if mod.email]
-            for mod in platform_mods:
+            
+            # Collect recipient IDs for in-app notifications
+            recipient_ids = {str(mod.id) for mod in platform_mods}
+            if group_admin_id:
+                recipient_ids.add(group_admin_id)
+            
+            # Collect recipient emails
+            recipient_emails = {mod.email for mod in platform_mods if mod.email}
+            if group_admin_id:
+                try:
+                    admin_user = User.objects.get(id=group_admin_id)
+                    if admin_user.email:
+                        recipient_emails.add(admin_user.email)
+                except Exception:
+                    pass
+
+            for rid in recipient_ids:
                 notify(
                     event_type="group_reported",
                     actor_id=str(request.user.id),
                     actor_name=actor_name,
-                    recipient_id=str(mod.id),
+                    recipient_id=rid,
                     target_type="group",
                     target_id=str(report.id),
                     group_name=group.name,
                 )
-            # Send email to platform moderators
+
+            # Send email to all recipients
             try:
                 send_report_notification_email(
-                    recipient_emails=mod_emails,
+                    recipient_emails=list(recipient_emails),
                     reporter_name=actor_name,
                     target_type="group",
                     target_description=group.name,

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import LeaveGroupModal from "@/components/LeaveGroupeModal";
 import ConfirmActionModal from "@/components/ConfirmActionModal";
 import { useTranslations } from "next-intl";
+import ReportModal from "@/components/ReportModal";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -37,6 +38,7 @@ export default function GroupOptionsMenu({
   const [deleting, setDeleting] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const handleLeaveGroup = async () => {
     setLeaving(true);
@@ -52,6 +54,27 @@ export default function GroupOptionsMenu({
     } finally {
       setLeaving(false);
       setShowLeaveModal(false);
+    }
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    const token = getToken();
+    const res = await fetch(`${API_URL}/api/reports/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        target_type: "group",
+        target_id: groupId,
+        reason,
+        description,
+      }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || "Failed to submit report");
     }
   };
 
@@ -179,7 +202,7 @@ export default function GroupOptionsMenu({
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
       ),
-      onClick: () => { setOpen(false); },
+      onClick: () => { setOpen(false); setShowReportModal(true); },
       danger: false,
     },
     {
@@ -222,7 +245,7 @@ export default function GroupOptionsMenu({
           <line x1="12" y1="17" x2="12.01" y2="17" />
         </svg>
       ),
-      onClick: () => { setOpen(false); },
+      onClick: () => { setOpen(false); setShowReportModal(true); },
       danger: false,
     },
   ];
@@ -284,6 +307,12 @@ export default function GroupOptionsMenu({
         cancelText={t("community.close")}
       />
 
+      <ReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleReportSubmit}
+        targetType="group"
+      />
     </>
   );
 }
