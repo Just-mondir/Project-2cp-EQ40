@@ -2255,7 +2255,9 @@ export default function ProfilePage() {
   const isRepostsLoading = displayedRepostedPosts.length === 0 && (loadingReposts || repostsTabQuery.isLoading);
   const isEventsLoading = displayedEventPosts.length === 0 && (loadingEvents || eventsTabQuery.isLoading);
   const isAlertsLoading = displayedAlertPosts.length === 0 && (loadingAlerts || alertsTabQuery.isLoading);
-  const profileGemsCount = profileInfo.likes_count;
+  const profileGemsCount = isOwnProfile
+    ? gemmedPostsCount ?? Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length)
+    : profileInfo.likes_count;
   const profilePostsDisplayCount = profilePostsCount ?? Math.max(profileInfo.posts_count, displayedAllPosts.length, rememberedAllPosts.length, allPosts.length);
   const profileEventsDisplayCount = profileEventsCount ?? Math.max(profileInfo.events_count, displayedEventPosts.length, rememberedEventPosts.length, eventPosts.length);
 
@@ -2263,24 +2265,13 @@ export default function ProfilePage() {
     const previousInteraction = getInteraction(post);
     updateInteraction(post.id, update);
 
-    if (typeof update.gemmed === "boolean" && update.gemmed !== previousInteraction.gemmed) {
-      // Update total gems received (likes_count) if the post belongs to this profile
-      if (post.user_username === viewedUsername) {
-        setProfileInfo(prev => ({
-          ...prev,
-          likes_count: update.gemmed ? prev.likes_count + 1 : Math.max(prev.likes_count - 1, 0)
-        }));
-      }
+    if (!isOwnProfile || typeof update.gemmed !== "boolean" || update.gemmed === previousInteraction.gemmed) return;
 
-      // If it's my own profile, update the "Gems" tab count (posts I've liked)
-      if (isOwnProfile) {
-        setGemmedPostsCount((current) => {
-          const fallback = Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length);
-          const base = current ?? fallback;
-          return update.gemmed ? base + 1 : Math.max(base - 1, 0);
-        });
-      }
-    }
+    setGemmedPostsCount((current) => {
+      const fallback = Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length);
+      const base = current ?? fallback;
+      return update.gemmed ? base + 1 : Math.max(base - 1, 0);
+    });
 
     if (update.gemmed) {
       setGemmedPosts((current) => current.some((item) => item.id === post.id) ? current : [post, ...current]);

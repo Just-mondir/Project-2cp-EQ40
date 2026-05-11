@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"user":{"$numberInt":"1"},"purpose":{"$numberInt":"1"},"is_used":{"$numberInt":"1"}},"name":"user_1_purpose_1_is_used_1","background":false}],"uuid":"975affd11dac4976b6072308a8a7d4ee","collectionName":"otp_codes","type":"collection"}

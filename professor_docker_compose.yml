@@ -3,7 +3,7 @@ version: "3.9"
 services:
   # ── MongoDB with pre-loaded data ──────────────────────────────
   mongo:
-    build: ./mongo-seed
+    image: mondir2006/projet2cp-mongo:latest
     restart: unless-stopped
     volumes:
       - mongo_data:/data/db
@@ -12,18 +12,20 @@ services:
 
   # ── Django Backend ────────────────────────────────────────────
   backend:
-    build: ./Backend/heritage_backend
+    image: mondir2006/projet2cp-backend:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file:
-      - ./Backend/heritage_backend/.env.docker
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - MONGODB_HOST=mongodb://mongo:27017/heritage_db
+      - DEBUG=True
     depends_on:
       - mongo
 
   # ── Next.js Frontend ──────────────────────────────────────────
   frontend:
-    build: ./Frontend/kunuz-app
+    image: mondir2006/projet2cp-frontend:latest
     restart: unless-stopped
     ports:
       - "3000:3000"

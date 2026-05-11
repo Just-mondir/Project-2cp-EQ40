@@ -14,7 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
-ENV DJANGO_SETTINGS_MODULE=config.settings.production
+# Use development settings so DEBUG=True and CORS is open
+ENV DJANGO_SETTINGS_MODULE=config.settings.development
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+EXPOSE 8000
 
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
