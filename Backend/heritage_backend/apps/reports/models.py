@@ -54,7 +54,7 @@ class MobilizationReport(me.Document):
     )
 
     post = me.ReferenceField(Post, required=True)
-    reason = me.StringField(required=True)
+    reason = me.StringField(required=False, default="")
     description = me.StringField(required=True)
     images = me.ListField(me.StringField(), default=list)
     previous_status = me.StringField(required=True, choices=STATUS_CHOICES)

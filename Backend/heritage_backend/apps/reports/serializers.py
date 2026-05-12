@@ -338,6 +338,7 @@ class MobilizationReportCreateSerializer(serializers.Serializer):
     )
     previous_status = serializers.CharField()
     requested_status = serializers.CharField()
+    reason = serializers.CharField(required=False, default="", allow_blank=True)
 
     def validate(self, attrs):
         post_id = attrs.get("post_id", "").strip()
@@ -417,6 +418,7 @@ class MobilizationReportCreateSerializer(serializers.Serializer):
             images=validated_data.get("images", []),
             previous_status=validated_data["previous_status"],
             requested_status=validated_data["requested_status"],
+            reason=validated_data.get("reason", ""),
             created_by=created_by,
         )
         mobilization_report.save()

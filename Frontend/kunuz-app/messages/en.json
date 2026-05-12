@@ -575,7 +575,8 @@
         "researcher": "Researcher",
         "architect": "Architect",
         "historian": "Historian",
-        "guide": "Guide"
+        "guide": "Tour Guide",
+        "tourGuide": "Tour Guide"
       },
       "badge": {
         "request": "Request badge",

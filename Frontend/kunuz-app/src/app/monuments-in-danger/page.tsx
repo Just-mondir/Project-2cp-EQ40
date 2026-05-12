@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -1352,6 +1353,7 @@ function PostModal({
   initialTab = "comments",
   onDelete,
   onReport,
+  refreshTrigger,
 }: {
   post: ApiPost | null;
   onClose: () => void;
@@ -1361,6 +1363,7 @@ function PostModal({
   initialTab?: "comments" | "annotations" | "history";
   onDelete?: (postId: string) => void;
   onReport: (type: ReportTargetType, id: string) => void;
+  refreshTrigger?: number;
 }) {
   const feedT = useTranslations("auth.feed");
   const pageT = useTranslations("auth.pages.monumentsInDanger");
@@ -1394,6 +1397,12 @@ function PostModal({
       fetchHistory(post.id);
     }
   }, [post, initialTab]);
+
+  useEffect(() => {
+    if (post && refreshTrigger) {
+      fetchHistory(post.id);
+    }
+  }, [refreshTrigger]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -2380,7 +2389,11 @@ function MobilizationModal({
         body: formData,
       });
 
-      if (!res.ok) throw new Error(pageT("errors.submitFailed"));
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Submission error details:", errorData);
+        throw new Error(errorData.message || pageT("errors.submitFailed"));
+      }
       onSuccess();
       onClose();
     } catch (err) {
@@ -2391,10 +2404,10 @@ function MobilizationModal({
     }
   };
 
-  if (!post) return null;
+  if (!post || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 overflow-hidden backdrop-blur-sm px-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 overflow-hidden backdrop-blur-sm px-4">
       <div className="bg-[#F7F5EF] w-[950px] max-w-full max-h-[90vh] h-[90vh] md:h-auto rounded-2xl md:rounded-[32px] overflow-hidden shadow-2xl flex flex-col pt-4 pb-4 md:pb-8 relative border border-white/20">
         {/* Header */}
         <div className="flex items-center justify-between px-8 mb-6">
@@ -2506,7 +2519,8 @@ function MobilizationModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -2521,6 +2535,7 @@ function HistoryModal({
   onToggleGem,
   onToggleSave,
   onDeleteHistory,
+  refreshTrigger,
 }: {
   post: ApiPost | null;
   interaction: PostInteraction | null;
@@ -2529,6 +2544,7 @@ function HistoryModal({
   onToggleGem: (postId: string, currentGemmed: boolean, currentCount: number) => void;
   onToggleSave: (postId: string, currentSaved: boolean) => void;
   onDeleteHistory: (reportId: string) => void;
+  refreshTrigger?: number;
 }) {
   const pageT = useTranslations("auth.pages.monumentsInDanger");
   const postFormT = useTranslations("auth.postForm");
@@ -2557,6 +2573,25 @@ function HistoryModal({
     };
     fetchHistory();
   }, [post]);
+
+  useEffect(() => {
+    if (post && refreshTrigger) {
+      const fetchHistory = async () => {
+        const token = getAuthToken();
+        if (!token) return;
+        try {
+          const res = await fetch(`${API_URL}/api/mobilization-reports/?post_id=${post.id}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setHistories(data.data?.results || []);
+          }
+        } catch (err) { }
+      };
+      fetchHistory();
+    }
+  }, [refreshTrigger]);
 
   if (!post) return null;
   const imageList = post.images ?? [];
@@ -2627,7 +2662,7 @@ function HistoryModal({
                       <div className="flex items-center gap-1.5">
                         <span className="text-[10px] font-bold" style={{ color: "#8B7355" }}>{formatDate(h.created_at)}</span>
                       </div>
-                      {isModerator(currentUser) && (
+                      {(isModerator(currentUser) || (currentUser && String(currentUser?.id ?? "") === String(h.created_by))) && (
                         <button
                           onClick={() => onDeleteHistory(h.id)}
                           className="p-1 rounded-full hover:bg-red-50 text-red-600 transition-colors"
@@ -2942,6 +2977,7 @@ export default function MonumentsInDangerPage() {
   const [historyPost, setHistoryPost] = useState<ApiPost | null>(null);
   const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeFilters, setActiveFilters] = useState({
     region: "All",
     historical_period: "All",
@@ -3284,6 +3320,7 @@ export default function MonumentsInDangerPage() {
           }}
           onDelete={handleDeletePost}
           onReport={openReportModal}
+          refreshTrigger={refreshTrigger}
         />
       )}
 
@@ -3301,11 +3338,15 @@ export default function MonumentsInDangerPage() {
             setIsMobilizationOpen(false);
             setMobilizationPost(null);
           }}
-          onSuccess={() => fetchAlerts(constructUrl(activeFilters, searchQuery), true)}
+          onSuccess={() => {
+            fetchAlerts(constructUrl(activeFilters, searchQuery), true);
+            setRefreshTrigger(prev => prev + 1);
+          }}
         />
       )}
       <HistoryModal
         post={historyPost}
+        refreshTrigger={refreshTrigger}
         interaction={historyPost ? getInteraction(historyPost) : null}
         onToggleGem={handleToggleGem}
         onToggleSave={handleToggleSave}
@@ -3318,15 +3359,13 @@ export default function MonumentsInDangerPage() {
               headers: { "Authorization": `Bearer ${token}` },
             });
             if (res.ok) {
-              // Refresh the histories in the modal would be better, but for now we can just close it or rely on re-fetch if it's managed by state
-              // Since Histories state is internal to HistoryModal, I should probably pass a function to update it or handle it inside
+              setRefreshTrigger(prev => prev + 1);
             }
           } catch (err) { console.error(err); }
         }}
         onClose={() => setHistoryPost(null)}
         onMobilizationReport={() => {
           const p = historyPost;
-          setHistoryPost(null);
           setMobilizationPost(p);
           setIsMobilizationOpen(true);
         }}

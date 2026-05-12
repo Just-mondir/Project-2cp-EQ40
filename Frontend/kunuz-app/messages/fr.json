@@ -572,7 +572,9 @@
         "amateur": "Amateur",
         "student": "Étudiant",
         "researcher": "Chercheur",
+        "architect": "Architecte",
         "historian": "Historien",
+        "guide": "Guide touristique",
         "tourGuide": "Guide touristique"
       },
       "badge": {
