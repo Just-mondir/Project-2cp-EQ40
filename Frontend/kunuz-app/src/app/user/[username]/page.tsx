@@ -2034,6 +2034,8 @@ export default function ProfilePage() {
           data = json.data ?? json;
         }
 
+        if (!data) return;
+
         let eventsCount = 0;
         try {
           const eventsRes = await fetch(
