@@ -1,0 +1,923 @@
+{
+  "common": {
+    "theme": {
+      "activateDark": "تفعيل الوضع الداكن",
+      "activateLight": "تفعيل الوضع الفاتح"
+    },
+    "languageSwitcher": {
+      "toggleLabel": "تغيير اللغة",
+      "languages": {
+        "ar": "🇩🇿 العربية",
+        "fr": "🇫🇷 Français",
+        "en": "🇬🇧 English"
+      }
+    }
+  },
+  "landing": {
+    "header": {
+      "explore": "استكشف",
+      "about": "حول",
+      "guilds": "المجموعات",
+      "atRisk": "المواقع المهددة",
+      "events": "الفعاليات",
+      "help": "المساعدة",
+      "contact": "اتصل بنا",
+      "signUp": "إنشاء حساب"
+    },
+    "hero": {
+      "titleLine1": "اكتشف روح",
+      "titleLine2": "الجزائر",
+      "subtitle": "<brand>Kunuz</brand> يربط الأجيال عبر التراث الثقافي الغني للجزائر",
+      "cta": "ابدأ الآن"
+    },
+    "about": {
+      "title": "من نحن",
+      "intro": "<brand>Kunuz</brand> منصة تراثية رقمية توفر فضاءً تعاونياً لمشاركة وتوثيق الإرث المعماري الجزائري.",
+      "users": "يمكن للمستخدمين إنشاء ملفات شخصية ونشر المحتوى والتفاعل داخل مجتمع نابض بالحياة.",
+      "identity": "معاً نساهم في حفظ هويتنا الثقافية وتعزيزها."
+    },
+    "missionVision": {
+      "missionTitle": "مهمتنا:",
+      "missionBody": "بناء فضاء رقمي تعاوني يدعم توثيق الإرث المعماري الجزائري والمحافظة عليه.",
+      "visionTitle": "رؤيتنا:",
+      "visionBody": "أن نصبح منصة رائدة توحد المجتمعات لحماية الهوية المعمارية للجزائر والاحتفاء بها."
+    },
+    "explore": {
+      "title": "اكتشف تراثنا ومجتمعنا",
+      "description": "اكتشف التأملات والتجارب الشخصية والرؤى التاريخية والاكتشافات الثقافية التي يشاركها عشاق التراث من مختلف أنحاء المجتمع. من خلال كل منشور، يوثق الأعضاء المعالم المنسية، ويسلطون الضوء على الآثار المهددة، ويحتفون بالتقاليد التي تشكل هويتنا. استكشف المساهمات الحديثة وكن جزءاً من حركة متنامية مكرسة للحفاظ على إرثنا الثقافي ونقله إلى الأجيال القادمة."
+    },
+    "guilds": {
+      "title": "المجموعات الشائعة",
+      "unesco": {
+        "name": "مواقع التراث العالمي لليونسكو",
+        "description": "مجموعة لاكتشاف ودراسة ومشاركة المحتوى حول المواقع المعترف بها من قبل اليونسكو لقيمتها الثقافية أو الطبيعية الاستثنائية",
+        "members": "3.7 ألف عضو"
+      },
+      "tipaza": {
+        "name": "آثار تيبازة",
+        "description": "مجتمع مخصص لاستكشاف وتوثيق والاحتفاء بآثار ومواقع تيبازة الأثرية والمنطقة المحيطة بها",
+        "members": "3.7 ألف عضو"
+      },
+      "photography": {
+        "name": "تصوير التراث",
+        "description": "مساحة لمشاركة ومناقشة صور المعالم الثقافية والتاريخية مع التركيز على السرد البصري والتقنية والحفاظ المحترم على التراث",
+        "members": "3.7 ألف عضو"
+      }
+    },
+    "atRisk": {
+      "title": "آثار في خطر",
+      "subtitle": "اكتشف مواقع التراث المهددة وساهم في الحفاظ عليها.",
+      "locatedIn": "يقع في <location>{place}</location>، الجزائر",
+      "urgencyLabel": "مستوى الخطورة: {level}",
+      "statusLabel": "الحالة الحالية: {status}",
+      "unknownLocation": "غير معروف",
+      "urgencyLevels": {
+        "low": "منخفض",
+        "high": "مرتفع",
+        "medium": "متوسط",
+        "critical": "حرج",
+        "unknown": "غير معروف"
+      },
+      "statuses": {
+        "alert": "تنبيه",
+        "restored": "تمت استعادته",
+        "under_intervention": "قيد التدخل",
+        "destroyed": "مدمر",
+        "unknown": "غير معروف"
+      },
+      "fallback": {
+        "timgad": {
+          "name": "مدينة تيمقاد",
+          "location": "باتنة"
+        },
+        "elKantara": {
+          "name": "جسر القنطرة",
+          "location": "بسكرة"
+        },
+        "casbah": {
+          "name": "قصبة الجزائر",
+          "location": "الجزائر العاصمة"
+        }
+      }
+    },
+    "events": {
+      "title": "الفعاليات القادمة",
+      "defaultLocation": "الجزائر",
+      "tbd": "لاحقاً",
+      "fallback": {
+        "casbahWorkshop": {
+          "title": "ورشة ترميم القصبة",
+          "description": "يتعلم المتطوعون أساسيات تقنيات الحفظ",
+          "location": "القصبة، الجزائر"
+        },
+        "stoneCleaning": {
+          "title": "تدريب تنظيف الحجر",
+          "description": "يتدرب الطلاب على أساليب ترميم آمنة في المواقع",
+          "location": "تلمسان"
+        }
+      }
+    },
+    "howItWorks": {
+      "title": "كيف يعمل الموقع",
+      "step1": {
+        "label": "الخطوة 1: إنشاء حساب",
+        "description": "سجّل لحفظ المعالم ونشر محتوى تراثي والانضمام إلى شبكة عالمية في بضع نقرات فقط."
+      },
+      "step2": {
+        "label": "الخطوة 2: شارك واستكشف",
+        "description": "تصفح المعالم والاكتشافات. حمّل الصور، أضف المعلومات، أو علّق على مواقع التراث."
+      },
+      "step3": {
+        "label": "الخطوة 3: ساهم واحفظ",
+        "description": "أبلغ عن المواقع المهددة، وأضف تفاصيل موثقة، وادعم الترميم، وانشر الوعي بأهمية الحفظ."
+      }
+    },
+    "footer": {
+      "tagline": "نحافظ على التراث الجزائري<break></break>من خلال المعرفة المجتمعية والتكنولوجيا.",
+      "aboutProject": "حول المشروع",
+      "monuments": "المعالم",
+      "endangeredSites": "المواقع المهددة",
+      "events": "الفعاليات",
+      "joinCommunity": "انضم إلى المجتمع",
+      "guilds": "المجموعات",
+      "guidelines": "الإرشادات",
+      "legal": "القانونية"
+    }
+  },
+  "auth": {
+    "common": {
+      "back": "رجوع",
+      "save": "حفظ",
+      "cancel": "إلغاء",
+      "edit": "تعديل",
+      "delete": "حذف",
+      "accept": "قبول",
+      "reject": "رفض",
+      "reply": "رد",
+      "comments": "التعليقات",
+      "annotations": "التعليقات التوضيحية",
+      "dashboard": "لوحة التحكم",
+      "confirmDeletePost": "هل أنت متأكد أنك تريد حذف هذا المنشور؟",
+      "confirmDeleteComment": "هل أنت متأكد أنك تريد حذف هذا التعليق؟",
+      "confirmDeleteAnnotation": "هل أنت متأكد أنك تريد حذف هذا التوضيح؟",
+      "confirmDeleteReport": "هل أنت متأكد أنك تريد حذف هذا التقرير؟"
+    },
+    "aiResearch": {
+      "title": "بحث ذكاء اصطناعي معمق",
+      "buttonTitle": "بحث الذكاء الاصطناعي",
+      "buttonLabel": "إنشاء بحث ذكاء اصطناعي معمق حول هذا المنشور",
+      "closeLabel": "إغلاق بحث الذكاء الاصطناعي",
+      "loading": "جاري بحث هذا المنشور باستخدام Gemini...",
+      "error": "تعذر إنشاء بحث الذكاء الاصطناعي.",
+      "sources": "المصادر"
+    },
+    "locationCard": {
+      "title": "بطاقة الموقع",
+      "mapTitle": "خريطة {location}",
+      "description": "استكشف هذا الموقع على الخريطة أو افتحه مباشرة في Google Maps.",
+      "openMap": "فتح الخريطة",
+      "defaultLocation": "الجزائر"
+    },
+    "feed": {
+      "actions": {
+        "seeMore": "عرض المزيد",
+        "seeLess": "عرض أقل",
+        "reportPost": "الإبلاغ عن منشور",
+        "editPost": "تعديل المنشور",
+        "deletePost": "حذف المنشور",
+        "editComment": "تعديل التعليق",
+        "deleteComment": "حذف التعليق",
+        "reportComment": "الإبلاغ عن التعليق",
+        "editAnnotation": "تعديل التوضيح",
+        "deleteAnnotation": "حذف التوضيح",
+        "reportAnnotation": "الإبلاغ عن التوضيح",
+        "addComment": "إضافة تعليق",
+        "addAnnotation": "إضافة توضيح"
+      },
+      "labels": {
+        "event": "فعالية",
+        "alert": "تنبيه"
+      },
+      "urgency": {
+        "low": "خطورة منخفضة",
+        "medium": "خطورة متوسطة",
+        "high": "خطورة مرتفعة",
+        "critical": "حرج"
+      },
+      "statuses": {
+        "restored": "تم الترميم",
+        "underIntervention": "قيد التدخل",
+        "destroyed": "مدمر",
+        "alert": "تنبيه",
+        "pending": "قيد الانتظار",
+        "accepted": "مقبول",
+        "rejected": "مرفوض"
+      },
+      "tabs": {
+        "comments": "التعليقات ({count})",
+        "annotations": "التوضيحات ({count})",
+        "history": "السجل"
+      },
+      "placeholders": {
+        "reply": "اكتب رداً...",
+        "comment": "أضف تعليقاً",
+        "annotation": "أضف توضيحاً"
+      },
+      "empty": {
+        "comments": "لا توجد تعليقات بعد. كن أول من يعلّق!",
+        "annotations": "لا توجد توضيحات بعد. كن أول من يضيف توضيحاً!"
+      },
+      "prompts": {
+        "reportComment": "لماذا تقوم بالإبلاغ عن هذا التعليق؟",
+        "reportAnnotation": "لماذا تقوم بالإبلاغ عن هذا التوضيح؟",
+        "reportPost": "لماذا تقوم بالإبلاغ عن هذا المنشور؟"
+      },
+      "feedback": {
+        "commentReported": "تم الإبلاغ عن التعليق بنجاح.",
+        "commentReportFailed": "فشل الإبلاغ عن التعليق.",
+        "annotationReported": "تم الإبلاغ عن التوضيح بنجاح.",
+        "annotationReportFailed": "فشل الإبلاغ عن التوضيح.",
+        "postReported": "تم الإبلاغ عن المنشور بنجاح.",
+        "postReportFailed": "فشل الإبلاغ عن المنشور."
+      }
+    },
+    "filters": {
+      "title": "الفلاتر",
+      "reset": "إعادة تعيين",
+      "apply": "تطبيق",
+      "all": "الكل",
+      "labels": {
+        "postType": "نوع المنشور",
+        "region": "المناطق الجغرافية",
+        "historicalPeriod": "الفترات التاريخية",
+        "heritageType": "نوع التراث",
+        "urgencyLevel": "مستوى الخطورة",
+        "mobilizationStatus": "حالة التعبئة",
+        "eventStatus": "حالة الفعالية",
+        "expertise": "الخبرة"
+      },
+      "eventStatuses": {
+        "upcoming": "قادمة",
+        "ongoing": "جارية",
+        "past": "منتهية"
+      }
+    },
+    "sidebar": {
+      "nav": {
+        "home": "الرئيسية",
+        "communities": "المجتمعات",
+        "monuments": "المعالم المهددة بالخطر",
+        "events": "الفعاليات",
+        "notifications": "الإشعارات",
+        "profile": "الملف الشخصي",
+        "help": "المساعدة"
+      },
+      "overlay": {
+        "title": "الإشعارات",
+        "loading": "جارٍ التحميل...",
+        "empty": "لا توجد إشعارات حالياً.",
+        "someone": "شخص ما",
+        "viewAll": "عرض الكل"
+      }
+    },
+    "addDocuments": {
+      "close": "إغلاق",
+      "title": "إضافة مستندات",
+      "clickToAddMore": "اضغط لإضافة المزيد",
+      "messagePlaceholder": "رسالة اختيارية للمشرفين",
+      "firstDocumentOnly": "سيتم رفع المستند الأول فقط.",
+      "done": "تم",
+      "errors": {
+        "selectDocument": "يرجى اختيار مستند واحد على الأقل."
+      }
+    },
+    "groupsPopup": {
+      "confirmSelection": "تأكيد الاختيار",
+      "title": "إضافة مجموعات",
+      "typeGroupName": "اسم المجموعة",
+      "searchPlaceholder": "ابحث عن مجموعات...",
+      "noGroupsFound": "لم يتم العثور على مجموعات"
+    },
+    "historicalPeriodPopup": {
+      "confirmDate": "تأكيد التاريخ",
+      "title": "الفترة التاريخية",
+      "selectDate": "اختر تاريخاً",
+      "placeholder": "يوم/شهر/سنة أو اسم الفترة",
+      "orPickFromCalendar": "أو اختر من التقويم"
+    },
+    "locationPopup": {
+      "close": "إغلاق",
+      "title": "إضافة موقع",
+      "typeLocation": "اكتب الموقع",
+      "confirmLocation": "تأكيد الموقع",
+      "orPickFromMap": "أو اختر من الخريطة",
+      "openGoogleMaps": "فتح خرائط Google",
+      "pasteLocationFromMap": "ألصق الموقع من الخريطة",
+      "useThisLocation": "استخدم هذا الموقع",
+      "mapHint": "انسخ اسم المكان من خرائط Google ثم الصقه في الأعلى.",
+      "placeholders": {
+        "location": "المدينة أو اسم المعلم...",
+        "mapLocation": "الصق أو اكتب الموقع الذي وجدته..."
+      }
+    },
+    "richTextEditor": {
+      "placeholders": {
+        "title": "أدخل عنوان منشورك هنا...",
+        "content": "أدخل محتوى منشورك هنا..."
+      },
+      "types": {
+        "paragraph": "فقرة",
+        "heading1": "عنوان 1",
+        "heading2": "عنوان 2",
+        "heading3": "عنوان 3"
+      },
+      "toolbar": {
+        "bold": "عريض",
+        "italic": "مائل",
+        "underline": "تحته خط",
+        "strikethrough": "يتوسطه خط",
+        "alignLeft": "محاذاة لليسار",
+        "alignCenter": "توسيط",
+        "alignRight": "محاذاة لليمين",
+        "alignJustify": "ضبط",
+        "bulletList": "قائمة نقطية",
+        "orderedList": "قائمة مرقمة"
+      }
+    },
+    "imageUpload": {
+      "fileTooLarge": "الملف \"{name}\" كبير جداً. الحد الأقصى 10 ميغابايت.",
+      "deleteRequiresLogin": "يرجى تسجيل الدخول لحذف الصور.",
+      "removePhoto": "حذف الصورة",
+      "addPhoto": "إضافة صورة"
+    },
+    "inviteUsers": {
+      "confirmSelection": "تأكيد الاختيار",
+      "send": "إرسال",
+      "title": "دعوة",
+      "typeUsername": "اسم المستخدم",
+      "searchPlaceholder": "ابحث عن مستخدمين...",
+      "searching": "جارٍ البحث...",
+      "noUsersFound": "لم يتم العثور على مستخدمين"
+    },
+    "groupForm": {
+      "sections": {
+        "info": "معلومات",
+        "thematicTags": "الوسوم الموضوعية",
+        "inviteMembers": "دعوة أعضاء",
+        "groupVisibility": "خصوصية المجموعة",
+        "groupRules": "قواعد المجموعة"
+      },
+      "fields": {
+        "groupName": "اسم المجموعة",
+        "description": "الوصف",
+        "historicalPeriod": "الفترة التاريخية",
+        "region": "المنطقة",
+        "category": "الفئة",
+        "rulesGuidelines": "القواعد والإرشادات (اختياري)"
+      },
+      "placeholders": {
+        "description": "صف مجموعتك...",
+        "historicalPeriod": "اختر الفترة التاريخية",
+        "region": "اختر المنطقة",
+        "category": "اختر فئة",
+        "inviteMembers": "دعوة أعضاء",
+        "rules": "اكتب قواعد وإرشادات مجموعتك..."
+      },
+      "visibility": {
+        "public": "عام",
+        "private": "خاص"
+      },
+      "actions": {
+        "removeMember": "إزالة العضو",
+        "addMember": "إضافة عضو",
+        "cancel": "إلغاء",
+        "done": "تم"
+      },
+      "historicalPeriods": {
+        "Prehistory": "ما قبل التاريخ",
+        "Protohistory": "فجر التاريخ",
+        "Numidian period": "الفترة النوميدية",
+        "Punic (Carthaginian) period": "الفترة البونيقية (القرطاجية)",
+        "Roman period": "الفترة الرومانية",
+        "Vandal period": "الفترة الوندالية",
+        "Byzantine period": "الفترة البيزنطية",
+        "Early Islamic period": "بداية الفترة الإسلامية",
+        "Rostamid dynasty": "الدولة الرستمية",
+        "Zirid dynasty": "الدولة الزيرية",
+        "Hammadid dynasty": "الدولة الحمادية",
+        "Almohad dynasty": "الدولة الموحدية",
+        "Zayyanid dynasty": "الدولة الزيانية",
+        "Ottoman period": "الفترة العثمانية",
+        "French colonization": "الاستعمار الفرنسي",
+        "War of Independence": "حرب الاستقلال",
+        "Independent Algeria": "الجزائر المستقلة",
+        "Contemporary period": "الفترة المعاصرة"
+      },
+      "regions": {
+        "Kabylia": "القبائل",
+        "Tuareg": "الطوارق",
+        "Chaoui": "الشاوية",
+        "Chleuh": "الشلوح",
+        "Medea": "المدية",
+        "Constantine": "قسنطينة",
+        "Algiers": "الجزائر العاصمة",
+        "Tlemcen": "تلمسان",
+        "Oran": "وهران",
+        "Tipaza": "تيبازة",
+        "Setif": "سطيف",
+        "Batna": "باتنة",
+        "Beni Mzab": "بني مزاب",
+        "Ouled Nail": "أولاد نايل",
+        "Tassili n'Ajjer": "طاسيلي ناجر"
+      },
+      "categories": {
+        "Architecture": "العمارة",
+        "Archaeology": "علم الآثار",
+        "History": "التاريخ",
+        "Art": "الفن",
+        "Photography": "التصوير",
+        "Research": "البحث",
+        "Tourism": "السياحة",
+        "Conservation": "الحفظ"
+      }
+    },
+    "postForm": {
+      "sections": {
+        "info": "معلومات",
+        "location": "الموقع",
+        "labels": "الوسوم",
+        "postVisibility": "خصوصية المنشور"
+      },
+      "fields": {
+        "title": "العنوان",
+        "description": "الوصف",
+        "postType": "نوع المنشور",
+        "dangerLevel": "مستوى الخطر",
+        "currentStatus": "الحالة الحالية",
+        "historicalPeriod": "الفترة التاريخية",
+        "region": "المنطقة",
+        "monumentType": "نوع المعلم",
+        "eventTime": "وقت الفعالية",
+        "startTime": "وقت البداية",
+        "endTime": "وقت النهاية"
+      },
+      "placeholders": {
+        "title": "أدخل عنوان منشورك هنا...",
+        "description": "أدخل محتوى منشورك هنا...",
+        "location": "المدينة أو اسم المعلم",
+        "historicalPeriod": "اختر الفترة التاريخية",
+        "region": "اختر المنطقة"
+      },
+      "actions": {
+        "addLocation": "إضافة موقع",
+        "removeGroup": "إزالة المجموعة",
+        "addGroup": "إضافة مجموعة",
+        "cancel": "إلغاء",
+        "saving": "جارٍ الحفظ...",
+        "done": "تم"
+      },
+      "errors": {
+        "endTimeAfterStart": "يجب أن يكون وقت النهاية بعد وقت البداية."
+      },
+      "reviewModal": {
+        "title": "حفظ التغييرات؟",
+        "message": "هل أنت متأكد من حفظ هذه التغييرات وتحديث منشورك؟",
+        "primaryAction": "حفظ وإنهاء",
+        "secondaryAction": "مراجعة مرة أخرى"
+      },
+      "options": {
+        "postTypes": {
+          "question": "سؤال",
+          "visit": "زيارة",
+          "discovery": "اكتشاف",
+          "inDanger": "في خطر",
+          "event": "فعالية"
+        },
+        "dangerLevels": {
+          "low": "منخفض",
+          "medium": "متوسط",
+          "high": "مرتفع",
+          "critical": "حرج"
+        },
+        "monumentTypes": {
+          "civil": "مدني",
+          "military": "عسكري",
+          "religious": "ديني",
+          "funerary": "جنائزي"
+        },
+        "statuses": {
+          "destroyed": "مدمر",
+          "underIntervention": "قيد التدخل",
+          "restored": "مرمم",
+          "alert": "تنبيه"
+        },
+        "visibility": {
+          "public": "عام",
+          "private": "خاص"
+        }
+      },
+      "historicalPeriods": {
+        "Prehistory": "ما قبل التاريخ",
+        "Protohistory": "فجر التاريخ",
+        "Numidian period": "الفترة النوميدية",
+        "Punic (Carthaginian) period": "الفترة البونيقية (القرطاجية)",
+        "Roman period": "الفترة الرومانية",
+        "Vandal period": "الفترة الوندالية",
+        "Byzantine period": "الفترة البيزنطية",
+        "Early Islamic period": "بداية الفترة الإسلامية",
+        "Rostamid dynasty": "الدولة الرستمية",
+        "Zirid dynasty": "الدولة الزيرية",
+        "Hammadid dynasty": "الدولة الحمادية",
+        "Almohad dynasty": "الدولة الموحدية",
+        "Zayyanid dynasty": "الدولة الزيانية",
+        "Ottoman period": "الفترة العثمانية",
+        "French colonization": "الاستعمار الفرنسي",
+        "War of Independence": "حرب الاستقلال",
+        "Independent Algeria": "الجزائر المستقلة",
+        "Contemporary period": "الفترة المعاصرة"
+      },
+      "regions": {
+        "Kabylia": "القبائل",
+        "Tuareg": "الطوارق",
+        "Chaoui": "الشاوية",
+        "Chleuh": "الشلوح",
+        "Medea": "المدية",
+        "Constantine": "قسنطينة",
+        "Algiers": "الجزائر العاصمة",
+        "Tlemcen": "تلمسان",
+        "Oran": "وهران",
+        "Tipaza": "تيبازة",
+        "Setif": "سطيف",
+        "Batna": "باتنة",
+        "Beni Mzab": "بني مزاب",
+        "Ouled Nail": "أولاد نايل",
+        "Tassili n'Ajjer": "طاسيلي ناجر"
+      }
+    },
+    "profileForm": {
+      "sections": {
+        "info": "معلومات",
+        "expertise": "الخبرة",
+        "speciality": "التخصص",
+        "badge": "الشارة"
+      },
+      "fields": {
+        "firstName": "الاسم الأول",
+        "lastName": "اسم العائلة",
+        "biography": "نبذة"
+      },
+      "placeholders": {
+        "biography": "أخبرنا عن نفسك..."
+      },
+      "expertiseOptions": {
+        "amateur": "هاوٍ",
+        "student": "طالب",
+        "researcher": "باحث",
+        "architect": "مهندس معماري",
+        "historian": "مؤرخ",
+        "guide": "مرشد سياحي",
+        "tourGuide": "مرشد سياحي"
+      },
+      "badge": {
+        "request": "طلب شارة",
+        "selectedCount": "تم اختيار {count} ملف/ملفات"
+      },
+      "actions": {
+        "cancel": "إلغاء",
+        "done": "تم"
+      }
+    },
+    "profilePopups": {
+      "actions": {
+        "cancel": "إلغاء",
+        "showPassword": "إظهار كلمة المرور",
+        "hidePassword": "إخفاء كلمة المرور"
+      },
+      "errors": {
+        "generic": "حدث خطأ ما."
+      },
+      "changeEmail": {
+        "title": "تغيير البريد الإلكتروني",
+        "subtitle": "أدخل بريدك الإلكتروني الجديد وكلمة المرور الحالية",
+        "fields": {
+          "newEmail": "البريد الإلكتروني الجديد",
+          "currentPassword": "كلمة المرور الحالية"
+        },
+        "errors": {
+          "required": "يرجى ملء جميع الحقول."
+        },
+        "actions": {
+          "saving": "جارٍ الحفظ...",
+          "save": "حفظ التغييرات"
+        }
+      },
+      "changePassword": {
+        "title": "تغيير كلمة المرور",
+        "subtitle": "اختر كلمة مرور جديدة وقوية",
+        "fields": {
+          "currentPassword": "كلمة المرور الحالية",
+          "newPassword": "كلمة المرور الجديدة",
+          "confirmNewPassword": "تأكيد كلمة المرور الجديدة"
+        },
+        "errors": {
+          "required": "يرجى ملء جميع الحقول.",
+          "mismatch": "كلمتا المرور الجديدتان غير متطابقتين."
+        },
+        "actions": {
+          "updating": "جارٍ التحديث...",
+          "update": "تحديث كلمة المرور"
+        }
+      },
+      "dashboard": {
+        "title": "لوحة التحكم",
+        "items": {
+          "changeEmail": "تغيير البريد الإلكتروني",
+          "changePassword": "تغيير كلمة المرور",
+          "platformStatistics": "إحصاءات المنصة",
+          "deleteAccount": "حذف الحساب",
+          "logout": "تسجيل الخروج"
+        }
+      }
+    },
+    "notificationPanel": {
+      "inbox": "الوارد",
+      "title": "الإشعارات",
+      "unreadCount": "{count} إشعار غير مقروء",
+      "someone": "شخص ما",
+      "loading": "جارٍ تحميل الإشعارات...",
+      "actions": {
+        "refresh": "تحديث",
+        "markAllRead": "تحديد الكل كمقروء",
+        "close": "إغلاق الإشعارات"
+      },
+      "empty": {
+        "title": "لا توجد إشعارات حالياً",
+        "description": "ستظهر هنا الإعجابات والتعليقات ودعوات المجموعات ومراجعات الشارات وتحديثات الإشراف."
+      },
+      "sections": {
+        "today": "اليوم",
+        "thisMonth": "هذا الشهر",
+        "thisWeek": "هذا الأسبوع",
+        "earlier": "أقدم"
+      },
+      "time": {
+        "justNow": "الآن"
+      }
+    },
+    "pages": {
+      "home": {
+        "guilds": {
+          "title": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0627\u062a \u0627\u0644\u0634\u0627\u0626\u0639\u0629",
+          "members": "{count} \u0639\u0636\u0648",
+          "items": {
+            "heritagePhotography": {
+              "name": "\u062a\u0635\u0648\u064a\u0631 \u0627\u0644\u062a\u0631\u0627\u062b",
+              "description": "\u0645\u0633\u0627\u062d\u0629 \u0644\u0645\u0634\u0627\u0631\u0643\u0629 \u0635\u0648\u0631 \u0627\u0644\u0645\u0639\u0627\u0644\u0645 \u0627\u0644\u062b\u0642\u0627\u0641\u064a\u0629 \u0648\u0627\u0644\u062a\u0627\u0631\u064a\u062e\u064a\u0629"
+            },
+            "unescoWorldHeritage": {
+              "name": "\u0645\u0648\u0627\u0642\u0639 \u0627\u0644\u062a\u0631\u0627\u062b \u0627\u0644\u0639\u0627\u0644\u0645\u064a \u0644\u0644\u064a\u0648\u0646\u0633\u0643\u0648",
+              "description": "\u0645\u062e\u0635\u0635\u0629 \u0644\u0644\u0645\u0648\u0627\u0642\u0639 \u0627\u0644\u062c\u0632\u0627\u0626\u0631\u064a\u0629 \u0627\u0644\u0645\u0639\u062a\u0631\u0641 \u0628\u0647\u0627 \u0645\u0646 \u0627\u0644\u064a\u0648\u0646\u0633\u0643\u0648"
+            },
+            "monumentsOfTipaza": {
+              "name": "\u0645\u0639\u0627\u0644\u0645 \u062a\u064a\u0628\u0627\u0632\u0629",
+              "description": "\u0627\u0633\u062a\u0643\u0634\u0627\u0641 \u0648\u062a\u0648\u062b\u064a\u0642 \u0627\u0644\u0645\u0648\u0627\u0642\u0639 \u0627\u0644\u0623\u062b\u0631\u064a\u0629 \u0641\u064a \u062a\u064a\u0628\u0627\u0632\u0629"
+            }
+          }
+        },
+        "search": {
+          "placeholder": "\u0627\u0628\u062d\u062b \u0641\u064a \u0627\u0644\u0645\u0646\u0634\u0648\u0631\u0627\u062a \u0648\u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645\u064a\u0646...",
+          "sections": {
+            "users": "\u0627\u0644\u0645\u0633\u062a\u062e\u062f\u0645\u0648\u0646",
+            "posts": "\u0627\u0644\u0645\u0646\u0634\u0648\u0631\u0627\u062a"
+          },
+          "noResults": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0646\u062a\u0627\u0626\u062c \u0644\u0640 \"{query}\""
+        },
+        "community": {
+          "feedTitle": "\u062e\u0644\u0627\u0635\u0629 \u0627\u0644\u0645\u062c\u062a\u0645\u0639",
+          "showAll": "\u0639\u0631\u0636 \u0627\u0644\u0643\u0644",
+          "noPostsTitle": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0646\u0634\u0648\u0631\u0627\u062a",
+          "noPostsDescription": "\u0643\u0646 \u0623\u0648\u0644 \u0645\u0646 \u064a\u0634\u0627\u0631\u0643 \u0634\u064a\u0626\u0627 \u0641\u064a \u0647\u0630\u0627 \u0627\u0644\u0645\u062c\u062a\u0645\u0639!",
+          "groupsTitle": "\u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0627\u062a",
+          "createGroup": "\u0625\u0646\u0634\u0627\u0621 \u0645\u062c\u0645\u0648\u0639\u0629 \u062c\u062f\u064a\u062f\u0629",
+          "suggestedGroups": "\u0645\u062c\u0645\u0648\u0639\u0627\u062a \u0645\u0642\u062a\u0631\u062d\u0629",
+          "yourGroups": "\u0645\u062c\u0645\u0648\u0639\u0627\u062a\u0643",
+          "viewAll": "\u0639\u0631\u0636 \u0627\u0644\u0643\u0644",
+          "members": "{count} \u0623\u0639\u0636\u0627\u0621",
+          "membersTitle": "\u0627\u0644\u0623\u0639\u0636\u0627\u0621",
+          "noMembers": "\u0644\u0627 \u064a\u0648\u062c\u062f \u0623\u0639\u0636\u0627\u0621",
+          "admin": "\u0645\u0634\u0631\u0641",
+          "viewProfile": "\u0639\u0631\u0636 \u0627\u0644\u0645\u0644\u0641",
+          "remove": "\u0625\u0632\u0627\u0644\u0629",
+          "removing": "\u062c\u0627\u0631\u064a \u0627\u0644\u0625\u0632\u0627\u0644\u0629...",
+          "loadingMembers": "\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0623\u0639\u0636\u0627\u0621...",
+          "groupRules": "\u0642\u0648\u0627\u0639\u062f \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "details": "\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644",
+          "category": "\u0627\u0644\u0641\u0626\u0629",
+          "region": "\u0627\u0644\u0645\u0646\u0637\u0642\u0629",
+          "period": "\u0627\u0644\u0641\u062a\u0631\u0629",
+          "editGroup": "\u062a\u0639\u062f\u064a\u0644 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "deleteGroup": "\u062d\u0630\u0641 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "reportGroup": "\u0627\u0644\u0625\u0628\u0644\u0627\u063a \u0639\u0646 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "leaveGroup": "\u0645\u063a\u0627\u062f\u0631\u0629 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "deleteGroupTitle": "\u062d\u0630\u0641 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "deleteGroupMessage": "\u0647\u0644 \u062a\u0631\u064a\u062f \u062d\u0630\u0641 {groupName}\u061f \u0644\u0627 \u064a\u0645\u0643\u0646 \u0627\u0644\u062a\u0631\u0627\u062c\u0639 \u0639\u0646 \u0647\u0630\u0627 \u0627\u0644\u0625\u062c\u0631\u0627\u0621.",
+          "deleteGroupConfirm": "\u0646\u0639\u0645\u060c \u0627\u062d\u0630\u0641 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "deletingGroup": "\u062c\u0627\u0631\u064a \u0627\u0644\u062d\u0630\u0641...",
+          "joinRequestTitle": "\u062a\u0645 \u0625\u0631\u0633\u0627\u0644 \u0637\u0644\u0628 \u0627\u0644\u0627\u0646\u0636\u0645\u0627\u0645",
+          "joinRequestMessage": "\u0634\u0643\u0631\u0627 \u0644\u0643! \u0628\u0627\u0646\u062a\u0638\u0627\u0631 \u0645\u0648\u0627\u0641\u0642\u0629 \u0627\u0644\u0645\u0634\u0631\u0641.",
+          "leftGroupTitle": "\u0644\u0642\u062f \u063a\u0627\u062f\u0631\u062a \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629",
+          "leftGroupMessage": "\u0644\u0642\u062f \u063a\u0627\u062f\u0631\u062a \u0647\u0630\u0647 \u0627\u0644\u0645\u062c\u0645\u0648\u0639\u0629 \u0628\u0646\u062c\u0627\u062d.",
+          "close": "\u0625\u063a\u0644\u0627\u0642",
+          "rules": {
+            "shareRoman": "\u0634\u0627\u0631\u0643 \u0645\u062d\u062a\u0648\u0649 \u0645\u0631\u062a\u0628\u0637\u0627 \u0628\u0627\u0644\u0645\u0639\u0627\u0644\u0645 \u0627\u0644\u0631\u0648\u0645\u0627\u0646\u064a\u0629 \u0648\u0639\u0644\u0645 \u0627\u0644\u0622\u062b\u0627\u0631.",
+            "includeContext": "\u0623\u0636\u0641 \u0633\u064a\u0627\u0642\u0627 \u062a\u0627\u0631\u064a\u062e\u064a\u0627 \u0639\u0646\u062f \u0646\u0634\u0631 \u0627\u0644\u0645\u0639\u0627\u0644\u0645 \u0623\u0648 \u0627\u0644\u0642\u0637\u0639 \u0627\u0644\u0623\u062b\u0631\u064a\u0629.",
+            "respectAccuracy": "\u0627\u062d\u062a\u0631\u0645 \u0627\u0644\u062f\u0642\u0629 \u0648\u0627\u0630\u0643\u0631 \u0627\u0644\u0645\u0635\u0627\u062f\u0631 \u0639\u0646\u062f \u0627\u0644\u0625\u0645\u0643\u0627\u0646.",
+            "encourageDiscussion": "\u0634\u062c\u0639 \u0627\u0644\u0646\u0642\u0627\u0634 \u062d\u0648\u0644 \u0627\u0644\u062d\u0641\u0627\u0638 \u0648\u0627\u0644\u062a\u0631\u0645\u064a\u0645.",
+            "noOffTopic": "\u064a\u0645\u0646\u0639 \u0646\u0634\u0631 \u0645\u0648\u0627\u0636\u064a\u0639 \u062e\u0627\u0631\u062c\u0629 \u0639\u0646 \u0627\u0644\u0633\u064a\u0627\u0642 \u0623\u0648 \u062a\u0631\u0648\u064a\u062c \u063a\u064a\u0631 \u0645\u0631\u062a\u0628\u0637."
+          },
+          "values": {
+            "ancientCivilizations": "\u0627\u0644\u062d\u0636\u0627\u0631\u0627\u062a \u0627\u0644\u0642\u062f\u064a\u0645\u0629",
+            "romanPeriod": "\u0627\u0644\u0641\u062a\u0631\u0629 \u0627\u0644\u0631\u0648\u0645\u0627\u0646\u064a\u0629"
+          },
+          "posts": "{count} \u0645\u0646\u0634\u0648\u0631",
+          "managedBy": "\u064a\u062f\u064a\u0631\u0647 {name}",
+          "description": "\u0627\u0644\u0648\u0635\u0641",
+          "addPost": "+ \u0645\u0646\u0634\u0648\u0631",
+          "invite": "+ \u062f\u0639\u0648\u0629",
+          "requestSent": "\u062a\u0645 \u0625\u0631\u0633\u0627\u0644 \u0627\u0644\u0637\u0644\u0628",
+          "joining": "\u062c\u0627\u0631\u064a \u0627\u0644\u0627\u0646\u0636\u0645\u0627\u0645...",
+          "join": "\u0627\u0646\u0636\u0645\u0627\u0645",
+          "visit": "\u0632\u064a\u0627\u0631\u0629",
+          "postedIn": "\u0646\u0634\u0631 \u0641\u064a {date}",
+          "tabs": {
+            "posts": "\u0627\u0644\u0645\u0646\u0634\u0648\u0631\u0627\u062a",
+            "questions": "\u0627\u0644\u0623\u0633\u0626\u0644\u0629",
+            "about": "\u062d\u0648\u0644",
+            "myPosts": "\u0645\u0646\u0634\u0648\u0631\u0627\u062a\u064a"
+          }
+        }
+      },
+      "events": {
+        "searchPlaceholder": "ابحث عن الفعاليات...",
+        "noResults": "لم يتم العثور على فعاليات تطابق معاييرك.",
+        "upcomingTitle": "الفعاليات القادمة",
+        "noUpcoming": "لا توجد فعاليات قادمة",
+        "defaultLocation": "الجزائر",
+        "unknownUser": "غير معروف"
+      },
+      "addPost": {
+        "title": "إضافة منشور",
+        "publishing": "جارٍ النشر...",
+        "errors": {
+          "createFailed": "فشل إنشاء المنشور"
+        }
+      },
+      "editPost": {
+        "title": "تعديل المنشور",
+        "loading": "جارٍ التحميل...",
+        "notFound": "المنشور غير موجود",
+        "editingLabel": "جارٍ التعديل:",
+        "saving": "جارٍ حفظ التغييرات...",
+        "errors": {
+          "fetchFailed": "فشل تحميل المنشور",
+          "updateFailed": "فشل تحديث المنشور"
+        }
+      },
+      "addEvent": {
+        "title": "إضافة فعالية تعبئة",
+        "publishing": "جارٍ النشر...",
+        "success": "تم إنشاء فعالية التعبئة بنجاح!",
+        "errors": {
+          "missingTitle": "يرجى إدخال عنوان للفعالية.",
+          "missingStartTime": "يرجى إدخال وقت بداية للفعالية.",
+          "createPost": "فشل إنشاء منشور الفعالية: {message}",
+          "unknown": "خطأ غير معروف",
+          "createFailed": "فشل إنشاء فعالية التعبئة. يرجى المحاولة مرة أخرى."
+        }
+      },
+      "monumentsInDanger": {
+        "searchPlaceholder": "ابحث عن التنبيهات...",
+        "noResultsTitle": "لم يتم العثور على تنبيهات تطابق معاييرك",
+        "noResultsDescription": "حاول تعديل البحث أو الفلاتر",
+        "noCritical": "لم يتم العثور على معالم حرجة.",
+        "addMobilizationReport": "إضافة تقرير تعبئة",
+        "criticalTitle": "معالم في خطر حرج",
+        "defaultLocation": "الجزائر",
+        "unknownUser": "غير معروف",
+        "history": {
+          "noPreviewImage": "لا توجد صورة معاينة",
+          "postedIn": "نُشر في {date}",
+          "empty": "لا توجد تقارير تاريخية بعد."
+        },
+        "reportModal": {
+          "title": "تقرير تعبئة",
+          "generatedTitlePrefix": "تعبئة:",
+          "documentationPhotos": "صور التوثيق",
+          "description": "الوصف",
+          "descriptionPlaceholder": "أدخل تفاصيل التقرير هنا...",
+          "previousStatus": "الحالة السابقة",
+          "newStatus": "الحالة الجديدة",
+          "submitting": "جارٍ الإرسال...",
+          "submit": "إرسال التقرير",
+          "errors": {
+            "submitFailed": "فشل في إرسال تقرير التعبئة."
+          }
+        }
+      },
+      "editProfile": {
+        "title": "تعديل الملف الشخصي",
+        "imageAlt": "الملف الشخصي",
+        "uploadPhoto": "رفع صورة الملف الشخصي"
+      },
+      "createGroup": {
+        "title": "إنشاء مجموعة",
+        "creating": "جارٍ الإنشاء...",
+        "coverAlt": "الغلاف",
+        "coverPhoto": "صورة الغلاف",
+        "groupAlt": "المجموعة",
+        "uploadGroupPhoto": "رفع صورة المجموعة"
+      },
+      "editGroup": {
+        "title": "تعديل المجموعة",
+        "saving": "جارٍ الحفظ...",
+        "coverAlt": "الغلاف",
+        "coverPhoto": "صورة الغلاف",
+        "groupAlt": "المجموعة",
+        "uploadGroupPhoto": "رفع صورة المجموعة"
+      },
+      "setProfile": {
+        "title": "إعداد معلومات الملف الشخصي",
+        "subtitle": "ستكون هذه المعلومات مرئية في ملفك الشخصي",
+        "heroImageAlt": "داخل معماري تراثي",
+        "profileImageAlt": "الملف الشخصي",
+        "requestBadge": "طلب شارة",
+        "badgeNotice": "تم إرسال طلب الشارة باسم {name}. تم إشعار المشرفين عبر البريد الإلكتروني.",
+        "fields": {
+          "firstName": "الاسم الأول",
+          "lastName": "اسم العائلة",
+          "biography": "نبذة",
+          "expertise": "الخبرة",
+          "speciality": "التخصص"
+        },
+        "expertiseOptions": {
+          "Amateur": "هاوٍ",
+          "Student": "طالب",
+          "Researcher": "باحث",
+          "Historian": "مؤرخ",
+          "Tour Guide": "مرشد سياحي",
+          "Architect": "مهندس معماري"
+        },
+        "actions": {
+          "saving": "جارٍ الحفظ...",
+          "done": "تم"
+        },
+        "errors": {
+          "noAuthToken": "لم يتم العثور على رمز المصادقة. يرجى تسجيل الدخول.",
+          "updateProfile": "فشل تحديث الملف الشخصي",
+          "uniqueUsername": "تعذر العثور على اسم مستخدم فريد. يرجى تعديل الاسم ثم إعادة المحاولة.",
+          "uploadPicture": "فشل رفع صورة الملف الشخصي",
+          "submitBadge": "فشل إرسال طلب الشارة",
+          "generic": "حدث خطأ"
+        }
+      },
+      "userProfile": {
+        "actions": {
+          "editProfile": "تعديل الملف الشخصي"
+        },
+        "stats": {
+          "posts": "\u0627\u0644\u0645\u0646\u0634\u0648\u0631\u0627\u062a",
+          "likes": "\u0627\u0644\u062c\u0648\u0627\u0647\u0631",
+          "events": "\u0627\u0644\u0641\u0639\u0627\u0644\u064a\u0627\u062a"
+        },
+        "empty": {
+          "posts": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0646\u0634\u0648\u0631\u0627\u062a \u0628\u0639\u062f",
+          "treasure": "\u0643\u0646\u0632\u0643 \u0641\u0627\u0631\u063a",
+          "collection": "\u0645\u062c\u0645\u0648\u0639\u062a\u0643 \u0641\u0627\u0631\u063a\u0629",
+          "reposts": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0625\u0639\u0627\u062f\u0627\u062a \u0646\u0634\u0631 \u0628\u0639\u062f",
+          "events": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0641\u0639\u0627\u0644\u064a\u0627\u062a \u0628\u0639\u062f",
+          "alerts": "\u0644\u0627 \u062a\u0648\u062c\u062f \u0645\u0639\u0627\u0644\u0645 \u0641\u064a \u062e\u0637\u0631 \u0628\u0639\u062f"
+        },
+        "modals": {
+          "deletePost": {
+            "title": "حذف هذا المنشور؟",
+            "message": "هذا الإجراء دائم ولا يمكن التراجع عنه. سيتم حذف المنشور وكل صوره.",
+            "confirm": "حذف",
+            "cancel": "إلغاء"
+          },
+          "logout": {
+            "title": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
+            "message": "إذا تابعت، سيتم حذف رمز الدخول وسيتم توجيهك إلى الصفحة الرئيسية.",
+            "confirm": "تسجيل الخروج",
+            "cancel": "إلغاء"
+          },
+          "deleteAccount": {
+            "title": "حذف حسابك؟",
+            "message": "هذا الإجراء دائم ولا يمكن التراجع عنه. سيتم حذف جميع بياناتك ومنشوراتك.",
+            "confirm": "حذف الحساب",
+            "cancel": "الاحتفاظ بالحساب"
+          }
+        }
+      }
+    }
+  }
+}

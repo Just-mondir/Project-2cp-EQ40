@@ -1,0 +1,922 @@
+{
+  "common": {
+    "theme": {
+      "activateDark": "Activer le mode sombre",
+      "activateLight": "Activer le mode clair"
+    },
+    "languageSwitcher": {
+      "toggleLabel": "Changer de langue",
+      "languages": {
+        "ar": "🇩🇿 العربية",
+        "fr": "🇫🇷 Français",
+        "en": "🇬🇧 English"
+      }
+    }
+  },
+  "landing": {
+    "header": {
+      "explore": "Explorer",
+      "about": "À propos",
+      "guilds": "Groupes",
+      "atRisk": "En danger",
+      "events": "Événements",
+      "help": "Aide",
+      "contact": "Contact",
+      "signUp": "S'inscrire"
+    },
+    "hero": {
+      "titleLine1": "DÉCOUVREZ L'ÂME",
+      "titleLine2": "DE L'ALGÉRIE",
+      "subtitle": "<brand>Kunuz</brand> relie les générations à travers le riche patrimoine culturel de l'Algérie",
+      "cta": "Commencer"
+    },
+    "about": {
+      "title": "À propos de nous",
+      "intro": "<brand>Kunuz</brand> est une plateforme patrimoniale qui offre un espace numérique collaboratif pour partager et documenter l'héritage architectural de l'Algérie.",
+      "users": "Les utilisateurs peuvent créer des profils, publier du contenu et interagir au sein d'une communauté dynamique.",
+      "identity": "Ensemble, nous contribuons à préserver et à renforcer notre identité culturelle."
+    },
+    "missionVision": {
+      "missionTitle": "Notre mission :",
+      "missionBody": "Créer un espace numérique collaboratif qui soutient la documentation et la préservation de l'héritage architectural de l'Algérie.",
+      "visionTitle": "Notre vision :",
+      "visionBody": "Devenir une plateforme de référence qui unit les communautés pour protéger et célébrer l'identité architecturale de l'Algérie."
+    },
+    "explore": {
+      "title": "Découvrez notre patrimoine et notre communauté",
+      "description": "Découvrez des réflexions, des expériences personnelles, des éclairages historiques et des découvertes culturelles partagés par des passionnés du patrimoine de toute la communauté. À travers chaque publication, les membres documentent des lieux oubliés, mettent en lumière des monuments menacés et célèbrent les traditions qui façonnent notre identité. Explorez les contributions récentes et rejoignez un mouvement grandissant dédié à la préservation et à la transmission de notre héritage culturel aux générations futures."
+    },
+    "guilds": {
+      "title": "Groupes populaires",
+      "unesco": {
+        "name": "Sites du patrimoine mondial de l'UNESCO",
+        "description": "Un groupe pour découvrir, étudier et partager du contenu sur les sites reconnus par l'UNESCO pour leur valeur culturelle ou naturelle exceptionnelle",
+        "members": "3,7 k membres"
+      },
+      "tipaza": {
+        "name": "Monuments de Tipaza",
+        "description": "Une communauté dédiée à l'exploration, à la documentation et à la célébration des monuments et sites archéologiques de Tipaza et de sa région",
+        "members": "3,7 k membres"
+      },
+      "photography": {
+        "name": "Photographie du patrimoine",
+        "description": "Un espace pour partager et discuter des photos de sites culturels et historiques, en mettant l'accent sur le récit, la technique et la préservation respectueuse du patrimoine",
+        "members": "3,7 k membres"
+      }
+    },
+    "atRisk": {
+      "title": "Monuments en danger",
+      "subtitle": "Découvrez les sites patrimoniaux menacés et aidez à les préserver.",
+      "locatedIn": "Situé à <location>{place}</location>, en Algérie",
+      "urgencyLabel": "Niveau d'urgence : {level}",
+      "statusLabel": "Statut actuel : {status}",
+      "unknownLocation": "Inconnu",
+      "urgencyLevels": {
+        "low": "Faible",
+        "high": "Élevé",
+        "medium": "Moyen",
+        "critical": "Critique",
+        "unknown": "Inconnu"
+      },
+      "statuses": {
+        "alert": "Alerte",
+        "restored": "Restauré",
+        "under_intervention": "Sous intervention",
+        "destroyed": "Détruit",
+        "unknown": "Inconnu"
+      },
+      "fallback": {
+        "timgad": {
+          "name": "Cité de Timgad",
+          "location": "Batna"
+        },
+        "elKantara": {
+          "name": "Pont d'El Kantara",
+          "location": "Biskra"
+        },
+        "casbah": {
+          "name": "Casbah d'Alger",
+          "location": "Alger"
+        }
+      }
+    },
+    "events": {
+      "title": "Événements à venir",
+      "defaultLocation": "Algérie",
+      "tbd": "À venir",
+      "fallback": {
+        "casbahWorkshop": {
+          "title": "Atelier de restauration de la Casbah",
+          "description": "Des bénévoles apprennent les bases des techniques de préservation",
+          "location": "Casbah, Alger"
+        },
+        "stoneCleaning": {
+          "title": "Formation au nettoyage de la pierre",
+          "description": "Des étudiants s'exercent à des méthodes de restauration sûres sur les sites",
+          "location": "Tlemcen"
+        }
+      }
+    },
+    "howItWorks": {
+      "title": "Comment ça marche",
+      "step1": {
+        "label": "Étape 1 : créer un compte",
+        "description": "Inscrivez-vous pour sauvegarder des monuments, publier du contenu patrimonial et rejoindre un réseau mondial en quelques clics."
+      },
+      "step2": {
+        "label": "Étape 2 : partager et explorer",
+        "description": "Parcourez les monuments et les découvertes. Téléversez des photos, ajoutez des informations ou commentez des sites patrimoniaux."
+      },
+      "step3": {
+        "label": "Étape 3 : contribuer et préserver",
+        "description": "Signalez les sites menacés, ajoutez des détails vérifiés, soutenez la restauration et sensibilisez à la préservation."
+      }
+    },
+    "footer": {
+      "tagline": "Préserver le patrimoine algérien<break></break>grâce au savoir communautaire et à la technologie.",
+      "aboutProject": "À propos du projet",
+      "monuments": "Monuments",
+      "endangeredSites": "Sites menacés",
+      "events": "Événements",
+      "joinCommunity": "Rejoindre la communauté",
+      "guilds": "Groupes",
+      "guidelines": "Lignes directrices",
+      "legal": "Mentions légales"
+    }
+  },
+  "auth": {
+    "common": {
+      "back": "Retour",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "edit": "Modifier",
+      "delete": "Supprimer",
+      "accept": "Accepter",
+      "reject": "Refuser",
+      "reply": "Répondre",
+      "comments": "Commentaires",
+      "annotations": "Annotations",
+      "dashboard": "Tableau de bord",
+      "confirmDeletePost": "Êtes-vous sûr de vouloir supprimer cette publication ?",
+      "confirmDeleteComment": "Êtes-vous sûr de vouloir supprimer ce commentaire ?",
+      "confirmDeleteAnnotation": "Êtes-vous sûr de vouloir supprimer cette annotation ?",
+      "confirmDeleteReport": "Êtes-vous sûr de vouloir supprimer ce rapport ?"
+    },
+    "aiResearch": {
+      "title": "Recherche IA approfondie",
+      "buttonTitle": "Recherche IA",
+      "buttonLabel": "Générer une recherche IA approfondie sur cette publication",
+      "closeLabel": "Fermer la recherche IA",
+      "loading": "Recherche de cette publication avec Gemini...",
+      "error": "Impossible de générer la recherche IA.",
+      "sources": "Sources"
+    },
+    "locationCard": {
+      "title": "Carte du lieu",
+      "mapTitle": "Carte de {location}",
+      "description": "Explorez ce lieu sur la carte ou ouvrez-le directement dans Google Maps.",
+      "openMap": "Ouvrir la carte",
+      "defaultLocation": "Algérie"
+    },
+    "feed": {
+      "actions": {
+        "seeMore": "Voir plus",
+        "seeLess": "Voir moins",
+        "reportPost": "Signaler la publication",
+        "editPost": "Modifier la publication",
+        "deletePost": "Supprimer la publication",
+        "editComment": "Modifier le commentaire",
+        "deleteComment": "Supprimer le commentaire",
+        "reportComment": "Signaler le commentaire",
+        "editAnnotation": "Modifier l'annotation",
+        "deleteAnnotation": "Supprimer l'annotation",
+        "reportAnnotation": "Signaler l'annotation",
+        "addComment": "Ajouter un commentaire",
+        "addAnnotation": "Ajouter une annotation"
+      },
+      "labels": {
+        "event": "Événement",
+        "alert": "Alerte"
+      },
+      "urgency": {
+        "low": "Urgence faible",
+        "medium": "Urgence moyenne",
+        "high": "Urgence élevée",
+        "critical": "Critique"
+      },
+      "statuses": {
+        "restored": "Restauré",
+        "underIntervention": "Sous intervention",
+        "destroyed": "Détruit",
+        "alert": "Alerte",
+        "pending": "En attente",
+        "accepted": "Acceptée",
+        "rejected": "Refusée"
+      },
+      "tabs": {
+        "comments": "Commentaires ({count})",
+        "annotations": "Annotations ({count})",
+        "history": "Historique"
+      },
+      "placeholders": {
+        "reply": "Écrire une réponse...",
+        "comment": "Ajouter un commentaire",
+        "annotation": "Ajouter une annotation"
+      },
+      "empty": {
+        "comments": "Aucun commentaire pour le moment. Soyez le premier à commenter !",
+        "annotations": "Aucune annotation pour le moment. Soyez le premier à annoter !"
+      },
+      "prompts": {
+        "reportComment": "Pourquoi signalez-vous ce commentaire ?",
+        "reportAnnotation": "Pourquoi signalez-vous cette annotation ?",
+        "reportPost": "Pourquoi signalez-vous cette publication ?"
+      },
+      "feedback": {
+        "commentReported": "Commentaire signalé avec succès.",
+        "commentReportFailed": "Échec du signalement du commentaire.",
+        "annotationReported": "Annotation signalée avec succès.",
+        "annotationReportFailed": "Échec du signalement de l'annotation.",
+        "postReported": "Publication signalée avec succès.",
+        "postReportFailed": "Échec du signalement de la publication."
+      }
+    },
+    "filters": {
+      "title": "Filtres",
+      "reset": "Réinitialiser",
+      "apply": "Appliquer",
+      "all": "Tous",
+      "labels": {
+        "postType": "Type de publication",
+        "region": "Régions géographiques",
+        "historicalPeriod": "Périodes historiques",
+        "heritageType": "Type de patrimoine",
+        "urgencyLevel": "Niveau d'urgence",
+        "mobilizationStatus": "Statut de mobilisation",
+        "eventStatus": "Statut de l'événement"
+      },
+      "eventStatuses": {
+        "upcoming": "À venir",
+        "ongoing": "En cours",
+        "past": "Passé"
+      }
+    },
+    "sidebar": {
+      "nav": {
+        "home": "Accueil",
+        "communities": "Communautés",
+        "monuments": "Monuments en danger",
+        "events": "Événements",
+        "notifications": "Notifications",
+        "profile": "Profil",
+        "help": "Aide"
+      },
+      "overlay": {
+        "title": "Notifications",
+        "loading": "Chargement...",
+        "empty": "Aucune notification pour le moment.",
+        "someone": "Quelqu'un",
+        "viewAll": "Voir tout"
+      }
+    },
+    "addDocuments": {
+      "close": "Fermer",
+      "title": "Ajouter des documents",
+      "clickToAddMore": "Cliquez pour en ajouter d'autres",
+      "messagePlaceholder": "Message optionnel aux modérateurs",
+      "firstDocumentOnly": "Seul le premier document sélectionné sera envoyé.",
+      "done": "Terminer",
+      "errors": {
+        "selectDocument": "Veuillez sélectionner au moins un document."
+      }
+    },
+    "groupsPopup": {
+      "confirmSelection": "Confirmer la sélection",
+      "title": "Ajouter des groupes",
+      "typeGroupName": "Nom du groupe",
+      "searchPlaceholder": "Rechercher des groupes...",
+      "noGroupsFound": "Aucun groupe trouvé"
+    },
+    "historicalPeriodPopup": {
+      "confirmDate": "Confirmer la date",
+      "title": "Période historique",
+      "selectDate": "Sélectionnez une date",
+      "placeholder": "JJ/MM/AAAA ou nom de période",
+      "orPickFromCalendar": "ou choisir depuis le calendrier"
+    },
+    "locationPopup": {
+      "close": "Fermer",
+      "title": "Ajouter un lieu",
+      "typeLocation": "Saisir le lieu",
+      "confirmLocation": "Confirmer le lieu",
+      "orPickFromMap": "ou choisir sur la carte",
+      "openGoogleMaps": "Ouvrir Google Maps",
+      "pasteLocationFromMap": "Coller le lieu depuis la carte",
+      "useThisLocation": "Utiliser ce lieu",
+      "mapHint": "Copiez le nom du lieu depuis Google Maps puis collez-le ci-dessus.",
+      "placeholders": {
+        "location": "Ville ou nom du monument...",
+        "mapLocation": "Collez ou saisissez le lieu trouvé..."
+      }
+    },
+    "richTextEditor": {
+      "placeholders": {
+        "title": "Entrez le titre de votre publication ici...",
+        "content": "Entrez le contenu de votre publication ici..."
+      },
+      "types": {
+        "paragraph": "Paragraphe",
+        "heading1": "Titre 1",
+        "heading2": "Titre 2",
+        "heading3": "Titre 3"
+      },
+      "toolbar": {
+        "bold": "Gras",
+        "italic": "Italique",
+        "underline": "Souligné",
+        "strikethrough": "Barré",
+        "alignLeft": "Aligner à gauche",
+        "alignCenter": "Centrer",
+        "alignRight": "Aligner à droite",
+        "alignJustify": "Justifier",
+        "bulletList": "Liste à puces",
+        "orderedList": "Liste numérotée"
+      }
+    },
+    "imageUpload": {
+      "fileTooLarge": "Le fichier \"{name}\" est trop volumineux. Taille maximale : 10 Mo.",
+      "deleteRequiresLogin": "Veuillez vous connecter pour supprimer des images.",
+      "removePhoto": "Supprimer la photo",
+      "addPhoto": "Ajouter une photo"
+    },
+    "inviteUsers": {
+      "confirmSelection": "Confirmer la sélection",
+      "send": "Envoyer",
+      "title": "Inviter",
+      "typeUsername": "Nom d'utilisateur",
+      "searchPlaceholder": "Rechercher des utilisateurs...",
+      "searching": "Recherche...",
+      "noUsersFound": "Aucun utilisateur trouvé"
+    },
+    "groupForm": {
+      "sections": {
+        "info": "Informations",
+        "thematicTags": "Étiquettes thématiques",
+        "inviteMembers": "Inviter des membres",
+        "groupVisibility": "Visibilité du groupe",
+        "groupRules": "Règles du groupe"
+      },
+      "fields": {
+        "groupName": "Nom du groupe",
+        "description": "Description",
+        "historicalPeriod": "Période historique",
+        "region": "Région",
+        "category": "Catégorie",
+        "rulesGuidelines": "Règles et consignes (optionnel)"
+      },
+      "placeholders": {
+        "description": "Décrivez votre groupe...",
+        "historicalPeriod": "Sélectionnez la période historique",
+        "region": "Sélectionnez la région",
+        "category": "Sélectionnez une catégorie",
+        "inviteMembers": "Inviter des membres",
+        "rules": "Rédigez les règles et consignes de votre groupe..."
+      },
+      "visibility": {
+        "public": "Public",
+        "private": "Privé"
+      },
+      "actions": {
+        "removeMember": "Retirer le membre",
+        "addMember": "Ajouter un membre",
+        "cancel": "Annuler",
+        "done": "Terminer"
+      },
+      "historicalPeriods": {
+        "Prehistory": "Préhistoire",
+        "Protohistory": "Protohistoire",
+        "Numidian period": "Période numide",
+        "Punic (Carthaginian) period": "Période punique (carthaginoise)",
+        "Roman period": "Période romaine",
+        "Vandal period": "Période vandale",
+        "Byzantine period": "Période byzantine",
+        "Early Islamic period": "Début de la période islamique",
+        "Rostamid dynasty": "Dynastie rostémide",
+        "Zirid dynasty": "Dynastie ziride",
+        "Hammadid dynasty": "Dynastie hammadide",
+        "Almohad dynasty": "Dynastie almohade",
+        "Zayyanid dynasty": "Dynastie zianide",
+        "Ottoman period": "Période ottomane",
+        "French colonization": "Colonisation française",
+        "War of Independence": "Guerre d'indépendance",
+        "Independent Algeria": "Algérie indépendante",
+        "Contemporary period": "Période contemporaine"
+      },
+      "regions": {
+        "Kabylia": "Kabylie",
+        "Tuareg": "Touareg",
+        "Chaoui": "Chaoui",
+        "Chleuh": "Chleuh",
+        "Medea": "Médéa",
+        "Constantine": "Constantine",
+        "Algiers": "Alger",
+        "Tlemcen": "Tlemcen",
+        "Oran": "Oran",
+        "Tipaza": "Tipaza",
+        "Setif": "Sétif",
+        "Batna": "Batna",
+        "Beni Mzab": "Beni Mzab",
+        "Ouled Nail": "Ouled Nail",
+        "Tassili n'Ajjer": "Tassili n'Ajjer"
+      },
+      "categories": {
+        "Architecture": "Architecture",
+        "Archaeology": "Archéologie",
+        "History": "Histoire",
+        "Art": "Art",
+        "Photography": "Photographie",
+        "Research": "Recherche",
+        "Tourism": "Tourisme",
+        "Conservation": "Conservation"
+      }
+    },
+    "postForm": {
+      "sections": {
+        "info": "Informations",
+        "location": "Lieu",
+        "labels": "Étiquettes",
+        "postVisibility": "Visibilité de la publication"
+      },
+      "fields": {
+        "title": "Titre",
+        "description": "Description",
+        "postType": "Type de publication",
+        "dangerLevel": "Niveau de danger",
+        "currentStatus": "Statut actuel",
+        "historicalPeriod": "Période historique",
+        "region": "Région",
+        "monumentType": "Type de monument",
+        "eventTime": "Horaire de l'événement",
+        "startTime": "Heure de début",
+        "endTime": "Heure de fin"
+      },
+      "placeholders": {
+        "title": "Entrez le titre de votre publication ici...",
+        "description": "Entrez le contenu de votre publication ici...",
+        "location": "Ville ou nom du monument",
+        "historicalPeriod": "Sélectionnez la période historique",
+        "region": "Sélectionnez la région"
+      },
+      "actions": {
+        "addLocation": "Ajouter un lieu",
+        "removeGroup": "Retirer le groupe",
+        "addGroup": "Ajouter un groupe",
+        "cancel": "Annuler",
+        "saving": "Enregistrement...",
+        "done": "Terminer"
+      },
+      "errors": {
+        "endTimeAfterStart": "L'heure de fin doit être strictement postérieure à l'heure de début."
+      },
+      "reviewModal": {
+        "title": "Enregistrer les modifications ?",
+        "message": "Voulez-vous vraiment enregistrer ces modifications et mettre à jour votre publication ?",
+        "primaryAction": "Enregistrer et terminer",
+        "secondaryAction": "Revoir encore"
+      },
+      "options": {
+        "postTypes": {
+          "question": "Question",
+          "visit": "Visite",
+          "discovery": "Découverte",
+          "inDanger": "En danger",
+          "event": "Événement"
+        },
+        "dangerLevels": {
+          "low": "Faible",
+          "medium": "Moyen",
+          "high": "Élevé",
+          "critical": "Critique"
+        },
+        "monumentTypes": {
+          "civil": "Civil",
+          "military": "Militaire",
+          "religious": "Religieux",
+          "funerary": "Funéraire"
+        },
+        "statuses": {
+          "destroyed": "Détruit",
+          "underIntervention": "Sous intervention",
+          "restored": "Restauré",
+          "alert": "Alerte"
+        },
+        "visibility": {
+          "public": "Public",
+          "private": "Privé"
+        }
+      },
+      "historicalPeriods": {
+        "Prehistory": "Préhistoire",
+        "Protohistory": "Protohistoire",
+        "Numidian period": "Période numide",
+        "Punic (Carthaginian) period": "Période punique (carthaginoise)",
+        "Roman period": "Période romaine",
+        "Vandal period": "Période vandale",
+        "Byzantine period": "Période byzantine",
+        "Early Islamic period": "Début de la période islamique",
+        "Rostamid dynasty": "Dynastie rostémide",
+        "Zirid dynasty": "Dynastie ziride",
+        "Hammadid dynasty": "Dynastie hammadide",
+        "Almohad dynasty": "Dynastie almohade",
+        "Zayyanid dynasty": "Dynastie zianide",
+        "Ottoman period": "Période ottomane",
+        "French colonization": "Colonisation française",
+        "War of Independence": "Guerre d'indépendance",
+        "Independent Algeria": "Algérie indépendante",
+        "Contemporary period": "Période contemporaine"
+      },
+      "regions": {
+        "Kabylia": "Kabylie",
+        "Tuareg": "Touareg",
+        "Chaoui": "Chaoui",
+        "Chleuh": "Chleuh",
+        "Medea": "Médéa",
+        "Constantine": "Constantine",
+        "Algiers": "Alger",
+        "Tlemcen": "Tlemcen",
+        "Oran": "Oran",
+        "Tipaza": "Tipaza",
+        "Setif": "Sétif",
+        "Batna": "Batna",
+        "Beni Mzab": "Beni Mzab",
+        "Ouled Nail": "Ouled Nail",
+        "Tassili n'Ajjer": "Tassili n'Ajjer"
+      }
+    },
+    "profileForm": {
+      "sections": {
+        "info": "Informations",
+        "expertise": "Expertise",
+        "speciality": "Spécialité",
+        "badge": "Badge"
+      },
+      "fields": {
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "biography": "Biographie"
+      },
+      "placeholders": {
+        "biography": "Parlez-nous de vous..."
+      },
+      "expertiseOptions": {
+        "amateur": "Amateur",
+        "student": "Étudiant",
+        "researcher": "Chercheur",
+        "architect": "Architecte",
+        "historian": "Historien",
+        "guide": "Guide touristique",
+        "tourGuide": "Guide touristique"
+      },
+      "badge": {
+        "request": "Demander un badge",
+        "selectedCount": "{count} fichier(s) sélectionné(s)"
+      },
+      "actions": {
+        "cancel": "Annuler",
+        "done": "Terminer"
+      }
+    },
+    "profilePopups": {
+      "actions": {
+        "cancel": "Annuler",
+        "showPassword": "Afficher le mot de passe",
+        "hidePassword": "Masquer le mot de passe"
+      },
+      "errors": {
+        "generic": "Une erreur s'est produite."
+      },
+      "changeEmail": {
+        "title": "Changer l'e-mail",
+        "subtitle": "Saisissez votre nouvelle adresse e-mail et votre mot de passe actuel",
+        "fields": {
+          "newEmail": "Nouvelle adresse e-mail",
+          "currentPassword": "Mot de passe actuel"
+        },
+        "errors": {
+          "required": "Veuillez remplir tous les champs."
+        },
+        "actions": {
+          "saving": "Enregistrement...",
+          "save": "Enregistrer les modifications"
+        }
+      },
+      "changePassword": {
+        "title": "Changer le mot de passe",
+        "subtitle": "Choisissez un nouveau mot de passe sécurisé",
+        "fields": {
+          "currentPassword": "Mot de passe actuel",
+          "newPassword": "Nouveau mot de passe",
+          "confirmNewPassword": "Confirmer le nouveau mot de passe"
+        },
+        "errors": {
+          "required": "Veuillez remplir tous les champs.",
+          "mismatch": "Les nouveaux mots de passe ne correspondent pas."
+        },
+        "actions": {
+          "updating": "Mise à jour...",
+          "update": "Mettre à jour le mot de passe"
+        }
+      },
+      "dashboard": {
+        "title": "Tableau de bord",
+        "items": {
+          "changeEmail": "Changer l'e-mail",
+          "changePassword": "Changer le mot de passe",
+          "platformStatistics": "Statistiques de la plateforme",
+          "deleteAccount": "Supprimer le compte",
+          "logout": "Déconnexion"
+        }
+      }
+    },
+    "notificationPanel": {
+      "inbox": "Boîte de réception",
+      "title": "Notifications",
+      "unreadCount": "{count} notification(s) non lue(s)",
+      "someone": "Quelqu'un",
+      "loading": "Chargement des notifications...",
+      "actions": {
+        "refresh": "Actualiser",
+        "markAllRead": "Tout marquer comme lu",
+        "close": "Fermer les notifications"
+      },
+      "empty": {
+        "title": "Aucune notification pour le moment",
+        "description": "Les j'aime, commentaires, invitations de groupe, revues de badge et mises à jour de modération apparaîtront ici."
+      },
+      "sections": {
+        "today": "Aujourd'hui",
+        "thisMonth": "Ce mois-ci",
+        "thisWeek": "Cette semaine",
+        "earlier": "Plus tôt"
+      },
+      "time": {
+        "justNow": "À l'instant"
+      }
+    },
+    "pages": {
+      "home": {
+        "guilds": {
+          "title": "Groupes populaires",
+          "members": "{count} membres",
+          "items": {
+            "heritagePhotography": {
+              "name": "Photographie du patrimoine",
+              "description": "Un espace pour partager des photos de monuments culturels et historiques"
+            },
+            "unescoWorldHeritage": {
+              "name": "Sites du patrimoine mondial de l'UNESCO",
+              "description": "D\u00e9di\u00e9 aux sites alg\u00e9riens reconnus par l'UNESCO"
+            },
+            "monumentsOfTipaza": {
+              "name": "Monuments de Tipaza",
+              "description": "Explorer et documenter les sites arch\u00e9ologiques de Tipaza"
+            }
+          }
+        },
+        "search": {
+          "placeholder": "Rechercher des publications, des utilisateurs...",
+          "sections": {
+            "users": "Utilisateurs",
+            "posts": "Publications"
+          },
+          "noResults": "Aucun r\u00e9sultat pour \"{query}\""
+        },
+        "community": {
+          "feedTitle": "Fil de la communaut\u00e9",
+          "showAll": "Tout afficher",
+          "noPostsTitle": "Aucune publication trouv\u00e9e",
+          "noPostsDescription": "Soyez le premier \u00e0 partager quelque chose dans cette communaut\u00e9 !",
+          "groupsTitle": "Groupes",
+          "createGroup": "Cr\u00e9er un nouveau groupe",
+          "suggestedGroups": "Groupes sugg\u00e9r\u00e9s",
+          "yourGroups": "Vos groupes",
+          "viewAll": "Tout voir",
+          "members": "{count} membres",
+          "membersTitle": "Membres",
+          "noMembers": "Aucun membre",
+          "admin": "Admin",
+          "viewProfile": "Voir le profil",
+          "remove": "Retirer",
+          "removing": "Retrait...",
+          "loadingMembers": "Chargement des membres...",
+          "groupRules": "Règles du groupe",
+          "details": "Détails",
+          "category": "Catégorie",
+          "region": "Région",
+          "period": "Période",
+          "editGroup": "Modifier le groupe",
+          "deleteGroup": "Supprimer le groupe",
+          "reportGroup": "Signaler le groupe",
+          "leaveGroup": "Quitter le groupe",
+          "deleteGroupTitle": "Supprimer le groupe",
+          "deleteGroupMessage": "Voulez-vous vraiment supprimer {groupName} ? Cette action est irréversible.",
+          "deleteGroupConfirm": "Oui, supprimer le groupe",
+          "deletingGroup": "Suppression...",
+          "joinRequestTitle": "Demande d'adhésion envoyée",
+          "joinRequestMessage": "Merci ! En attente de l'approbation de l'administrateur.",
+          "leftGroupTitle": "Vous avez quitté le groupe",
+          "leftGroupMessage": "Vous avez quitté ce groupe avec succès.",
+          "close": "Fermer",
+          "rules": {
+            "shareRoman": "Partagez du contenu lié aux monuments romains et à l'archéologie.",
+            "includeContext": "Ajoutez un contexte historique lorsque vous publiez des monuments ou des artefacts.",
+            "respectAccuracy": "Respectez l'exactitude et citez les sources lorsque c'est possible.",
+            "encourageDiscussion": "Encouragez les discussions sur la préservation et la restauration.",
+            "noOffTopic": "Pas de publications hors sujet ni de promotion sans rapport."
+          },
+          "values": {
+            "ancientCivilizations": "Civilisations anciennes",
+            "romanPeriod": "Période romaine"
+          },
+          "posts": "{count} publications",
+          "managedBy": "G\u00e9r\u00e9 par {name}",
+          "description": "Description",
+          "tabs": {
+            "posts": "Publications",
+            "questions": "Questions",
+            "about": "\u00c0 propos",
+            "myPosts": "Mes publications"
+          },
+          "addPost": "+ Publication",
+          "invite": "+ Inviter",
+          "requestSent": "Demande envoy\u00e9e",
+          "joining": "Adh\u00e9sion...",
+          "join": "Rejoindre",
+          "visit": "Visiter",
+          "postedIn": "publi\u00e9 le {date}"
+        }
+      },
+      "events": {
+        "searchPlaceholder": "Rechercher des événements...",
+        "noResults": "Aucun événement ne correspond à vos critères.",
+        "upcomingTitle": "Événements à venir",
+        "noUpcoming": "Aucun événement à venir",
+        "defaultLocation": "Algérie",
+        "unknownUser": "Inconnu"
+      },
+      "addPost": {
+        "title": "Ajouter une publication",
+        "publishing": "Publication...",
+        "errors": {
+          "createFailed": "Échec de création de la publication"
+        }
+      },
+      "editPost": {
+        "title": "Modifier la publication",
+        "loading": "Chargement...",
+        "notFound": "Publication introuvable",
+        "editingLabel": "Modification :",
+        "saving": "Enregistrement des modifications...",
+        "errors": {
+          "fetchFailed": "Échec du chargement de la publication",
+          "updateFailed": "Échec de mise à jour de la publication"
+        }
+      },
+      "addEvent": {
+        "title": "Ajouter un événement de mobilisation",
+        "publishing": "Publication...",
+        "success": "Événement de mobilisation créé avec succès !",
+        "errors": {
+          "missingTitle": "Veuillez saisir un titre pour l'événement.",
+          "missingStartTime": "Veuillez saisir une heure de début pour l'événement.",
+          "createPost": "Échec de création de la publication d'événement : {message}",
+          "unknown": "Erreur inconnue",
+          "createFailed": "Échec de création de l'événement de mobilisation. Veuillez réessayer."
+        }
+      },
+      "monumentsInDanger": {
+        "searchPlaceholder": "Rechercher des alertes...",
+        "noResultsTitle": "Aucune alerte ne correspond à vos critères",
+        "noResultsDescription": "Essayez d'ajuster votre recherche ou vos filtres",
+        "noCritical": "Aucun monument critique trouvé.",
+        "addMobilizationReport": "Ajouter un rapport de mobilisation",
+        "criticalTitle": "Monuments en danger critique",
+        "defaultLocation": "Algérie",
+        "unknownUser": "Inconnu",
+        "history": {
+          "noPreviewImage": "Aucune image d’aperçu",
+          "postedIn": "publié le {date}",
+          "empty": "Aucun rapport d'historique pour le moment."
+        },
+        "reportModal": {
+          "title": "Rapport de mobilisation",
+          "generatedTitlePrefix": "Mobilisation :",
+          "documentationPhotos": "Photos de documentation",
+          "description": "Description",
+          "descriptionPlaceholder": "Entrez les détails du rapport ici...",
+          "previousStatus": "Statut précédent",
+          "newStatus": "Nouveau statut",
+          "submitting": "Envoi en cours...",
+          "submit": "Soumettre le rapport",
+          "errors": {
+            "submitFailed": "Échec de l'envoi du rapport de mobilisation."
+          }
+        }
+      },
+      "editProfile": {
+        "title": "Modifier le profil",
+        "imageAlt": "Profil",
+        "uploadPhoto": "Téléverser la photo de profil"
+      },
+      "createGroup": {
+        "title": "Créer un groupe",
+        "creating": "Création...",
+        "coverAlt": "Couverture",
+        "coverPhoto": "Photo de couverture",
+        "groupAlt": "Groupe",
+        "uploadGroupPhoto": "Téléverser la photo du groupe"
+      },
+      "editGroup": {
+        "title": "Modifier le groupe",
+        "saving": "Enregistrement...",
+        "coverAlt": "Couverture",
+        "coverPhoto": "Photo de couverture",
+        "groupAlt": "Groupe",
+        "uploadGroupPhoto": "Téléverser la photo du groupe"
+      },
+      "setProfile": {
+        "title": "Définir les informations du profil",
+        "subtitle": "Ces informations seront visibles sur votre profil",
+        "heroImageAlt": "Intérieur du patrimoine architectural",
+        "profileImageAlt": "Profil",
+        "requestBadge": "Demander un badge",
+        "badgeNotice": "Demande de badge envoyée pour {name}. Les modérateurs ont été notifiés par e-mail.",
+        "fields": {
+          "firstName": "Prénom",
+          "lastName": "Nom",
+          "biography": "Biographie",
+          "expertise": "Expertise",
+          "speciality": "Spécialité"
+        },
+        "expertiseOptions": {
+          "Amateur": "Amateur",
+          "Student": "Étudiant",
+          "Researcher": "Chercheur",
+          "Historian": "Historien",
+          "Tour Guide": "Guide touristique",
+          "Architect": "Architecte"
+        },
+        "actions": {
+          "saving": "Enregistrement...",
+          "done": "Terminer"
+        },
+        "errors": {
+          "noAuthToken": "Aucun jeton d'authentification trouvé. Veuillez vous connecter.",
+          "updateProfile": "Échec de mise à jour du profil",
+          "uniqueUsername": "Impossible de trouver un nom d'utilisateur unique. Modifiez votre nom puis réessayez.",
+          "uploadPicture": "Échec du téléversement de la photo de profil",
+          "submitBadge": "Échec de l'envoi de la demande de badge",
+          "generic": "Une erreur s'est produite"
+        }
+      },
+      "userProfile": {
+        "actions": {
+          "editProfile": "Modifier le profil"
+        },
+        "stats": {
+          "posts": "Publications",
+          "likes": "Gems",
+          "events": "\u00c9v\u00e9nements"
+        },
+        "empty": {
+          "posts": "Aucune publication pour le moment",
+          "treasure": "Votre tr\u00e9sor est vide",
+          "collection": "Votre collection est vide",
+          "reposts": "Aucun republication pour le moment",
+          "events": "Aucun \u00e9v\u00e9nement pour le moment",
+          "alerts": "Aucun monument en danger pour le moment"
+        },
+        "modals": {
+          "deletePost": {
+            "title": "Supprimer cette publication ?",
+            "message": "Cette action est définitive et ne peut pas être annulée. La publication et toutes ses images seront supprimées.",
+            "confirm": "Supprimer",
+            "cancel": "Annuler"
+          },
+          "logout": {
+            "title": "Voulez-vous vraiment vous déconnecter ?",
+            "message": "Si vous continuez, votre jeton sera supprimé et vous serez redirigé vers la page d'accueil.",
+            "confirm": "Se déconnecter",
+            "cancel": "Annuler"
+          },
+          "deleteAccount": {
+            "title": "Supprimer votre compte ?",
+            "message": "Cette action est définitive et ne peut pas être annulée. Toutes vos données et publications seront supprimées.",
+            "confirm": "Supprimer le compte",
+            "cancel": "Conserver le compte"
+          }
+        }
+      }
+    }
+  }
+}

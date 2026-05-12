@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  # ── MongoDB Database ──────────────────────────────────────────
+  mongo:
+    image: mondir2006/projet2cp-mongo:latest
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Django Backend ────────────────────────────────────────────
+  backend:
+    image: mondir2006/projet2cp-backend:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.development
+      - MONGODB_HOST=mongodb://mongo:27017/heritage_db
+      - DEBUG=True
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  # ── Next.js Frontend ──────────────────────────────────────────
+  frontend:
+    image: mondir2006/projet2cp-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:

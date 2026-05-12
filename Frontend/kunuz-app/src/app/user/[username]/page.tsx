@@ -1,0 +1,2403 @@
+"use client";
+
+import { useState, useEffect, useRef, useMemo } from "react";
+import Link from "next/link";
+import { useRouter, useParams } from "next/navigation";
+import { X, AlertCircle, AlertTriangle, CheckCircle, HelpCircle, LayoutDashboard, Mail, Lock } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
+import DOMPurify from "dompurify";
+import AiPostInsight from "@/components/AiPostInsight";
+import RepostButton, { RepostIcon } from "@/components/RepostButton";
+import LeftSidebar from "@/components/LeftSidebar";
+import { logoutClient } from "@/lib/session";
+import { ProfileGridSkeleton } from "@/components/PostSkeletons";
+import { fetchProfileTabPosts, profileTabQueryKey, useProfile, useProfileTab } from "@/hooks/useProfile";
+
+import LocationWorldCard from "@/components/LocationWorldCard";
+
+import { ChangeEmailPopup, ChangePasswordPopup, DashboardPopup } from "@/components/Profilepopups";
+import NotificationModal from "@/components/NotificationModal";
+import ReportModal from "@/components/ReportModal";
+import { LongPressGemButton } from "@/components/GemUsersModal";
+
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+
+function stripHtmlFallback(html: string): string {
+  let result = html;
+  let prev: string;
+  do {
+    prev = result;
+    result = prev.replace(/<[^>]*>/g, "");
+  } while (result !== prev);
+  return result;
+}
+
+function sanitizeHtml(html: string): string {
+  if (typeof window === "undefined") return stripHtmlFallback(html);
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ["b", "i", "em", "strong", "u", "br", "p", "span", "ul", "ol", "li", "a"],
+    ALLOWED_ATTR: ["href", "target", "rel", "class", "style"],
+  });
+}
+
+function stripHtml(html: string): string {
+  if (typeof window === "undefined") return stripHtmlFallback(html);
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return doc.body.textContent || "";
+}
+
+function getAuthToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("accessToken") || process.env.NEXT_PUBLIC_TOKEN || "";
+}
+
+function getAuthUser(): { id?: string; username?: string; display_name?: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("authUser");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getCachedProfileInfo(): Partial<ProfileInfo> | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("authUser") || localStorage.getItem("user");
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed ?? {
+      username: localStorage.getItem("username") || localStorage.getItem("user_username") || "",
+    };
+  } catch {
+    return {
+      username: localStorage.getItem("username") || localStorage.getItem("user_username") || "",
+    };
+  }
+}
+
+function getPaginatedCount(payload: unknown): number | null {
+  const data = payload as { count?: unknown; data?: { count?: unknown } };
+  const rawCount = data.count ?? data.data?.count;
+  const count = Number(rawCount);
+  return Number.isFinite(count) ? count : null;
+}
+
+function extractPaginatedResults<T>(payload: unknown): T[] {
+  const data = payload as {
+    results?: T[];
+    data?: { results?: T[] } | T[];
+  };
+  if (Array.isArray(data)) return data as T[];
+  if (Array.isArray(data.data)) return data.data as T[];
+  return data.data?.results ?? data.results ?? [];
+}
+
+function extractNextUrl(payload: unknown): string | null {
+  const data = payload as { next?: unknown; data?: { next?: unknown } };
+  const next = data.next ?? data.data?.next;
+  return typeof next === "string" && next.trim() ? next : null;
+}
+
+function sumGemsFromPosts(posts: Array<{ gems_count?: unknown }>): number {
+  return posts.reduce((sum, post) => sum + (Number(post.gems_count) || 0), 0);
+}
+
+
+
+const isModerator = (user: any) => {
+  if (!user) return false;
+  const role = String(user.role || user.user_role || user.Role || user.group_role || "").toLowerCase();
+  const isStaff = user.is_staff === true || user.is_staff === 1 || user.is_staff === "true" ||
+    user.is_admin === true || user.is_admin === 1 || user.is_admin === "true" ||
+    user.is_superuser === true || user.is_moderator === true || user.is_moderator === 1;
+  return (
+    role === "moderator" ||
+    role === "admin" ||
+    isStaff
+  );
+};
+
+function getRefreshToken(): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("refreshToken") || "";
+}
+
+async function apiFetch(url: string, options: RequestInit = {}) {
+  const token = getAuthToken();
+  const headers = new Headers(options.headers || {});
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
+  return fetch(url, { ...options, headers });
+}
+
+/* ───────────────── TYPES ───────────────── */
+
+type PostImage = { id: string; image: string; uploaded_at: string };
+type AlertDetails = {
+  id: string;
+  urgence_level: "low" | "medium" | "high" | "critical";
+  current_status: "restored" | "under_intervention" | "destroyed" | "alert";
+};
+type EventDetails = { id: string; starts_at: string; ends_at: string };
+
+type ApiPost = {
+  id: string;
+  user_id?: string;
+  user_display_name?: string;
+  user_username?: string;
+  user_profile_picture?: string;
+  title: string;
+  content: string;
+  post_type: string;
+  region: string;
+  location: string;
+  gems_count: number;
+  comments_count: number;
+  accepted_annotations_count?: number;
+  is_gemmed?: boolean;
+  is_saved?: boolean;
+  is_reposted?: boolean;
+  reposts_count?: number;
+  images: PostImage[];
+  tags?: string[];
+  historical_period?: string;
+  monument_type?: string;
+  created_at: string;
+  alert_details: AlertDetails | null;
+  event_details: EventDetails | null;
+  _key?: number;
+};
+
+type PostInteraction = {
+  gemmed: boolean;
+  gemsCount: number;
+  saved: boolean;
+  reposted: boolean;
+  repostsCount: number;
+  commentsCount: number;
+  annotationsCount: number;
+};
+
+type ProfileTabId = "grid" | "gems" | "saved" | "reposts" | "events" | "alerts";
+const profileTabMemory = new Map<string, ApiPost[]>();
+
+function profileTabMemoryKey(username: string | undefined, tab: ProfileTabId, isOwnProfile: boolean) {
+  return `${isOwnProfile ? "own" : "public"}:${username ?? ""}:${tab}`;
+}
+
+type Annotation = {
+  id: string;
+  post: string;
+  user_id: string;
+  text: string;
+  image: string;
+  status: "pending" | "accepted" | "rejected";
+  created_at: string;
+  updated_at: string;
+  validated_by_id: string;
+  validated_at: string | null;
+};
+
+type ApiCommentRaw = {
+  id: string;
+  user_id: string;
+  user_username: string;
+  user_profile_picture?: string;
+  content?: string;
+  text?: string;
+  created_at: string;
+  parent?: string | null | { id?: string; _id?: string } | undefined;
+  parent_id?: string | null;
+  gems_count?: number;
+  is_gemmed?: boolean;
+};
+
+type CommentNode = {
+  id: string;
+  user_id: string;
+  user_username: string;
+  user_profile_picture: string;
+  content: string;
+  created_at: string;
+  parent: string | null;
+  gems_count: number;
+  is_gemmed: boolean;
+};
+
+type ReportTargetType = "post" | "comment" | "annotation";
+
+// ← Type matching exact backend field names from User model
+type ProfileInfo = {
+  username: string;
+  display_name: string;
+  bio: string;
+  expertise: string;
+  speciality: string;
+  profile_picture: string | null;
+  badge: string | null;
+  is_verified: boolean;
+  role: string;
+  posts_count: number;
+  likes_count: number;
+  events_count: number;
+};
+
+/* ───────────────── HELPERS ───────────────── */
+
+function getStoredSet(key: string): Set<string> {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+  } catch {
+    return new Set();
+  }
+}
+
+function toggleStoredItem(key: string, id: string, add: boolean) {
+  const set = getStoredSet(key);
+  add ? set.add(id) : set.delete(id);
+  localStorage.setItem(key, JSON.stringify([...set]));
+}
+
+async function submitReport(targetType: ReportTargetType, targetId: string, reason: string, description?: string): Promise<void> {
+  const token = getAuthToken();
+  const res = await fetch(`${API_URL}/api/reports/`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ target_type: targetType, target_id: targetId, reason, description }),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    const errorMsg = data?.message || "Failed to submit report.";
+    const details = data?.errors ? Object.values(data.errors).flat().join(" ") : "";
+    throw new Error(details ? `${errorMsg} ${details}` : errorMsg);
+  }
+}
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return "";
+  return new Date(dateStr).toLocaleDateString("fr-FR");
+}
+
+function formatCount(n: number) {
+  return n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+}
+
+function formatEventTime(details: EventDetails) {
+  const start = new Date(details.starts_at);
+  const end = new Date(details.ends_at);
+  const fmt = (d: Date) => d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
+  const fmtTime = (d: Date) => d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const sameDay =
+    start.getFullYear() === end.getFullYear() &&
+    start.getMonth() === end.getMonth() &&
+    start.getDate() === end.getDate();
+  return sameDay
+    ? `${fmt(start)} · ${fmtTime(start)} – ${fmtTime(end)}`
+    : `${fmt(start)} ${fmtTime(start)} → ${fmt(end)} ${fmtTime(end)}`;
+}
+
+function buildTags(post: ApiPost) {
+  if (post.tags && post.tags.length > 0) return post.tags;
+  const tags: string[] = [];
+  if (post.historical_period) tags.push(post.historical_period);
+  if (post.monument_type) tags.push(post.monument_type);
+  if (post.region) tags.push(post.region);
+  return tags;
+}
+
+function getAcceptedAnnotationsCount(annotations: Annotation[]): number {
+  return annotations.filter((a) => a.status === "accepted").length;
+}
+
+function normalizeParent(parent: ApiCommentRaw["parent"], parentId?: string | null): string | null {
+  if (parentId) return String(parentId);
+  if (!parent) return null;
+  if (typeof parent === "string") return parent;
+  if (typeof parent === "object") return String(parent.id ?? parent._id ?? "") || null;
+  return null;
+}
+
+function normalizeComment(raw: ApiCommentRaw): CommentNode {
+  return {
+    id: String(raw.id),
+    user_id: String(raw.user_id ?? ""),
+    user_username: String(raw.user_username ?? ""),
+    user_profile_picture: String(raw.user_profile_picture ?? ""),
+    content: String(raw.content ?? raw.text ?? ""),
+    created_at: String(raw.created_at ?? ""),
+    parent: normalizeParent(raw.parent, raw.parent_id),
+    gems_count: Number(raw.gems_count ?? 0),
+    is_gemmed: Boolean(raw.is_gemmed ?? false),
+  };
+}
+
+function resolveProfilePictureUrl(profilePicture?: string): string {
+  const value = String(profilePicture ?? "").trim();
+  if (!value) return "";
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  if (value.startsWith("/")) return `${API_URL}${value}`;
+  return value;
+}
+
+function UserAvatar({
+  profilePicture,
+  size,
+  iconSize,
+}: {
+  profilePicture?: string;
+  size: number;
+  iconSize: number;
+}) {
+  const imageUrl = resolveProfilePictureUrl(profilePicture);
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt="Profile picture"
+        className="rounded-full object-cover flex-shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className="rounded-full flex-shrink-0 flex items-center justify-center"
+      style={{ width: size, height: size, backgroundColor: "#E0D5C5" }}
+    >
+      <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="#8B7355" stroke="none">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    </div>
+  );
+}
+
+function mapPost(post: any): ApiPost {
+  return {
+    id: String(post.id),
+    user_id: post.user_id ?? "",
+    user_display_name: post.user_display_name ?? "",
+    user_username: post.user_username ?? "",
+    user_profile_picture: post.user_profile_picture ?? "",
+    title: post.title ?? "",
+    content: post.content ?? "",
+    post_type: post.post_type ?? "",
+    region: post.region ?? "",
+    location: post.location ?? "",
+    gems_count: post.gems_count ?? 0,
+    comments_count: post.comments_count ?? 0,
+    accepted_annotations_count: post.accepted_annotations_count ?? 0,
+    is_gemmed: post.is_gemmed ?? false,
+    is_saved: post.is_saved ?? false,
+    is_reposted: post.is_reposted ?? false,
+    reposts_count: post.reposts_count ?? 0,
+    images: Array.isArray(post.images) ? post.images : [],
+    tags: Array.isArray(post.tags) ? post.tags : [],
+    historical_period: post.historical_period ?? "",
+    monument_type: post.monument_type ?? "",
+    created_at: post.created_at ?? "",
+    alert_details: post.alert_details ?? null,
+    event_details: post.event_details ?? null,
+  };
+}
+
+const CONTENT_LIMIT = 160;
+
+const URGENCY_COLORS: Record<string, { bg: string; border: string; dot: string; label: string }> = {
+  low: { bg: "#FFF8E2", border: "#C8A96E", dot: "#C8A96E", label: "Low urgency" },
+  medium: { bg: "#FFF3E0", border: "#E07B39", dot: "#E07B39", label: "Medium urgency" },
+  high: { bg: "#FDE8E8", border: "#C0392B", dot: "#C0392B", label: "High urgency" },
+  critical: { bg: "#FDE8E8", border: "#7B0000", dot: "#7B0000", label: "Critical" },
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  restored: "Restored",
+  under_intervention: "Under Intervention",
+  destroyed: "Destroyed",
+  alert: "Alert",
+};
+
+/* ───────────────── ICONS ───────────────── */
+
+const GemIcon = ({ size = 18, filled = false, className = "", active = false }: { size?: number; filled?: boolean; className?: string; active?: boolean }) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{
+      filter: active ? "drop-shadow(0 0 5px #4FC3F7aa)" : "none",
+      transition: "filter 0.2s, transform 0.15s",
+      transform: active ? "scale(1.18)" : "scale(1)",
+    }}
+  >
+    <path d="M6 3h12l4 6-10 13L2 9z" />
+    <path d="M2 9h20" />
+    <path d="M12 22L6 9l3-6" />
+    <path d="M12 22l6-13-3-6" />
+  </svg>
+);
+
+const TreasureChestIcon = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.55" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 10.5h15v9H4.5z" />
+    <path d="M7.25 10.5l1.35-5.4h7.7l1.45 5.4" />
+    <path d="M8.6 5.1l-3.4 5.4" />
+    <path d="M16.3 5.1l3.5 5.4" />
+    <path d="M4.5 13.25h15" />
+    <path d="M11.95 10.5v9" />
+    <path d="M7 13.25v6.25" />
+    <path d="M5.65 19.5h2.7v-4.85h-2.7z" />
+    <path d="M10.2 14.9h3.55v2.45H10.2z" />
+    <path d="M12.65 4.2l1.65 1.65-1.65 1.65L11 5.85z" />
+    <circle cx="15.9" cy="8.05" r="1.15" />
+    <circle cx="10" cy="8.4" r="0.9" />
+    <path d="M17.4 7.35l1.1-.95" />
+    <path d="M14.65 8.95l-1.05.95" />
+  </svg>
+);
+
+const CommentIcon = ({ size = 18, className = "" }: { size?: number; className?: string }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const BookmarkIcon = ({ size = 18, filled = false, active = false, className = "" }: { size?: number; filled?: boolean; active?: boolean; className?: string }) => (
+  <svg
+    className={className}
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={filled ? "currentColor" : "none"}
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ transition: "color 0.2s, transform 0.15s", transform: active ? "scale(1.15)" : "scale(1)" }}
+  >
+    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const AnnotationIcon = ({ size = 18, className = "" }: { size?: number; className?: string }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </svg>
+);
+
+const GridIcon = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+  </svg>
+);
+
+const CalendarIcon = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
+
+const DangerIcon = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+    <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);
+
+/* ───────────────── SPINNER / EMPTY ───────────────── */
+
+function Spinner() {
+  return (
+    <div className="flex justify-center py-12">
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+    </div>
+  );
+}
+
+function EmptyState({ icon, message }: { icon: React.ReactNode; message: string }) {
+  return (
+    <div className="text-center py-12 flex flex-col items-center" style={{ color: "#8B7355" }}>
+      {icon}
+      <p className="mt-4 text-sm">{message}</p>
+    </div>
+  );
+}
+
+/* ───────────────── POST DETAIL BADGE ───────────────── */
+
+function PostDetailBadge({ post }: { post: ApiPost }) {
+  if (post.post_type === "event" && post.event_details) {
+    return (
+      <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: "#EAF0E6", border: "1px solid #B8D4A8" }}>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#5C7A3E" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: "#5C7A3E" }}>Event</span>
+          <span className="text-xs font-bold" style={{ color: "#2E4A1E" }}>{formatEventTime(post.event_details)}</span>
+        </div>
+      </div>
+    );
+  }
+  if (post.post_type === "alert" && post.alert_details) {
+    const level = URGENCY_COLORS[post.alert_details.urgence_level] ?? URGENCY_COLORS.medium;
+    const statusLabel = STATUS_LABELS[post.alert_details.current_status] ?? post.alert_details.current_status;
+    return (
+      <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3" style={{ backgroundColor: level.bg, border: `1px solid ${level.border}` }}>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: level.dot }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[10px] font-black uppercase tracking-wider" style={{ color: level.dot }}>Alert</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold" style={{ color: level.dot }}>{level.label}</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: level.dot + "22", color: level.dot }}>{statusLabel}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+/* ───────────────── COMMENT ITEM ───────────────── */
+
+function CommentItem({
+  comment,
+  postId,
+  onRefresh,
+  onDelete,
+  isReply = false,
+  onReport,
+}: {
+  comment: CommentNode;
+  postId: string;
+  onRefresh?: () => void;
+  onDelete?: (commentId: string) => void;
+  isReply?: boolean;
+  onReport: (type: ReportTargetType, id: string) => void;
+}) {
+  const router = useRouter();
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
+  const [showMenu, setShowMenu] = useState(false);
+  const [gemmed, setGemmed] = useState(comment.is_gemmed);
+  const [gemsCount, setGemsCount] = useState(comment.gems_count);
+  const [showReplyInput, setShowReplyInput] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setGemmed(comment.is_gemmed);
+    setGemsCount(comment.gems_count);
+    setEditText(comment.content);
+    setIsEditing(false);
+  }, [comment.id, comment.is_gemmed, comment.gems_count, comment.content]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setShowMenu(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const currentUser = getAuthUser();
+  const isOwner = String(currentUser?.id ?? "") === String(comment.user_id);
+  const canDelete = isOwner || isModerator(currentUser);
+
+  const handleGemComment = async () => {
+    const previousGemmed = gemmed;
+    const previousCount = gemsCount;
+    const nextGemmed = !previousGemmed;
+    setGemmed(nextGemmed);
+    setGemsCount((prev) => (nextGemmed ? prev + 1 : Math.max(prev - 1, 0)));
+    try {
+      const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/gem/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error();
+      setGemmed(Boolean(data?.data?.liked ?? nextGemmed));
+      setGemsCount(Number(data?.data?.gems_count ?? previousCount));
+    } catch {
+      setGemmed(previousGemmed);
+      setGemsCount(previousCount);
+    }
+  };
+
+  const handleDeleteComment = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok || res.status === 204) { setShowMenu(false); onDelete?.(comment.id); }
+    } catch { }
+  };
+
+  const handleEditComment = () => { setEditText(comment.content); setIsEditing(true); setShowMenu(false); };
+
+  const handleSaveEditedComment = async () => {
+    const nextContent = editText.trim();
+    if (!nextContent) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts/comments/${comment.id}/`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: nextContent }),
+      });
+      if (!res.ok) return;
+      setIsEditing(false);
+      onRefresh?.();
+    } catch { }
+  };
+
+  const handleCancelEditComment = () => { setEditText(comment.content); setIsEditing(false); };
+
+  const handleSubmitReply = async () => {
+    if (!replyText.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/comments/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: replyText, parent_id: comment.id }),
+      });
+      if (!res.ok) return;
+      setReplyText("");
+      setShowReplyInput(false);
+      onRefresh?.();
+    } catch { }
+  };
+
+  const handleReportComment = () => {
+    onReport("comment", comment.id);
+    setShowMenu(false);
+  };
+
+  return (
+    <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: isReply ? "none" : "0 1px 6px rgba(67,40,23,0.06)", border: isReply ? "2px solid #E0D5C5" : "none" }}>
+      <UserAvatar profilePicture={comment.user_profile_picture} size={32} iconSize={16} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between">
+          <button className="text-sm font-bold hover:underline transition-all cursor-pointer" style={{ color: "#432817", background: "none", border: "none", padding: 0 }} onClick={() => router.push(`/user/${comment.user_username}`)}>
+            {comment.user_username}
+          </button>
+          <div className="relative" ref={menuRef}>
+            <button className="p-0.5 rounded hover:bg-[#E0D5C5] transition-colors text-sm font-bold leading-none" style={{ color: "#8B7355" }} onClick={() => setShowMenu(!showMenu)}>...</button>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50" style={{ backgroundColor: "#FFF8E2" }}>
+                {canDelete ? (
+                  <>
+                    {isOwner && (
+                      <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditComment}>{feedT("actions.editComment")}</button>
+                    )}
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDeleteComment}>{feedT("actions.deleteComment")}</button>
+                  </>
+                ) : (
+                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReportComment}>{feedT("actions.reportComment")}</button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        {isEditing ? (
+          <div className="mt-1">
+            <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none" rows={3} style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+            <div className="flex items-center gap-2 mt-2">
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#432817", color: "#FFF8E2" }} onClick={handleSaveEditedComment}>{commonT("save")}</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#E0D5C5", color: "#432817" }} onClick={handleCancelEditComment}>{commonT("cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: "#432817" }}>{stripHtml(comment.content)}</div>
+        )}
+        <div className="flex items-center gap-3 mt-1.5">
+          <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: gemmed ? "#8B6914" : "#8B7355" }} onClick={handleGemComment}>
+            <GemIcon size={12} filled={gemmed} active={gemmed} /><span>{gemsCount}</span>
+          </button>
+          <button className="text-[10px] flex items-center gap-1 hover:text-[#8B6914] transition-colors" style={{ color: "#8B7355" }} onClick={() => setShowReplyInput(!showReplyInput)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4" /><path d="M20 20v-7a4 4 0 0 0-4-4H4" /></svg>
+            <span>{commonT("reply")}</span>
+          </button>
+        </div>
+        {showReplyInput && (
+          <div className="flex items-center gap-2 mt-2">
+            <input type="text" placeholder={feedT("placeholders.reply")} value={replyText} onChange={(e) => setReplyText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitReply(); }} className="flex-1 text-xs rounded-xl px-3 py-2 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+            <button onClick={handleSubmitReply} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#432817" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────── ANNOTATION ITEM ───────────────── */
+
+function AnnotationItem({
+  annotation,
+  postId,
+  postAuthorId,
+  onDelete,
+  onAccept,
+  onReject,
+  onRefresh,
+  onReport,
+}: {
+  annotation: Annotation;
+  postId: string;
+  postAuthorId?: string;
+  onDelete: (id: string) => void;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+  onRefresh?: () => void;
+  onReport: (type: ReportTargetType, id: string) => void;
+}) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
+  const [showMenu, setShowMenu] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(annotation.text ?? "");
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const currentUser = getAuthUser();
+  const currentUserId = String(currentUser?.id ?? "");
+  const isOwner = currentUserId === String(annotation.user_id);
+  const isPostAuthor = currentUserId === String(postAuthorId ?? "");
+  const canDelete = isOwner || isModerator(currentUser);
+
+  useEffect(() => { setEditText(annotation.text ?? ""); setIsEditing(false); }, [annotation.id, annotation.text]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setShowMenu(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleDelete = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/`, { method: "DELETE", headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (res.ok || res.status === 204) { onDelete(annotation.id); setShowMenu(false); }
+    } catch { }
+  };
+
+  const handleAccept = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/accept/`, { method: "POST", headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (res.ok) { onAccept(annotation.id); setShowMenu(false); }
+    } catch { }
+  };
+
+  const handleReject = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/reject/`, { method: "POST", headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (res.ok) { onReject(annotation.id); setShowMenu(false); }
+    } catch { }
+  };
+
+  const handleEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(true); setShowMenu(false); };
+
+  const handleSaveEditedAnnotation = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/${annotation.id}/`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: editText }),
+      });
+      if (!res.ok) return;
+      setIsEditing(false);
+      onRefresh?.();
+    } catch { }
+  };
+
+  const handleCancelEditAnnotation = () => { setEditText(annotation.text ?? ""); setIsEditing(false); };
+
+  const handleReport = () => {
+    onReport("annotation", annotation.id);
+    setShowMenu(false);
+  };
+
+  const statusColors: Record<string, { bg: string; color: string; label: string }> = {
+    pending: { bg: "#FFF3E0", color: "#E07B39", label: feedT("statuses.pending") },
+    accepted: { bg: "#EAF0E6", color: "#5C7A3E", label: feedT("statuses.accepted") },
+    rejected: { bg: "#FDE8E8", color: "#C0392B", label: feedT("statuses.rejected") },
+  };
+  const sc = statusColors[annotation.status] ?? statusColors.pending;
+  const imageUrl = annotation.image ? (annotation.image.startsWith("/media/") ? `${API_URL}${annotation.image}` : annotation.image) : "";
+
+  return (
+    <div className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--light)", boxShadow: "0 1px 6px rgba(67,40,23,0.06)", border: `1px solid ${sc.bg}` }}>
+      <div className="w-[32px] h-[32px] rounded-full flex-shrink-0 flex items-center justify-center" style={{ backgroundColor: "#E0D5C5" }}>
+        <AnnotationIcon size={14} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: sc.bg, color: sc.color }}>{sc.label}</span>
+          <div className="relative" ref={menuRef}>
+            <button className="p-0.5 rounded hover:bg-[#E0D5C5] text-sm font-bold" style={{ color: "#8B7355" }} onClick={() => setShowMenu(!showMenu)}>...</button>
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[150px]" style={{ backgroundColor: "#FFF8E2" }}>
+                {canDelete && (
+                  <>
+                    {isOwner && (
+                      <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleEditAnnotation}>{feedT("actions.editAnnotation")}</button>
+                    )}
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#432817" }} onClick={handleDelete}>{feedT("actions.deleteAnnotation")}</button>
+                  </>
+                )}
+                {!canDelete && (
+                  <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#F0EAD8]" style={{ color: "#432817" }} onClick={handleReport}>{feedT("actions.reportAnnotation")}</button>
+                )}
+                {isPostAuthor && annotation.status === "pending" && (
+                  <>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#EAF0E6]" style={{ color: "#5C7A3E" }} onClick={handleAccept}>{commonT("accept")}</button>
+                    <button className="block w-full text-left px-3 py-1.5 text-xs font-bold hover:bg-[#FDE8E8]" style={{ color: "#C0392B" }} onClick={handleReject}>{commonT("reject")}</button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        {isEditing ? (
+          <div className="mt-1">
+            <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full text-xs rounded-xl px-3 py-2 outline-none border resize-none" rows={3} style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+            <div className="flex items-center gap-2 mt-2">
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#432817", color: "#FFF8E2" }} onClick={handleSaveEditedAnnotation}>{commonT("save")}</button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-bold" style={{ backgroundColor: "#E0D5C5", color: "#432817" }} onClick={handleCancelEditAnnotation}>{commonT("cancel")}</button>
+            </div>
+          </div>
+        ) : annotation.text ? (
+          <p className="text-xs" style={{ color: "#432817" }}>{annotation.text}</p>
+        ) : null}
+        {imageUrl ? <img src={imageUrl} alt="annotation" className="mt-2 rounded-lg max-w-full" style={{ maxHeight: 160, objectFit: "cover" }} /> : null}
+        <span className="text-[10px]" style={{ color: "#8B7355" }}>{formatDate(annotation.created_at)}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────── POST MODAL ───────────────── */
+
+function PostModal({
+  post,
+  onClose,
+  interaction,
+  onInteractionChange,
+  onDeletePost,
+  loggedInUsername,
+  initialTab = "comments",
+  onReport,
+}: {
+  post: ApiPost | null;
+  onClose: () => void;
+  interaction: PostInteraction;
+  onInteractionChange: (update: Partial<PostInteraction>) => void;
+  onDeletePost: (postId: string) => void;
+  loggedInUsername: string;
+  initialTab?: "comments" | "annotations";
+  onReport: (type: ReportTargetType, id: string) => void;
+}) {
+  const commonT = useTranslations("auth.common");
+  const feedT = useTranslations("auth.feed");
+  const userPageT = useTranslations("auth.pages.userProfile");
+  const [activeTab, setActiveTab] = useState<"comments" | "annotations">(initialTab);
+  const [newComment, setNewComment] = useState("");
+  const [newAnnotationText, setNewAnnotationText] = useState("");
+  const [comments, setComments] = useState<CommentNode[]>([]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotationsLoading, setAnnotationsLoading] = useState(false);
+  const [showPostMenu, setShowPostMenu] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [contentExpanded, setContentExpanded] = useState(false);
+  const postMenuRef = useRef<HTMLDivElement | null>(null);
+  const imageScrollRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+
+  const { gemmed, gemsCount, saved, reposted, repostsCount } = interaction;
+  const acceptedAnnotationsCount = getAcceptedAnnotationsCount(annotations);
+
+  useEffect(() => {
+    if (post) {
+      setContentExpanded(false);
+      setActiveTab(initialTab);
+      setAnnotations([]);
+      setComments([]);
+      setCurrentImageIndex(0);
+    }
+  }, [post, initialTab]);
+
+  useEffect(() => {
+    if (!post) return;
+    fetchComments(post.id);
+    fetchAnnotations(post.id);
+  }, [post]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (postMenuRef.current && !postMenuRef.current.contains(event.target as Node)) setShowPostMenu(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => { onInteractionChange({ commentsCount: comments.length }); }, [comments]);
+  useEffect(() => { onInteractionChange({ annotationsCount: getAcceptedAnnotationsCount(annotations) }); }, [annotations]);
+
+  if (!post) return null;
+
+  const currentUser = getAuthUser();
+  const moderatorGlobal = isModerator(currentUser);
+  const isOwner = post.user_username === loggedInUsername;
+  const canDelete = isOwner || moderatorGlobal;
+  const isModeratorActive = moderatorGlobal;
+  const isLoggedIn = !!loggedInUsername;
+  const imageList = post.images ?? [];
+  const tags = buildTags(post);
+  const isContentLong = stripHtml(post.content).length > CONTENT_LIMIT;
+
+  const fetchComments = async (postId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/comments/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      const data = await res.json();
+      const raw = Array.isArray(data.data) ? data.data : [];
+      const normalized = raw.map(normalizeComment);
+      setComments(normalized);
+      onInteractionChange({ commentsCount: normalized.length });
+    } catch { }
+  };
+
+  const fetchAnnotations = async (postId: string) => {
+    setAnnotationsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/annotations/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      const data = await res.json();
+      const items = Array.isArray(data.data) ? data.data : [];
+      setAnnotations(items);
+      onInteractionChange({ annotationsCount: getAcceptedAnnotationsCount(items) });
+    } catch { } finally {
+      setAnnotationsLoading(false);
+    }
+  };
+
+  const handleGem = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextGemmed = !gemmed;
+    const nextCount = nextGemmed ? gemsCount + 1 : gemsCount - 1;
+    onInteractionChange({ gemmed: nextGemmed, gemsCount: nextCount });
+    toggleStoredItem("gemmed_posts", post.id, nextGemmed);
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/gem/`, { method: "POST", headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (!res.ok) throw new Error();
+    } catch {
+      onInteractionChange({ gemmed, gemsCount });
+      toggleStoredItem("gemmed_posts", post.id, gemmed);
+    }
+  };
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSaved = !saved;
+    onInteractionChange({ saved: nextSaved });
+    toggleStoredItem("saved_posts", post.id, nextSaved);
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/save/`, { method: "POST", headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (!res.ok) throw new Error();
+    } catch {
+      onInteractionChange({ saved });
+      toggleStoredItem("saved_posts", post.id, saved);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/comments/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: newComment }),
+      });
+      if (!res.ok) return;
+      setNewComment("");
+      await fetchComments(post.id);
+    } catch { }
+  };
+
+  const handleSubmitAnnotation = async () => {
+    if (!newAnnotationText.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/annotations/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getAuthToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ text: newAnnotationText }),
+      });
+      if (!res.ok) return;
+      setNewAnnotationText("");
+      await fetchAnnotations(post.id);
+    } catch { }
+  };
+
+  const handleDeletePost = () => { setShowPostMenu(false); setShowDeleteModal(true); };
+
+  const confirmDeletePost = async () => {
+    setShowDeleteModal(false);
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${post.id}/`, { method: "DELETE", headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (!res.ok) { alert("Failed to delete post."); return; }
+      onDeletePost(post.id);
+      onClose();
+    } catch (err) { console.error("Error deleting post:", err); }
+  };
+
+  const handleDeleteAnnotation = (id: string) => {
+    if (id === "__refresh__") { fetchAnnotations(post.id); return; }
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  };
+  const handleAcceptAnnotation = (id: string) => setAnnotations((prev) => prev.map((a) => (a.id === id ? { ...a, status: "accepted" } : a)));
+  const handleRejectAnnotation = (id: string) => setAnnotations((prev) => prev.map((a) => (a.id === id ? { ...a, status: "rejected" } : a)));
+
+  const handleDeleteComment = (id: string) => {
+    setComments((prev) => {
+      const toRemove = new Set<string>();
+      const collect = (commentId: string) => {
+        toRemove.add(commentId);
+        prev.forEach((item) => { if (String(item.parent) === String(commentId)) collect(item.id); });
+      };
+      collect(id);
+      return prev.filter((x) => !toRemove.has(x.id));
+    });
+  };
+
+  const scrollToImage = (index: number) => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: el.clientWidth * index, behavior: "smooth" });
+    setCurrentImageIndex(index);
+  };
+
+  const handleImageScroll = () => {
+    const el = imageScrollRef.current;
+    if (!el) return;
+    setCurrentImageIndex(Math.round(el.scrollLeft / el.clientWidth));
+  };
+
+  const topLevelComments = comments.filter((c) => !c.parent);
+  const getReplies = (commentId: string) => comments.filter((c) => String(c.parent) === String(commentId));
+
+  const renderCommentThread = (comment: CommentNode, level = 0): React.ReactNode => {
+    const replies = getReplies(comment.id);
+    return (
+      <div key={comment.id} className={level > 0 ? "ml-8 mt-2" : ""}>
+        <CommentItem
+          comment={comment}
+          postId={post.id}
+          onRefresh={() => fetchComments(post.id)}
+          onDelete={handleDeleteComment}
+          isReply={level > 0}
+          onReport={onReport}
+        />
+        {replies.length > 0 && <div className="flex flex-col gap-2 mt-2">{replies.map((reply) => renderCommentThread(reply, level + 1))}</div>}
+      </div>
+    );
+  };
+
+  const LeftPanel = imageList.length > 0 ? (
+    <div className="block w-full h-[240px] md:h-full md:w-1/2 flex-shrink-0 relative overflow-hidden" style={{ backgroundColor: "#000" }} onClick={(e) => e.stopPropagation()}>
+      <div ref={imageScrollRef} onScroll={handleImageScroll} className="hide-scrollbar flex w-full h-full overflow-x-scroll overflow-y-hidden snap-x snap-mandatory scroll-smooth" style={{ scrollbarWidth: "none", msOverflowStyle: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+        {imageList.map((img) => {
+          const imageUrl = img.image.startsWith("/media/") ? `${API_URL}${img.image}` : img.image;
+          return (
+            <div key={img.id} className="relative w-full h-full flex-shrink-0 snap-center overflow-hidden">
+              <div className="absolute inset-0" style={{ backgroundImage: `url("${encodeURI(imageUrl)}")`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(15px)", transform: "scale(1.2)" }} />
+              <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.35)" }} />
+              <img src={imageUrl} alt={post.title} className="relative z-10 w-full h-full object-contain" />
+            </div>
+          );
+        })}
+      </div>
+      {imageList.length > 1 && currentImageIndex > 0 && (
+        <button type="button" className="absolute left-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex - 1); }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+      )}
+      {imageList.length > 1 && currentImageIndex < imageList.length - 1 && (
+        <button type="button" className="absolute right-3 top-1/2 z-30 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-all hover:scale-105" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff" }} onClick={(e) => { e.stopPropagation(); scrollToImage(currentImageIndex + 1); }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+        </button>
+      )}
+      {imageList.length > 1 && (
+        <>
+          <div className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-2 backdrop-blur-md" style={{ background: "rgba(0,0,0,0.22)", border: "1px solid rgba(255,255,255,0.15)" }} onClick={(e) => e.stopPropagation()}>
+            {imageList.map((_, index) => (
+              <button key={index} type="button" onClick={(e) => { e.stopPropagation(); scrollToImage(index); }} className="transition-all duration-200" style={{ width: currentImageIndex === index ? 18 : 8, height: 8, borderRadius: 999, background: currentImageIndex === index ? "#FFF8E2" : "rgba(255,255,255,0.5)" }} />
+            ))}
+          </div>
+          <div className="absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.35)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }}>
+            {currentImageIndex + 1}/{imageList.length}
+          </div>
+        </>
+      )}
+    </div>
+  ) : (
+    <div className="hidden md:flex w-1/2 flex-shrink-0 flex flex-col overflow-y-auto feed-scroll px-6 py-5" style={{ backgroundColor: "#F5EFE0" }}>
+      <div className="mb-1">
+        <LocationWorldCard
+          location={post.location}
+          region={post.region}
+          textStyle={{ color: "#8B7355" }}
+          iconColor="#8B7355"
+          iconSize={13}
+          buttonClassName="mb-1"
+        />
+        <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+      </div>
+      <PostDetailBadge post={post} />
+      <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-4">
+          {tags.map((tag, i) => <span key={i} className="text-[11px] font-medium" style={{ color: "#A07850" }}>#{tag.toLowerCase().replace(/\s+/g, "_")}</span>)}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <NotificationModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} type="error" title={userPageT("modals.deletePost.title")} message={userPageT("modals.deletePost.message")} primaryAction={{ label: userPageT("modals.deletePost.confirm"), onClick: confirmDeletePost }} secondaryAction={{ label: userPageT("modals.deletePost.cancel"), onClick: () => setShowDeleteModal(false) }} />
+      <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center shadow-2xl" onClick={onClose} style={{ backdropFilter: "blur(4px)" }}>
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative flex flex-col md:flex-row w-full md:max-w-[1000px] h-full md:max-h-[90vh] md:h-[90vh] md:rounded-2xl overflow-hidden" style={{ backgroundColor: "#FFFFFF", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }} onClick={(e) => e.stopPropagation()}>
+          {LeftPanel}
+          <div className="w-full md:w-1/2 h-full flex-1 md:flex-none flex flex-col overflow-hidden" style={{ backgroundColor: "#FFF8E2" }}>
+            <div className="flex items-center px-5 pt-4 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+              <UserAvatar profilePicture={post.user_profile_picture} size={38} iconSize={20} />
+              <div className="ml-3 flex-1">
+                <div className="flex items-center gap-2">
+                  <button className="font-bold text-sm hover:underline text-left block truncate" style={{ color: "#432817", background: "none", border: "none", padding: 0, cursor: "pointer" }} onClick={() => { if (!post.user_username) return; onClose(); router.push(`/user/${post.user_username}`); }}>
+                    {post.user_display_name || post.user_username}
+                  </button>
+                  <p className="text-[11px] block" style={{ color: "#8B7355" }}>{formatDate(post.created_at)}</p>
+                </div>
+              </div>
+              <div className="relative" ref={postMenuRef}>
+                <button className="p-1 rounded hover:bg-[#E0D5C5] mr-2 transition-colors" onClick={() => setShowPostMenu(!showPostMenu)}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#8B7355"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+                </button>
+                {showPostMenu && (
+                  <div className="absolute right-0 top-full mt-1 py-2 rounded-lg shadow-lg z-50 overflow-hidden" style={{ backgroundColor: "#FFF8E2", border: "1px solid #E0D5C5", minWidth: "140px" }}>
+                    {canDelete ? (
+                      <>
+                        {isOwner && (
+                          <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-black/5" style={{ color: "var(--foreground)" }} onClick={() => { setShowPostMenu(false); router.push(`/edit-post?id=${post.id}`); }}>{commonT("edit")}</button>
+                        )}
+                        <button className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#FDE8E8]" style={{ color: "#7B0000" }} onClick={handleDeletePost}>{commonT("delete")}</button>
+                      </>
+                    ) : (
+                      <button
+                        className="block w-full text-left px-4 py-2 text-sm font-bold whitespace-nowrap transition-colors hover:bg-[#F0EAD8]"
+                        style={{ color: "#432817" }}
+                        onClick={() => {
+                          setShowPostMenu(false);
+                          if (!isLoggedIn) { router.push("/login"); return; }
+                          onReport("post", post.id);
+                        }}
+                      >
+                        {feedT("actions.reportPost")}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[#E0D5C5] transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#432817" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
+            </div>
+
+            {imageList.length > 0 && (
+              <div className="px-5 pt-3 pb-3 border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+                <LocationWorldCard
+                  location={post.location}
+                  region={post.region}
+                  textStyle={{ color: "#8B7355" }}
+                  iconColor="#8B7355"
+                  iconSize={13}
+                  buttonClassName="mb-1"
+                />
+                <h3 className="text-base font-bold" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.title) }} />
+                {isContentLong && !contentExpanded ? (
+                  <p className="text-xs leading-relaxed mt-1" style={{ color: "#432817" }}>
+                    {stripHtml(post.content).slice(0, CONTENT_LIMIT) + "… "}
+                    <button className="font-semibold" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(true)}>{feedT("actions.seeMore")}</button>
+                  </p>
+                ) : (
+                  <div className="text-xs leading-relaxed prose prose-sm max-w-none mt-1" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+                )}
+                {isContentLong && contentExpanded && (
+                  <button className="font-semibold text-xs mt-1" style={{ color: "#8B6914" }} onClick={() => setContentExpanded(false)}>{feedT("actions.seeLess")}</button>
+                )}
+              </div>
+            )}
+
+            <div className="flex border-b flex-shrink-0" style={{ borderColor: "#E0D5C5" }}>
+              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355", borderBottom: activeTab === "comments" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("comments")}>
+                <CommentIcon size={13} /> {feedT("tabs.comments", { count: comments.length })}
+              </button>
+              <button className="flex-1 py-2.5 text-xs font-bold transition-colors flex items-center justify-center gap-1.5" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355", borderBottom: activeTab === "annotations" ? "2px solid #432817" : "2px solid transparent" }} onClick={() => setActiveTab("annotations")}>
+                <AnnotationIcon size={13} /> {feedT("tabs.annotations", { count: acceptedAnnotationsCount })}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto feed-scroll">
+              {activeTab === "comments" && (
+                <div className="px-5 py-3 flex flex-col gap-3">
+                  {topLevelComments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <CommentIcon size={28} className="opacity-30" />
+                      <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.comments")}</p>
+                    </div>
+                  ) : topLevelComments.map((comment) => renderCommentThread(comment))}
+                </div>
+              )}
+              {activeTab === "annotations" && (
+                <div className="px-5 py-3 flex flex-col gap-3">
+                  {annotationsLoading ? (
+                    <div className="flex justify-center py-6">
+                      <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#E0D5C5", borderTopColor: "#8B6914" }} />
+                    </div>
+                  ) : annotations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <AnnotationIcon size={28} className="opacity-30" />
+                      <p className="text-xs" style={{ color: "#8B7355" }}>{feedT("empty.annotations")}</p>
+                    </div>
+                  ) : annotations.map((annotation) => (
+                    <AnnotationItem
+                      key={annotation.id}
+                      annotation={annotation}
+                      postId={post.id}
+                      postAuthorId={post.user_id}
+                      onDelete={handleDeleteAnnotation}
+                      onAccept={handleAcceptAnnotation}
+                      onReject={handleRejectAnnotation}
+                      onRefresh={() => fetchAnnotations(post.id)}
+                      onReport={onReport}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-2 flex items-center justify-between flex-shrink-0 border-t" style={{ borderColor: "#E0D5C5" }}>
+              <div className="flex items-center gap-4">
+                <LongPressGemButton postId={post.id} count={gemsCount} className="flex items-center gap-1 text-xs transition-all" style={{ color: gemmed ? "#4FC3F7" : "#432817" }} onGemClick={handleGem}>
+                  <GemIcon size={14} filled={gemmed} active={gemmed} />{formatCount(gemsCount)}
+                </LongPressGemButton>
+                <button className="flex items-center gap-1 text-xs transition-all" style={{ color: activeTab === "comments" ? "#432817" : "#8B7355" }} onClick={() => setActiveTab("comments")}>
+                  <CommentIcon size={14} /> {formatCount(comments.length)}
+                </button>
+                <button className="flex items-center gap-1 text-xs transition-all" style={{ color: activeTab === "annotations" ? "#432817" : "#8B7355" }} onClick={() => setActiveTab("annotations")}>
+                  <AnnotationIcon size={14} /> {formatCount(acceptedAnnotationsCount)}
+                </button>
+                <RepostButton
+                  key={`${post.id}-${reposted}-${repostsCount}`}
+                  postId={post.id}
+                  initialReposted={reposted}
+                  initialCount={repostsCount}
+                  className="flex items-center gap-1 text-xs transition-all"
+                  style={{ color: "#432817" }}
+                  iconSize={14}
+                  onChange={({ reposted: nextReposted, repostsCount: nextRepostsCount }) => {
+                    onInteractionChange({ reposted: nextReposted, repostsCount: nextRepostsCount });
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <AiPostInsight
+                  postId={post.id}
+                  title={post.title}
+                  buttonClassName="flex items-center gap-1 text-xs transition-all"
+                  buttonStyle={{ color: "#432817" }}
+                />
+                <button className="transition-all" style={{ color: saved ? "#8B6914" : "#432817" }} onClick={handleSave}>
+                  <BookmarkIcon size={18} filled={saved} active={saved} />
+                </button>
+              </div>
+            </div>
+            <div className="px-5 py-3 flex items-center gap-2 flex-shrink-0">
+              {activeTab === "comments" ? (
+                <>
+                  <input type="text" placeholder={feedT("placeholders.comment")} value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitComment(); }} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+                  <button onClick={handleSubmitComment} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 hover:opacity-80" style={{ backgroundColor: "#432817" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input type="text" placeholder={feedT("placeholders.annotation")} value={newAnnotationText} onChange={(e) => setNewAnnotationText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmitAnnotation(); }} className="flex-1 text-xs rounded-xl px-4 py-2.5 outline-none border" style={{ backgroundColor: "#FFFFFF", border: "1px solid #E0D5C5", color: "#432817" }} />
+                  <button onClick={handleSubmitAnnotation} className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 hover:opacity-80" style={{ backgroundColor: "#432817" }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF8E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+function BioText({ bio }: { bio: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const lines = 2;
+  const isLong = bio.length > 120;
+
+  return (
+    <div className="max-w-md">
+      <p
+        className="text-sm leading-relaxed"
+        style={{
+          color: "#432817",
+          display: "-webkit-box",
+          WebkitLineClamp: expanded ? undefined : lines,
+          WebkitBoxOrient: "vertical",
+          overflow: expanded ? "visible" : "hidden",
+        } as React.CSSProperties}
+      >
+        {bio}
+      </p>
+      {isLong && (
+        <button
+          className="text-xs font-semibold mt-1"
+          style={{ color: "#8B6914", background: "none", border: "none", padding: 0, cursor: "pointer" }}
+          onClick={() => setExpanded(prev => !prev)}
+        >
+          {expanded ? "See less" : "See more"}
+        </button>
+      )}
+    </div>
+  );
+}
+/* ───────────────── PROFILE HEADER ───────────────── */
+
+function ProfileHeader({
+  profileInfo,
+  isOwnProfile,
+  gemsCount,
+  postsCount,
+  eventsCount,
+}: {
+  profileInfo: ProfileInfo;
+  isOwnProfile: boolean;
+  gemsCount: number;
+  postsCount: number;
+  eventsCount: number;
+}) {
+  const router = useRouter();
+  const dashboardT = useTranslations("auth.profilePopups.dashboard");
+  const addPostT = useTranslations("auth.pages.addPost");
+  const editProfileT = useTranslations("auth.pages.editProfile");
+  const userPageT = useTranslations("auth.pages.userProfile");
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showDashboardModal, setShowDashboardModal] = useState(false);
+
+
+  const handleLogout = async () => {
+    await logoutClient();
+    setShowLogoutModal(false);
+    router.push("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await fetch(`${API_URL}/api/users/me/`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${getAuthToken()}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh: getRefreshToken() }),
+      });
+    } catch { }
+    setShowDeleteAccountModal(false);
+    await logoutClient();
+    router.push("/");
+  };
+
+  return (
+
+    <div className="flex flex-col pt-8 pb-6 px-6 relative">
+      {isOwnProfile && (
+        <div className="absolute top-4 right-6">
+          <button
+            className="profile-dashboard-menu-trigger p-2 rounded hover:bg-[#F0EAD8] transition-colors"
+            onClick={() => setShowDashboardModal(true)}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#8B7355"><circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" /></svg>
+          </button>
+        </div>
+      )}
+
+      {/* ── Popups ── */}
+      {showChangeEmailModal && <ChangeEmailPopup onClose={() => setShowChangeEmailModal(false)} />}
+      {showChangePasswordModal && <ChangePasswordPopup onClose={() => setShowChangePasswordModal(false)} />}
+      {showDashboardModal && (
+        <DashboardPopup
+          onClose={() => setShowDashboardModal(false)}
+          isModerator={profileInfo.role === "moderator" || profileInfo.role === "admin"}
+          onChangeEmail={() => setShowChangeEmailModal(true)}
+          onChangePassword={() => setShowChangePasswordModal(true)}
+          onDeleteAccount={() => setShowDeleteAccountModal(true)}
+          onLogout={() => setShowLogoutModal(true)}
+          onPlatformStatistics={() => router.push("/moderator-page")}
+        />
+      )}
+
+      <NotificationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        type="info"
+        title={userPageT("modals.logout.title")}
+        message={userPageT("modals.logout.message")}
+        primaryAction={{ label: userPageT("modals.logout.confirm"), onClick: handleLogout }}
+        secondaryAction={{ label: userPageT("modals.logout.cancel"), onClick: () => setShowLogoutModal(false) }}
+      />
+
+      <NotificationModal
+        isOpen={showDeleteAccountModal}
+        onClose={() => setShowDeleteAccountModal(false)}
+        type="error"
+        title={userPageT("modals.deleteAccount.title")}
+        message={userPageT("modals.deleteAccount.message")}
+        primaryAction={{ label: userPageT("modals.deleteAccount.confirm"), onClick: handleDeleteAccount }}
+        secondaryAction={{ label: userPageT("modals.deleteAccount.cancel"), onClick: () => setShowDeleteAccountModal(false) }}
+      />
+
+      <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-8">
+        <div className="w-[140px] h-[140px] rounded-full flex-shrink-0 overflow-hidden" style={{ boxShadow: "0 4px 20px rgba(67,40,23,0.15)" }}>
+          {profileInfo.profile_picture ? (
+            <img
+              src={profileInfo.profile_picture.startsWith("/media/")
+                ? `${API_URL}${profileInfo.profile_picture}`
+                : profileInfo.profile_picture}
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <img src="/Ellipse 34.jpg" alt="Profile" className="w-full h-full object-cover" />
+          )}
+        </div>
+
+        <div className="flex flex-col items-center md:items-start text-center md:text-left">
+          <h1 className="text-2xl font-bold mb-1" style={{ color: "#432817" }}>
+            {profileInfo.display_name || profileInfo.username || "User"}
+          </h1>
+          <p className="text-sm mb-4" style={{ color: "#8B7355" }}>
+            @{profileInfo.username}
+          </p>
+
+          <div className="flex items-center gap-6 mb-4">
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>{postsCount}</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.posts")}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>{gemsCount}</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.likes")}</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold" style={{ color: "#432817" }}>{eventsCount}</span>
+              <span className="text-sm" style={{ color: "#8B7355" }}>{userPageT("stats.events")}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 mb-4">
+            {profileInfo.expertise && (
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.expertise}</span>
+            )}
+            {profileInfo.speciality && (
+              <span className="text-sm" style={{ color: "#432817" }}>#{profileInfo.speciality}</span>
+            )}
+          </div>
+
+          <BioText bio={stripHtml(profileInfo.bio)} />
+
+        </div>
+      </div>
+
+      {isOwnProfile && (
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6 w-full max-w-[812px] mx-auto">
+          <button onClick={() => router.push("/add-post")} className="text-sm font-semibold hover:opacity-90 w-full flex-1 h-[40px] rounded-lg" style={{ backgroundColor: "#432817", color: "#FFF8E2" }}>{addPostT("title")}</button>
+          <button onClick={() => router.push("/edit-profile")} className="text-sm font-semibold hover:opacity-90 w-full flex-1 h-[40px] rounded-lg" style={{ backgroundColor: "#432817", color: "#FFF8E2" }}>{editProfileT("title")}</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ───────────────── TABS ───────────────── */
+
+function ProfileTabs({ activeTab, setActiveTab, isOwnProfile }: { activeTab: string; setActiveTab: (t: string) => void; isOwnProfile: boolean }) {
+  const tabs = [
+    { id: "grid", icon: <GridIcon size={20} /> },
+    { id: "reposts", icon: <RepostIcon size={20} /> },
+    ...(isOwnProfile ? [{ id: "gems", icon: <GemIcon size={20} /> }, { id: "saved", icon: <BookmarkIcon size={20} /> }] : []),
+    { id: "events", icon: <CalendarIcon size={20} />, hideOnMobile: true },
+    { id: "alerts", icon: <DangerIcon size={20} />, hideOnMobile: true },
+  ];
+  const tabLabels: Record<string, string> = {
+    grid: "Posts",
+    reposts: "Reposts",
+    gems: "Your treasure",
+    saved: "Saved",
+    events: "Events",
+    alerts: "Monuments in danger",
+  };
+
+  return (
+    <div className="flex items-center justify-between px-4 md:px-20 py-2 mb-6 border-t" style={{ borderColor: "#E0D5C5" }}>
+      {tabs.map((tab: any) => (
+        <button
+          key={tab.id}
+          title={tabLabels[tab.id] ?? tab.id}
+          aria-label={tabLabels[tab.id] ?? tab.id}
+          onClick={() => setActiveTab(tab.id)}
+          className={`p-3 transition-all duration-200 hover:opacity-70 relative ${tab.hideOnMobile ? "hidden md:block" : ""}`}
+          style={{ color: activeTab === tab.id ? "#432817" : "#8B7355" }}
+        >
+          {tab.icon}
+          {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ backgroundColor: "#432817" }} />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ───────────────── DASHBOARD SECTION ───────────────── */
+
+
+function PostGridCard({
+  post, interaction, onClick, onCommentClick, onAnnotationClick,
+}: {
+  post: ApiPost;
+  interaction: PostInteraction;
+  onClick: () => void;
+  onCommentClick: () => void;
+  onAnnotationClick: () => void;
+}) {
+  const imageList = post.images ?? [];
+  const firstImage = imageList[0];
+  const imageUrl = firstImage ? (firstImage.image.startsWith("/media/") ? `${API_URL}${firstImage.image}` : firstImage.image) : null;
+  const { gemsCount, commentsCount, repostsCount } = interaction;
+
+  return (
+    <div className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group" style={{ boxShadow: "0 2px 12px rgba(67,40,23,0.1)" }} onClick={onClick}>
+      {imageUrl ? (
+        <img src={imageUrl} alt={stripHtml(post.title)} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center px-3" style={{ background: "linear-gradient(135deg, #e8d9bb, #ded2bc)" }}>
+          <p className="text-center text-xs font-semibold leading-snug line-clamp-3" style={{ color: "rgba(0,0,0,0.78)" }}>{stripHtml(post.title)}</p>
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-6">
+        <div className="flex items-center gap-1.5 text-white"><GemIcon size={18} /><span className="font-semibold text-sm">{formatCount(gemsCount)}</span></div>
+        <button className="flex items-center gap-1.5 text-white" onClick={(e) => { e.stopPropagation(); onCommentClick(); }}>
+          <CommentIcon size={18} /><span className="font-semibold text-sm">{formatCount(commentsCount)}</span>
+        </button>
+        <div className="flex items-center gap-1.5 text-white"><RepostIcon size={18} /><span className="font-semibold text-sm">{formatCount(repostsCount)}</span></div>
+      </div>
+      {post.post_type && (
+        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize" style={{ backgroundColor: post.post_type === "alert" ? "#FEE2E2" : post.post_type === "event" ? "#DCFCE7" : post.post_type === "visit" ? "#FFF0E0" : post.post_type === "question" ? "#EEF2FF" : post.post_type === "discovery" ? "#FFFBEB" : "#FFF8E2", color: post.post_type === "alert" ? "#B91C1C" : post.post_type === "event" ? "#15803D" : post.post_type === "visit" ? "#C2570A" : post.post_type === "question" ? "#3730A3" : post.post_type === "discovery" ? "#B45309" : "#432817" }}>
+          {post.post_type}
+        </span>
+      )}
+      {imageList.length > 1 && (
+        <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.4)", color: "#fff" }}>
+          +{imageList.length - 1}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PostsGrid({
+  posts, getInteraction, onPostClick, onCommentClick, onAnnotationClick,
+}: {
+  posts: ApiPost[];
+  getInteraction: (post: ApiPost) => PostInteraction;
+  onPostClick: (p: ApiPost) => void;
+  onCommentClick: (p: ApiPost) => void;
+  onAnnotationClick: (p: ApiPost) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 px-4 pb-8">
+      {posts.map((post) => (
+        <PostGridCard
+          key={post.id}
+          post={post}
+          interaction={getInteraction(post)}
+          onClick={() => onPostClick(post)}
+          onCommentClick={() => onCommentClick(post)}
+          onAnnotationClick={() => onAnnotationClick(post)}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ───────────────── MAIN PAGE ───────────────── */
+
+export default function ProfilePage() {
+  const userPageT = useTranslations("auth.pages.userProfile");
+  const queryClient = useQueryClient();
+  const cachedProfile = useMemo(() => getCachedProfileInfo(), []);
+  const [loggedInUsername, setLoggedInUsername] = useState(() => cachedProfile?.username ?? getAuthUser()?.username ?? "");
+  const [activeTab, setActiveTab] = useState("grid");
+  const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
+  const [selectedPostTab, setSelectedPostTab] = useState<"comments" | "annotations">("comments");
+  const [reportModal, setReportModal] = useState<{
+    isOpen: boolean;
+    targetType: ReportTargetType;
+    targetId: string;
+  }>({ isOpen: false, targetType: "post", targetId: "" });
+
+  const openReportModal = (type: ReportTargetType, id: string) => {
+    setReportModal({ isOpen: true, targetType: type, targetId: id });
+  };
+
+  const handleReportSubmit = async (reason: string, description: string) => {
+    await submitReport(reportModal.targetType, reportModal.targetId, reason, description);
+  };
+
+  const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [gemmedPosts, setGemmedPosts] = useState<ApiPost[]>([]);
+  const [loadingGemmed, setLoadingGemmed] = useState(false);
+  const [savedPosts, setSavedPosts] = useState<ApiPost[]>([]);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [repostedPosts, setRepostedPosts] = useState<ApiPost[]>([]);
+  const [loadingReposts, setLoadingReposts] = useState(false);
+  const [eventPosts, setEventPosts] = useState<ApiPost[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [alertPosts, setAlertPosts] = useState<ApiPost[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [nextUrl, setNextUrl] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const [postInteractions, setPostInteractions] = useState<Record<string, PostInteraction>>({});
+
+  // ← state for real profile info from backend
+  const params = useParams();
+  const viewedUsername = typeof params?.username === "string" ? params.username : loggedInUsername;
+  const isOwnProfile = !!loggedInUsername && !!viewedUsername && loggedInUsername === viewedUsername;
+  const initialProfileInfo = useMemo<ProfileInfo>(() => ({
+    username: isOwnProfile ? cachedProfile?.username ?? "" : viewedUsername || "",
+    display_name: isOwnProfile ? cachedProfile?.display_name ?? cachedProfile?.username ?? "" : viewedUsername || "",
+    bio: isOwnProfile ? cachedProfile?.bio ?? "" : "",
+    expertise: isOwnProfile ? cachedProfile?.expertise ?? "" : "",
+    speciality: isOwnProfile ? cachedProfile?.speciality ?? "" : "",
+    profile_picture: isOwnProfile ? cachedProfile?.profile_picture ?? null : null,
+    badge: isOwnProfile ? cachedProfile?.badge ?? null : null,
+    is_verified: isOwnProfile ? cachedProfile?.is_verified ?? false : false,
+    role: isOwnProfile ? cachedProfile?.role ?? "" : "",
+    posts_count: isOwnProfile ? cachedProfile?.posts_count ?? 0 : 0,
+    likes_count: isOwnProfile ? cachedProfile?.likes_count ?? 0 : 0,
+    events_count: isOwnProfile ? cachedProfile?.events_count ?? 0 : 0,
+  }), [cachedProfile, isOwnProfile, viewedUsername]);
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo>(initialProfileInfo);
+  const [gemmedPostsCount, setGemmedPostsCount] = useState<number | null>(null);
+  const [profilePostsCount, setProfilePostsCount] = useState<number | null>(null);
+  const [profileEventsCount, setProfileEventsCount] = useState<number | null>(null);
+  const visibleTab = !isOwnProfile && (activeTab === "gems" || activeTab === "saved") ? "grid" : activeTab;
+  const profileQuery = useProfile<Partial<ProfileInfo>>(viewedUsername, isOwnProfile);
+  const gridTabQuery = useProfileTab<ApiPost>(viewedUsername, "grid", isOwnProfile, visibleTab === "grid");
+  const gemsTabQuery = useProfileTab<ApiPost>(viewedUsername, "gems", isOwnProfile, isOwnProfile && visibleTab === "gems");
+  const savedTabQuery = useProfileTab<ApiPost>(viewedUsername, "saved", isOwnProfile, isOwnProfile && visibleTab === "saved");
+  const repostsTabQuery = useProfileTab<ApiPost>(viewedUsername, "reposts", isOwnProfile, visibleTab === "reposts");
+  const eventsTabQuery = useProfileTab<ApiPost>(viewedUsername, "events", isOwnProfile, visibleTab === "events");
+  const alertsTabQuery = useProfileTab<ApiPost>(viewedUsername, "alerts", isOwnProfile, visibleTab === "alerts");
+  const tabMemoryKeys = useMemo(() => ({
+    grid: profileTabMemoryKey(viewedUsername, "grid", isOwnProfile),
+    gems: profileTabMemoryKey(viewedUsername, "gems", isOwnProfile),
+    saved: profileTabMemoryKey(viewedUsername, "saved", isOwnProfile),
+    reposts: profileTabMemoryKey(viewedUsername, "reposts", isOwnProfile),
+    events: profileTabMemoryKey(viewedUsername, "events", isOwnProfile),
+    alerts: profileTabMemoryKey(viewedUsername, "alerts", isOwnProfile),
+  }), [viewedUsername, isOwnProfile]);
+
+  const rememberedAllPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.grid) ?? [], [tabMemoryKeys.grid]);
+  const rememberedGemmedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.gems) ?? [], [tabMemoryKeys.gems]);
+  const rememberedSavedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.saved) ?? [], [tabMemoryKeys.saved]);
+  const rememberedRepostedPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.reposts) ?? [], [tabMemoryKeys.reposts]);
+  const rememberedEventPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.events) ?? [], [tabMemoryKeys.events]);
+  const rememberedAlertPosts = useMemo(() => profileTabMemory.get(tabMemoryKeys.alerts) ?? [], [tabMemoryKeys.alerts]);
+
+  const displayedAllPosts = useMemo(
+    () => {
+      const mapped = gridTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (allPosts.length > 0 ? allPosts : rememberedAllPosts);
+    },
+    [gridTabQuery.data, allPosts, rememberedAllPosts],
+  );
+  const displayedGemmedPosts = useMemo(
+    () => {
+      const mapped = gemsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (gemmedPosts.length > 0 ? gemmedPosts : rememberedGemmedPosts);
+    },
+    [gemsTabQuery.data, gemmedPosts, rememberedGemmedPosts],
+  );
+  const displayedSavedPosts = useMemo(
+    () => {
+      const mapped = savedTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (savedPosts.length > 0 ? savedPosts : rememberedSavedPosts);
+    },
+    [savedTabQuery.data, savedPosts, rememberedSavedPosts],
+  );
+  const displayedRepostedPosts = useMemo(
+    () => {
+      const mapped = repostsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (repostedPosts.length > 0 ? repostedPosts : rememberedRepostedPosts);
+    },
+    [repostsTabQuery.data, repostedPosts, rememberedRepostedPosts],
+  );
+  const displayedEventPosts = useMemo(
+    () => {
+      const mapped = eventsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (eventPosts.length > 0 ? eventPosts : rememberedEventPosts);
+    },
+    [eventsTabQuery.data, eventPosts, rememberedEventPosts],
+  );
+  const displayedAlertPosts = useMemo(
+    () => {
+      const mapped = alertsTabQuery.data?.map(mapPost) ?? [];
+      return mapped.length > 0 ? mapped : (alertPosts.length > 0 ? alertPosts : rememberedAlertPosts);
+    },
+    [alertsTabQuery.data, alertPosts, rememberedAlertPosts],
+  );
+
+  useEffect(() => {
+    setProfileInfo(initialProfileInfo);
+  }, [initialProfileInfo]);
+
+  useEffect(() => {
+    setAllPosts([]);
+    setGemmedPosts([]);
+    setGemmedPostsCount(null);
+    setProfilePostsCount(null);
+    setProfileEventsCount(null);
+    setSavedPosts([]);
+    setRepostedPosts([]);
+    setEventPosts([]);
+    setAlertPosts([]);
+    setActiveTab("grid");
+  }, [viewedUsername]);
+
+  useEffect(() => {
+    if (!viewedUsername) return;
+    const tabs: Array<"grid" | "gems" | "saved" | "reposts" | "events" | "alerts"> = isOwnProfile
+      ? ["grid", "gems", "saved", "reposts", "events", "alerts"]
+      : ["grid", "reposts", "events", "alerts"];
+    tabs.forEach((tab) => {
+      queryClient.prefetchQuery({
+        queryKey: profileTabQueryKey(viewedUsername, tab, isOwnProfile),
+        queryFn: () => fetchProfileTabPosts<ApiPost>(viewedUsername, tab, isOwnProfile),
+        staleTime: 5 * 60 * 1000,
+      }).catch(() => undefined);
+    });
+  }, [queryClient, viewedUsername, isOwnProfile]);
+
+  useEffect(() => {
+    const data = profileQuery.data;
+    if (!data) return;
+    setProfileInfo((prev) => ({
+      username: data.username ?? "",
+      display_name: data.display_name ?? data.username ?? "",
+      bio: data.bio ?? "",
+      expertise: data.expertise ?? "",
+      speciality: data.speciality ?? "",
+      profile_picture: data.profile_picture ?? null,
+      badge: data.badge ?? null,
+      is_verified: data.is_verified ?? false,
+      role: data.role ?? "",
+      posts_count: data.posts_count ?? displayedAllPosts.length,
+      likes_count: data.likes_count ?? prev.likes_count ?? 0,
+      events_count: data.events_count ?? displayedEventPosts.length,
+    }));
+  }, [profileQuery.data, displayedAllPosts.length, displayedEventPosts.length]);
+
+  useEffect(() => {
+    if (!isOwnProfile || !viewedUsername) return;
+    let cancelled = false;
+
+    const fetchGemmedPostsCount = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/posts/gemed/?page_size=1`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const count = getPaginatedCount(data);
+        if (!cancelled && count !== null) {
+          setGemmedPostsCount(count);
+        }
+      } catch { }
+    };
+
+    void fetchGemmedPostsCount();
+    return () => { cancelled = true; };
+  }, [isOwnProfile, viewedUsername]);
+
+  useEffect(() => {
+    if (!viewedUsername) return;
+    let cancelled = false;
+
+    const fetchProfileCounts = async () => {
+      const headers = { Authorization: `Bearer ${getAuthToken()}` };
+      try {
+        const [postsRes, eventsRes] = await Promise.all([
+          fetch(`${API_URL}/api/posts/user/${viewedUsername}/?page_size=1`, { headers }),
+          fetch(`${API_URL}/api/posts/user/${viewedUsername}/events/?page_size=1`, { headers }),
+        ]);
+
+        if (postsRes.ok) {
+          const data = await postsRes.json();
+          const count = getPaginatedCount(data);
+          if (!cancelled && count !== null) setProfilePostsCount(count);
+        }
+
+        if (eventsRes.ok) {
+          const data = await eventsRes.json();
+          const count = getPaginatedCount(data);
+          if (!cancelled && count !== null) setProfileEventsCount(count);
+        }
+      } catch { }
+    };
+
+    void fetchProfileCounts();
+    return () => { cancelled = true; };
+  }, [viewedUsername]);
+
+  useEffect(() => {
+    if (!gridTabQuery.data) return;
+    const mapped = gridTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (allPosts.length > 0 || rememberedAllPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.grid, mapped);
+    setAllPosts(mapped);
+  }, [gridTabQuery.data, tabMemoryKeys.grid, allPosts.length, rememberedAllPosts.length]);
+
+  useEffect(() => {
+    if (!gemsTabQuery.data) return;
+    const mapped = gemsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (gemmedPosts.length > 0 || rememberedGemmedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.gems, mapped);
+    setGemmedPosts(mapped);
+  }, [gemsTabQuery.data, tabMemoryKeys.gems, gemmedPosts.length, rememberedGemmedPosts.length]);
+
+  useEffect(() => {
+    if (!savedTabQuery.data) return;
+    const mapped = savedTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (savedPosts.length > 0 || rememberedSavedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.saved, mapped);
+    setSavedPosts(mapped);
+  }, [savedTabQuery.data, tabMemoryKeys.saved, savedPosts.length, rememberedSavedPosts.length]);
+
+  useEffect(() => {
+    if (!repostsTabQuery.data) return;
+    const mapped = repostsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (repostedPosts.length > 0 || rememberedRepostedPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.reposts, mapped);
+    setRepostedPosts(mapped);
+  }, [repostsTabQuery.data, tabMemoryKeys.reposts, repostedPosts.length, rememberedRepostedPosts.length]);
+
+  useEffect(() => {
+    if (!eventsTabQuery.data) return;
+    const mapped = eventsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (eventPosts.length > 0 || rememberedEventPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.events, mapped);
+    setEventPosts(mapped);
+  }, [eventsTabQuery.data, tabMemoryKeys.events, eventPosts.length, rememberedEventPosts.length]);
+
+  useEffect(() => {
+    if (!alertsTabQuery.data) return;
+    const mapped = alertsTabQuery.data.map(mapPost);
+    if (mapped.length === 0 && (alertPosts.length > 0 || rememberedAlertPosts.length > 0)) return;
+    profileTabMemory.set(tabMemoryKeys.alerts, mapped);
+    setAlertPosts(mapped);
+  }, [alertsTabQuery.data, tabMemoryKeys.alerts, alertPosts.length, rememberedAlertPosts.length]);
+
+  const getInteraction = (post: ApiPost): PostInteraction =>
+    postInteractions[post.id] ?? {
+      gemmed: post.is_gemmed ?? getStoredSet("gemmed_posts").has(post.id),
+      gemsCount: post.gems_count,
+      saved: post.is_saved ?? getStoredSet("saved_posts").has(post.id),
+      reposted: post.is_reposted ?? false,
+      repostsCount: post.reposts_count ?? 0,
+      commentsCount: post.comments_count ?? 0,
+      annotationsCount: post.accepted_annotations_count ?? 0,
+    };
+
+  const updateInteraction = (postId: string, update: Partial<PostInteraction>) => {
+    setPostInteractions((prev) => {
+      const allPostsFlat = [...displayedAllPosts, ...displayedGemmedPosts, ...displayedSavedPosts, ...displayedRepostedPosts, ...displayedEventPosts, ...displayedAlertPosts];
+      const sourcePost = allPostsFlat.find((p) => p.id === postId);
+      const existing = prev[postId] ?? {
+        gemmed: sourcePost?.is_gemmed ?? getStoredSet("gemmed_posts").has(postId),
+        gemsCount: sourcePost?.gems_count ?? 0,
+        saved: sourcePost?.is_saved ?? getStoredSet("saved_posts").has(postId),
+        reposted: sourcePost?.is_reposted ?? false,
+        repostsCount: sourcePost?.reposts_count ?? 0,
+        commentsCount: sourcePost?.comments_count ?? 0,
+        annotationsCount: sourcePost?.accepted_annotations_count ?? 0,
+      };
+      return { ...prev, [postId]: { ...existing, ...update } };
+    });
+  };
+
+  const deletePostFromLists = (postId: string) => {
+    const deletedPost = [...displayedAllPosts, ...displayedGemmedPosts, ...displayedSavedPosts, ...displayedRepostedPosts, ...displayedEventPosts, ...displayedAlertPosts]
+      .find((post) => post.id === postId);
+    setAllPosts((prev) => prev.filter((p) => p.id !== postId));
+    setGemmedPosts((prev) => prev.filter((p) => p.id !== postId));
+    setSavedPosts((prev) => prev.filter((p) => p.id !== postId));
+    setRepostedPosts((prev) => prev.filter((p) => p.id !== postId));
+    setEventPosts((prev) => prev.filter((p) => p.id !== postId));
+    setAlertPosts((prev) => prev.filter((p) => p.id !== postId));
+    Object.values(tabMemoryKeys).forEach((key) => {
+      const remembered = profileTabMemory.get(key);
+      if (remembered) profileTabMemory.set(key, remembered.filter((post) => post.id !== postId));
+    });
+    setProfilePostsCount((current) => current === null ? current : Math.max(current - 1, 0));
+    if (deletedPost?.post_type === "event") {
+      setProfileEventsCount((current) => current === null ? current : Math.max(current - 1, 0));
+    }
+  };
+
+  /* ── Fetch logged in user ── */
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/users/me/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (res.ok) {
+          const json = await res.json();
+          setLoggedInUsername(json.data?.username ?? json.username ?? "");
+        }
+      } catch (err) { console.error("Error fetching me:", err); }
+    };
+    fetchMe();
+  }, []);
+
+  // ← fetch real profile info + likes + events + posts counts
+  useEffect(() => {
+    if (!viewedUsername) return;
+    if (profileQuery.isFetching) return;
+    let cancelled = false;
+    const fetchProfile = async () => {
+      try {
+        let data = profileQuery.data as Partial<ProfileInfo> | undefined;
+        if (!data) {
+          const endpoint = isOwnProfile
+            ? `${API_URL}/api/users/me/`
+            : `${API_URL}/api/users/${viewedUsername}/`;
+          const res = await fetch(endpoint, {
+            headers: { Authorization: `Bearer ${getAuthToken()}` },
+          });
+          if (!res.ok) return;
+          const json = await res.json();
+          data = json.data ?? json;
+        }
+
+        if (!data) return;
+
+        let eventsCount = 0;
+        try {
+          const eventsRes = await fetch(
+            `${API_URL}/api/posts/user/${viewedUsername}/events/?page_size=1`,
+            { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+          );
+          if (eventsRes.ok) {
+            const eventsData = await eventsRes.json();
+            const count = getPaginatedCount(eventsData);
+            eventsCount = count ?? extractPaginatedResults(eventsData).length;
+          }
+        } catch { }
+
+        let likesCount = 0;
+        let allPostsCount = 0;
+        try {
+          let nextUrl: string | null = `${API_URL}/api/posts/user/${viewedUsername}/?page_size=50`;
+          let page = 0;
+          while (nextUrl && page < 20) {
+            const postsRes = await fetch(nextUrl, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+            if (!postsRes.ok) break;
+            const postsData = await postsRes.json();
+            const posts = extractPaginatedResults<{ gems_count?: unknown }>(postsData);
+            likesCount += sumGemsFromPosts(posts);
+            const count = getPaginatedCount(postsData);
+            if (count !== null) allPostsCount = count;
+            nextUrl = extractNextUrl(postsData);
+            page += 1;
+          }
+        } catch { }
+
+        if (cancelled) return;
+        setProfileInfo({
+          username: data.username ?? "",
+          display_name: data.display_name ?? data.username ?? "",
+          bio: data.bio ?? "",
+          expertise: data.expertise ?? "",
+          speciality: data.speciality ?? "",
+          profile_picture: data.profile_picture ?? null,
+          badge: data.badge ?? null,
+          is_verified: data.is_verified ?? false,
+          role: data.role ?? "",
+          posts_count: allPostsCount || data.posts_count || 0,
+          likes_count: data.likes_count ?? likesCount,
+          events_count: eventsCount,
+        });
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      }
+    };
+    fetchProfile();
+    return () => { cancelled = true; };
+  }, [viewedUsername, isOwnProfile, profileQuery.data, profileQuery.isFetching]);
+
+  /* ── Fetch posts logic with pagination ── */
+  const fetchTabPosts = async (url: string, tab: string, isInitial = false) => {
+    if (!url) return;
+    isInitial ? (
+      tab === "grid" ? setLoadingPosts(true) :
+        tab === "gems" ? setLoadingGemmed(true) :
+          tab === "saved" ? setLoadingSaved(true) :
+            tab === "reposts" ? setLoadingReposts(true) :
+              tab === "events" ? setLoadingEvents(true) :
+                setLoadingAlerts(true)
+    ) : setLoadingMore(true);
+
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const results = (data.results ?? data).map(mapPost);
+
+      const setter =
+        tab === "grid" ? setAllPosts :
+          tab === "gems" ? setGemmedPosts :
+            tab === "saved" ? setSavedPosts :
+              tab === "reposts" ? setRepostedPosts :
+                tab === "events" ? setEventPosts :
+                  setAlertPosts;
+
+      setter(prev => {
+        if (isInitial) return results;
+        const existingIds = new Set(prev.map((p: ApiPost) => p.id));
+        const uniqueNew = results.filter((p: ApiPost) => !existingIds.has(p.id));
+        return [...prev, ...uniqueNew];
+      });
+      setNextUrl(data.next ?? null);
+    } catch (err) {
+      console.error(`Error fetching ${tab}:`, err);
+    } finally {
+      isInitial ? (
+        tab === "grid" ? setLoadingPosts(false) :
+          tab === "gems" ? setLoadingGemmed(false) :
+            tab === "saved" ? setLoadingSaved(false) :
+              tab === "reposts" ? setLoadingReposts(false) :
+                tab === "events" ? setLoadingEvents(false) :
+                  setLoadingAlerts(false)
+      ) : setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!viewedUsername) return;
+    if (gridTabQuery.data || gridTabQuery.isFetching) return;
+    const fetchAllPosts = async () => {
+      setLoadingPosts(true);
+      const url = `${API_URL}/api/posts/user/${viewedUsername}/?page_size=10`;
+      try {
+        const res: Response = await fetch(url, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data: any = await res.json();
+        const count = getPaginatedCount(data);
+        if (count !== null) setProfilePostsCount(count);
+        const collected = (data.results ?? data.data?.results ?? data.data ?? data ?? []).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.grid, collected);
+        setAllPosts(collected);
+      } catch (err) { console.error("Error fetching posts:", err); }
+      finally { setLoadingPosts(false); }
+    };
+    fetchAllPosts();
+  }, [viewedUsername, gridTabQuery.data, gridTabQuery.isFetching, tabMemoryKeys.grid]);
+
+  useEffect(() => {
+    if (!isOwnProfile || visibleTab !== "gems") return;
+    if (gemsTabQuery.data || gemsTabQuery.isFetching) return;
+    const fetch_ = async () => {
+      setLoadingGemmed(true);
+      try {
+        const res = await fetch(`${API_URL}/api/posts/gemed/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const count = getPaginatedCount(data);
+        if (count !== null) setGemmedPostsCount(count);
+        const mapped = (data.results ?? data.data?.results ?? data.data ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.gems, mapped);
+        setGemmedPosts(mapped);
+      } catch (err) { console.error(err); }
+      finally { setLoadingGemmed(false); }
+    };
+    fetch_();
+  }, [visibleTab, isOwnProfile, gemsTabQuery.data, gemsTabQuery.isFetching, tabMemoryKeys.gems]);
+
+  useEffect(() => {
+    if (!isOwnProfile || visibleTab !== "saved") return;
+    if (savedTabQuery.data || savedTabQuery.isFetching) return;
+    const fetch_ = async () => {
+      setLoadingSaved(true);
+      try {
+        const res = await fetch(`${API_URL}/api/posts/saved/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.saved, mapped);
+        setSavedPosts(mapped);
+      } catch (err) { console.error(err); }
+      finally { setLoadingSaved(false); }
+    };
+    fetch_();
+  }, [visibleTab, isOwnProfile, savedTabQuery.data, savedTabQuery.isFetching, tabMemoryKeys.saved]);
+
+  useEffect(() => {
+    if (visibleTab !== "reposts" || !viewedUsername) return;
+    if (repostsTabQuery.data || repostsTabQuery.isFetching) return;
+    const fetch_ = async () => {
+      setLoadingReposts(true);
+      try {
+        const endpoint = isOwnProfile
+          ? `${API_URL}/api/posts/reposts/`
+          : `${API_URL}/api/posts/user/${viewedUsername}/reposts/`;
+        const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.reposts, mapped);
+        setRepostedPosts(mapped);
+      } catch (err) { console.error(err); }
+      finally { setLoadingReposts(false); }
+    };
+    fetch_();
+  }, [visibleTab, isOwnProfile, viewedUsername, repostsTabQuery.data, repostsTabQuery.isFetching, tabMemoryKeys.reposts]);
+
+  useEffect(() => {
+    if (visibleTab !== "events" || !viewedUsername) return;
+    if (eventsTabQuery.data || eventsTabQuery.isFetching) return;
+    const fetch_ = async () => {
+      setLoadingEvents(true);
+      try {
+        const res = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/events/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const count = getPaginatedCount(data);
+        if (count !== null) setProfileEventsCount(count);
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.events, mapped);
+        setEventPosts(mapped);
+      } catch (err) { console.error(err); }
+      finally { setLoadingEvents(false); }
+    };
+    fetch_();
+  }, [visibleTab, viewedUsername, eventsTabQuery.data, eventsTabQuery.isFetching, tabMemoryKeys.events]);
+
+  useEffect(() => {
+    if (visibleTab !== "alerts" || !viewedUsername) return;
+    if (alertsTabQuery.data || alertsTabQuery.isFetching) return;
+    const fetch_ = async () => {
+      setLoadingAlerts(true);
+      try {
+        const res = await fetch(`${API_URL}/api/posts/user/${viewedUsername}/alerts/`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const mapped = (data.results ?? data).map(mapPost);
+        profileTabMemory.set(tabMemoryKeys.alerts, mapped);
+        setAlertPosts(mapped);
+      } catch (err) { console.error(err); }
+      finally { setLoadingAlerts(false); }
+    };
+    fetch_();
+  }, [visibleTab, viewedUsername, alertsTabQuery.data, alertsTabQuery.isFetching, tabMemoryKeys.alerts]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingMore && nextUrl) {
+          fetchTabPosts(nextUrl, visibleTab, false);
+        }
+      },
+      { threshold: 1.0 }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [nextUrl, loadingMore, visibleTab]);
+
+  const openPost = (post: ApiPost, tab: "comments" | "annotations" = "comments") => {
+    setSelectedPost(post);
+    setSelectedPostTab(tab);
+  };
+
+  const isGridLoading = displayedAllPosts.length === 0 && (loadingPosts || gridTabQuery.isLoading);
+  const isGemsLoading = displayedGemmedPosts.length === 0 && (loadingGemmed || gemsTabQuery.isLoading);
+  const isSavedLoading = displayedSavedPosts.length === 0 && (loadingSaved || savedTabQuery.isLoading);
+  const isRepostsLoading = displayedRepostedPosts.length === 0 && (loadingReposts || repostsTabQuery.isLoading);
+  const isEventsLoading = displayedEventPosts.length === 0 && (loadingEvents || eventsTabQuery.isLoading);
+  const isAlertsLoading = displayedAlertPosts.length === 0 && (loadingAlerts || alertsTabQuery.isLoading);
+  // Show total gems received on user's OWN posts (not how many posts they gemmed)
+  const profileGemsCount = profileInfo.likes_count;
+  const profilePostsDisplayCount = profilePostsCount ?? Math.max(profileInfo.posts_count, displayedAllPosts.length, rememberedAllPosts.length, allPosts.length);
+  const profileEventsDisplayCount = profileEventsCount ?? Math.max(profileInfo.events_count, displayedEventPosts.length, rememberedEventPosts.length, eventPosts.length);
+
+  const handleSelectedPostInteractionChange = (post: ApiPost, update: Partial<PostInteraction>) => {
+    const previousInteraction = getInteraction(post);
+    updateInteraction(post.id, update);
+
+    if (typeof update.gemmed === "boolean" && update.gemmed !== previousInteraction.gemmed) {
+      setProfileInfo((prev) => ({
+        ...prev,
+        likes_count: Math.max(0, prev.likes_count + (update.gemmed ? 1 : -1))
+      }));
+    }
+
+    if (!isOwnProfile || typeof update.gemmed !== "boolean" || update.gemmed === previousInteraction.gemmed) return;
+
+    setGemmedPostsCount((current) => {
+      const fallback = Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length);
+      const base = current ?? fallback;
+      return update.gemmed ? base + 1 : Math.max(base - 1, 0);
+    });
+
+    if (update.gemmed) {
+      setGemmedPosts((current) => current.some((item) => item.id === post.id) ? current : [post, ...current]);
+      const remembered = profileTabMemory.get(tabMemoryKeys.gems) ?? [];
+      if (!remembered.some((item) => item.id === post.id)) {
+        profileTabMemory.set(tabMemoryKeys.gems, [post, ...remembered]);
+      }
+    } else {
+      setGemmedPosts((current) => current.filter((item) => item.id !== post.id));
+      const remembered = profileTabMemory.get(tabMemoryKeys.gems);
+      if (remembered) profileTabMemory.set(tabMemoryKeys.gems, remembered.filter((item) => item.id !== post.id));
+    }
+  };
+
+  const updateRepostDescriptionInLists = (postId: string, description: string) => {
+    const applyDescription = (post: ApiPost) => (
+      post.id === postId ? { ...post, repost_description: description } : post
+    );
+    setSelectedPost(prev => prev && prev.id === postId ? { ...prev, repost_description: description } : prev);
+    setRepostedPosts(prev => prev.map(applyDescription));
+    const remembered = profileTabMemory.get(tabMemoryKeys.reposts);
+    if (remembered) profileTabMemory.set(tabMemoryKeys.reposts, remembered.map(applyDescription));
+  };
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: "var(--background)", fontFamily: "var(--font-lato)" }}>
+      {selectedPost && (
+        <PostModal
+          post={selectedPost}
+          initialTab={selectedPostTab}
+          interaction={getInteraction(selectedPost)}
+          onInteractionChange={(update) => handleSelectedPostInteractionChange(selectedPost, update)}
+          onDeletePost={deletePostFromLists}
+          onClose={() => setSelectedPost(null)}
+          loggedInUsername={loggedInUsername}
+          onReport={openReportModal}
+        />
+      )}
+
+      <ReportModal
+        isOpen={reportModal.isOpen}
+        onClose={() => setReportModal(prev => ({ ...prev, isOpen: false }))}
+        onSubmit={handleReportSubmit}
+        targetType={reportModal.targetType}
+      />
+
+      <LeftSidebar activePage={isOwnProfile ? "profile" : ""} />
+
+      <main className="md:pl-[80px] px-4 pb-16 md:pb-0">
+        <div className="max-w-4xl mx-auto">
+          <ProfileHeader
+            profileInfo={profileInfo}
+            isOwnProfile={isOwnProfile}
+            gemsCount={profileGemsCount}
+            postsCount={profilePostsDisplayCount}
+            eventsCount={profileEventsDisplayCount}
+          />
+          <ProfileTabs activeTab={visibleTab} setActiveTab={setActiveTab} isOwnProfile={isOwnProfile} />
+
+          {visibleTab === "grid" && (
+            isGridLoading ? <ProfileGridSkeleton /> :
+              displayedAllPosts.length === 0 ? <EmptyState icon={<GridIcon size={48} />} message={userPageT("empty.posts")} /> :
+                <PostsGrid posts={displayedAllPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+          )}
+          {isOwnProfile && visibleTab === "gems" && (
+            isGemsLoading ? <ProfileGridSkeleton /> :
+              displayedGemmedPosts.length === 0 ? <EmptyState icon={<GemIcon size={48} />} message={userPageT("empty.treasure")} /> :
+                <PostsGrid posts={displayedGemmedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+          )}
+          {isOwnProfile && visibleTab === "saved" && (
+            isSavedLoading ? <ProfileGridSkeleton /> :
+              displayedSavedPosts.length === 0 ? <EmptyState icon={<BookmarkIcon size={48} />} message={userPageT("empty.collection")} /> :
+                <PostsGrid posts={displayedSavedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+          )}
+          {visibleTab === "reposts" && (
+            <>
+              {isRepostsLoading ? <ProfileGridSkeleton /> :
+                displayedRepostedPosts.length === 0 ? <EmptyState icon={<RepostIcon size={48} />} message={userPageT("empty.reposts")} /> :
+                  <PostsGrid posts={displayedRepostedPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />}
+            </>
+          )}
+          {visibleTab === "events" && (
+            isEventsLoading ? <ProfileGridSkeleton /> :
+              displayedEventPosts.length === 0 ? <EmptyState icon={<CalendarIcon size={48} />} message={userPageT("empty.events")} /> :
+                <PostsGrid posts={displayedEventPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+          )}
+          {visibleTab === "alerts" && (
+            isAlertsLoading ? <ProfileGridSkeleton /> :
+              displayedAlertPosts.length === 0 ? <EmptyState icon={<DangerIcon size={48} />} message={userPageT("empty.alerts")} /> :
+                <PostsGrid posts={displayedAlertPosts} getInteraction={getInteraction} onPostClick={(p) => openPost(p)} onCommentClick={(p) => openPost(p, "comments")} onAnnotationClick={(p) => openPost(p, "annotations")} />
+          )}
+          {loadingMore && <Spinner />}
+          <div ref={sentinelRef} className="h-4" />
+        </div>
+      </main>
+    </div>
+  );
+}
+
