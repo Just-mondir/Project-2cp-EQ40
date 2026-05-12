@@ -1,18 +1,30 @@
 version: "3.9"
 
 services:
-  # ── MongoDB with pre-loaded data ──────────────────────────────
+  # ── MongoDB Database ──────────────────────────────────────────
   mongo:
-    image: mondir2006/projet2cp-mongo:latest
+    image: mongo:6.0
     restart: unless-stopped
     volumes:
       - mongo_data:/data/db
     ports:
       - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── MongoDB Database Seeder ───────────────────────────────────
+  mongo-seed:
+    image: mondir2006/kunuz-mongo-seed:latest
+    depends_on:
+      mongo:
+        condition: service_healthy
 
   # ── Django Backend ────────────────────────────────────────────
   backend:
-    image: mondir2006/projet2cp-backend:latest
+    image: mondir2006/kunuz-backend:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -21,11 +33,12 @@ services:
       - MONGODB_HOST=mongodb://mongo:27017/heritage_db
       - DEBUG=True
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
   # ── Next.js Frontend ──────────────────────────────────────────
   frontend:
-    image: mondir2006/projet2cp-frontend:latest
+    image: mondir2006/kunuz-frontend:latest
     restart: unless-stopped
     ports:
       - "3000:3000"

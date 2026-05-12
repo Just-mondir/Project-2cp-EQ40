@@ -39,7 +39,20 @@ Once the command finishes running, the application is live! You can access it di
 
 ---
 
-## 4. Stopping the Application
+## 4. Test Accounts
+
+To instantly test the different roles and features of the platform without registering, you can log in with any of the following pre-configured accounts.
+The password for all accounts is: **`TestPass1234`**
+
+| Role | Email | Permissions |
+| :--- | :--- | :--- |
+| **System Admin** | `admin@kunuz.com` | Full access to all admin and moderation features. |
+| **Moderator** | `mod@kunuz.com` | Access to content moderation and user reports. |
+| **Regular User** | `user1@kunuz.com` | Standard permissions (create posts, report others). |
+
+---
+
+## 5. Stopping the Application
 
 When you are finished evaluating the project, you can cleanly stop and remove the running containers by executing this command in the same folder:
 

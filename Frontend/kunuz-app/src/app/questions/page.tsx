@@ -1659,7 +1659,7 @@ function PostModal({
         );
       })()}
 
-      <p className="text-sm leading-relaxed flex-1" style={{ color: "#432817" }}>{post.content}</p>
+      <div className="text-sm leading-relaxed flex-1 prose prose-sm max-w-none" style={{ color: "#432817" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
 
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mt-4">

@@ -1,0 +1,33 @@
+# Prevent local .env from overriding Docker env_file values
+.env
+.env.local
+.env.docker
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Django local
+db.sqlite3
+media/
+staticfiles/
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Git
+.git
+.gitignore

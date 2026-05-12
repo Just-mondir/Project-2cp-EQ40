@@ -1,4 +1,11 @@
-version: "3.9"
+
+
+# REBUILD AFTER CODE CHANGES:
+#   docker compose up --build --force-recreate
+#
+# RESET DATABASE (re-seed from dump):
+#   docker compose down -v
+#   docker compose up --build
 
 services:
   # ── MongoDB with pre-loaded data ──────────────────────────────
@@ -9,6 +16,12 @@ services:
       - mongo_data:/data/db
     ports:
       - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ── Django Backend ────────────────────────────────────────────
   backend:
@@ -19,7 +32,8 @@ services:
     env_file:
       - ./Backend/heritage_backend/.env.docker
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
 
   # ── Next.js Frontend ──────────────────────────────────────────
   frontend:

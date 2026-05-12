@@ -2255,15 +2255,21 @@ export default function ProfilePage() {
   const isRepostsLoading = displayedRepostedPosts.length === 0 && (loadingReposts || repostsTabQuery.isLoading);
   const isEventsLoading = displayedEventPosts.length === 0 && (loadingEvents || eventsTabQuery.isLoading);
   const isAlertsLoading = displayedAlertPosts.length === 0 && (loadingAlerts || alertsTabQuery.isLoading);
-  const profileGemsCount = isOwnProfile
-    ? gemmedPostsCount ?? Math.max(displayedGemmedPosts.length, rememberedGemmedPosts.length, gemmedPosts.length)
-    : profileInfo.likes_count;
+  // Show total gems received on user's OWN posts (not how many posts they gemmed)
+  const profileGemsCount = profileInfo.likes_count;
   const profilePostsDisplayCount = profilePostsCount ?? Math.max(profileInfo.posts_count, displayedAllPosts.length, rememberedAllPosts.length, allPosts.length);
   const profileEventsDisplayCount = profileEventsCount ?? Math.max(profileInfo.events_count, displayedEventPosts.length, rememberedEventPosts.length, eventPosts.length);
 
   const handleSelectedPostInteractionChange = (post: ApiPost, update: Partial<PostInteraction>) => {
     const previousInteraction = getInteraction(post);
     updateInteraction(post.id, update);
+
+    if (typeof update.gemmed === "boolean" && update.gemmed !== previousInteraction.gemmed) {
+      setProfileInfo((prev) => ({
+        ...prev,
+        likes_count: Math.max(0, prev.likes_count + (update.gemmed ? 1 : -1))
+      }));
+    }
 
     if (!isOwnProfile || typeof update.gemmed !== "boolean" || update.gemmed === previousInteraction.gemmed) return;
 
