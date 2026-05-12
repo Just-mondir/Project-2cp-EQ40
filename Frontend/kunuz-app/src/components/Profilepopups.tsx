@@ -24,7 +24,7 @@ function getAuthUserEmail(): string {
 
 interface ChangeEmailForm {
   newEmail: string;
-  confirmPassword: string;
+  currentPassword: string;
 }
 
 interface ChangePasswordForm {
@@ -249,7 +249,7 @@ function useIsDarkHomeTheme() {
 export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
   const t = useTranslations("auth.profilePopups.changeEmail");
   const common = useTranslations("auth.profilePopups");
-  const [form, setForm] = useState<ChangeEmailForm>({ newEmail: "", confirmPassword: "" });
+  const [form, setForm] = useState<ChangeEmailForm>({ newEmail: "", currentPassword: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const isDarkHomeTheme = useIsDarkHomeTheme();
@@ -260,19 +260,32 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = async () => {
     setError("");
-    if (!form.newEmail || !form.confirmPassword) { setError(t("errors.required")); return; }
+    if (!form.newEmail || !form.currentPassword) { setError(t("errors.required")); return; }
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/users/me/`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
-        body: JSON.stringify({ email: form.newEmail }),
+        body: JSON.stringify({ email: form.newEmail, current_password: form.currentPassword }),
       });
-      const data = await res.json().catch(() => null);
+      const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        const msg = data?.errors?.email?.[0] || data?.errors?.detail || data?.message || "Failed to update email.";
+        const msg = payload?.errors?.email?.[0] || payload?.errors?.current_password?.[0] || payload?.errors?.detail || payload?.message || "Failed to update email.";
         setError(typeof msg === "string" ? msg : JSON.stringify(msg));
         return;
+      }
+
+      if (typeof window !== "undefined" && payload?.data) {
+        try {
+          const existing = localStorage.getItem("authUser");
+          const parsed = existing ? JSON.parse(existing) : {};
+          const merged = { ...parsed, ...payload.data };
+          localStorage.setItem("authUser", JSON.stringify(merged));
+          localStorage.setItem("user", JSON.stringify(merged));
+        } catch {
+          localStorage.setItem("authUser", JSON.stringify(payload.data));
+          localStorage.setItem("user", JSON.stringify(payload.data));
+        }
       }
 
       onClose();
@@ -292,7 +305,7 @@ export function ChangeEmailPopup({ onClose }: { onClose: () => void }) {
         <PopupSubtitle text={t("subtitle")} />
         <div style={{ width: "100%" }}>
           <TextField placeholder={t("fields.newEmail")} value={form.newEmail} onChange={update("newEmail")} />
-          <PasswordField placeholder={t("fields.confirmPassword")} value={form.confirmPassword} onChange={update("confirmPassword")} />
+          <PasswordField placeholder={t("fields.currentPassword")} value={form.currentPassword} onChange={update("currentPassword")} />
 
         </div >
         {error && <p style={{ color: "#C0392B", fontSize: "13px", margin: "4px 0 0", fontFamily: "'Lato', sans-serif" }}>{error}</p>

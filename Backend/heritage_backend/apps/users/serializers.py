@@ -19,7 +19,7 @@ def _sanitize_plain(value: str) -> str:
 
 from apps.core.responses import RESPONSE_CONFLICT_MESSAGE
 from .models import BlacklistedToken, ExpertiseChoices, OTPCode, OTPPurposeChoices, User
-from .utils import create_hashed_otp, is_otp_expired, send_otp_email, verify_otp_code
+from .utils import create_hashed_otp, is_otp_expired, send_email_change_notification, send_otp_email, verify_otp_code
 
 
 class UserProfileSerializer(serializers.Serializer):
@@ -202,6 +202,8 @@ class LoginSerializer(serializers.Serializer):
 class UserUpdateSerializer(serializers.Serializer):
     """Update serializer for editable profile fields."""
 
+    email = serializers.EmailField(required=False)
+    current_password = serializers.CharField(required=False, write_only=True)
     username = serializers.CharField(max_length=100, required=False, allow_blank=True)
     display_name = serializers.CharField(max_length=100, required=False, allow_blank=True)
     bio = serializers.CharField(required=False, allow_blank=True)
@@ -224,7 +226,29 @@ class UserUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError(RESPONSE_CONFLICT_MESSAGE["username_exists"])
         return value
 
+    def validate_email(self, value):
+        normalized_email = value.strip().lower()
+        instance = getattr(self, "instance", None)
+        if instance is not None and getattr(instance, "email", "").strip().lower() == normalized_email:
+            return normalized_email
+
+        if User.objects(email=normalized_email).count() > 0:
+            raise serializers.ValidationError(RESPONSE_CONFLICT_MESSAGE["email_exists"])
+
+        return normalized_email
+
     def validate(self, attrs):
+        email = attrs.get("email")
+        current_password = attrs.get("current_password")
+
+        if email is not None:
+            if not current_password:
+                raise serializers.ValidationError({"current_password": "Current password is required to change email."})
+
+            instance = getattr(self, "instance", None)
+            if instance is None or not instance.check_password(current_password):
+                raise serializers.ValidationError({"current_password": "The current password you entered is incorrect."})
+
         # --- XSS sanitization ---
         if "username" in attrs and attrs["username"]:
             attrs["username"] = _sanitize_plain(attrs["username"])
@@ -238,9 +262,14 @@ class UserUpdateSerializer(serializers.Serializer):
         return attrs
 
     def update(self, instance, validated_data):
+        previous_email = (instance.email or "").strip().lower()
+        validated_data.pop("current_password", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        new_email = (instance.email or "").strip().lower()
+        if previous_email and new_email and previous_email != new_email:
+            send_email_change_notification(previous_email, new_email)
         return instance
 
 

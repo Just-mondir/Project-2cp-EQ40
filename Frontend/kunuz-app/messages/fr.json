@@ -597,10 +597,10 @@
       },
       "changeEmail": {
         "title": "Changer l'e-mail",
-        "subtitle": "Saisissez votre nouvelle adresse e-mail ci-dessous",
+        "subtitle": "Saisissez votre nouvelle adresse e-mail et votre mot de passe actuel",
         "fields": {
           "newEmail": "Nouvelle adresse e-mail",
-          "confirmPassword": "Confirmez votre mot de passe"
+          "currentPassword": "Mot de passe actuel"
         },
         "errors": {
           "required": "Veuillez remplir tous les champs."

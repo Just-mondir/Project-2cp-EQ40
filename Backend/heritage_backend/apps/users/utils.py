@@ -14,6 +14,7 @@ from .models import OTPCode, OTPPurposeChoices, User
 OTP_LENGTH = 6
 OTP_MAX_VALUE = 10**OTP_LENGTH
 OTP_EMAIL_SUBJECT = "Verification Code"
+EMAIL_CHANGE_SUBJECT = "Your Kunuz email was changed"
 
 
 def _normalize_for_compare(value):
@@ -63,15 +64,23 @@ def verify_otp_code(otp: OTPCode, plain_code: str) -> bool:
         return False
     return check_password(plain_code, otp.code)
 
+def _wrap_kunuz_email_html(title: str, body_html: str) -> str:
+    return f"""
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 32px; border: 1px solid #eee; border-radius: 8px;">
+        <h2 style="color: #333;">{title}</h2>
+        {body_html}
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+        <p style="color: #bbb; font-size: 11px; text-align: center;">© Kunuz App</p>
+    </div>
+    """
+
+
 def send_otp_email(email: str, code: str) -> None:
     """Send the OTP code to the user email."""
-    
+
     subject = OTP_EMAIL_SUBJECT
     text_message = f"Your Kunuz verification code is: {code}\nThis code expires in 10 minutes."
-
-    html_message = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: auto; padding: 32px; border: 1px solid #eee; border-radius: 8px;">
-        <h2 style="color: #333;">Verify your account</h2>
+    body_html = f"""
         <p style="color: #555;">Use the code below to complete your registration on <strong>Kunuz</strong>:</p>
 
         <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; text-align: center;
@@ -79,18 +88,40 @@ def send_otp_email(email: str, code: str) -> None:
             {code}
         </div>
 
-        <p style="color: #888; font-size: 13px;">⏱ This code expires in <strong>10 minutes</strong>.</p>
+        <p style="color: #888; font-size: 13px;">This code expires in <strong>10 minutes</strong>.</p>
         <p style="color: #888; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
-
-        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
-        <p style="color: #bbb; font-size: 11px; text-align: center;">© Kunuz App</p>
-    </div>
     """
+    html_message = _wrap_kunuz_email_html("Verify your account", body_html)
     email_msg = EmailMultiAlternatives(
         subject=subject,
-        body=text_message, 
-        from_email=None,         
+        body=text_message,
+        from_email=None,
         to=[email],
     )
     email_msg.attach_alternative(html_message, "text/html")
     email_msg.send(fail_silently=False)
+
+
+def send_email_change_notification(old_email: str, new_email: str) -> None:
+    """Notify the old email address when a user changes their email."""
+
+    subject = EMAIL_CHANGE_SUBJECT
+    text_message = (
+        "Your Kunuz account email was changed.\n"
+        f"New email: {new_email}\n"
+        "If you did not make this change, please contact support."
+    )
+    body_html = f"""
+        <p style="color: #555;">Your Kunuz account email was just changed.</p>
+        <p style="color: #555;"><strong>New email:</strong> {new_email}</p>
+        <p style="color: #888; font-size: 13px;">If you did not make this change, please contact support immediately.</p>
+    """
+    html_message = _wrap_kunuz_email_html("Email changed", body_html)
+    email_msg = EmailMultiAlternatives(
+        subject=subject,
+        body=text_message,
+        from_email=None,
+        to=[old_email],
+    )
+    email_msg.attach_alternative(html_message, "text/html")
+    email_msg.send(fail_silently=True)

@@ -598,10 +598,10 @@
       },
       "changeEmail": {
         "title": "Change email",
-        "subtitle": "Enter your new email address below",
+        "subtitle": "Enter your new email address and current password",
         "fields": {
           "newEmail": "New email address",
-          "confirmPassword": "Confirm your password"
+          "currentPassword": "Current password"
         },
         "errors": {
           "required": "Please fill in all fields."
