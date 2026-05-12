@@ -37,6 +37,8 @@ Once the command finishes running, the application is live! You can access it di
 
 *(The database has been pre-seeded with our test data, so you will immediately see posts, users, and content when you open the frontend).*
 
+*Note: For evaluation, uploaded media is stored locally inside the backend container (no external Cloudinary account needed).*
+
 ---
 
 ## 4. Test Accounts
