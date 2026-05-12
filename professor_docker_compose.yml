@@ -3,7 +3,7 @@ version: "3.9"
 services:
   # ── MongoDB Database ──────────────────────────────────────────
   mongo:
-    image: mongo:6.0
+    image: mondir2006/projet2cp-mongo:latest
     restart: unless-stopped
     volumes:
       - mongo_data:/data/db
@@ -15,16 +15,9 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── MongoDB Database Seeder ───────────────────────────────────
-  mongo-seed:
-    image: mondir2006/kunuz-mongo-seed:latest
-    depends_on:
-      mongo:
-        condition: service_healthy
-
   # ── Django Backend ────────────────────────────────────────────
   backend:
-    image: mondir2006/kunuz-backend:latest
+    image: mondir2006/projet2cp-backend:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -38,7 +31,7 @@ services:
 
   # ── Next.js Frontend ──────────────────────────────────────────
   frontend:
-    image: mondir2006/kunuz-frontend:latest
+    image: mondir2006/projet2cp-frontend:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
