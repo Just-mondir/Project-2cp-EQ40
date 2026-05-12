@@ -84,6 +84,26 @@ function getPaginatedCount(payload: unknown): number | null {
   return Number.isFinite(count) ? count : null;
 }
 
+function extractPaginatedResults<T>(payload: unknown): T[] {
+  const data = payload as {
+    results?: T[];
+    data?: { results?: T[] } | T[];
+  };
+  if (Array.isArray(data)) return data as T[];
+  if (Array.isArray(data.data)) return data.data as T[];
+  return data.data?.results ?? data.results ?? [];
+}
+
+function extractNextUrl(payload: unknown): string | null {
+  const data = payload as { next?: unknown; data?: { next?: unknown } };
+  const next = data.next ?? data.data?.next;
+  return typeof next === "string" && next.trim() ? next : null;
+}
+
+function sumGemsFromPosts(posts: Array<{ gems_count?: unknown }>): number {
+  return posts.reduce((sum, post) => sum + (Number(post.gems_count) || 0), 0);
+}
+
 
 
 const isModerator = (user: any) => {
@@ -1817,7 +1837,7 @@ export default function ProfilePage() {
   useEffect(() => {
     const data = profileQuery.data;
     if (!data) return;
-    setProfileInfo({
+    setProfileInfo((prev) => ({
       username: data.username ?? "",
       display_name: data.display_name ?? data.username ?? "",
       bio: data.bio ?? "",
@@ -1828,9 +1848,9 @@ export default function ProfilePage() {
       is_verified: data.is_verified ?? false,
       role: data.role ?? "",
       posts_count: data.posts_count ?? displayedAllPosts.length,
-      likes_count: data.likes_count ?? 0,
+      likes_count: data.likes_count ?? prev.likes_count ?? 0,
       events_count: data.events_count ?? displayedEventPosts.length,
-    });
+    }));
   }, [profileQuery.data, displayedAllPosts.length, displayedEventPosts.length]);
 
   useEffect(() => {
@@ -1997,73 +2017,75 @@ export default function ProfilePage() {
   // ← fetch real profile info + likes + events + posts counts
   useEffect(() => {
     if (!viewedUsername) return;
-    if (profileQuery.data || profileQuery.isFetching) return;
+    if (profileQuery.isFetching) return;
+    let cancelled = false;
     const fetchProfile = async () => {
       try {
-        const endpoint = isOwnProfile
-          ? `${API_URL}/api/users/me/`
-          : `${API_URL}/api/users/${viewedUsername}/`;
-        const res = await fetch(endpoint, {
-          headers: { Authorization: `Bearer ${getAuthToken()}` },
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const data = json.data ?? json;
-
-          // ← fetch events count
-          let eventsCount = 0;
-          try {
-            const eventsRes = await fetch(
-              `${API_URL}/api/posts/user/${viewedUsername}/events/`,
-              { headers: { Authorization: `Bearer ${getAuthToken()}` } }
-            );
-            if (eventsRes.ok) {
-              const eventsData = await eventsRes.json();
-              eventsCount = eventsData.count ?? (eventsData.results ?? eventsData).length;
-            }
-          } catch { }
-
-          // ← fetch likes count (sum of gems_count) and posts count — reuse same request
-          let likesCount = 0;
-          let allPostsCount = 0;
-          try {
-            const postsRes = await fetch(
-              `${API_URL}/api/posts/user/${viewedUsername}/`,
-              { headers: { Authorization: `Bearer ${getAuthToken()}` } }
-            );
-            if (postsRes.ok) {
-              const postsData = await postsRes.json();
-              const posts = postsData.results ?? postsData;
-              likesCount = posts.reduce(
-                (sum: number, p: any) => sum + (p.gems_count ?? 0),
-                0
-              );
-              // ← fetch real posts count from same response
-              allPostsCount = postsData.count ?? posts.length;
-            }
-          } catch { }
-
-          setProfileInfo({
-            username: data.username ?? "",
-            display_name: data.display_name ?? data.username ?? "",
-            bio: data.bio ?? "",
-            expertise: data.expertise ?? "",
-            speciality: data.speciality ?? "",
-            profile_picture: data.profile_picture ?? null,
-            badge: data.badge ?? null,
-            is_verified: data.is_verified ?? false,
-            role: data.role ?? "",
-            // ← use real fetched count instead of data.posts_count
-            posts_count: allPostsCount,
-            likes_count: likesCount,
-            events_count: eventsCount,
+        let data = profileQuery.data as Partial<ProfileInfo> | undefined;
+        if (!data) {
+          const endpoint = isOwnProfile
+            ? `${API_URL}/api/users/me/`
+            : `${API_URL}/api/users/${viewedUsername}/`;
+          const res = await fetch(endpoint, {
+            headers: { Authorization: `Bearer ${getAuthToken()}` },
           });
+          if (!res.ok) return;
+          const json = await res.json();
+          data = json.data ?? json;
         }
+
+        let eventsCount = 0;
+        try {
+          const eventsRes = await fetch(
+            `${API_URL}/api/posts/user/${viewedUsername}/events/?page_size=1`,
+            { headers: { Authorization: `Bearer ${getAuthToken()}` } }
+          );
+          if (eventsRes.ok) {
+            const eventsData = await eventsRes.json();
+            const count = getPaginatedCount(eventsData);
+            eventsCount = count ?? extractPaginatedResults(eventsData).length;
+          }
+        } catch { }
+
+        let likesCount = 0;
+        let allPostsCount = 0;
+        try {
+          let nextUrl: string | null = `${API_URL}/api/posts/user/${viewedUsername}/?page_size=50`;
+          let page = 0;
+          while (nextUrl && page < 20) {
+            const postsRes = await fetch(nextUrl, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+            if (!postsRes.ok) break;
+            const postsData = await postsRes.json();
+            const posts = extractPaginatedResults<{ gems_count?: unknown }>(postsData);
+            likesCount += sumGemsFromPosts(posts);
+            const count = getPaginatedCount(postsData);
+            if (count !== null) allPostsCount = count;
+            nextUrl = extractNextUrl(postsData);
+            page += 1;
+          }
+        } catch { }
+
+        if (cancelled) return;
+        setProfileInfo({
+          username: data.username ?? "",
+          display_name: data.display_name ?? data.username ?? "",
+          bio: data.bio ?? "",
+          expertise: data.expertise ?? "",
+          speciality: data.speciality ?? "",
+          profile_picture: data.profile_picture ?? null,
+          badge: data.badge ?? null,
+          is_verified: data.is_verified ?? false,
+          role: data.role ?? "",
+          posts_count: allPostsCount || data.posts_count || 0,
+          likes_count: data.likes_count ?? likesCount,
+          events_count: eventsCount,
+        });
       } catch (err) {
         console.error("Error fetching profile:", err);
       }
     };
     fetchProfile();
+    return () => { cancelled = true; };
   }, [viewedUsername, isOwnProfile, profileQuery.data, profileQuery.isFetching]);
 
   /* ── Fetch posts logic with pagination ── */
